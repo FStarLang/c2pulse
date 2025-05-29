@@ -19,6 +19,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/CommandLine.h"
 
+#include "PulseEmitter.h"
 
 using namespace clang;
 
@@ -66,13 +67,15 @@ public:
 
     // Check for function name match if specified
     if (!FunctionNameToProcess.empty() && FD->getNameAsString() != FunctionNameToProcess) {
-        return true; // Skip this function
+        return true;
     }
-
-    // Only process user functions
-    Stmt *Body = FD->getBody();
-    if (auto *CS = dyn_cast<CompoundStmt>(Body))
-      rewriteCompound(CS);
+    
+    // Always apply ANF rewriting on user functions
+    if (Stmt *Body = FD->getBody()) {
+      if (auto *CS = dyn_cast<CompoundStmt>(Body))
+        rewriteCompound(CS);
+    }
+    
     return true;
   }
 
@@ -82,7 +85,6 @@ private:
   SourceManager &SM;
   int Counter;
 
-  /// Produce a fresh temp name.
   std::string freshTemp() {
     return "__anf_tmp" + std::to_string(Counter++);
   }
@@ -196,7 +198,6 @@ std::string rewriteIf(IfStmt *IS) {
 
   if (isEffectful(Cond)) {
     std::string tmp = freshTemp();
-    // Use the actual type, not 'int'
     Out += Ty + " " + tmp + " = " + exprToString(Cond) + ";\n";
     Out += "if (" + tmp + ") " + blockText(IS->getThen()) + "\n";
   } else {
@@ -311,7 +312,6 @@ private:
   ANFVisitor Visitor;
 };
 
-/// Plugin entry point
 class ANFFrontendAction : public PluginASTAction {
 protected:
   std::unique_ptr<ASTConsumer>
