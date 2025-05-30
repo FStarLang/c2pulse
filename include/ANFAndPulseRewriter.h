@@ -15,20 +15,22 @@ extern llvm::cl::opt<std::string> FunctionNameToProcess;
 extern llvm::cl::opt<std::string> TransformMode;
 using namespace clang;
 
-enum class ANFTransformModeKind
+#define DEBUG_TYPE "anf-pulse-rewriter"
+
+enum class ANFTransformDebugModeKind
 {
     ANFOnly,
     PulseOnly,
     Both
 };
 
-static ANFTransformModeKind getPrintedTransformedMode()
+static ANFTransformDebugModeKind getTransformMode()
 {
     if (TransformMode == "anf")
-        return ANFTransformModeKind::ANFOnly;
+        return ANFTransformDebugModeKind::ANFOnly;
     if (TransformMode == "pulse")
-        return ANFTransformModeKind::PulseOnly;
-    return ANFTransformModeKind::Both;
+        return ANFTransformDebugModeKind::PulseOnly;
+    return ANFTransformDebugModeKind::Both;
 }
 
 namespace {
