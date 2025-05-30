@@ -3,30 +3,10 @@ project(ANFAndPulseRewriter LANGUAGES C CXX)
 
 set(LLVM_LINK_COMPONENTS support)
 
-# Find LLVM and Clang via the CONFIG mode
-#find_package(LLVM REQUIRED CONFIG)
-#find_package(Clang REQUIRED CONFIG)
-
-#message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
-#message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
-#message(STATUS "Found Clang in: ${Clang_DIR}")
-
-# Add LLVM’s CMake modules (for llvm_map_components_to_libnames)
-#list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
-#include(AddLLVM)
-
 # Define which LLVM components we need
 llvm_map_components_to_libnames(LLVM_LIBS
   support
 )
-
-add_clang_executable(anf_pulse_plugin
-	src/ANFAndPulseRewriter.cpp
-	src/PulseEmitter.cpp
-	src/main.cpp
- DEPENDS
- intrinsics_gen
- )
 
 # Gather source files
 set(SRC_FILES
@@ -35,14 +15,14 @@ set(SRC_FILES
   src/main.cpp
 )
 
-#include_directories(${LLVM_MAIN_SRC_DIR}/tools/clang/include)
-#include_directories(${LLVM_BINARY_DIR}/tools/clang/include)
-
-# Create shared plugin library
-#add_library(anf_pulse_plugin SHARED ${SRC_FILES})
+add_clang_executable(C2Pulse
+  ${SRC_FILES}
+  DEPENDS
+    intrinsics_gen
+)
 
 # Include directories for headers
-target_include_directories(anf_pulse_plugin
+target_include_directories(C2Pulse
   PRIVATE
     ${LLVM_INCLUDE_DIRS}
     ${CLANG_INCLUDE_DIRS}
@@ -50,7 +30,7 @@ target_include_directories(anf_pulse_plugin
 )
 
 # Link against LLVM and Clang libraries
-target_link_libraries(anf_pulse_plugin
+target_link_libraries(C2Pulse
   PRIVATE
     ${LLVM_LIBS}
     clangAST
@@ -62,7 +42,7 @@ target_link_libraries(anf_pulse_plugin
 )
 
 # Set C++ standard and other properties
-set_target_properties(anf_pulse_plugin PROPERTIES
+set_target_properties(C2Pulse PROPERTIES
   CXX_STANDARD 17
   INTERPROCEDURAL_OPTIMIZATION OFF
 )
