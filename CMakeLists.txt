@@ -32,6 +32,7 @@ add_clang_executable(anf_pulse_plugin
 set(SRC_FILES
   src/ANFAndPulseRewriter.cpp
   src/PulseEmitter.cpp
+  src/main.cpp
 )
 
 #include_directories(${LLVM_MAIN_SRC_DIR}/tools/clang/include)

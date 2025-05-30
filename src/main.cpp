@@ -1,13 +1,27 @@
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/Frontend/FrontendActions.h"
-#include "ANFAndPulseRewriter.cpp"
+#include "ANFAndPulseRewriter.h"
 
 
 using namespace clang;
 using namespace clang::tooling;
 
-static llvm::cl::OptionCategory ToolCategory("anf-pulse-tool options");
+llvm::cl::OptionCategory ToolCategory("anf-pulse-tool options");
+
+llvm::cl::opt<std::string>
+    FunctionNameToProcess("func",
+      llvm::cl::desc("Only transform the function named <func>"),
+      llvm::cl::value_desc("function name"),
+      llvm::cl::cat(ToolCategory));
+
+llvm::cl::opt<std::string>
+    TransformMode("mode",
+      llvm::cl::desc("Select transformation mode: anf, pulse, or both"),
+      llvm::cl::value_desc("mode"),
+      llvm::cl::init("both"),
+      llvm::cl::cat(ToolCategory));
+
 
 int main(int argc, const char **argv) {
     
