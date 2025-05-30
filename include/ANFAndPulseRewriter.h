@@ -22,7 +22,7 @@ enum class ANFTransformModeKind
     Both
 };
 
-static ANFTransformModeKind getTransformMode()
+static ANFTransformModeKind getPrintedTransformedMode()
 {
     if (TransformMode == "anf")
         return ANFTransformModeKind::ANFOnly;
@@ -36,7 +36,7 @@ namespace {
 class ANFVisitor : public RecursiveASTVisitor<ANFVisitor> {
 public:
   ANFVisitor(Rewriter &R, ASTContext &Ctx)
-    : TheRewriter(R), Context(Ctx), SM(Ctx.getSourceManager()), Counter(0) {}
+    : TheRewriter(R), Ctx(Ctx), SM(Ctx.getSourceManager()), Counter(0) {}
 
   bool VisitFunctionDecl(FunctionDecl *FD) {
     if (!FD->hasBody() || SM.isInSystemHeader(FD->getLocation()))
@@ -58,7 +58,7 @@ public:
 
 private:
   Rewriter &TheRewriter;
-  ASTContext &Context;
+  ASTContext &Ctx;
   SourceManager &SM;
   int Counter;
 
@@ -209,7 +209,6 @@ std::string rewriteIf(IfStmt *IS) {
   std::string rewriteExprStmt(Expr *E) {
     if (isEffectful(E)) {
       std::string tmp = freshTemp();
-      Out:
       return E->getType().getAsString() + " " + tmp + " = " + exprToString(E) + ";\n";
     } else {
       return exprToString(E) + ";\n";
@@ -217,17 +216,16 @@ std::string rewriteIf(IfStmt *IS) {
   }
 
   /// True if E or any subexpr is a Call, Deref, or ArraySubscript.
-  bool isEffectful(Expr *E) {
+  bool isEffectful(const Expr *E) {
     E = E->IgnoreParenImpCasts();
 
-    // Direct effectful expressions
-    if (isa<CallExpr>(E) ||
-        isa<CXXConstructExpr>(E) ||
-        isa<CXXNewExpr>(E) ||
-        isa<CXXDeleteExpr>(E) ||
-        isa<UnaryOperator>(E) && cast<UnaryOperator>(E)->getOpcode() == UO_Deref ||
-        isa<ArraySubscriptExpr>(E) ||
-        isa<MemberExpr>(E) && cast<MemberExpr>(E)->isArrow()) {
+    // Use Clang's built-in method to check for side effects
+    if (E->HasSideEffects(Ctx, true)) {
+        return true;
+    }
+
+    // Additional checks for specific expressions not covered by HasSideEffects
+    if (isa<CXXNewExpr>(E) || isa<CXXDeleteExpr>(E)) {
         return true;
     }
 
@@ -241,13 +239,13 @@ std::string rewriteIf(IfStmt *IS) {
   /// Extract raw source text of an Expr.
   std::string exprToString(Expr *E) {
     auto R = CharSourceRange::getTokenRange(E->getSourceRange());
-    return Lexer::getSourceText(R, SM, Context.getLangOpts()).str();
+    return Lexer::getSourceText(R, SM, Ctx.getLangOpts()).str();
   }
 
   /// Extract raw text of a Stmt.
   std::string stmtToString(Stmt *S) {
     auto R = CharSourceRange::getTokenRange(S->getSourceRange());
-    return Lexer::getSourceText(R, SM, Context.getLangOpts()).str();
+    return Lexer::getSourceText(R, SM, Ctx.getLangOpts()).str();
   }
 
   /// Wrap a Stmt* into a `{ ... }` block text.
