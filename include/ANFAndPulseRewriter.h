@@ -219,13 +219,22 @@ std::string rewriteIf(IfStmt *IS) {
   /// True if E or any subexpr is a Call, Deref, or ArraySubscript.
   bool isEffectful(Expr *E) {
     E = E->IgnoreParenImpCasts();
+
+    // Direct effectful expressions
     if (isa<CallExpr>(E) ||
+        isa<CXXConstructExpr>(E) ||
+        isa<CXXNewExpr>(E) ||
+        isa<CXXDeleteExpr>(E) ||
         isa<UnaryOperator>(E) && cast<UnaryOperator>(E)->getOpcode() == UO_Deref ||
-        isa<ArraySubscriptExpr>(E))
-      return true;
-    for (auto *C : E->children())
-      if (Expr *CE = dyn_cast_or_null<Expr>(C))
-        if (isEffectful(CE)) return true;
+        isa<ArraySubscriptExpr>(E) ||
+        isa<MemberExpr>(E) && cast<MemberExpr>(E)->isArrow()) {
+        return true;
+    }
+
+    // Recursively check sub-expressions
+    for (const Stmt *Child : E->children())
+      if (const Expr *ChildExpr = dyn_cast_or_null<Expr>(Child))
+        if (isEffectful(ChildExpr)) return true;
     return false;
   }
 
