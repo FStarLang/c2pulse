@@ -15,14 +15,14 @@ set(SRC_FILES
   src/main.cpp
 )
 
-add_clang_tool(C2Pulse
+add_clang_tool(c2pulse
   ${SRC_FILES}
   DEPENDS
     intrinsics_gen
 )
 
 # Include directories for headers
-target_include_directories(C2Pulse
+target_include_directories(c2pulse
   PRIVATE
     ${LLVM_INCLUDE_DIRS}
     ${CLANG_INCLUDE_DIRS}
@@ -30,7 +30,7 @@ target_include_directories(C2Pulse
 )
 
 # Link against LLVM and Clang libraries
-target_link_libraries(C2Pulse
+target_link_libraries(c2pulse
   PRIVATE
     ${LLVM_LIBS}
     clangAST
@@ -42,7 +42,7 @@ target_link_libraries(C2Pulse
 )
 
 # Set C++ standard and other properties
-set_target_properties(C2Pulse PROPERTIES
+set_target_properties(c2pulse PROPERTIES
   CXX_STANDARD 17
   INTERPROCEDURAL_OPTIMIZATION OFF
 )
