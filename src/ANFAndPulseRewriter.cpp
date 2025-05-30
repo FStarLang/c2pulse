@@ -9,6 +9,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+/*
 #include "clang/AST/ASTConsumer.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Frontend/CompilerInstance.h"
@@ -20,23 +21,24 @@
 #include "llvm/Support/CommandLine.h"
 
 #include "PulseEmitter.h"
+*/
+
+#include "ANFAndPulseRewriter.h"
 
 using namespace clang;
 
-static llvm::cl::OptionCategory ToolCategory("anf-pulse-tool options");
+// static llvm::cl::opt<std::string>
+//     FunctionNameToProcess("func",
+//       llvm::cl::desc("Only transform the function named <func>"),
+//       llvm::cl::value_desc("function name"),
+//       llvm::cl::cat(ToolCategory));
 
-static llvm::cl::opt<std::string>
-    FunctionNameToProcess("func",
-      llvm::cl::desc("Only transform the function named <func>"),
-      llvm::cl::value_desc("function name"),
-      llvm::cl::cat(ToolCategory));
-
-static llvm::cl::opt<std::string>
-    TransformMode("mode",
-      llvm::cl::desc("Select transformation mode: anf, pulse, or both"),
-      llvm::cl::value_desc("mode"),
-      llvm::cl::init("both"),
-      llvm::cl::cat(ToolCategory));
+// static llvm::cl::opt<std::string>
+//     TransformMode("mode",
+//       llvm::cl::desc("Select transformation mode: anf, pulse, or both"),
+//       llvm::cl::value_desc("mode"),
+//       llvm::cl::init("both"),
+//       llvm::cl::cat(ToolCategory));
 
 enum class ANFTransformModeKind
 {
@@ -47,10 +49,10 @@ enum class ANFTransformModeKind
 
 static ANFTransformModeKind getTransformMode()
 {
-    if (TransformMode == "anf")
-        return ANFTransformModeKind::ANFOnly;
-    if (TransformMode == "pulse")
-        return ANFTransformModeKind::PulseOnly;
+    // if (TransformMode == "anf")
+    //     return ANFTransformModeKind::ANFOnly;
+    // if (TransformMode == "pulse")
+    //     return ANFTransformModeKind::PulseOnly;
     return ANFTransformModeKind::Both;
 }
 
@@ -66,9 +68,9 @@ public:
       return true;
 
     // Check for function name match if specified
-    if (!FunctionNameToProcess.empty() && FD->getNameAsString() != FunctionNameToProcess) {
-        return true;
-    }
+    // if (!FunctionNameToProcess.empty() && FD->getNameAsString() != FunctionNameToProcess) {
+    //     return true;
+    // }
     
     // Always apply ANF rewriting on user functions
     if (Stmt *Body = FD->getBody()) {
@@ -338,5 +340,5 @@ private:
 
 } // namespace
 
-static FrontendPluginRegistry::Add<ANFFrontendAction>
-    X("anf-pulse", "Rewrite C to ANF and prepare for Pulse");
+//static FrontendPluginRegistry::Add<ANFFrontendAction>
+//    X("anf-pulse", "Rewrite C to ANF and prepare for Pulse");
