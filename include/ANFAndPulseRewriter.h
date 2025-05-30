@@ -50,7 +50,6 @@ public:
     }
     
     // Always apply ANF rewriting on user functions
-    if (Stmt *Body = FD->getBody()) {
       if (auto *CS = dyn_cast<CompoundStmt>(Body))
         rewriteCompound(CS);
     }
