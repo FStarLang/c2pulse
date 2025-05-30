@@ -15,7 +15,7 @@ set(SRC_FILES
   src/main.cpp
 )
 
-add_clang_executable(C2Pulse
+add_clang_tool(C2Pulse
   ${SRC_FILES}
   DEPENDS
     intrinsics_gen
