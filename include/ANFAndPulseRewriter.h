@@ -1,5 +1,6 @@
 #pragma once
 
+#include "llvm/Support/Debug.h"
 #include <clang/AST/RecursiveASTVisitor.h>
 #include <clang/ASTMatchers/ASTMatchFinder.h>
 #include <clang/Frontend/FrontendPluginRegistry.h>
@@ -48,11 +49,19 @@ public:
     if (!FunctionNameToProcess.empty() && FD->getNameAsString() != FunctionNameToProcess) {
         return true;
     }
-    
+
     // Always apply ANF rewriting on user functions
     if (Stmt *Body = FD->getBody()) {
-      if (auto *CS = dyn_cast<CompoundStmt>(Body))
+      if (auto *CS = dyn_cast<CompoundStmt>(Body)){
+        if (CS)
+        {
+            std::string stmtStr;
+            llvm::raw_string_ostream os(stmtStr);
+            CS->printPretty(os, nullptr, Ctx.getPrintingPolicy());
+            DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "The compound statement is: " << os.str() << "\n");
+        }
         rewriteCompound(CS);
+      }
     }
     
     return true;
