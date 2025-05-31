@@ -95,28 +95,57 @@ private:
     Out += commentPrefix(B);
 
     if (auto *DS = dyn_cast<DeclStmt>(S)) {
+      DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print in (rewriteStmt) DeclStmt: " << "\n");
+      S->dumpPretty(Ctx);
       Out += rewriteDeclStmt(DS);
     }
     else if (auto *RS = dyn_cast<ReturnStmt>(S)) {
+      DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print in (rewriteStmt) ReturnStmt: " << "\n");
+      S->dumpPretty(Ctx);
       Out += rewriteReturn(RS);
     }
     else if (auto *BO = dyn_cast<BinaryOperator>(S)) {
-      if (BO->isAssignmentOp())
+      if (BO->isAssignmentOp()){
+        DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print in (rewriteStmt) BO assignment: " << "\n");
+        S->dumpPretty(Ctx);
         Out += rewriteAssignment(BO);
-      else
-        Out += rewriteExprStmt(BO);
+      }
+      else{
+        DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print in (rewriteStmt) BO not assignment: " << "\n");
+        S->dumpPretty(Ctx);
+
+       auto lhsExpr = BO->getLHS();
+       auto rhsExpr = BO->getRHS();
+
+       auto opAsString = BO->getOpcodeStr();
+
+       auto newLhsExpr = rewriteStmt(lhsExpr);
+       auto newRhsExpr = rewriteStmt(rhsExpr);
+
+       std::string new_bin_inst = newLhsExpr + newRhsExpr;
+
+        Out += new_bin_inst;
+      }
     }
     else if (auto *IS = dyn_cast<IfStmt>(S)) {
+      DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print in (rewriteStmt) IfStmt: " << "\n");
+      S->dumpPretty(Ctx);
       Out += rewriteIf(IS);
     }
     else if (auto *WS = dyn_cast<WhileStmt>(S)) {
+      DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print in (rewriteStmt) WhileStmt: " << "\n");
+      S->dumpPretty(Ctx);
       Out += rewriteWhile(WS);
     }
     else if (auto *E = dyn_cast<Expr>(S)) {
+      DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print in (rewriteStmt) Expr: " << "\n");
+      S->dumpPretty(Ctx);
       Out += rewriteExprStmt(E);
     }
     else {
       // Fallback: print as-is
+      DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print in fallback: " << "\n");
+      S->dumpPretty(Ctx);
       Out += stmtToString(S) + "\n";
     }
     return Out;
@@ -153,10 +182,14 @@ private:
       if (isEffectful(E)) {
         std::string tmp = freshTemp();
         std::string Ty  = E->getType().getAsString();
-        return Ty + " " + tmp + " = " + exprToString(E) + ";\n"
+        std::string newExpr = rewriteStmt(E);
+        DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print expr in return: " << newExpr << ", " << exprToString(E) << "\n");
+        return Ty + " " + tmp + " = " + newExpr  + ";\n"
              + "return " + tmp + ";\n";
       }
-      return "return " + exprToString(E) + ";\n";
+      std::string newExpr = rewriteStmt(E);
+      DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print expr in return: " << newExpr << "\n");
+      return "return " + newExpr + ";\n";
     }
     return "return;\n";
   }
