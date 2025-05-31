@@ -178,7 +178,30 @@ private:
     if (auto *DS = dyn_cast<DeclStmt>(S)) {
       DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print in (rewriteStmt) DeclStmt: " << "\n");
       //S->dumpPretty(Ctx);
-      Out += rewriteDeclStmt(DS);
+      
+      std::string strForDecls;
+      for (auto *D : DS->decls()) {
+        if (auto *VD = llvm::dyn_cast<clang::VarDecl>(D)) {
+          if (clang::Expr *Initializer = VD->getInit()) {
+              // Initializer now holds the right-hand side expression
+              auto initExpr = rewriteStmt(Initializer);
+              auto tempForInit = lookupExprTempVal(Initializer);
+              if (tempForInit == "") {
+                tempForInit = exprToString(Initializer);
+                strForDecls += VD->getType().getAsString() + " " + VD->getNameAsString() + " = " + tempForInit + ";\n";
+              }
+              else{
+                strForDecls += initExpr;
+                strForDecls += VD->getType().getAsString() + " " + VD->getNameAsString() + " = " + tempForInit + ";\n";
+              }
+          }
+        }
+        else {
+          assert(true && "Unhandled declaration type in DeclStmt");
+        }
+      }
+
+      Out += strForDecls;
     }
     //unwrap paren expressions
     else if (auto *PE = llvm::dyn_cast<clang::ParenExpr>(S)){
