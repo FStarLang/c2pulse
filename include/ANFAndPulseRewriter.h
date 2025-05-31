@@ -1,5 +1,6 @@
 #pragma once
 
+#include "clang/AST/Expr.h"
 #include "llvm/Support/Debug.h"
 #include <clang/AST/RecursiveASTVisitor.h>
 #include <clang/ASTMatchers/ASTMatchFinder.h>
@@ -104,6 +105,15 @@ private:
 
   }
 
+  std::string lookupFinalExpr(Expr *expr){
+    
+    auto it = MapExprToAssignedTemporary.find(expr);
+    if (it == MapExprToAssignedTemporary.end()) {
+      return rewriteStmt(expr);
+    }
+    return it->second;
+  }
+
   std::string freshTemp() {
     return "__anf_tmp" + std::to_string(Counter++);
   }
@@ -206,10 +216,66 @@ private:
       //S->dumpPretty(Ctx);
       Out += rewriteWhile(WS);
     }
+    // else if (CallExpr *Call = dyn_cast<CallExpr>(S)){
+
+    //           std::string tmp = freshTemp();
+    //           insertExprAndTemp(Call, tmp);
+
+    //           int numArgs = Call->getNumArgs();
+    //           std::vector<std::string> finalArgs;
+    //           for (int i =0; i < numArgs; i++){
+    //             Expr *arg = Call->getArg(i);
+    //             finalArgs.push_back(lookupFinalExpr(arg));
+    //           }
+
+    //           auto callName = Call->getDirectCallee()->getNameAsString();
+    //           Out += Call->getType().getAsString() + " " + tmp + " = "
+    //                + callName + "(" + llvm::join(finalArgs, ", ") + ");\n";
+    // }
     else if (auto *E = dyn_cast<Expr>(S)) {
-      DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print in (rewriteStmt) Expr: " << "\n");
+      DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print in (rewriteStmt) Expr: " <<  E->getStmtClassName() << "\n");
       ///S->dumpPretty(Ctx);
-      Out += rewriteExprStmt(E);
+
+      switch(E->getStmtClass()) {
+        case Stmt::CallExprClass:
+        {
+            std::string tmp = freshTemp();
+            insertExprAndTemp(E, tmp);
+
+            if (CallExpr *Call = dyn_cast<CallExpr>(E)){
+              int numArgs = Call->getNumArgs();
+              std::vector<std::string> finalArgs;
+              for (int i =0; i < numArgs; i++){
+                Expr *arg = Call->getArg(i);
+                
+                if (isEffectful(arg)) {
+                  Out += rewriteStmt(arg);
+                  auto arg_expr = lookupExprTempVal(arg);
+                  if (arg_expr == "") {
+                    arg_expr = exprToString(arg);
+                  }
+                  finalArgs.push_back(arg_expr);
+                }
+                else{
+                  auto arg_expr = exprToString(arg);
+                  finalArgs.push_back(arg_expr);
+                }
+              }
+
+              auto callName = Call->getDirectCallee()->getNameAsString();
+              Out += E->getType().getAsString() + " " + tmp + " = "
+                   + callName + "(" + llvm::join(finalArgs, ", ") + ");\n";
+            }
+            // Out += E->getType().getAsString() + " " + tmp + " = "
+            //      + exprToString(E) + ";\n";
+          break;
+        }
+        default:
+          // Other expressions are printed as-is
+          Out += rewriteExprStmt(E);
+          break;
+      }
+
     }
     else {
       // Fallback: print as-is
@@ -259,12 +325,21 @@ private:
         //     + "return " + tmp + ";\n";
 
         auto tempForExprs = lookupExprTempVal(E);
+        if (tempForExprs == ""){
+          tempForExprs = exprToString(E);
+          return "return " + tempForExprs + ";\n";
+        }
+        
         return newExpr + ";\n" + "return " + tempForExprs + ";\n";
-
       }
       std::string newExpr = rewriteStmt(E);
       DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print expr in return: " << newExpr << "\n");
       auto tempForExprs = lookupExprTempVal(E);
+      if (tempForExprs == ""){
+        tempForExprs = exprToString(E);
+        return "return " + tempForExprs + ";\n";
+      }
+
       return newExpr + ";\n"
              + "return " + tempForExprs + ";\n";
     }
