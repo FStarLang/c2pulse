@@ -94,11 +94,14 @@ public:
         }
         auto NewText = rewriteCompound(CS);
         TheRewriter.ReplaceText(CS->getSourceRange(), NewText);
+        transformedCode = NewText;
       }
     }
     
     return true;
   }
+
+  std::string getTransformedCode() const { return transformedCode; }
 
 private:
   Rewriter &TheRewriter;
@@ -108,6 +111,7 @@ private:
   std::set<SourceLocation> LocsSeen;
   std::set<unsigned> LinesSeen;
   int Counter;
+  std::string transformedCode;
 
   void insertExprAndTemp(Expr* expr, std::string tempName) {
     // Insert the expression and its temporary name into the map
@@ -224,11 +228,10 @@ private:
       //S->dumpPretty(Ctx);
       Out += rewriteReturn(RS);
     }
-    //Broken for unary operators. Vidush: TODO: Fix this. 
+    // Broken for unary operators. Vidush: TODO: Fix this.
     else if (auto *US = dyn_cast<UnaryOperator>(S)) {
       Out += stmtToString(US) + ";\n";
-    }
-    else if (auto *BO = dyn_cast<BinaryOperator>(S)) {
+    } else if (auto *BO = dyn_cast<BinaryOperator>(S)) {
       if (BO->isAssignmentOp()){
         DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print in (rewriteStmt) BO assignment: " << "\n");
         //S->dumpPretty(Ctx);
@@ -280,13 +283,11 @@ private:
 
         //Out += newExpr + new_bin_inst ;
       }
-    }
-    else if (auto *IS = dyn_cast<IfStmt>(S)) {
+    } else if (auto *IS = dyn_cast<IfStmt>(S)) {
       DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print in (rewriteStmt) IfStmt: " << "\n");
       //S->dumpPretty(Ctx);
       Out += rewriteIf(IS);
-    }
-    else if (auto *WS = dyn_cast<WhileStmt>(S)) {
+    } else if (auto *WS = dyn_cast<WhileStmt>(S)) {
       DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print in (rewriteStmt) WhileStmt: " << "\n");
       //S->dumpPretty(Ctx);
       Out += rewriteWhile(WS);
@@ -352,8 +353,7 @@ private:
           break;
       }
 
-    }
-    else {
+    } else {
       // Fallback: print as-is
       DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print in fallback: " << "\n");
       //S->dumpPretty(Ctx);
@@ -481,38 +481,36 @@ std::string rewriteIf(IfStmt *IS) {
   return Out;
 }
 
-  /// Rewrite a while statement, lifting its condition.
-  /// Vidush: TODO: We need more analysis for while loops. 
-  /// Since, we may change the condition to a temporary variable,
-  /// we need to also ensure that the temporary is updated accordingly.
-  /// This may need data flow analysis??
-  std::string rewriteWhile(WhileStmt *WS) {
-    Expr *Cond = WS->getCond();
-    
-    std::string Ty = Cond->getType().getAsString();
-    std::string Out;
+/// Rewrite a while statement, lifting its condition.
+/// Vidush: TODO: We need more analysis for while loops.
+/// Since, we may change the condition to a temporary variable,
+/// we need to also ensure that the temporary is updated accordingly.
+/// This may need data flow analysis??
+std::string rewriteWhile(WhileStmt *WS) {
+  Expr *Cond = WS->getCond();
 
+  std::string Ty = Cond->getType().getAsString();
+  std::string Out;
 
-    if (isEffectful(Cond) || !isLeafNode(Cond)) {
+  if (isEffectful(Cond) || !isLeafNode(Cond)) {
 
-      auto newCond = rewriteStmt(Cond);
-      auto tempForCond = lookupExprTempVal(Cond);
-      if (tempForCond == ""){
-        tempForCond = exprToString(Cond);
-      }
-
-      std::string tmp = freshTemp();
-      insertExprAndTemp(Cond, tmp);
-      Out += newCond;
-      Out += Ty + tmp + " = " + tempForCond + ";\n";
-      Out += "while (" + tmp + ") "
-           + rewriteCompound(WS->getBody()) + "\n";
-    } else {
-      Out += "while (" + exprToString(Cond) + ") "
-           + rewriteCompound(WS->getBody()) + "\n";
+    auto newCond = rewriteStmt(Cond);
+    auto tempForCond = lookupExprTempVal(Cond);
+    if (tempForCond == "") {
+      tempForCond = exprToString(Cond);
     }
-    return Out;
+
+    std::string tmp = freshTemp();
+    insertExprAndTemp(Cond, tmp);
+    Out += newCond;
+    Out += Ty + tmp + " = " + tempForCond + ";\n";
+    Out += "while (" + tmp + ") " + rewriteCompound(WS->getBody()) + "\n";
+  } else {
+    Out += "while (" + exprToString(Cond) + ") " +
+           rewriteCompound(WS->getBody()) + "\n";
   }
+  return Out;
+}
 
   /// Rewrite a standalone expr stmt.
   std::string rewriteExprStmt(Expr *E) {
@@ -618,19 +616,29 @@ public:
 
   void HandleTranslationUnit(ASTContext &Ctx) override {
     Visitor.TraverseDecl(Ctx.getTranslationUnitDecl());
+    transformedCode = Visitor.getTransformedCode();
   }
+
+  std::string getTransformedCode() const { return transformedCode; }
 
 private:
   ANFVisitor Visitor;
+  std::string transformedCode;
 };
 
 class ANFFrontendAction : public PluginASTAction {
+public:
+  std::string &getTransformedCode() { return transformedCode; }
+
 protected:
   std::unique_ptr<ASTConsumer>
   CreateASTConsumer(CompilerInstance &CI, llvm::StringRef) override {
   RewriterForPlugin.setSourceMgr(CI.getSourceManager(), CI.getLangOpts());
-  return std::make_unique<ANFConsumer>(CI.getASTContext(),
-                                       RewriterForPlugin);
+  auto Consumer =
+      std::make_unique<ANFConsumer>(CI.getASTContext(), RewriterForPlugin);
+  ConsumerInstance =
+      Consumer.get(); // Store the instance to retrieve data later
+  return std::move(Consumer);
 }
 
   bool ParseArgs(const CompilerInstance &,
@@ -639,6 +647,12 @@ protected:
   }
 
   void EndSourceFileAction() override {
+
+    if (ConsumerInstance) {
+      transformedCode =
+          ConsumerInstance->getTransformedCode(); // Capture transformed data
+    }
+
     RewriterForPlugin
       .getEditBuffer(RewriterForPlugin.getSourceMgr().getMainFileID())
       .write(llvm::outs());
@@ -646,6 +660,8 @@ protected:
 
 private:
   Rewriter RewriterForPlugin;
+  std::string transformedCode;
+  ANFConsumer *ConsumerInstance = nullptr;
 };
 
 } // namespace

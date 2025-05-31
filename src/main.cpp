@@ -43,6 +43,14 @@ int main(int argc, const char **argv) {
     	    return 0;
     }
 
-    return Tool.run(clang::tooling::newFrontendActionFactory<ANFFrontendAction>().get());
+    ANFFrontendAction Action;
+    if (Tool.run(clang::tooling::newFrontendActionFactory<ANFFrontendAction>()
+                     .get())) {
+      llvm::errs() << "Error: the tranformation did not run correctly.\n";
+      return 0;
+    }
 
+    std::string firstTransformationOutput = Action.getTransformedCode();
+    // We need to run the syntax only action to check if the transformation is
+    // valid.
 }
