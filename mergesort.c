@@ -42,7 +42,9 @@ void merge(int arr[], int left, int mid, int right) {
 // Recursive function for Merge Sort
 void mergeSort(int arr[], int left, int right) {
     if (left < right) {
-        int mid = left + (right - left) / 2;
+        int mid = (right - left);
+
+        //int mid = left + (right - left) / 2;
 
         mergeSort(arr, left, mid);
         mergeSort(arr, mid + 1, right);
