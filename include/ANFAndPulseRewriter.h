@@ -1,5 +1,6 @@
 #pragma once
 
+#include "clang/AST/DeclBase.h"
 #include "clang/AST/Expr.h"
 #include "llvm/Support/Debug.h"
 #include <clang/AST/RecursiveASTVisitor.h>
@@ -25,9 +26,33 @@ enum class ANFTransformDebugModeKind
     Both
 };
 
+static bool isLeafNode(const clang::Expr* E) {
+  if (!E) return false;
+  if (llvm::isa<clang::IntegerLiteral>(E) ||
+        llvm::isa<clang::FloatingLiteral>(E) ||
+        llvm::isa<clang::StringLiteral>(E)) {
+        return true;
+    }
 
-static bool isLeafNode(const clang::Expr *E) {
-    return E->child_begin() == E->child_end();
+    //Remove implicit casts to show true underlying expression
+    if (auto* ICE = llvm::dyn_cast<clang::ImplicitCastExpr>(E)) {
+        return isLeafNode(ICE->getSubExpr());
+    }
+
+    //We should remove variable declarations and parameters that are variable declarations.
+    if (auto* DRE = llvm::dyn_cast<clang::DeclRefExpr>(E)) {
+        if (llvm::isa<clang::ParmVarDecl>(DRE->getDecl()) || 
+            llvm::isa<clang::VarDecl>(DRE->getDecl())) {
+            return true; // Function parameter or variable reference is a leaf
+        }
+    }
+    
+    //Ideally we should desugar such expressions because pulse may not support them.
+    if (auto* UO = llvm::dyn_cast<clang::UnaryOperator>(E)) {
+        return isLeafNode(UO->getSubExpr());
+    }
+
+    return false;
 }
 
 
@@ -67,7 +92,8 @@ public:
                                           << "The compound statement is: "
                                           << os.str() << "\n");
         }
-        rewriteCompound(CS);
+        auto NewText = rewriteCompound(CS);
+        TheRewriter.ReplaceText(CS->getSourceRange(), NewText);
       }
     }
     
@@ -119,13 +145,19 @@ private:
   }
 
   /// Rewrite a compound statement in-place.
-  void rewriteCompound(CompoundStmt *CS) {
-    std::string NewText = "{\n";
-    for (Stmt *S : CS->body()) {
-      NewText += rewriteStmt(S);
+  std::string rewriteCompound(Stmt *St) {
+
+    if (auto *CS = dyn_cast<CompoundStmt>(St)) {
+      std::string NewText = "{\n";
+      for (Stmt *S : CS->body()) {
+        NewText += rewriteStmt(S);
+      }
+      NewText += "}\n";
+      return NewText;
     }
-    NewText += "}\n";
-    TheRewriter.ReplaceText(CS->getSourceRange(), NewText);
+    else {
+      return rewriteStmt(St);
+    }
   }
 
   /// Rewrite a single statement, returning its text (including lifted temps).
@@ -147,6 +179,22 @@ private:
       DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print in (rewriteStmt) DeclStmt: " << "\n");
       //S->dumpPretty(Ctx);
       Out += rewriteDeclStmt(DS);
+    }
+    //unwrap paren expressions
+    else if (auto *PE = llvm::dyn_cast<clang::ParenExpr>(S)){
+
+      auto innerExpr = PE->getSubExpr();
+      auto innerString = rewriteStmt(innerExpr);
+      auto tempForInner = lookupExprTempVal(innerExpr);
+      //Same value with or without the parenthesis.
+      insertExprAndTemp(PE, tempForInner);
+      // if (tempForInner == ""){
+      //   tempForInner = freshTemp();
+      // }
+      // insertExprAndTemp(PE, tempForInner);
+      Out += innerString;
+      //Out += "(" + tempForInner + ")";
+
     }
     else if (auto *RS = dyn_cast<ReturnStmt>(S)) {
       DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print in (rewriteStmt) ReturnStmt: " << "\n");
@@ -248,7 +296,8 @@ private:
               for (int i =0; i < numArgs; i++){
                 Expr *arg = Call->getArg(i);
                 
-                if (isEffectful(arg)) {
+                if (isEffectful(arg) || !isLeafNode(arg)) {
+                  DEBUG_WITH_TYPE(DEBUG_TYPE , llvm::dbgs() << "Effectful arg: " << exprToString(arg) << "\n");
                   Out += rewriteStmt(arg);
                   auto arg_expr = lookupExprTempVal(arg);
                   if (arg_expr == "") {
@@ -329,8 +378,8 @@ private:
           tempForExprs = exprToString(E);
           return "return " + tempForExprs + ";\n";
         }
-        
-        return newExpr + ";\n" + "return " + tempForExprs + ";\n";
+
+        return newExpr  + "return " + tempForExprs + ";\n";
       }
       std::string newExpr = rewriteStmt(E);
       DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print expr in return: " << newExpr << "\n");
@@ -340,7 +389,7 @@ private:
         return "return " + tempForExprs + ";\n";
       }
 
-      return newExpr + ";\n"
+      return newExpr 
              + "return " + tempForExprs + ";\n";
     }
     return "return;\n";
@@ -350,37 +399,57 @@ private:
   std::string rewriteAssignment(BinaryOperator *BO) {
     Expr *L = BO->getLHS(), *R = BO->getRHS();
     std::string Out;
-    if (isEffectful(R)) {
-      std::string tmp = freshTemp();
-      insertExprAndTemp(R, tmp);
-      Out += R->getType().getAsString() + " "
-           + tmp + " = " + exprToString(R) + ";\n";
-      Out += exprToString(L) + " = " + tmp + ";\n";
-    } else {
+    // if (isEffectful(R)) {
+    //   std::string tmp = freshTemp();
+    //   insertExprAndTemp(R, tmp);
+    //   Out += R->getType().getAsString() + " "
+    //        + tmp + " = " + exprToString(R) + ";\n";
+    //   Out += exprToString(L) + " = " + tmp + ";\n";
+    // } else {
+    //   Out += exprToString(L) + " = " + exprToString(R) + ";\n";
+    // }
+
+    auto newR = rewriteStmt(R);
+    auto tempR = lookupExprTempVal(R);
+    if (tempR == ""){
       Out += exprToString(L) + " = " + exprToString(R) + ";\n";
     }
+    else {
+      Out += newR;
+      Out += exprToString(L) + " = " + tempR + ";\n";
+    }
+
     return Out;
   }
 
 /// Rewrite an if statement, lifting its condition.
 std::string rewriteIf(IfStmt *IS) {
   Expr *Cond = IS->getCond();
+  Stmt *thenBody = IS->getThen();
   std::string Out;
 
   // Get the source‐spelled type of the condition
   std::string Ty = Cond->getType().getAsString();
 
-  if (isEffectful(Cond)) {
-    std::string tmp = freshTemp();
-    insertExprAndTemp(Cond, tmp);
-    Out += Ty + " " + tmp + " = " + exprToString(Cond) + ";\n";
-    Out += "if (" + tmp + ") " + blockText(IS->getThen()) + "\n";
+  if (isEffectful(Cond) || !isLeafNode(Cond)) {
+    //std::string tmp = freshTemp();
+    //insertExprAndTemp(Cond, tmp);
+
+    auto newCond = rewriteStmt(Cond);
+    auto tempForCond = lookupExprTempVal(Cond);
+    if (tempForCond == ""){
+      tempForCond = exprToString(Cond);
+    }
+
+    Out += newCond;
+    //Out += Ty + " " + tmp + " = " + exprToString(Cond) + ";\n";
+    Out += "if (" + tempForCond + ") " + rewriteCompound(IS->getThen()) + "\n";
   } else {
-    Out += "if (" + exprToString(Cond) + ") " + blockText(IS->getThen()) + "\n";
+    Out += "if (" + exprToString(Cond) + ") " + rewriteCompound(IS->getThen()) + "\n";
   }
 
   if (Stmt *E = IS->getElse())
-    Out += "else " + blockText(E) + "\n";
+    Out += "else " + rewriteCompound(E) + "\n";
 
   return Out;
 }
