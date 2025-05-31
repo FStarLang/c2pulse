@@ -332,14 +332,14 @@ std::string rewriteIf(IfStmt *IS) {
   /// Rewrite a standalone expr stmt.
   std::string rewriteExprStmt(Expr *E) {
     if (isEffectful(E)) {
-      if (isLeafNode(E)){
-        return exprToString(E);
-      }
-      else {
+      //if (isLeafNode(E)){
+      //  return exprToString(E);
+      //}
+      //else {
         std::string tmp = freshTemp();
         insertExprAndTemp(E, tmp);
         return E->getType().getAsString() + " " + tmp + " = " + exprToString(E) + ";\n";
-      }
+      //}
     } else {
       if (isLeafNode(E)){
         return exprToString(E);
