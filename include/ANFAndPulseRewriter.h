@@ -224,6 +224,10 @@ private:
       //S->dumpPretty(Ctx);
       Out += rewriteReturn(RS);
     }
+    //Broken for unary operators. Vidush: TODO: Fix this. 
+    else if (auto *US = dyn_cast<UnaryOperator>(S)) {
+      Out += stmtToString(US) + ";\n";
+    }
     else if (auto *BO = dyn_cast<BinaryOperator>(S)) {
       if (BO->isAssignmentOp()){
         DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print in (rewriteStmt) BO assignment: " << "\n");
@@ -478,20 +482,34 @@ std::string rewriteIf(IfStmt *IS) {
 }
 
   /// Rewrite a while statement, lifting its condition.
+  /// Vidush: TODO: We need more analysis for while loops. 
+  /// Since, we may change the condition to a temporary variable,
+  /// we need to also ensure that the temporary is updated accordingly.
+  /// This may need data flow analysis??
   std::string rewriteWhile(WhileStmt *WS) {
     Expr *Cond = WS->getCond();
     
     std::string Ty = Cond->getType().getAsString();
     std::string Out;
-    if (isEffectful(Cond)) {
+
+
+    if (isEffectful(Cond) || !isLeafNode(Cond)) {
+
+      auto newCond = rewriteStmt(Cond);
+      auto tempForCond = lookupExprTempVal(Cond);
+      if (tempForCond == ""){
+        tempForCond = exprToString(Cond);
+      }
+
       std::string tmp = freshTemp();
       insertExprAndTemp(Cond, tmp);
-      Out += Ty + tmp + " = " + exprToString(Cond) + ";\n";
+      Out += newCond;
+      Out += Ty + tmp + " = " + tempForCond + ";\n";
       Out += "while (" + tmp + ") "
-           + blockText(WS->getBody()) + "\n";
+           + rewriteCompound(WS->getBody()) + "\n";
     } else {
       Out += "while (" + exprToString(Cond) + ") "
-           + blockText(WS->getBody()) + "\n";
+           + rewriteCompound(WS->getBody()) + "\n";
     }
     return Out;
   }
