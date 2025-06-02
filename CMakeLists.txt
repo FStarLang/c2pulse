@@ -12,6 +12,8 @@ llvm_map_components_to_libnames(LLVM_LIBS
 set(SRC_FILES
   src/ANFAndPulseRewriter.cpp
   src/PulseEmitter.cpp
+  src/ANFConsumer.cpp
+  src/ANFFrontendAction.cpp
   src/main.cpp
 )
 

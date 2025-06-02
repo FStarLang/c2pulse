@@ -2,7 +2,8 @@
 #include "clang/Tooling/Tooling.h"
 #include "clang/Frontend/FrontendActions.h"
 #include "ANFAndPulseRewriter.h"
-
+#include "ANFFrontendAction.h"
+#include "ANFConsumer.h"
 
 using namespace clang;
 using namespace clang::tooling;
