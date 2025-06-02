@@ -535,22 +535,53 @@ std::string rewriteWhile(WhileStmt *WS) {
 
   /// True if E or any subexpr is a Call, Deref, or ArraySubscript.
   bool isEffectful(const Expr *E) {
+    if (!E)
+      return false;
+
     E = E->IgnoreParenImpCasts();
 
-    // Use Clang's built-in method to check for side effects
-    if (E->HasSideEffects(Ctx, true)) {
+    // 1. Check if Clang believes there are side effects
+    if (E->HasSideEffects(Ctx, /*IncludePossibleEffects=*/true))
+      return true;
+
+    // 2. Handle known effectful expression kinds explicitly
+    switch (E->getStmtClass()) {
+      case Stmt::CallExprClass:
+      case Stmt::CXXConstructExprClass:
+      case Stmt::CXXNewExprClass:
+      case Stmt::CXXDeleteExprClass:
         return true;
+
+      case Stmt::UnaryOperatorClass: {
+        const auto *UO = cast<UnaryOperator>(E);
+        if (UO->getOpcode() == UO_Deref)
+          return true;
+        break;
+      }
+
+      case Stmt::ArraySubscriptExprClass:
+        return true;
+
+      case Stmt::MemberExprClass: {
+        const auto *ME = cast<MemberExpr>(E);
+        // s->x is effectful (pointer access), s.x is not
+        if (ME->isArrow())
+          return true;
+        break;
+      }
+
+      default:
+        break;
     }
 
-    // Additional checks for specific expressions not covered by HasSideEffects
-    if (isa<CXXNewExpr>(E) || isa<CXXDeleteExpr>(E)) {
-        return true;
+    // 3. Recursively check children
+    for (const Stmt *Child : E->children()) {
+      if (const auto *ChildExpr = dyn_cast_or_null<Expr>(Child)) {
+        if (isEffectful(ChildExpr))
+          return true;
+      }
     }
 
-    // Recursively check sub-expressions
-    for (const Stmt *Child : E->children())
-      if (const Expr *ChildExpr = dyn_cast_or_null<Expr>(Child))
-        if (isEffectful(ChildExpr)) return true;
     return false;
   }
 
@@ -608,63 +639,4 @@ std::string commentPrefix(SourceLocation Loc) {
 
 };
 
-/// ASTConsumer that drives ANFVisitor
-class ANFConsumer : public ASTConsumer {
-public:
-  ANFConsumer(ASTContext &Ctx, Rewriter &R)
-    : Visitor(R, Ctx) {}
-
-  void HandleTranslationUnit(ASTContext &Ctx) override {
-    Visitor.TraverseDecl(Ctx.getTranslationUnitDecl());
-    transformedCode = Visitor.getTransformedCode();
-  }
-
-  std::string getTransformedCode() const { return transformedCode; }
-
-private:
-  ANFVisitor Visitor;
-  std::string transformedCode;
-};
-
-class ANFFrontendAction : public PluginASTAction {
-public:
-  std::string &getTransformedCode() { return transformedCode; }
-
-protected:
-  std::unique_ptr<ASTConsumer>
-  CreateASTConsumer(CompilerInstance &CI, llvm::StringRef) override {
-  RewriterForPlugin.setSourceMgr(CI.getSourceManager(), CI.getLangOpts());
-  auto Consumer =
-      std::make_unique<ANFConsumer>(CI.getASTContext(), RewriterForPlugin);
-  ConsumerInstance =
-      Consumer.get(); // Store the instance to retrieve data later
-  return std::move(Consumer);
-}
-
-  bool ParseArgs(const CompilerInstance &,
-                 const std::vector<std::string> &) override {
-    return true;
-  }
-
-  void EndSourceFileAction() override {
-
-    if (ConsumerInstance) {
-      transformedCode =
-          ConsumerInstance->getTransformedCode(); // Capture transformed data
-    }
-
-    RewriterForPlugin
-      .getEditBuffer(RewriterForPlugin.getSourceMgr().getMainFileID())
-      .write(llvm::outs());
-  }
-
-private:
-  Rewriter RewriterForPlugin;
-  std::string transformedCode;
-  ANFConsumer *ConsumerInstance = nullptr;
-};
-
 } // namespace
-
-//static FrontendPluginRegistry::Add<ANFFrontendAction>
-//    X("anf-pulse", "Rewrite C to ANF and prepare for Pulse");
