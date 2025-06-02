@@ -51,7 +51,7 @@ int main(int argc, const char **argv) {
     transformer.transform();
     std::string transformedCode = transformer.getTransformedCode();
 
-    //Write the transformed code to file.
+    // Write the transformed code to file.
 
     llvm::outs() << "Transformed code:\n";
     llvm::outs() << transformedCode << "\n";
@@ -61,12 +61,12 @@ int main(int argc, const char **argv) {
 
     // Step 4: Run Syntax-Only Action again on transformed output
     ClangTool TransformedTool(OptionsParser->getCompilations(), {NewFilePath});
-    if (TransformedTool.run(newFrontendActionFactory<SyntaxOnlyAction>().get())) {
-        llvm::errs() << "Error: Transformed code has syntax errors.\n";
-        return 1;
+    if (TransformedTool.run(
+            newFrontendActionFactory<SyntaxOnlyAction>().get())) {
+      llvm::errs() << "Error: Transformed code has syntax errors.\n";
+      return 1;
     }
 
     llvm::outs() << "Success: Code transformed and syntax validated.\n";
     return 0;
-
 }

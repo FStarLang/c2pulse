@@ -15,9 +15,10 @@
 
 #include "ANFConsumer.h"
 #include "ANFTransformer.h"
+#include <filesystem>
+#include <fstream>
 #include <memory>
 #include <vector>
-#include <fstream>
 
 ANFTranformer::ANFTranformer(std::vector<std::unique_ptr<ASTUnit>> &ASTList)
         : InternalAstList(ASTList) {
@@ -31,24 +32,30 @@ ANFTranformer::ANFTranformer(std::vector<std::unique_ptr<ASTUnit>> &ASTList)
 
 std::string ANFTranformer::writeToFile() {
 
-    clang::SourceManager &SM = RewriterForPlugin.getSourceMgr();
-    auto *FileEnt = SM.getFileEntryForID(SM.getMainFileID());
-    if (!FileEnt) {
-        llvm::errs() << "Error: Main file entry not found in source manager.\n";
-        exit(1);
-    }
+  clang::SourceManager &SM = RewriterForPlugin.getSourceMgr();
+  auto *FileEnt = SM.getFileEntryForID(SM.getMainFileID());
+  if (!FileEnt) {
+    llvm::errs() << "Error: Main file entry not found in source manager.\n";
+    exit(1);
+  }
 
-    auto FilePath = FileEnt->tryGetRealPathName();
+  auto FilePath = FileEnt->tryGetRealPathName();
 
-    std::string TempFilePath = (FilePath + ".transformed.cpp").str();
-    std::ofstream OutFile(TempFilePath);
-    if (!OutFile.is_open()) {
-        llvm::errs() << "Error: Failed to create temporary file for transformed code.\n";
-    }
+  std::filesystem::path FilePathSys = FilePath.str();
+  auto Extension = FilePathSys.extension().string();
+  auto TempFilePathWithoutExtension = FilePathSys.replace_extension("");
 
-    OutFile << TransformedCode;
-    OutFile.close();
-    return TempFilePath;
+  std::string TempFilePath =
+      TempFilePathWithoutExtension.string() + ".transformed" + Extension;
+  std::ofstream OutFile(TempFilePath);
+  if (!OutFile.is_open()) {
+    llvm::errs()
+        << "Error: Failed to create temporary file for transformed code.\n";
+  }
+
+  OutFile << TransformedCode;
+  OutFile.close();
+  return TempFilePath;
 }
 
 void ANFTranformer::transform() {
