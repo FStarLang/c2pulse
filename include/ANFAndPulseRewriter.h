@@ -166,6 +166,19 @@ private:
     }
   }
 
+  std::string getTyOfExprAsString(Expr *E) {
+    if (!E)
+      return "";
+
+    auto ExprType = E->getType();
+
+    if (ExprType->isVoidType()) {
+      return "";
+    }
+
+    return ExprType.getAsString();
+  }
+
   /// Rewrite a single statement, returning its text (including lifted temps).
   std::string rewriteStmt(Stmt *S) {
     std::string Out;
@@ -329,7 +342,7 @@ private:
 
         auto OperatorAsString = BO->getOpcodeStr();
 
-        auto TyOfExpr = BO->getType().getAsString();
+        auto TyOfExpr = getTyOfExprAsString(BO);
 
         auto NewLeftExpr = rewriteStmt(LeftExpr);
         auto NewRightExpr = rewriteStmt(RightExpr);
@@ -341,23 +354,49 @@ private:
         if (LeftTemp == "" && RightTemp == "") {
           LeftTemp = NewLeftExpr;
           RightTemp = NewRightExpr;
-          Out += TyOfExpr + " " + TempForBO + " = " + LeftTemp + " " +
-                 OperatorAsString.str() + " " + RightTemp + ";\n";
+
+          if (TyOfExpr == "") {
+            Out += LeftTemp + " " + OperatorAsString.str() + " " + RightTemp +
+                   ";\n";
+          } else {
+            Out += TyOfExpr + " " + TempForBO + " = " + LeftTemp + " " +
+                   OperatorAsString.str() + " " + RightTemp + ";\n";
+          }
         } else if (LeftTemp != "" && RightTemp == "") {
           RightTemp = NewRightExpr;
           Out += NewLeftExpr;
-          Out += TyOfExpr + " " + TempForBO + " = " + LeftTemp + " " +
-                 OperatorAsString.str() + " " + RightTemp + ";\n";
+
+          if (TyOfExpr == "") {
+            Out += LeftTemp + " " + OperatorAsString.str() + " " + RightTemp +
+                   ";\n";
+          } else {
+            Out += TyOfExpr + " " + TempForBO + " = " + LeftTemp + " " +
+                   OperatorAsString.str() + " " + RightTemp + ";\n";
+          }
+
         } else if (LeftTemp == "" && RightTemp != "") {
           LeftTemp = NewLeftExpr;
           Out += NewRightExpr;
-          Out += TyOfExpr + " " + TempForBO + " = " + LeftTemp + " " +
-                 OperatorAsString.str() + " " + RightTemp + ";\n";
+
+          if (TyOfExpr == "") {
+            Out += LeftTemp + " " + OperatorAsString.str() + " " + RightTemp +
+                   ";\n";
+          } else {
+            Out += TyOfExpr + " " + TempForBO + " = " + LeftTemp + " " +
+                   OperatorAsString.str() + " " + RightTemp + ";\n";
+          }
+
         } else {
           Out += NewLeftExpr;
           Out += NewRightExpr;
-          Out += TyOfExpr + " " + TempForBO + " = " + LeftTemp + " " +
-                 OperatorAsString.str() + " " + RightTemp + ";\n";
+
+          if (TyOfExpr == "") {
+            Out += LeftTemp + " " + OperatorAsString.str() + " " + RightTemp +
+                   ";\n";
+          } else {
+            Out += TyOfExpr + " " + TempForBO + " = " + LeftTemp + " " +
+                   OperatorAsString.str() + " " + RightTemp + ";\n";
+          }
         }
 
        //std::string new_bin_inst = TyOfExpr + " " + tempForBO + " = " + lhsTemp + " " + opAsString.str() + " " + rhsTemp + ";\n";
@@ -424,8 +463,14 @@ private:
             }
 
             auto CallName = Call->getDirectCallee()->getNameAsString();
-            Out += E->getType().getAsString() + " " + FreshTmp + " = " +
-                   CallName + "(" + llvm::join(FinalArgs, ", ") + ");\n";
+
+            auto Ty = getTyOfExprAsString(E);
+            if (Ty == "") {
+              Out += CallName + "(" + llvm::join(FinalArgs, ", ") + ");\n";
+            } else {
+              Out += Ty + " " + FreshTmp + " = " + CallName + "(" +
+                     llvm::join(FinalArgs, ", ") + ");\n";
+            }
           }
             // Out += E->getType().getAsString() + " " + tmp + " = "
             //      + exprToString(E) + ";\n";
@@ -539,7 +584,7 @@ std::string rewriteIf(IfStmt *IS) {
   std::string Out;
 
   // Get the source‐spelled type of the condition
-  std::string Ty = Cond->getType().getAsString();
+  std::string Ty = getTyOfExprAsString(Cond); // Cond->getType().getAsString();
 
   if (isEffectful(Cond) || !isLeafNode(Cond)) {
     //std::string tmp = freshTemp();
@@ -572,7 +617,7 @@ std::string rewriteIf(IfStmt *IS) {
 std::string rewriteWhile(WhileStmt *WS) {
   Expr *Cond = WS->getCond();
 
-  std::string Ty = Cond->getType().getAsString();
+  std::string Ty = getTyOfExprAsString(Cond); // Cond->getType().getAsString();
   std::string Out;
 
   if (isEffectful(Cond) || !isLeafNode(Cond)) {
@@ -590,7 +635,11 @@ std::string rewriteWhile(WhileStmt *WS) {
       TempForCond = exprToString(Cond);
     } else {
       AppendBefore = NewCond;
-      AppendBefore += Ty + " " + tmp + " = " + TempForCond + ";\n";
+      if (Ty == "") {
+        AppendBefore += TempForCond + ";\n";
+      } else {
+        AppendBefore += Ty + " " + tmp + " = " + TempForCond + ";\n";
+      }
       AppendBefore += "if (" + tmp + ") { break; }\n";
     }
 
@@ -620,8 +669,15 @@ std::string rewriteWhile(WhileStmt *WS) {
       //else {
       std::string FreshTemp = freshTemp();
       insertExprAndTemp(E, FreshTemp);
-      return E->getType().getAsString() + " " + FreshTemp + " = " +
-             exprToString(E) + ";\n";
+      // E->getType().getAsString()
+
+      auto Ty = getTyOfExprAsString(E);
+      if (Ty == "") {
+        return exprToString(E) + ";\n";
+      } else {
+        return Ty + " " + FreshTemp + " = " + exprToString(E) + ";\n";
+      }
+
       //}
     } else {
       if (isLeafNode(E)){
