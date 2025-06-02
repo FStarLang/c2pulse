@@ -14,6 +14,7 @@ set(SRC_FILES
   src/PulseEmitter.cpp
   src/ANFConsumer.cpp
   src/ANFFrontendAction.cpp
+  src/ANFTransformer.cpp
   src/main.cpp
 )
 

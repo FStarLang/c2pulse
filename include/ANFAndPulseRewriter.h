@@ -113,15 +113,15 @@ private:
   int Counter;
   std::string TransformedCode;
 
-  void insertExprAndTemp(Expr *expr, std::string TempName) {
+  void insertExprAndTemp(Expr *Expr, std::string TempName) {
     // Insert the expression and its temporary name into the map
-    MapExprToAssignedTemporary[expr] = TempName;
+    MapExprToAssignedTemporary[Expr] = TempName;
   }
 
-  std::string lookupExprTempVal(Expr* expr){
+  std::string lookupExprTempVal(Expr* Expr){
 
     //assert that the expression is in the map
-    auto It = MapExprToAssignedTemporary.find(expr);
+    auto It = MapExprToAssignedTemporary.find(Expr);
     //Remove temporary for now
     //assert(it != MapExprToAssignedTemporary.end() && "Expression not found in map");
     if (It == MapExprToAssignedTemporary.end()) {
@@ -133,11 +133,11 @@ private:
     return It->second;
   }
 
-  std::string lookupFinalExpr(Expr *expr){
+  std::string lookupFinalExpr(Expr *Expr){
 
-    auto It = MapExprToAssignedTemporary.find(expr);
+    auto It = MapExprToAssignedTemporary.find(Expr);
     if (It == MapExprToAssignedTemporary.end()) {
-      return rewriteStmt(expr);
+      return rewriteStmt(Expr);
     }
     return It->second;
   }
@@ -235,6 +235,8 @@ private:
     else if (auto *US = dyn_cast<UnaryOperator>(S)) {
 
       // Out += stmtToString(US) + ";\n";
+      
+      //Desugar some unary operators if possible. 
       switch (US->getOpcode()) {
       case UO_PostInc: {
         auto *SubExpr = US->getSubExpr();

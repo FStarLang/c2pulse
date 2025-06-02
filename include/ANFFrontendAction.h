@@ -23,7 +23,7 @@ extern llvm::cl::opt<std::string> TransformMode;
 
 class ANFFrontendAction : public clang::PluginASTAction {
 public:
-  std::string &getTransformedCode();
+  std::string getTransformedCode();
 
 protected:
   std::unique_ptr<clang::ASTConsumer>
