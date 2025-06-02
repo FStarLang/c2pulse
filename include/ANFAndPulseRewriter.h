@@ -85,8 +85,8 @@ public:
     if (Stmt *Body = FD->getBody()) {
       if (auto *CS = dyn_cast<CompoundStmt>(Body)) {
         if (llvm::DebugFlag && CS) {
-          std::string stmtStr;
-          llvm::raw_string_ostream os(stmtStr);
+          std::string StmtToStr;
+          llvm::raw_string_ostream os(StmtToStr);
           CS->printPretty(os, nullptr, Ctx.getPrintingPolicy());
           DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs()
                                           << "The compound statement is: "
@@ -101,7 +101,7 @@ public:
     return true;
   }
 
-  std::string getTransformedCode() const { return transformedCode; }
+  std::string getTransformedCode() const { return TransformedCode; }
 
 private:
   Rewriter &TheRewriter;
@@ -111,37 +111,37 @@ private:
   std::set<SourceLocation> LocsSeen;
   std::set<unsigned> LinesSeen;
   int Counter;
-  std::string transformedCode;
+  std::string TransformedCode;
 
-  void insertExprAndTemp(Expr* expr, std::string tempName) {
+  void insertExprAndTemp(Expr* expr, std::string TempName) {
     // Insert the expression and its temporary name into the map
-    MapExprToAssignedTemporary[expr] = tempName;
+    MapExprToAssignedTemporary[expr] = TempName;
 
   }
 
   std::string lookupExprTempVal(Expr* expr){
 
     //assert that the expression is in the map
-    auto it = MapExprToAssignedTemporary.find(expr);
+    auto It = MapExprToAssignedTemporary.find(expr);
     //Remove temporary for now
     //assert(it != MapExprToAssignedTemporary.end() && "Expression not found in map");
-    if (it == MapExprToAssignedTemporary.end()) {
+    if (It == MapExprToAssignedTemporary.end()) {
       // If not found, create a new temporary
-      std::string newTemp = "";
-      return newTemp;
+      std::string NewTemp = "";
+      return NewTemp;
     }
 
-    return it->second;
+    return It->second;
 
   }
 
   std::string lookupFinalExpr(Expr *expr){
     
-    auto it = MapExprToAssignedTemporary.find(expr);
-    if (it == MapExprToAssignedTemporary.end()) {
+    auto It = MapExprToAssignedTemporary.find(expr);
+    if (It == MapExprToAssignedTemporary.end()) {
       return rewriteStmt(expr);
     }
-    return it->second;
+    return It->second;
   }
 
   std::string freshTemp() {
@@ -149,12 +149,12 @@ private:
   }
 
   /// Rewrite a compound statement in-place.
-  std::string rewriteCompound(Stmt *St, std::string appendBefore = "") {
+  std::string rewriteCompound(Stmt *St, std::string AppendBefore = "") {
 
     if (auto *CS = dyn_cast<CompoundStmt>(St)) {
       std::string NewText = "{\n";
       //Append any instructions if needed before.
-      NewText += appendBefore;
+      NewText += AppendBefore;
       for (Stmt *S : CS->body()) {
         NewText += rewriteStmt(S);
       }
@@ -185,43 +185,43 @@ private:
       DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print in (rewriteStmt) DeclStmt: " << "\n");
       //S->dumpPretty(Ctx);
       
-      std::string strForDecls;
+      std::string StrForDecls;
       for (auto *D : DS->decls()) {
         if (auto *VD = llvm::dyn_cast<clang::VarDecl>(D)) {
           if (clang::Expr *Initializer = VD->getInit()) {
               // Initializer now holds the right-hand side expression
-              auto initExpr = rewriteStmt(Initializer);
-              auto tempForInit = lookupExprTempVal(Initializer);
-              if (tempForInit == "") {
-                tempForInit = exprToString(Initializer);
-                strForDecls += VD->getType().getAsString() + " " + VD->getNameAsString() + " = " + tempForInit + ";\n";
+              auto InitExpr = rewriteStmt(Initializer);
+              auto TempForInit = lookupExprTempVal(Initializer);
+              if (TempForInit == "") {
+                TempForInit = exprToString(Initializer);
+                StrForDecls += VD->getType().getAsString() + " " + VD->getNameAsString() + " = " + TempForInit + ";\n";
               }
               else{
-                strForDecls += initExpr;
-                strForDecls += VD->getType().getAsString() + " " + VD->getNameAsString() + " = " + tempForInit + ";\n";
+                StrForDecls += InitExpr;
+                StrForDecls += VD->getType().getAsString() + " " + VD->getNameAsString() + " = " + TempForInit + ";\n";
               }
           }
         }
         else {
-          assert(true && "Unhandled declaration type in DeclStmt");
+          assert(false && "Unhandled declaration type in DeclStmt");
         }
       }
 
-      Out += strForDecls;
+      Out += StrForDecls;
     }
     //unwrap paren expressions
     else if (auto *PE = llvm::dyn_cast<clang::ParenExpr>(S)){
 
-      auto innerExpr = PE->getSubExpr();
-      auto innerString = rewriteStmt(innerExpr);
-      auto tempForInner = lookupExprTempVal(innerExpr);
+      auto *InnerExpr = PE->getSubExpr();
+      auto InnerString = rewriteStmt(InnerExpr);
+      auto TempForInner = lookupExprTempVal(InnerExpr);
       //Same value with or without the parenthesis.
-      insertExprAndTemp(PE, tempForInner);
+      insertExprAndTemp(PE, TempForInner);
       // if (tempForInner == ""){
       //   tempForInner = freshTemp();
       // }
       // insertExprAndTemp(PE, tempForInner);
-      Out += innerString;
+      Out += InnerString;
       //Out += "(" + tempForInner + ")";
 
     }
@@ -232,7 +232,47 @@ private:
     }
     // Broken for unary operators. Vidush: TODO: Fix this.
     else if (auto *US = dyn_cast<UnaryOperator>(S)) {
-      Out += stmtToString(US) + ";\n";
+      
+      //Out += stmtToString(US) + ";\n";
+      switch(US->getOpcode()){
+      case UO_PostInc:
+      {
+        auto *SubExpr = US->getSubExpr();
+        auto SubExprStr = rewriteStmt(SubExpr) + " = " + exprToString(SubExpr) + " + 1;\n";
+        Out += SubExprStr;
+        break;
+      }
+      case UO_PostDec:
+      {
+         auto *SubExpr = US->getSubExpr();
+         auto SubExprStr = rewriteStmt(SubExpr) + " = " + exprToString(SubExpr) + " + 1;\n";
+         Out += SubExprStr;
+         break;
+      }
+      case UO_PreInc:
+      case UO_PreDec:
+      case UO_AddrOf:
+      {
+        Out += stmtToString(US) + ";\n";
+        break;
+      }
+      case UO_Deref:
+      {
+        Out += stmtToString(US) + ";\n";
+        break;
+      }
+      case UO_Plus:
+      case UO_Minus:
+      case UO_Not:
+      case UO_LNot:
+      case UO_Real:
+      case UO_Imag:
+      case UO_Extension:
+      case UO_Coawait:
+        assert(false && "Unary operator not handled in ANF rewriter");
+        break;
+      }
+      
     } else if (auto *BO = dyn_cast<BinaryOperator>(S)) {
       if (BO->isAssignmentOp()){
         DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print in (rewriteStmt) BO assignment: " << "\n");
@@ -243,44 +283,44 @@ private:
         DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print in (rewriteStmt) BO not assignment: " << "\n");
         //S->dumpPretty(Ctx);
 
-       auto lhsExpr = BO->getLHS();
-       auto rhsExpr = BO->getRHS();
+       auto *LeftExpr = BO->getLHS();
+       auto *RightExpr = BO->getRHS();
 
-       auto opAsString = BO->getOpcodeStr();
+       auto OperatorAsString = BO->getOpcodeStr();
 
        auto TyOfExpr = BO->getType().getAsString();
 
-       auto newLhsExpr = rewriteStmt(lhsExpr);
-       auto newRhsExpr = rewriteStmt(rhsExpr);
+       auto NewLeftExpr = rewriteStmt(LeftExpr);
+       auto NewRightExpr = rewriteStmt(RightExpr);
 
 
-       auto lhsTemp = lookupExprTempVal(lhsExpr);
-       auto rhsTemp = lookupExprTempVal(rhsExpr);
+       auto LeftTemp = lookupExprTempVal(LeftExpr);
+       auto RightTemp = lookupExprTempVal(RightExpr);
        
-       auto tempForBO = freshTemp();
-       if (lhsTemp == "" && rhsTemp == ""){
-          lhsTemp = newLhsExpr;
-          rhsTemp = newRhsExpr; 
-          Out += TyOfExpr + " " + tempForBO + " = " + lhsTemp + " " + opAsString.str() + " " + rhsTemp + ";\n";
+       auto TempForBO = freshTemp();
+       if (LeftTemp == "" && RightTemp == ""){
+          LeftTemp = NewLeftExpr;
+          RightTemp = NewRightExpr; 
+          Out += TyOfExpr + " " + TempForBO + " = " + LeftTemp + " " + OperatorAsString.str() + " " + RightTemp + ";\n";
        }
-       else if (lhsTemp != "" && rhsTemp == ""){
-          rhsTemp  = newRhsExpr; 
-          Out += newLhsExpr; 
-          Out += TyOfExpr + " " + tempForBO + " = " + lhsTemp + " " + opAsString.str() + " " + rhsTemp + ";\n";
+       else if (LeftTemp != "" && RightTemp == ""){
+          RightTemp  = NewRightExpr; 
+          Out += NewLeftExpr; 
+          Out += TyOfExpr + " " + TempForBO + " = " + LeftTemp + " " + OperatorAsString.str() + " " + RightTemp + ";\n";
        }
-       else if (lhsTemp == "" && rhsTemp != ""){
-          lhsTemp  = newLhsExpr; 
-          Out += newRhsExpr; 
-          Out += TyOfExpr + " " + tempForBO + " = " + lhsTemp + " " + opAsString.str() + " " + rhsTemp + ";\n";
+       else if (LeftTemp == "" && RightTemp != ""){
+          LeftTemp  = NewLeftExpr; 
+          Out += NewRightExpr; 
+          Out += TyOfExpr + " " + TempForBO + " = " + LeftTemp + " " + OperatorAsString.str() + " " + RightTemp + ";\n";
        }
        else{
-          Out += newLhsExpr;
-          Out += newRhsExpr; 
-          Out += TyOfExpr + " " + tempForBO + " = " + lhsTemp + " " + opAsString.str() + " " + rhsTemp + ";\n";
+          Out += NewLeftExpr;
+          Out += NewRightExpr; 
+          Out += TyOfExpr + " " + TempForBO + " = " + LeftTemp + " " + OperatorAsString.str() + " " + RightTemp + ";\n";
        }
        
        //std::string new_bin_inst = TyOfExpr + " " + tempForBO + " = " + lhsTemp + " " + opAsString.str() + " " + rhsTemp + ";\n";
-       insertExprAndTemp(BO, tempForBO);
+       insertExprAndTemp(BO, TempForBO);
        //std::string newExpr = newLhsExpr + newRhsExpr;
 
         //Out += newExpr + new_bin_inst ;
@@ -317,33 +357,33 @@ private:
       switch(E->getStmtClass()) {
         case Stmt::CallExprClass:
         {
-            std::string tmp = freshTemp();
-            insertExprAndTemp(E, tmp);
+            std::string FreshTmp = freshTemp();
+            insertExprAndTemp(E, FreshTmp);
 
             if (CallExpr *Call = dyn_cast<CallExpr>(E)){
-              int numArgs = Call->getNumArgs();
-              std::vector<std::string> finalArgs;
-              for (int i =0; i < numArgs; i++){
-                Expr *arg = Call->getArg(i);
+              int NumArgs = Call->getNumArgs();
+              std::vector<std::string> FinalArgs;
+              for (int i =0; i < NumArgs; i++){
+                Expr *CallArg = Call->getArg(i);
                 
-                if (isEffectful(arg) || !isLeafNode(arg)) {
-                  DEBUG_WITH_TYPE(DEBUG_TYPE , llvm::dbgs() << "Effectful arg: " << exprToString(arg) << "\n");
-                  Out += rewriteStmt(arg);
-                  auto arg_expr = lookupExprTempVal(arg);
-                  if (arg_expr == "") {
-                    arg_expr = exprToString(arg);
+                if (isEffectful(CallArg) || !isLeafNode(CallArg)) {
+                  DEBUG_WITH_TYPE(DEBUG_TYPE , llvm::dbgs() << "Effectful arg: " << exprToString(CallArg) << "\n");
+                  Out += rewriteStmt(CallArg);
+                  auto ArgToExpr = lookupExprTempVal(CallArg);
+                  if (ArgToExpr == "") {
+                    ArgToExpr = exprToString(CallArg);
                   }
-                  finalArgs.push_back(arg_expr);
+                  FinalArgs.push_back(ArgToExpr);
                 }
                 else{
-                  auto arg_expr = exprToString(arg);
-                  finalArgs.push_back(arg_expr);
+                  auto ArgToExpr = exprToString(CallArg);
+                  FinalArgs.push_back(ArgToExpr);
                 }
               }
 
-              auto callName = Call->getDirectCallee()->getNameAsString();
-              Out += E->getType().getAsString() + " " + tmp + " = "
-                   + callName + "(" + llvm::join(finalArgs, ", ") + ");\n";
+              auto CallName = Call->getDirectCallee()->getNameAsString();
+              Out += E->getType().getAsString() + " " + FreshTmp + " = "
+                   + CallName + "(" + llvm::join(FinalArgs, ", ") + ");\n";
             }
             // Out += E->getType().getAsString() + " " + tmp + " = "
             //      + exprToString(E) + ";\n";
@@ -372,13 +412,13 @@ private:
         if (Expr *Init = VD->getInit()) {
           // Lift if effectful
           if (isEffectful(Init)) {
-            std::string tmp = freshTemp();
-            insertExprAndTemp(Init, tmp);
-            Out += VD->getType().getAsString() + " " + tmp
+            std::string FreshTmp = freshTemp();
+            insertExprAndTemp(Init, FreshTmp);
+            Out += VD->getType().getAsString() + " " + FreshTmp
                  + " = " + exprToString(Init) + ";\n";
             // rewrite original init to tmp
             Out += VD->getType().getAsString() + " "
-                 + VD->getNameAsString() + " = " + tmp + ";\n";
+                 + VD->getNameAsString() + " = " + FreshTmp + ";\n";
             continue;
           }
         }
@@ -397,29 +437,29 @@ private:
         //std::string tmp = freshTemp();
         //insertExprAndTemp(E, tmp);
         //std::string Ty  = E->getType().getAsString();
-        std::string newExpr = rewriteStmt(E);
+        std::string NewExpr = rewriteStmt(E);
         //DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print expr in return: " << newExpr << ", " << exprToString(E) << "\n");
         //return Ty + " " + tmp + " = " + newExpr  + ";\n"
         //     + "return " + tmp + ";\n";
 
-        auto tempForExprs = lookupExprTempVal(E);
-        if (tempForExprs == ""){
-          tempForExprs = exprToString(E);
-          return "return " + tempForExprs + ";\n";
+        auto TempForNewExpr = lookupExprTempVal(E);
+        if (TempForNewExpr == ""){
+          TempForNewExpr = exprToString(E);
+          return "return " + TempForNewExpr + ";\n";
         }
 
-        return newExpr  + "return " + tempForExprs + ";\n";
+        return NewExpr  + "return " + TempForNewExpr + ";\n";
       }
-      std::string newExpr = rewriteStmt(E);
-      DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print expr in return: " << newExpr << "\n");
-      auto tempForExprs = lookupExprTempVal(E);
-      if (tempForExprs == ""){
-        tempForExprs = exprToString(E);
-        return "return " + tempForExprs + ";\n";
+      std::string NewExpr = rewriteStmt(E);
+      DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print expr in return: " << NewExpr << "\n");
+      auto TempForNewExpr = lookupExprTempVal(E);
+      if (TempForNewExpr == ""){
+        TempForNewExpr = exprToString(E);
+        return "return " + TempForNewExpr + ";\n";
       }
 
-      return newExpr 
-             + "return " + tempForExprs + ";\n";
+      return NewExpr 
+             + "return " + TempForNewExpr + ";\n";
     }
     return "return;\n";
   }
@@ -438,14 +478,14 @@ private:
     //   Out += exprToString(L) + " = " + exprToString(R) + ";\n";
     // }
 
-    auto newR = rewriteStmt(R);
-    auto tempR = lookupExprTempVal(R);
-    if (tempR == ""){
+    auto NewRight = rewriteStmt(R);
+    auto TempForRight = lookupExprTempVal(R);
+    if (TempForRight == ""){
       Out += exprToString(L) + " = " + exprToString(R) + ";\n";
     }
     else {
-      Out += newR;
-      Out += exprToString(L) + " = " + tempR + ";\n";
+      Out += NewRight;
+      Out += exprToString(L) + " = " + TempForRight + ";\n";
     }
 
     return Out;
@@ -454,7 +494,7 @@ private:
 /// Rewrite an if statement, lifting its condition.
 std::string rewriteIf(IfStmt *IS) {
   Expr *Cond = IS->getCond();
-  Stmt *thenBody = IS->getThen();
+  Stmt *ThenBody = IS->getThen();
   std::string Out;
 
   // Get the source‐spelled type of the condition
@@ -464,15 +504,15 @@ std::string rewriteIf(IfStmt *IS) {
     //std::string tmp = freshTemp();
     //insertExprAndTemp(Cond, tmp);
 
-    auto newCond = rewriteStmt(Cond);
-    auto tempForCond = lookupExprTempVal(Cond);
-    if (tempForCond == ""){
-      tempForCond = exprToString(Cond);
+    auto NewCond = rewriteStmt(Cond);
+    auto TempForCond = lookupExprTempVal(Cond);
+    if (TempForCond == ""){
+      TempForCond = exprToString(Cond);
     }
 
-    Out += newCond;
+    Out += NewCond;
     //Out += Ty + " " + tmp + " = " + exprToString(Cond) + ";\n";
-    Out += "if (" + tempForCond + ") " + rewriteCompound(IS->getThen()) + "\n";
+    Out += "if (" + TempForCond + ") " + rewriteCompound(IS->getThen()) + "\n";
   } else {
     Out += "if (" + exprToString(Cond) + ") " + rewriteCompound(IS->getThen()) + "\n";
   }
@@ -496,34 +536,34 @@ std::string rewriteWhile(WhileStmt *WS) {
 
   if (isEffectful(Cond) || !isLeafNode(Cond)) {
 
-    auto newCond = rewriteStmt(Cond);
-    auto tempForCond = lookupExprTempVal(Cond);
-    std::string appendBefore = "";
+    auto NewCond = rewriteStmt(Cond);
+    auto TempForCond = lookupExprTempVal(Cond);
+    std::string AppendBefore = "";
     //The condition is effectful and we get a temp for it. 
     //We need to ensure that the temp is updated in the loop.
     //We can do this by inserting the temp in the loop body.
     std::string tmp = freshTemp();
     insertExprAndTemp(Cond, tmp);
 
-    if (tempForCond == "") {
-      tempForCond = exprToString(Cond);
+    if (TempForCond == "") {
+      TempForCond = exprToString(Cond);
     }
     else {
-      appendBefore = newCond;
-      appendBefore += Ty + " " + tmp + " = " + tempForCond + ";\n";
-      appendBefore += "if (" + tmp + ") { break; }\n";
+      AppendBefore = NewCond;
+      AppendBefore += Ty + " " + tmp + " = " + TempForCond + ";\n";
+      AppendBefore += "if (" + tmp + ") { break; }\n";
     }
     
     //Out += newCond;
     //Out += Ty + tmp + " = " + tempForCond + ";\n"; 
 
     //Transform the while loop to use the temp variable.
-    if (appendBefore != ""){
-      Out += "while (true) " + rewriteCompound(WS->getBody(), appendBefore) + "\n";
+    if (AppendBefore != ""){
+      Out += "while (true) " + rewriteCompound(WS->getBody(), AppendBefore) + "\n";
     }
     else {
-      Out += "while (" + tempForCond + ") " +
-             rewriteCompound(WS->getBody(), appendBefore) + "\n";
+      Out += "while (" + TempForCond + ") " +
+             rewriteCompound(WS->getBody(), AppendBefore) + "\n";
     }
   } else {
     Out += "while (" + exprToString(Cond) + ") " +
@@ -539,9 +579,9 @@ std::string rewriteWhile(WhileStmt *WS) {
       //  return exprToString(E);
       //}
       //else {
-        std::string tmp = freshTemp();
-        insertExprAndTemp(E, tmp);
-        return E->getType().getAsString() + " " + tmp + " = " + exprToString(E) + ";\n";
+        std::string FreshTemp = freshTemp();
+        insertExprAndTemp(E, FreshTemp);
+        return E->getType().getAsString() + " " + FreshTemp + " = " + exprToString(E) + ";\n";
       //}
     } else {
       if (isLeafNode(E)){
