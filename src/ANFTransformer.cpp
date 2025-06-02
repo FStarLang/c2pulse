@@ -27,6 +27,7 @@ ANFTranformer::ANFTranformer(std::vector<std::unique_ptr<ASTUnit>> &ASTList)
                 RewriterForPlugin.setSourceMgr(ASTList[0]->getSourceManager(), ASTList[0]->getLangOpts());
             } else {
                 llvm::errs() << "Error: No AST units provided for transformation.\n";
+                exit(1);
             }
 }
 
@@ -73,11 +74,10 @@ void ANFTranformer::transform() {
 
             // Capture rewritten buffer
             const llvm::RewriteBuffer *Buffer = RewriterForPlugin.getRewriteBufferFor(MainFileID);
-            //llvm::outs() << "Print buffer \n"; 
-            //Buffer->write(llvm::outs());
-            //llvm::outs() << "End buffer \n";
+
             if (!Buffer) {
                 llvm::errs() << "Warning: Rewriter buffer is empty—no modifications detected.\n";
+                exit(1);
             }
             
             // Store transformed code in the class variable

@@ -50,16 +50,9 @@ int main(int argc, const char **argv) {
     ANFTranformer transformer(ASTList);
     transformer.transform();
     std::string transformedCode = transformer.getTransformedCode();
-
-    // Write the transformed code to file.
-
-    llvm::outs() << "Transformed code:\n";
-    llvm::outs() << transformedCode << "\n";
-    llvm::outs() << "End of transformed code.\n";
-
     auto NewFilePath = transformer.writeToFile();
 
-    // Step 4: Run Syntax-Only Action again on transformed output
+    // Run Syntax-Only Action again on transformed output
     ClangTool TransformedTool(OptionsParser->getCompilations(), {NewFilePath});
     if (TransformedTool.run(
             newFrontendActionFactory<SyntaxOnlyAction>().get())) {
