@@ -2,6 +2,8 @@
 
 #include "clang/AST/DeclBase.h"
 #include "clang/AST/Expr.h"
+#include "clang/AST/Type.h"
+#include "clang/Frontend/DependencyOutputOptions.h"
 #include "llvm/Support/Debug.h"
 #include <clang/AST/RecursiveASTVisitor.h>
 #include <clang/ASTMatchers/ASTMatchFinder.h>
@@ -179,6 +181,26 @@ private:
     // SourceLocation B = S->getBeginLoc();
     // Out += commentPrefix(B);
 
+    // define a lambda function to get type from a variable declaration
+    auto getExprFromVarDecl = [this](const clang::VarDecl *VD) {
+      std::string Expr;
+      if (VD->getType()->isConstantArrayType()) {
+        auto *ArrTy = cast<clang::ConstantArrayType>(VD->getType());
+        Expr += ArrTy->getElementType().getAsString() + " " +
+                VD->getNameAsString() + "[" +
+                std::to_string(ArrTy->getSize().getZExtValue()) + "]";
+
+      } else if (VD->getType()->isVariableArrayType()) {
+        auto *ArrTy = cast<clang::VariableArrayType>(VD->getType());
+        Expr += ArrTy->getElementType().getAsString() + " " +
+                VD->getNameAsString() + "[" +
+                exprToString(ArrTy->getSizeExpr()) + "]";
+      } else {
+        Expr = VD->getType().getAsString() + " " + VD->getNameAsString();
+      }
+      return Expr;
+    };
+
     if (auto *DS = dyn_cast<DeclStmt>(S)) {
       DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print in (rewriteStmt) DeclStmt: " << "\n");
       //S->dumpPretty(Ctx);
@@ -192,15 +214,33 @@ private:
               auto TempForInit = lookupExprTempVal(Initializer);
               if (TempForInit == "") {
                 TempForInit = exprToString(Initializer);
-                StrForDecls += VD->getType().getAsString() + " " +
-                               VD->getNameAsString() + " = " + TempForInit +
-                               ";\n";
+                StrForDecls +=
+                    getExprFromVarDecl(VD) + " = " + TempForInit + ";\n";
               } else {
                 StrForDecls += InitExpr;
-                StrForDecls += VD->getType().getAsString() + " " +
-                               VD->getNameAsString() + " = " + TempForInit +
-                               ";\n";
+                StrForDecls +=
+                    getExprFromVarDecl(VD) + " = " + TempForInit + ";\n";
               }
+          } else {
+            Out += getExprFromVarDecl(VD) + ";\n";
+            // if (VD->getType()->isConstantArrayType()){
+            //   auto *ArrTy = cast<clang::ConstantArrayType>(VD->getType());
+            //   Out +=  ArrTy->getElementType().getAsString() + " " +
+            //          VD->getNameAsString() + "[" +
+            //             std::to_string(ArrTy->getSize().getZExtValue()) +
+            //             "];\n";
+
+            // }
+            // else if (VD->getType()->isVariableArrayType()) {
+            //   auto *ArrTy = cast<clang::VariableArrayType>(VD->getType());
+            //   Out += ArrTy->getElementType().getAsString() + " " +
+            //          VD->getNameAsString() + "[" +
+            //           exprToString(ArrTy->getSizeExpr()) + "];\n";
+            // }
+            // else{
+            //   Out += VD->getType().getAsString() + " " +
+            //          VD->getNameAsString() + ";\n";
+            // }
           }
         }
         else {
@@ -401,7 +441,7 @@ private:
       // Fallback: print as-is
       DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print in fallback: " << "\n");
       //S->dumpPretty(Ctx);
-      Out += stmtToString(S) + "\n";
+      Out += stmtToString(S) + ";\n";
     }
     return Out;
   }
@@ -559,8 +599,7 @@ std::string rewriteWhile(WhileStmt *WS) {
 
     //Transform the while loop to use the temp variable.
     if (AppendBefore != "") {
-      Out +=
-          "while (true) " + rewriteCompound(WS->getBody(), AppendBefore) + "\n";
+      Out += "while (1) " + rewriteCompound(WS->getBody(), AppendBefore) + "\n";
     } else {
       Out += "while (" + TempForCond + ") " +
              rewriteCompound(WS->getBody(), AppendBefore) + "\n";
@@ -647,7 +686,7 @@ std::string rewriteWhile(WhileStmt *WS) {
   }
 
   /// Extract raw source text of an Expr.
-  std::string exprToString(Expr *E) {
+  std::string exprToString(const Expr *E) {
     auto R = CharSourceRange::getTokenRange(E->getSourceRange());
     return Lexer::getSourceText(R, SM, Ctx.getLangOpts()).str();
   }
