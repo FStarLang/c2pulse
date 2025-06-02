@@ -94,7 +94,7 @@ public:
         }
         auto NewText = rewriteCompound(CS);
         TheRewriter.ReplaceText(CS->getSourceRange(), NewText);
-        transformedCode = NewText;
+        TransformedCode = NewText;
       }
     }
     
