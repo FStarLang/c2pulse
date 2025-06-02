@@ -11,11 +11,13 @@
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/FrontendPluginRegistry.h"
 #include "clang/Rewrite/Core/Rewriter.h"
+#include "llvm/Support/Error.h"
 
 #include "ANFConsumer.h"
 #include "ANFTransformer.h"
 #include <memory>
 #include <vector>
+#include <fstream>
 
 ANFTranformer::ANFTranformer(std::vector<std::unique_ptr<ASTUnit>> &ASTList)
         : InternalAstList(ASTList) {
@@ -25,6 +27,28 @@ ANFTranformer::ANFTranformer(std::vector<std::unique_ptr<ASTUnit>> &ASTList)
             } else {
                 llvm::errs() << "Error: No AST units provided for transformation.\n";
             }
+}
+
+std::string ANFTranformer::writeToFile() {
+
+    clang::SourceManager &SM = RewriterForPlugin.getSourceMgr();
+    auto *FileEnt = SM.getFileEntryForID(SM.getMainFileID());
+    if (!FileEnt) {
+        llvm::errs() << "Error: Main file entry not found in source manager.\n";
+        exit(1);
+    }
+
+    auto FilePath = FileEnt->tryGetRealPathName();
+
+    std::string TempFilePath = (FilePath + ".transformed.cpp").str();
+    std::ofstream OutFile(TempFilePath);
+    if (!OutFile.is_open()) {
+        llvm::errs() << "Error: Failed to create temporary file for transformed code.\n";
+    }
+
+    OutFile << TransformedCode;
+    OutFile.close();
+    return TempFilePath;
 }
 
 void ANFTranformer::transform() {

@@ -22,8 +22,6 @@ extern llvm::cl::opt<std::string> FunctionNameToProcess;
 extern llvm::cl::opt<std::string> TransformMode;
 
 class ANFFrontendAction : public clang::PluginASTAction {
-public:
-  std::string getTransformedCode();
 
 protected:
   std::unique_ptr<clang::ASTConsumer>
@@ -36,6 +34,5 @@ protected:
 
 private:
   clang::Rewriter RewriterForPlugin;
-  std::string transformedCode;
   ANFConsumer *ConsumerInstance = nullptr;
 };

@@ -23,6 +23,7 @@ class ANFTranformer {
       ANFTranformer(std::vector<std::unique_ptr<ASTUnit>> &ASTList); 
       std::string getTransformedCode();
       void transform();
+      std::string writeToFile();
 
     private:
        clang::Rewriter RewriterForPlugin;
