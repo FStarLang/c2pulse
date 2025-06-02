@@ -149,10 +149,12 @@ private:
   }
 
   /// Rewrite a compound statement in-place.
-  std::string rewriteCompound(Stmt *St) {
+  std::string rewriteCompound(Stmt *St, std::string appendBefore = "") {
 
     if (auto *CS = dyn_cast<CompoundStmt>(St)) {
       std::string NewText = "{\n";
+      //Append any instructions if needed before.
+      NewText += appendBefore;
       for (Stmt *S : CS->body()) {
         NewText += rewriteStmt(S);
       }
@@ -496,15 +498,33 @@ std::string rewriteWhile(WhileStmt *WS) {
 
     auto newCond = rewriteStmt(Cond);
     auto tempForCond = lookupExprTempVal(Cond);
+    std::string appendBefore = "";
+    //The condition is effectful and we get a temp for it. 
+    //We need to ensure that the temp is updated in the loop.
+    //We can do this by inserting the temp in the loop body.
+    std::string tmp = freshTemp();
+    insertExprAndTemp(Cond, tmp);
+
     if (tempForCond == "") {
       tempForCond = exprToString(Cond);
     }
+    else {
+      appendBefore = newCond;
+      appendBefore += Ty + " " + tmp + " = " + tempForCond + ";\n";
+      appendBefore += "if (" + tmp + ") { break; }\n";
+    }
+    
+    //Out += newCond;
+    //Out += Ty + tmp + " = " + tempForCond + ";\n"; 
 
-    std::string tmp = freshTemp();
-    insertExprAndTemp(Cond, tmp);
-    Out += newCond;
-    Out += Ty + tmp + " = " + tempForCond + ";\n";
-    Out += "while (" + tmp + ") " + rewriteCompound(WS->getBody()) + "\n";
+    //Transform the while loop to use the temp variable.
+    if (appendBefore != ""){
+      Out += "while (true) " + rewriteCompound(WS->getBody(), appendBefore) + "\n";
+    }
+    else {
+      Out += "while (" + tempForCond + ") " +
+             rewriteCompound(WS->getBody(), appendBefore) + "\n";
+    }
   } else {
     Out += "while (" + exprToString(Cond) + ") " +
            rewriteCompound(WS->getBody()) + "\n";
