@@ -330,7 +330,9 @@ private:
 
     } else if (auto *BO = dyn_cast<BinaryOperator>(S)) {
       if (BO->isAssignmentOp()){
-        DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print in (rewriteStmt) BO assignment: " << "\n");
+        DEBUG_WITH_TYPE(DEBUG_TYPE,
+                        llvm::dbgs() << "Print in (rewriteStmt) BO assignment: "
+                                     << "\n");
         Out += rewriteAssignment(BO);
       }
       else{
@@ -570,7 +572,8 @@ private:
     auto NewRight = rewriteStmt(R);
     auto TempForRight = lookupExprTempVal(R);
     if (TempForRight == "") {
-      Out += exprToString(L) + " " + BO->getOpcodeStr().str() + " " + exprToString(R) + ";\n";
+      Out += exprToString(L) + " " + BO->getOpcodeStr().str() + " " +
+             exprToString(R) + ";\n";
     } else {
       Out += NewRight;
       Out += exprToString(L) + " = " + TempForRight + ";\n";
