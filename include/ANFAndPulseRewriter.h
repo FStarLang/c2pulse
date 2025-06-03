@@ -324,6 +324,8 @@ private:
       case UO_Imag:
       case UO_Extension:
       case UO_Coawait:
+        llvm::outs() << "Unary operator not handled in ANF rewriter: "
+                     << US->getOpcode() << "\n";
         assert(false && "Unary operator not handled in ANF rewriter");
         break;
       }
@@ -435,8 +437,10 @@ private:
     //                + callName + "(" + llvm::join(finalArgs, ", ") + ");\n";
     // }
     else if (auto *E = dyn_cast<Expr>(S)) {
+      llvm::dbgs() << "\n\n";
       DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print in (rewriteStmt) Expr: " <<  E->getStmtClassName() << "\n");
-      ///S->dumpPretty(Ctx);
+      S->dumpPretty(Ctx);
+      llvm::dbgs() << "\n\n";
 
       switch(E->getStmtClass()) {
         case Stmt::CallExprClass:
@@ -478,6 +482,71 @@ private:
           }
             // Out += E->getType().getAsString() + " " + tmp + " = "
             //      + exprToString(E) + ";\n";
+          break;
+        }
+        case Stmt::ArraySubscriptExprClass: {
+
+          if (auto *ASE = dyn_cast<ArraySubscriptExpr>(E)) {
+
+            llvm::outs() << "ArraySubscriptExpr: " << "\n";
+            ASE->dumpPretty(Ctx);
+            llvm::outs() << "\n";
+            auto *SubscriptExpr = ASE->getIdx();
+            auto *BaseExpr = ASE->getBase();
+
+            auto NewSubExpr = rewriteStmt(SubscriptExpr);
+            auto TempForSubExpr = lookupExprTempVal(SubscriptExpr);
+            if (TempForSubExpr == "") {
+              auto AliasForArrIndexing =
+                  exprToString(BaseExpr) + "[" + NewSubExpr + "]";
+              // Out += AliasForArrIndexing;
+              // Vidush this  is not ideal, we should be aliasing clang AST
+              // nodes and not strings. Angelica will work on the pretty
+              // printing.
+              //  The type of the map will need to change so we will alias
+              //  Expressions rather than strings.
+              insertExprAndTemp(ASE, AliasForArrIndexing);
+            } else {
+              Out += NewSubExpr;
+              auto AliasForArrIndexing =
+                  exprToString(BaseExpr) + "[" + TempForSubExpr + "]";
+              insertExprAndTemp(ASE, AliasForArrIndexing);
+              // Out += exprToString(BaseExpr) + "[" + TempForSubExpr + "]\n";
+            }
+
+          } else {
+            assert(false && "Could not case to ArraySubscriptExpr");
+          }
+
+          break;
+        }
+        case Stmt::ImplicitCastExprClass: {
+
+          if (auto *ICE = llvm::dyn_cast<clang::ImplicitCastExpr>(E)) {
+
+            // auto *InnerExpr = PE->getSubExpr();
+            // auto InnerString = rewriteStmt(InnerExpr);
+            // auto TempForInner = lookupExprTempVal(InnerExpr);
+            // Same value with or without the parenthesis.
+
+            llvm::outs() << "Rewrite Stmt ImplicitCastExpr: " << "\n";
+            ICE->dumpPretty(Ctx);
+            llvm::outs() << "\n";
+
+            auto *SubExpr = ICE->getSubExpr();
+            auto NewSubExpr = rewriteStmt(SubExpr);
+            auto TempForInner = lookupExprTempVal(SubExpr);
+            insertExprAndTemp(ICE, TempForInner);
+            Out += NewSubExpr;
+
+            llvm::outs() << "\n";
+            llvm::outs() << "Print subexpression: " << NewSubExpr << "\n";
+            (ICE->getSubExpr())->dumpPretty(Ctx);
+            llvm::outs() << "\n";
+
+          } else {
+            assert(false && "Could not cast to ImplicitCastExpr");
+          }
           break;
         }
         default:
@@ -572,11 +641,12 @@ private:
     auto NewRight = rewriteStmt(R);
     auto TempForRight = lookupExprTempVal(R);
     if (TempForRight == "") {
-      Out += exprToString(L) + " " + BO->getOpcodeStr().str() + " " +
-             exprToString(R) + ";\n";
+      Out += exprToString(L) + " " + BO->getOpcodeStr().str() + " " + NewRight +
+             ";\n";
     } else {
       Out += NewRight;
-      Out += exprToString(L) + " = " + TempForRight + ";\n";
+      Out += exprToString(L) + " " + BO->getOpcodeStr().str() + " " +
+             TempForRight + ";\n";
     }
 
     return Out;
@@ -712,6 +782,21 @@ std::string rewriteWhile(WhileStmt *WS) {
       std::string FreshTemp = freshTemp();
       insertExprAndTemp(E, FreshTemp);
       // E->getType().getAsString()
+      // llvm::outs() << "Effectful Node: " << exprToString(E) << "\n";
+
+      // auto NewE = rewriteStmt(E);
+      // auto TempNewE = lookupExprTempVal(E);
+      // if (TempNewE == "") {
+      //   TempNewE = NewE;
+      // }
+      // std::string Out = NewE;
+      // auto Ty = getTyOfExprAsString(E);
+      // if (Ty == "") {
+      //   return Out += TempNewE + ";\n";
+      // } else {
+
+      //   return Out += Ty + " " + FreshTemp + " = " + TempNewE + ";\n";
+      // }
 
       auto Ty = getTyOfExprAsString(E);
       if (Ty == "") {
@@ -723,9 +808,11 @@ std::string rewriteWhile(WhileStmt *WS) {
       //}
     } else {
       if (isLeafNode(E)){
+        llvm::outs() << "Leaf node: " << exprToString(E) << "\n";
         return exprToString(E);
       }
       else{
+        llvm::outs() << "Non Leaf node: " << exprToString(E) << "\n";
         return exprToString(E);
       }
     }
