@@ -413,6 +413,8 @@ private:
       DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print in (rewriteStmt) WhileStmt: " << "\n");
       //S->dumpPretty(Ctx);
       Out += rewriteWhile(WS);
+    } else if (auto *FS = dyn_cast<ForStmt>(S)) {
+      Out += rewriteFor(FS);
     }
     // else if (CallExpr *Call = dyn_cast<CallExpr>(S)){
 
@@ -605,6 +607,42 @@ std::string rewriteIf(IfStmt *IS) {
 
   if (Stmt *E = IS->getElse())
     Out += "else " + rewriteCompound(E) + "\n";
+
+  return Out;
+}
+
+std::string rewriteFor(ForStmt *FS) {
+
+  std::string Out;
+  Expr *Cond = FS->getCond();
+  Stmt *Body = FS->getBody();
+
+  Stmt *Init = FS->getInit();
+  Stmt *Inc = FS->getInc();
+
+  auto InitStr = stmtToString(Init);
+
+  // This is just a sad hack.
+  //  We need to have a pretty printer that print precise instructions.
+
+  if (InitStr.back() != ';') {
+    InitStr += ";";
+  }
+
+  auto IncStr = stmtToString(Inc);
+  // For now we do not flatten the Condition.
+  // If it is complex, we will need to find a way to update the temporary.
+  auto CondStr = stmtToString(Cond);
+
+  Out += "for (" + InitStr + " " + CondStr + "; " + IncStr + ")";
+
+  if (auto *CS = dyn_cast<CompoundStmt>(Body)) {
+    Out += rewriteCompound(CS);
+  } else {
+    Out += "{\n";
+    Out += rewriteCompound(Body);
+    Out += "}\n";
+  }
 
   return Out;
 }
