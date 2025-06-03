@@ -640,7 +640,7 @@ std::string rewriteWhile(WhileStmt *WS) {
       } else {
         AppendBefore += Ty + " " + tmp + " = " + TempForCond + ";\n";
       }
-      //break on the inverse of the condition.
+      // break on the inverse of the condition.
       AppendBefore += "if (!" + tmp + ") { break; }\n";
     }
 
