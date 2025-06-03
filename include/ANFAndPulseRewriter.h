@@ -5,6 +5,7 @@
 #include "clang/AST/Type.h"
 #include "clang/Frontend/DependencyOutputOptions.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/Support/raw_ostream.h"
 #include <clang/AST/RecursiveASTVisitor.h>
 #include <clang/ASTMatchers/ASTMatchFinder.h>
 #include <clang/Frontend/ASTConsumers.h>
@@ -330,7 +331,6 @@ private:
     } else if (auto *BO = dyn_cast<BinaryOperator>(S)) {
       if (BO->isAssignmentOp()){
         DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Print in (rewriteStmt) BO assignment: " << "\n");
-        //S->dumpPretty(Ctx);
         Out += rewriteAssignment(BO);
       }
       else{
@@ -570,7 +570,7 @@ private:
     auto NewRight = rewriteStmt(R);
     auto TempForRight = lookupExprTempVal(R);
     if (TempForRight == "") {
-      Out += exprToString(L) + " = " + exprToString(R) + ";\n";
+      Out += exprToString(L) + " " + BO->getOpcodeStr().str() + " " + exprToString(R) + ";\n";
     } else {
       Out += NewRight;
       Out += exprToString(L) + " = " + TempForRight + ";\n";
