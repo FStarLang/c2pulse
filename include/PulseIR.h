@@ -13,6 +13,8 @@ class Term {
 public:
   TermTag Tag;
   void setTag(TermTag T);
+  void printTag();
+  virtual void dumpPretty() = 0;
   virtual ~Term() = default;
 };
 
@@ -20,13 +22,15 @@ class ConstTerm : public Term {
 public:
   int ConstantValue;
   virtual ~ConstTerm() = default;
+  virtual void dumpPretty() override;
 };
 
 class VarTerm : public Term {
 public:
   std::string VarName;
-  virtual void setVarName(std::string Name) = 0;
+  void setVarName(std::string Name);
   virtual ~VarTerm() = default;
+  virtual void dumpPretty() override;
 };
 
 class Name : public Term {
@@ -34,6 +38,7 @@ public:
   std::string NamedValue;
   virtual void setName(std::string Name) = 0;
   virtual ~Name() = default;
+  virtual void dumpPretty() override;
 };
 
 class FStarType : public Name {
@@ -41,13 +46,16 @@ class FStarType : public Name {
 public:
   virtual void setName(std::string Name) override;
   virtual ~FStarType() = default;
+  virtual void dumpPretty() override;
 };
 
 class FStarPointerType : public FStarType {
 public:
-  FStarPointerType *Pointer;
+  FStarType *PointerTo;
   virtual void setName(std::string Name) override;
   virtual ~FStarPointerType() = default;
+  virtual void dumpPretty() override;
+  void setPointerToTy(FStarType *Ty);
 };
 
 class AppE : public Term {
@@ -55,6 +63,9 @@ public:
   VarTerm *CallName;
   std::vector<Term *> Args;
   virtual ~AppE() = default;
+  virtual void dumpPretty() override;
+  void setCallName(VarTerm *Call);
+  void pushArg(Term *Arg);
 };
 
 // Define pattern class
@@ -89,18 +100,22 @@ class PulseStmt {
 public:
   PulseStmtTag Tag;
   void setTag(PulseStmtTag T);
+  void printTag();
+  virtual void dumpPretty() = 0;
   virtual ~PulseStmt() = default;
 };
 
 class PulseExpr : public PulseStmt {
 public:
   Term *E;
+  virtual void dumpPretty() override;
 };
 
 class PulseAssignment : public PulseStmt {
 public:
   Term *Lhs;
   Term *Value;
+  virtual void dumpPretty() override;
 };
 
 class PulseArrayAssignment : public PulseStmt {
@@ -108,12 +123,14 @@ public:
   Term *Arr;
   Term *Index;
   Term *Value;
+  virtual void dumpPretty() override;
 };
 
 class LetBinding : public PulseStmt {
 public:
   std::string VarName;
   Term *LetInit;
+  virtual void dumpPretty() override;
 };
 
 class PulseIf : public PulseStmt {
@@ -121,6 +138,7 @@ public:
   Term *Head;
   PulseStmt *Then;
   PulseStmt *Else = nullptr;
+  // virtual void dumpPretty() override = 0;
 };
 
 class PulseWhileStmt : public PulseStmt {
@@ -129,6 +147,7 @@ public:
   PulseStmt *Guard;
   std::vector<Slprop *> Invariant;
   PulseStmt *Body;
+  // virtual void dumpPretty() override = 0;
 };
 
 class PulseSequence : public PulseStmt {
@@ -137,6 +156,7 @@ public:
   PulseStmt *S2;
   void assignS1(PulseStmt *S);
   void assignS2(PulseStmt *S);
+  virtual void dumpPretty() override;
 };
 
 // Function declaration in Pulse IR
@@ -173,6 +193,8 @@ class PulseFnDefn : public PulseDecl {
 public:
   PulseFnDefn(_PulseFnDefn *Defn);
   _PulseFnDefn *Defn;
+
+  void dumpPretty();
 };
 
 class PulseFnDecl : public PulseDecl {

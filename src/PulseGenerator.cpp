@@ -55,21 +55,42 @@ PulseDecl *PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   if (Stmt *Body = FD->getBody()) {
     if (auto *CS = dyn_cast<CompoundStmt>(Body)) {
       auto *PulseBody = pulseFromCompoundStmt(CS);
+      // PulseBody->printTag();
+      PulseBody->dumpPretty();
       FDefn->Body = PulseBody;
     }
   }
 
   PulseFnDefn *PulseFn = new PulseFnDefn(FDefn);
 
-  llvm::outs() << PulseFn->Defn->Name << "\n";
+  // llvm::outs() << PulseFn->Defn->Name << "\n";
+  llvm::outs() << "=================================================";
+  llvm::outs() << "\nPrint the Pulse function Definition:\n\n";
+  PulseFn->dumpPretty();
+  llvm::outs() << "\nEnd printing the function Definition\n\n";
+  llvm::outs() << "=================================================\n";
 
   return PulseFn;
 }
 
 FStarType *PulseVisitor::getPulseTyFromCTy(clang::QualType CType) {
   // TODO: Check if Ctype is a pointer type, if so, use FStarPointerType.
-  auto *PulseTy = new FStarType();
+
+  FStarType *PulseTy;
+  if (CType->isPointerType()) {
+    PulseTy = new FStarPointerType();
+    auto *PulsePointerTy = static_cast<FStarPointerType *>(PulseTy);
+    PulsePointerTy->setName(CType.getAsString());
+    PulsePointerTy->setTag(TermTag::FStarPointerType);
+    auto UnderLyingType = CType->getPointeeType();
+    auto *FStartUnderLyingType = getPulseTyFromCTy(UnderLyingType);
+    PulsePointerTy->setPointerToTy(FStartUnderLyingType);
+    return PulsePointerTy;
+  }
+
+  PulseTy = new FStarType();
   PulseTy->setName(CType.getAsString());
+  PulseTy->setTag(TermTag::FStarType);
   return PulseTy;
 }
 
@@ -84,6 +105,7 @@ PulseStmt *PulseVisitor::pulseFromCompoundStmt(Stmt *S) {
         Stmt = NextPulseStmt;
       } else {
         auto *NewSequence = new PulseSequence();
+        NewSequence->setTag(PulseStmtTag::Sequence);
         NewSequence->assignS1(Stmt);
         NewSequence->assignS2(NextPulseStmt);
         Stmt = NewSequence;
@@ -127,12 +149,32 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S) {
       auto *Rhs = BO->getRHS();
       auto BinaryOp = BO->getOpcode();
 
-      auto *PulseLhsTerm = getTermFromCExpr(Lhs);
-      auto *PulseRhsTerm = getTermFromCExpr(Rhs);
-      PulseAssignment *Assignment = new PulseAssignment();
-      Assignment->Lhs = PulseLhsTerm;
-      Assignment->Value = PulseRhsTerm;
-      return Assignment;
+      // We use := in pulse to update references directly.
+      if (UnaryOperator *UO = dyn_cast<UnaryOperator>(Lhs)) {
+
+        // llvm::outs() << "Print in Assignment Unary: " << "\n";
+        // UO->dumpPretty(Ctx);
+        // UO->getSubExpr()->dumpPretty(Ctx);
+        if (UO->getOpcode() == UO_Deref) {
+          auto *PulseLhsTerm = getTermFromCExpr(UO->getSubExpr());
+          auto *PulseRhsTerm = getTermFromCExpr(Rhs);
+          PulseAssignment *Assignment = new PulseAssignment();
+          Assignment->Lhs = PulseLhsTerm;
+          Assignment->Value = PulseRhsTerm;
+          return Assignment;
+        }
+        // assert(false && "Could not dyn cast to a declaration expression.");
+      }
+      // TODO:
+      // We should generate Lets otherwise
+      else {
+        auto *PulseLhsTerm = getTermFromCExpr(Lhs);
+        auto *PulseRhsTerm = getTermFromCExpr(Rhs);
+        PulseAssignment *Assignment = new PulseAssignment();
+        Assignment->Lhs = PulseLhsTerm;
+        Assignment->Value = PulseRhsTerm;
+        return Assignment;
+      }
     } else {
       assert(false && "Binary Operator not implemented in pulseFromStmt\n");
     }
@@ -159,12 +201,64 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S) {
 Term *PulseVisitor::getTermFromCExpr(Expr *E) {
 
   if (auto *IL = dyn_cast<IntegerLiteral>(E)) {
+    llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "
+                    "IntegerLiteral\n";
+    E->dumpPretty(Ctx);
+    llvm::outs() << "\nEnd printing term.\n\n";
+    assert(false && "Expression not implemeted in getTermFromCExpr\n");
   } else if (auto *FL = dyn_cast<FloatingLiteral>(E)) {
+    llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "
+                    "FloatingLiteral\n";
+    E->dumpPretty(Ctx);
+    llvm::outs() << "\nEnd printing term.\n\n";
+    assert(false && "Expression not implemeted in getTermFromCExpr\n");
   } else if (auto *SL = dyn_cast<StringLiteral>(E)) {
+    llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "
+                    "StringLiteral\n";
+    E->dumpPretty(Ctx);
+    llvm::outs() << "\nEnd printing term.\n\n";
+    assert(false && "Expression not implemeted in getTermFromCExpr\n");
   } else if (auto *CL = dyn_cast<CharacterLiteral>(E)) {
+    llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "
+                    "CharacterLiteral\n";
+    E->dumpPretty(Ctx);
+    llvm::outs() << "\nEnd printing term.\n\n";
+    assert(false && "Expression not implemeted in getTermFromCExpr\n");
   } else if (auto *BO = dyn_cast<BinaryOperator>(E)) {
+    llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "
+                    "BinaryOperator\n";
+    E->dumpPretty(Ctx);
+    llvm::outs() << "\nEnd printing term.\n\n";
+    assert(false && "Expression not implemeted in getTermFromCExpr\n");
   } else if (auto *UO = dyn_cast<UnaryOperator>(E)) {
+    if (UO->getOpcode() == UO_Deref) {
+      auto *DerefAppE = new AppE();
+      auto *FuncName = new VarTerm();
+      FuncName->setVarName("!");
+      DerefAppE->setTag(TermTag::AppE);
+      DerefAppE->setCallName(FuncName);
+      auto *TermForBaseExpr = getTermFromCExpr(UO->getSubExpr());
+      DerefAppE->pushArg(TermForBaseExpr);
+      return DerefAppE;
+    } else {
+      llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "
+                      "UnaryOperator\n";
+      E->dumpPretty(Ctx);
+      llvm::outs() << "\nEnd printing term.\n\n";
+      assert(false && "Expression not implemeted in getTermFromCExpr\n");
+    }
+
+    llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "
+                    "UnaryOperator\n";
+    E->dumpPretty(Ctx);
+    llvm::outs() << "\nEnd printing term.\n\n";
+    assert(false && "Expression not implemeted in getTermFromCExpr\n");
   } else if (auto *CE = dyn_cast<CallExpr>(E)) {
+    llvm::outs()
+        << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr CallExpr\n";
+    E->dumpPretty(Ctx);
+    llvm::outs() << "\nEnd printing term.\n\n";
+    assert(false && "Expression not implemeted in getTermFromCExpr\n");
   } else if (auto *IC = dyn_cast<ImplicitCastExpr>(E)) {
 
     auto *SubExpr = IC->getSubExpr();
@@ -175,13 +269,28 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E) {
     SubExpr->dumpPretty(Ctx);
     llvm::outs() << "\nEnd printing term.\n\n";
     assert(false && "Expression not implemeted in getTermFromCExpr\n");
-  } else {
+  } else if (auto *DRE = dyn_cast<DeclRefExpr>(E)) {
+
+    VarTerm *VTerm = new VarTerm();
+    VTerm->setTag(TermTag::Var);
+    VTerm->setVarName(DRE->getDecl()->getNameAsString());
+
+    llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "
+                    "DeclRefExpr\n";
+    E->dumpPretty(Ctx);
+    llvm::outs() << "\nEnd printing term.\n\n";
+    // assert(false && "Expression not implemeted in getTermFromCExpr\n");
+    return VTerm;
+  }
+
+  else {
     llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr\n";
     E->dumpPretty(Ctx);
     llvm::outs() << "\nEnd printing term.\n\n";
     assert(false && "Expression not implemeted in getTermFromCExpr\n");
   }
 
+  assert(false && "Should not reach here!");
   return nullptr;
 }
 
