@@ -1,5 +1,6 @@
 #pragma once
 
+#include "PulseIR.h"
 #include "clang/AST/DeclBase.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/Type.h"
@@ -19,24 +20,24 @@
 using namespace clang;
 
 namespace {
-    
-    class PulseVisitor : public RecursiveASTVisitor<PulseVisitor> {
 
-        public: 
-            PulseVisitor(Rewriter &R, ASTContext &Ctx)
-                : TheRewriter(R), Ctx(Ctx), SM(Ctx.getSourceManager()) {}
+class PulseVisitor : public RecursiveASTVisitor<PulseVisitor> {
 
-            bool VisitFunctionDecl(FunctionDecl *FD);
+public:
+  PulseVisitor(Rewriter &R, ASTContext &Ctx)
+      : TheRewriter(R), Ctx(Ctx), SM(Ctx.getSourceManager()) {}
 
+  PulseDecl *VisitFunctionDecl(FunctionDecl *FD);
+  PulseStmt *pulseFromCompoundStmt(Stmt *S);
+  PulseStmt *pulseFromStmt(Stmt *S);
+  FStarType *getPulseTyFromCTy(QualType CType);
 
-        private: 
-           Rewriter &TheRewriter; 
-           ASTContext &Ctx;
-           SourceManager &SM;
-
-    };
-}
-
+private:
+  Rewriter &TheRewriter;
+  ASTContext &Ctx;
+  SourceManager &SM;
+};
+} // namespace
 
 class PulseConsumer : public ASTConsumer {
 public:
@@ -46,5 +47,4 @@ public:
 
 private:
   PulseVisitor Visitor;
-
 };
