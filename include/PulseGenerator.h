@@ -31,6 +31,7 @@ public:
   PulseStmt *pulseFromCompoundStmt(Stmt *S);
   PulseStmt *pulseFromStmt(Stmt *S);
   FStarType *getPulseTyFromCTy(QualType CType);
+  Term *getTermFromCExpr(Expr *E);
 
 private:
   Rewriter &TheRewriter;
@@ -47,4 +48,18 @@ public:
 
 private:
   PulseVisitor Visitor;
+};
+
+class PulseTransformer {
+public:
+  PulseTransformer(std::vector<std::unique_ptr<ASTUnit>> &ASTList);
+  std::string getTransformedCode();
+  void transform();
+  std::string writeToFile();
+
+private:
+  clang::Rewriter RewriterForPlugin;
+  std::string TransformedCode;
+  std::vector<std::unique_ptr<ASTUnit>>
+      &InternalAstList; // Store the ASTList for processing
 };

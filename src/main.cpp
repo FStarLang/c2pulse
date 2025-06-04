@@ -1,11 +1,12 @@
+#include "ANFAndPulseRewriter.h"
+#include "ANFConsumer.h"
+#include "ANFFrontendAction.h"
+#include "ANFTransformer.h"
+#include "PulseGenerator.h"
+#include "clang/Frontend/FrontendActions.h"
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
-#include "clang/Frontend/FrontendActions.h"
-#include "ANFAndPulseRewriter.h"
-#include "ANFFrontendAction.h"
-#include "ANFConsumer.h"
 #include <fstream>
-#include "ANFTransformer.h"
 
 using namespace clang;
 using namespace clang::tooling;
@@ -52,6 +53,10 @@ int main(int argc, const char **argv) {
     std::string transformedCode = transformer.getTransformedCode();
     auto NewFilePath = transformer.writeToFile();
 
+    llvm::outs() << "Print the new file path: \n";
+    llvm::outs() << NewFilePath;
+    llvm::outs() << "\n\n";
+
     // Run Syntax-Only Action again on transformed output
     ClangTool TransformedTool(OptionsParser->getCompilations(), {NewFilePath});
     if (TransformedTool.run(
@@ -59,6 +64,13 @@ int main(int argc, const char **argv) {
       llvm::errs() << "Error: Transformed code has syntax errors.\n";
       return 1;
     }
+
+    std::vector<std::unique_ptr<ASTUnit>> TransformedASTList;
+    TransformedTool.buildASTs(TransformedASTList);
+
+    PulseTransformer _PulseTransformer(TransformedASTList);
+    _PulseTransformer.transform();
+    std::string PulseTransformedCode = transformer.getTransformedCode();
 
     llvm::outs() << "Success: Code transformed and syntax validated.\n";
     return 0;

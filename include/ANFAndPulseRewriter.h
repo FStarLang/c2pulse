@@ -628,25 +628,24 @@ private:
   std::string rewriteAssignment(BinaryOperator *BO) {
     Expr *L = BO->getLHS(), *R = BO->getRHS();
     std::string Out;
-    // if (isEffectful(R)) {
-    //   std::string tmp = freshTemp();
-    //   insertExprAndTemp(R, tmp);
-    //   Out += R->getType().getAsString() + " "
-    //        + tmp + " = " + exprToString(R) + ";\n";
-    //   Out += exprToString(L) + " = " + tmp + ";\n";
-    // } else {
-    //   Out += exprToString(L) + " = " + exprToString(R) + ";\n";
-    // }
-
-    auto NewRight = rewriteStmt(R);
-    auto TempForRight = lookupExprTempVal(R);
-    if (TempForRight == "") {
-      Out += exprToString(L) + " " + BO->getOpcodeStr().str() + " " + NewRight +
+    if (isEffectful(R)) {
+      std::string tmp = freshTemp();
+      insertExprAndTemp(R, tmp);
+      Out += R->getType().getAsString() + " " + tmp + " = " + exprToString(R) +
              ";\n";
+      Out += exprToString(L) + " = " + tmp + ";\n";
     } else {
-      Out += NewRight;
-      Out += exprToString(L) + " " + BO->getOpcodeStr().str() + " " +
-             TempForRight + ";\n";
+
+      auto NewRight = rewriteStmt(R);
+      auto TempForRight = lookupExprTempVal(R);
+      if (TempForRight == "") {
+        Out += exprToString(L) + " " + BO->getOpcodeStr().str() + " " +
+               NewRight + ";\n";
+      } else {
+        Out += NewRight;
+        Out += exprToString(L) + " " + BO->getOpcodeStr().str() + " " +
+               TempForRight + ";\n";
+      }
     }
 
     return Out;

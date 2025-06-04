@@ -12,16 +12,21 @@ enum class TermTag { Const, Var, Name, AppE, FStarType, FStarPointerType };
 class Term {
 public:
   TermTag Tag;
+  void setTag(TermTag T);
+  virtual ~Term() = default;
 };
 
 class ConstTerm : public Term {
 public:
   int ConstantValue;
+  virtual ~ConstTerm() = default;
 };
 
 class VarTerm : public Term {
 public:
   std::string VarName;
+  virtual void setVarName(std::string Name) = 0;
+  virtual ~VarTerm() = default;
 };
 
 class Name : public Term {
@@ -49,6 +54,7 @@ class AppE : public Term {
 public:
   VarTerm *CallName;
   std::vector<Term *> Args;
+  virtual ~AppE() = default;
 };
 
 // Define pattern class
@@ -82,6 +88,8 @@ enum class PulseStmtTag {
 class PulseStmt {
 public:
   PulseStmtTag Tag;
+  void setTag(PulseStmtTag T);
+  virtual ~PulseStmt() = default;
 };
 
 class PulseExpr : public PulseStmt {
@@ -92,7 +100,7 @@ public:
 class PulseAssignment : public PulseStmt {
 public:
   Term *Lhs;
-  Term *value;
+  Term *Value;
 };
 
 class PulseArrayAssignment : public PulseStmt {
