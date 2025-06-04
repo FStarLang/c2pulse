@@ -11,19 +11,33 @@
 #include <fstream>
 #include <regex>
 #include <sstream>
+// #include "PulseCodeGen.h"
 
 using namespace clang;
+
+void PulseConsumer::setNewFunctionDeclarations(std::vector<PulseDecl *> &FVec) {
+  FunctionDeclarations = FVec;
+}
+
+std::vector<PulseDecl *> &PulseConsumer::getNewFunctionDeclarations() {
+  return FunctionDeclarations;
+}
 
 PulseConsumer::PulseConsumer(clang::ASTContext &Ctx, clang::Rewriter &R)
     : Visitor(R, Ctx) {}
 
 void PulseConsumer::HandleTranslationUnit(clang::ASTContext &Ctx) {
   Visitor.TraverseDecl(Ctx.getTranslationUnitDecl());
+  setNewFunctionDeclarations(Visitor.getFunctionDeclarations());
 }
 
-PulseDecl *PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
+std::vector<PulseDecl *> &PulseVisitor::getFunctionDeclarations() {
+  return FunctionDeclarations;
+}
+
+bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   if (!FD->hasBody() || SM.isInSystemHeader(FD->getLocation()))
-    return nullptr;
+    return false;
 
   auto FuncName = FD->getNameAsString();
   // struct _PulseFnDefn {
@@ -69,8 +83,10 @@ PulseDecl *PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   PulseFn->dumpPretty();
   llvm::outs() << "\nEnd printing the function Definition\n\n";
   llvm::outs() << "=================================================\n";
+  PulseFn->Kind = PulseFnKind::FnDefn;
+  FunctionDeclarations.push_back(PulseFn);
 
-  return PulseFn;
+  return true;
 }
 
 FStarType *PulseVisitor::getPulseTyFromCTy(clang::QualType CType) {
@@ -159,6 +175,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S) {
           auto *PulseLhsTerm = getTermFromCExpr(UO->getSubExpr());
           auto *PulseRhsTerm = getTermFromCExpr(Rhs);
           PulseAssignment *Assignment = new PulseAssignment();
+          Assignment->setTag(PulseStmtTag::Assignment);
           Assignment->Lhs = PulseLhsTerm;
           Assignment->Value = PulseRhsTerm;
           return Assignment;
@@ -173,6 +190,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S) {
         PulseAssignment *Assignment = new PulseAssignment();
         Assignment->Lhs = PulseLhsTerm;
         Assignment->Value = PulseRhsTerm;
+        Assignment->setTag(PulseStmtTag::Assignment);
         return Assignment;
       }
     } else {
@@ -235,6 +253,7 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E) {
       auto *DerefAppE = new AppE();
       auto *FuncName = new VarTerm();
       FuncName->setVarName("!");
+      FuncName->setTag(TermTag::Var);
       DerefAppE->setTag(TermTag::AppE);
       DerefAppE->setCallName(FuncName);
       auto *TermForBaseExpr = getTermFromCExpr(UO->getSubExpr());
@@ -324,15 +343,14 @@ std::string PulseTransformer::writeToFile() {
 
   // Vidush: Maybe add an assertion here that the extension is supposed to be .c
 
-  std::string TempFilePath =
-      TempFilePathWithoutExtension.string() + ".transformed" + ".fst";
+  std::string TempFilePath = TempFilePathWithoutExtension.string() + ".fst";
   std::ofstream OutFile(TempFilePath);
   if (!OutFile.is_open()) {
     llvm::errs()
         << "Error: Failed to create temporary file for transformed code.\n";
   }
 
-  OutFile << TransformedCode;
+  OutFile << getTransformedCode();
   OutFile.close();
   return TempFilePath;
 }
@@ -341,28 +359,36 @@ void PulseTransformer::transform() {
   for (auto &AstCtx : InternalAstList) {
     PulseConsumer Consumer(AstCtx->getASTContext(), RewriterForPlugin);
     Consumer.HandleTranslationUnit(AstCtx->getASTContext());
+
+    auto &FuncDecls = Consumer.getNewFunctionDeclarations();
+    for (auto *FD : FuncDecls) {
+      CodeGen.generateCodeFromPulseAst(FD);
+    }
   }
 
-  clang::SourceManager &SM = RewriterForPlugin.getSourceMgr();
-  clang::FileID MainFileID = SM.getMainFileID();
+  // clang::SourceManager &SM = RewriterForPlugin.getSourceMgr();
+  // clang::FileID MainFileID = SM.getMainFileID();
 
-  if (!MainFileID.isValid()) {
-    llvm::errs() << "Error: Invalid MainFileID—source file may not be loaded "
-                    "correctly.\n";
-  }
+  // if (!MainFileID.isValid()) {
+  //   llvm::errs() << "Error: Invalid MainFileID—source file may not be loaded
+  //   "
+  //                   "correctly.\n";
+  // }
 
-  // Capture rewritten buffer
-  const llvm::RewriteBuffer *Buffer =
-      RewriterForPlugin.getRewriteBufferFor(MainFileID);
+  // // Capture rewritten buffer
+  // const llvm::RewriteBuffer *Buffer =
+  //     RewriterForPlugin.getRewriteBufferFor(MainFileID);
 
-  if (!Buffer) {
-    llvm::errs()
-        << "Warning: Rewriter buffer is empty—no modifications detected.\n";
-    exit(1);
-  }
+  // if (!Buffer) {
+  //   llvm::errs()
+  //       << "Warning: Rewriter buffer is empty—no modifications detected.\n";
+  //   exit(1);
+  // }
 
-  // Store transformed code in the class variable
-  TransformedCode = std::string(Buffer->begin(), Buffer->end());
+  // // Store transformed code in the class variable
+  // TransformedCode = std::string(Buffer->begin(), Buffer->end());
 }
 
-std::string PulseTransformer::getTransformedCode() { return TransformedCode; }
+std::string PulseTransformer::getTransformedCode() {
+  return CodeGen.getGeneratedCode();
+}

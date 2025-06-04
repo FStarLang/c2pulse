@@ -17,6 +17,7 @@ set(SRC_FILES
   src/ANFTransformer.cpp
   src/PulseGenerator.cpp
   src/PulseIR.cpp
+  src/PulseCodeGen.cpp
   src/main.cpp
 )
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "PulseCodeGen.h"
 #include "PulseIR.h"
 #include "clang/AST/DeclBase.h"
 #include "clang/AST/Expr.h"
@@ -27,13 +28,15 @@ public:
   PulseVisitor(Rewriter &R, ASTContext &Ctx)
       : TheRewriter(R), Ctx(Ctx), SM(Ctx.getSourceManager()) {}
 
-  PulseDecl *VisitFunctionDecl(FunctionDecl *FD);
+  bool VisitFunctionDecl(FunctionDecl *FD);
   PulseStmt *pulseFromCompoundStmt(Stmt *S);
   PulseStmt *pulseFromStmt(Stmt *S);
   FStarType *getPulseTyFromCTy(QualType CType);
   Term *getTermFromCExpr(Expr *E);
+  std::vector<PulseDecl *> &getFunctionDeclarations();
 
 private:
+  std::vector<PulseDecl *> FunctionDeclarations;
   Rewriter &TheRewriter;
   ASTContext &Ctx;
   SourceManager &SM;
@@ -46,7 +49,13 @@ public:
 
   void HandleTranslationUnit(ASTContext &Ctx) override;
 
+  void
+  setNewFunctionDeclarations(std::vector<PulseDecl *> &FunctionDeclarations);
+
+  std::vector<PulseDecl *> &getNewFunctionDeclarations();
+
 private:
+  std::vector<PulseDecl *> FunctionDeclarations;
   PulseVisitor Visitor;
 };
 
@@ -58,6 +67,7 @@ public:
   std::string writeToFile();
 
 private:
+  PulseCodeGen CodeGen;
   clang::Rewriter RewriterForPlugin;
   std::string TransformedCode;
   std::vector<std::unique_ptr<ASTUnit>>

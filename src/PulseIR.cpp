@@ -72,6 +72,18 @@ llvm::raw_ostream &operator<<(llvm::raw_ostream &os, PulseStmtTag T) {
   return os;
 }
 
+llvm::raw_ostream &operator<<(llvm::raw_ostream &os, PulseFnKind T) {
+  switch (T) {
+  case PulseFnKind::FnDecl:
+    os << "FnDecl";
+    break;
+  case PulseFnKind::FnDefn:
+    os << "FnDefn";
+    break;
+  }
+  return os;
+}
+
 void Term::setTag(TermTag T) { Tag = T; }
 
 void Term::printTag() { llvm::outs() << Tag << "\n"; }
@@ -142,6 +154,8 @@ void PulseSequence::dumpPretty() {
   // llvm::outs() << "\n";
   S2->dumpPretty();
 }
+
+PulseFnKind PulseDecl::getKind() { return Kind; }
 
 PulseFnDefn::PulseFnDefn(_PulseFnDefn *Defn) : Defn(Defn) {}
 

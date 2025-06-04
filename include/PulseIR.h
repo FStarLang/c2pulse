@@ -23,6 +23,7 @@ public:
   int ConstantValue;
   virtual ~ConstTerm() = default;
   virtual void dumpPretty() override;
+  static bool classof(const Term *T) { return T->Tag == TermTag::Const; }
 };
 
 class VarTerm : public Term {
@@ -31,6 +32,7 @@ public:
   void setVarName(std::string Name);
   virtual ~VarTerm() = default;
   virtual void dumpPretty() override;
+  static bool classof(const Term *T) { return T->Tag == TermTag::Var; }
 };
 
 class Name : public Term {
@@ -39,6 +41,7 @@ public:
   virtual void setName(std::string Name) = 0;
   virtual ~Name() = default;
   virtual void dumpPretty() override;
+  static bool classof(const Term *T) { return T->Tag == TermTag::Name; }
 };
 
 class FStarType : public Name {
@@ -47,6 +50,7 @@ public:
   virtual void setName(std::string Name) override;
   virtual ~FStarType() = default;
   virtual void dumpPretty() override;
+  static bool classof(const Term *T) { return T->Tag == TermTag::FStarType; }
 };
 
 class FStarPointerType : public FStarType {
@@ -56,6 +60,9 @@ public:
   virtual ~FStarPointerType() = default;
   virtual void dumpPretty() override;
   void setPointerToTy(FStarType *Ty);
+  static bool classof(const Term *T) {
+    return T->Tag == TermTag::FStarPointerType;
+  }
 };
 
 class AppE : public Term {
@@ -66,6 +73,7 @@ public:
   virtual void dumpPretty() override;
   void setCallName(VarTerm *Call);
   void pushArg(Term *Arg);
+  static bool classof(const Term *T) { return T->Tag == TermTag::AppE; }
 };
 
 // Define pattern class
@@ -109,6 +117,9 @@ class PulseExpr : public PulseStmt {
 public:
   Term *E;
   virtual void dumpPretty() override;
+  static bool classof(const PulseStmt *S) {
+    return S->Tag == PulseStmtTag::Expr;
+  }
 };
 
 class PulseAssignment : public PulseStmt {
@@ -116,6 +127,9 @@ public:
   Term *Lhs;
   Term *Value;
   virtual void dumpPretty() override;
+  static bool classof(const PulseStmt *S) {
+    return S->Tag == PulseStmtTag::Assignment;
+  }
 };
 
 class PulseArrayAssignment : public PulseStmt {
@@ -124,6 +138,9 @@ public:
   Term *Index;
   Term *Value;
   virtual void dumpPretty() override;
+  static bool classof(const PulseStmt *S) {
+    return S->Tag == PulseStmtTag::ArrayAssignment;
+  }
 };
 
 class LetBinding : public PulseStmt {
@@ -131,6 +148,9 @@ public:
   std::string VarName;
   Term *LetInit;
   virtual void dumpPretty() override;
+  static bool classof(const PulseStmt *S) {
+    return S->Tag == PulseStmtTag::LetBinding;
+  }
 };
 
 class PulseIf : public PulseStmt {
@@ -138,6 +158,8 @@ public:
   Term *Head;
   PulseStmt *Then;
   PulseStmt *Else = nullptr;
+  static bool classof(const PulseStmt *S) { return S->Tag == PulseStmtTag::If; }
+
   // virtual void dumpPretty() override = 0;
 };
 
@@ -147,6 +169,9 @@ public:
   PulseStmt *Guard;
   std::vector<Slprop *> Invariant;
   PulseStmt *Body;
+  static bool classof(const PulseStmt *S) {
+    return S->Tag == PulseStmtTag::WhileStmt;
+  }
   // virtual void dumpPretty() override = 0;
 };
 
@@ -157,6 +182,9 @@ public:
   void assignS1(PulseStmt *S);
   void assignS2(PulseStmt *S);
   virtual void dumpPretty() override;
+  static bool classof(const PulseStmt *S) {
+    return S->Tag == PulseStmtTag::Sequence;
+  }
 };
 
 // Function declaration in Pulse IR
@@ -187,12 +215,16 @@ enum class PulseFnKind {
 class PulseDecl {
 public:
   PulseFnKind Kind;
+  PulseFnKind getKind();
 };
 
 class PulseFnDefn : public PulseDecl {
 public:
   PulseFnDefn(_PulseFnDefn *Defn);
   _PulseFnDefn *Defn;
+  static bool classof(const PulseDecl *D) {
+    return D->Kind == PulseFnKind::FnDefn;
+  }
 
   void dumpPretty();
 };
@@ -200,4 +232,7 @@ public:
 class PulseFnDecl : public PulseDecl {
 public:
   _PulseFnDecl *Defn;
+  static bool classof(const PulseDecl *D) {
+    return D->Kind == PulseFnKind::FnDecl;
+  }
 };

@@ -70,7 +70,12 @@ int main(int argc, const char **argv) {
 
     PulseTransformer _PulseTransformer(TransformedASTList);
     _PulseTransformer.transform();
-    std::string PulseTransformedCode = transformer.getTransformedCode();
+    _PulseTransformer.writeToFile();
+    // auto &FunctionDeclarations = _PulseTransformer
+    auto Code = _PulseTransformer.getTransformedCode();
+
+    llvm::outs() << "Print Program: \n\n";
+    llvm::outs() << Code << "\n";
 
     llvm::outs() << "Success: Code transformed and syntax validated.\n";
     return 0;
