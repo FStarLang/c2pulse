@@ -631,9 +631,19 @@ private:
     if (isEffectful(R)) {
       std::string tmp = freshTemp();
       insertExprAndTemp(R, tmp);
-      Out += R->getType().getAsString() + " " + tmp + " = " + exprToString(R) +
-             ";\n";
-      Out += exprToString(L) + " = " + tmp + ";\n";
+
+      auto NewRight = rewriteStmt(R);
+      auto TempForRight = lookupExprTempVal(R);
+      if (TempForRight == "") {
+        Out += R->getType().getAsString() + " " + tmp + " = " + NewRight;
+        Out += exprToString(L) + " = " + tmp + ";\n";
+      } else {
+        Out += NewRight;
+        Out += R->getType().getAsString() + " " + tmp + " = " + TempForRight +
+               ";\n";
+        Out += exprToString(L) + " = " + tmp + ";\n";
+      }
+
     } else {
 
       auto NewRight = rewriteStmt(R);
