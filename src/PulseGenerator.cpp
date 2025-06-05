@@ -73,9 +73,10 @@ void PulseVisitor::extractPulseAnnotations(
 }
 
 bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
+  
   if (!FD->hasBody() || SM.isInSystemHeader(FD->getLocation()))
-    return false;
-
+    return true;
+  // llvm::outs() << "Processing Function: " << FD->getNameAsString() << "\n";
   auto FuncName = FD->getNameAsString();
   // struct _PulseFnDefn {
   // std::string Name;
@@ -103,11 +104,11 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   FDefn->Args = PulseArgs;
   extractPulseAnnotations(FD, SM, FDefn->Annotation);
 
-  llvm::outs() << "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP" << "\n";
-  for (auto &Ann : FDefn->Annotation) {
-    llvm::outs() << Ann.predicate << "\n";
-  }
-  llvm::outs() << "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP" << "\n";
+  // llvm::outs() << "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP" << "\n";
+  // for (auto &Ann : FDefn->Annotation) {
+  //   llvm::outs() << Ann.predicate << "\n";
+  // }
+  // llvm::outs() << "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP" << "\n";
 
   // Always apply ANF rewriting on user functions
   if (Stmt *Body = FD->getBody()) {
@@ -360,6 +361,7 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E) {
 PulseTransformer::PulseTransformer(
     std::vector<std::unique_ptr<ASTUnit>> &ASTList)
     : InternalAstList(ASTList) {
+      
   // Initialize the rewriter with the first AST unit's context
   if (!ASTList.empty()) {
     RewriterForPlugin.setSourceMgr(ASTList[0]->getSourceManager(),
