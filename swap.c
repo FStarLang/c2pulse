@@ -1,7 +1,5 @@
-//@requires ptr r1
-//@requires ptr r2
-//@ensures  ptr r1
-//@ensures  ptr r2
+///@requires (r1 `pts_to` 'w1) ** (r2 `pts_to` 'w2)
+///@ensures  (r1 `pts_to` 'w2) ** (r2 `pts_to` 'w1)
 void ref_swap(int* r1, int* r2) 
 {
   int tmp = *r1;
