@@ -23,4 +23,4 @@
 #include "PulseEmitter.h"
 */
 
-#include "ANFAndPulseRewriter.h"
+#include "ANFVisitor.h"

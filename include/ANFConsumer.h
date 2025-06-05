@@ -4,7 +4,7 @@
 #include "clang/Frontend/ASTConsumers.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 
-#include "ANFAndPulseRewriter.h"
+#include "ANFVisitor.h"
 
 #include <string>
 

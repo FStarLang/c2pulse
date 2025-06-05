@@ -10,10 +10,8 @@ llvm_map_components_to_libnames(LLVM_LIBS
 
 # Gather source files
 set(SRC_FILES
-  src/ANFAndPulseRewriter.cpp
-  src/PulseEmitter.cpp
+  src/ANFVisitor.cpp
   src/ANFConsumer.cpp
-  src/ANFFrontendAction.cpp
   src/ANFTransformer.cpp
   src/PulseGenerator.cpp
   src/PulseIR.cpp

@@ -1,5 +1,4 @@
 #include "PulseGenerator.h"
-#include "PulseEmitter.h"
 #include "PulseIR.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Comment.h"
@@ -65,6 +64,7 @@ void PulseVisitor::extractPulseAnnotations(
     // llvm::outs() << "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR" << "\n";
     // llvm::outs() << result.back().predicate << "\n";
     // llvm::outs() << "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR" << "\n";
+    
   }
 
   // int counter = 1;
