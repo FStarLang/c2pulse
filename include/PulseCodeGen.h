@@ -28,6 +28,7 @@ public:
   void generateCodeFromPulseAst(PulseDecl *FD);
   std::string generateCodeFromTerm(Term *T);
   void generateCodeFromPulseStmt(PulseStmt *T);
+  std::string formatAsComments(PulseDecl *Decl);
 
 private:
   std::string OutputBuffer;

@@ -35,6 +35,43 @@ std::vector<PulseDecl *> &PulseVisitor::getFunctionDeclarations() {
   return FunctionDeclarations;
 }
 
+void PulseVisitor::extractPulseAnnotations(
+    const clang::FunctionDecl *FD, const clang::SourceManager &SM,
+    std::vector<PulseAnnotation> &result) {
+
+  // auto *Raw = FD->getASTContext().getRawCommentForAnyRedecl(FD);
+  // llvm::outs() << "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW" << "\n";
+  // llvm::outs() << Raw;
+  if (const auto *C = FD->getASTContext().getRawCommentForAnyRedecl(FD)) {
+    std::string cleaned;
+    for (char c : C->getRawText(SM))
+      if (c != '\r')
+        cleaned += c;
+
+    std::istringstream in(cleaned);
+    std::string line;
+    std::regex reqRegex(R"(@requires\s+(.*))");
+    std::regex ensRegex(R"(@ensures\s+(.*))");
+    std::smatch match;
+
+    while (std::getline(in, line)) {
+      auto trimmed = StringRef(line).trim().str();
+      if (std::regex_search(trimmed, match, reqRegex))
+        result.push_back({PulseAnnKind::Requires, match[1], ""});
+      else if (std::regex_search(trimmed, match, ensRegex))
+        result.push_back({PulseAnnKind::Ensures, match[1], ""});
+    }
+
+    // llvm::outs() << "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR" << "\n";
+    // llvm::outs() << result.back().predicate << "\n";
+    // llvm::outs() << "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR" << "\n";
+  }
+
+  // int counter = 1;
+  // for (auto& ann : result)
+  //     ann.regionId = "'n" + std::to_string(counter++);
+}
+
 bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   if (!FD->hasBody() || SM.isInSystemHeader(FD->getLocation()))
     return false;
@@ -64,6 +101,13 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
     PulseArgs.push_back(Binder);
   }
   FDefn->Args = PulseArgs;
+  extractPulseAnnotations(FD, SM, FDefn->Annotation);
+
+  llvm::outs() << "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP" << "\n";
+  for (auto &Ann : FDefn->Annotation) {
+    llvm::outs() << Ann.predicate << "\n";
+  }
+  llvm::outs() << "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP" << "\n";
 
   // Always apply ANF rewriting on user functions
   if (Stmt *Body = FD->getBody()) {

@@ -37,6 +37,13 @@ void PulseCodeGen::generateCodeFromPulseAst(PulseDecl *FD) {
       OS << "\n";
     }
 
+    // Print out the Ensures
+    for (const auto &A : FuncDef->Annotation) {
+      OS << (A.kind == PulseAnnKind::Requires ? "requires " : "ensures  ")
+         << A.predicate << "\n";
+      //<< " |-> " << A.regionId << "\n";
+    }
+
     // Codegen Function Body.
     OS << PulseSyntax.OpeningCurlyBrace << "\n";
     generateCodeFromPulseStmt(FuncBody);
@@ -46,6 +53,24 @@ void PulseCodeGen::generateCodeFromPulseAst(PulseDecl *FD) {
     assert(false && "Not implemented function kind");
   }
 }
+
+// std::string PulseCodeGen::formatAsComments(PulseDecl *Decl)
+// {
+
+//     if (PulseFnDefn *FDefn = dyn_cast<PulseFnDefn>(Decl)){
+//         //We should have a getter for this.
+//         auto &Annotations = FDefn->Defn->Annotation;
+//         std::string Out;
+//         for (const PulseAnnotation& Ann : Annotations) {
+//             Out += "// @";
+//             Out += (Ann.kind == PulseAnnKind::Requires ? "requires " :
+//             "ensures "); Out += Ann.predicate + "\n";
+//         }
+//         return Out;
+//     }
+//     assert(false && "Format As Comments not implemented yet!");
+
+// }
 
 std::string PulseCodeGen::generateCodeFromTerm(Term *T) {
 

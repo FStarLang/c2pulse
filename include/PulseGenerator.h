@@ -34,6 +34,9 @@ public:
   FStarType *getPulseTyFromCTy(QualType CType);
   Term *getTermFromCExpr(Expr *E);
   std::vector<PulseDecl *> &getFunctionDeclarations();
+  void extractPulseAnnotations(const clang::FunctionDecl *FD,
+                               const clang::SourceManager &SM,
+                               std::vector<PulseAnnotation> &Ann);
 
 private:
   std::vector<PulseDecl *> FunctionDeclarations;

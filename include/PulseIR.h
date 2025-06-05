@@ -5,6 +5,16 @@
 #include <sstream>
 #include <utility>
 
+// Define What all kinds of Annotations are there in Pulse.
+enum class PulseAnnKind { Requires, Ensures };
+
+// Struct for Pulse annotations,
+struct PulseAnnotation {
+  PulseAnnKind kind;
+  std::string predicate; // ptrName
+  std::string regionId;
+};
+
 // Define F* IR Similar to type term
 // https://github.com/FStarLang/FStar/blob/3ff998c60bb0efe9925fc94e8fb8b785b9485af0/src/parser/FStarC.Parser.AST.fsti#L40
 enum class TermTag { Const, Var, Name, AppE, FStarType, FStarPointerType };
@@ -203,6 +213,7 @@ struct _PulseFnDecl {
 struct _PulseFnDefn {
   std::string Name;
   std::vector<Binder *> Args;
+  std::vector<PulseAnnotation> Annotation;
   bool isRecursive;
   PulseStmt *Body;
 };
