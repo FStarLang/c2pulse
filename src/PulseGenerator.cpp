@@ -382,18 +382,32 @@ std::string PulseTransformer::writeToFile() {
   auto FilePath = FileEnt->tryGetRealPathName();
 
   std::filesystem::path FilePathSys = FilePath.str();
+
   auto Extension = FilePathSys.extension().string();
   auto TempFilePathWithoutExtension = FilePathSys.replace_extension("");
 
+  auto FileName = TempFilePathWithoutExtension.filename();
+  auto FileNameStr = FileName.string();
+  if (!FileNameStr.empty()) {
+    FileNameStr[0] = std::toupper(FileNameStr[0]);
+  }
+
+  // change dots to _ since . is reserved for nested modules.
+  std::replace(FileNameStr.begin(), FileNameStr.end(), '.', '_');
+
+  auto NewPath = TempFilePathWithoutExtension.parent_path();
+  NewPath += "/" + FileNameStr;
+
   // Vidush: Maybe add an assertion here that the extension is supposed to be .c
 
-  std::string TempFilePath = TempFilePathWithoutExtension.string() + ".fst";
+  std::string TempFilePath = NewPath.string() + ".fst";
   std::ofstream OutFile(TempFilePath);
   if (!OutFile.is_open()) {
     llvm::errs()
         << "Error: Failed to create temporary file for transformed code.\n";
   }
 
+  CodeGen.writeHeaders(FileNameStr, OutFile);
   OutFile << getTransformedCode();
   OutFile.close();
   return TempFilePath;

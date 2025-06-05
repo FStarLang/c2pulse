@@ -29,6 +29,7 @@ public:
   std::string generateCodeFromTerm(Term *T);
   void generateCodeFromPulseStmt(PulseStmt *T);
   std::string formatAsComments(PulseDecl *Decl);
+  void writeHeaders(std::string ModuleName, std::ofstream &Stream);
 
 private:
   std::string OutputBuffer;
@@ -50,6 +51,9 @@ public:
   CodegenStrTy *NewLine = "\n";
   CodegenStrTy *LetBind = "let";
   CodegenStrTy *Space = " ";
+  CodegenStrTy *LangPulse = "#lang-pulse";
+  CodegenStrTy *ModuleSyntax = "module";
+  CodegenStrTy *PulseInclude = "open Pulse";
 } PulseSyntax;
 
 // } //namespace

@@ -13,10 +13,22 @@
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Frontend/FrontendPluginRegistry.h>
 #include <clang/Rewrite/Core/Rewriter.h>
+#include <fstream>
 #include <memory>
 #include <vector>
 
 using namespace clang;
+
+void PulseCodeGen::writeHeaders(std::string ModuleName, std::ofstream &Stream) {
+
+  Stream << PulseSyntax.ModuleSyntax << PulseSyntax.Space << ModuleName
+         << PulseSyntax.NewLine;
+  Stream << PulseSyntax.NewLine;
+  Stream << PulseSyntax.LangPulse << PulseSyntax.NewLine;
+  Stream << PulseSyntax.NewLine;
+  Stream << PulseSyntax.PulseInclude << PulseSyntax.NewLine;
+  Stream << PulseSyntax.NewLine;
+}
 
 void PulseCodeGen::generateCodeFromPulseAst(PulseDecl *FD) {
 
