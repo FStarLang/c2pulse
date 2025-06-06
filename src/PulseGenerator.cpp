@@ -245,11 +245,35 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S) {
     }
 
   } else if (auto *E = dyn_cast<Expr>(S)) {
+    llvm::outs() << "\n\nPrint in pulseFromStmt Expr\n";
+    S->dumpPretty(Ctx);
+    llvm::outs() << "\nEnd in pulseFromStmt.\n";
+    assert(false && "Not implemented Clang expr in pulseFromStmt\n");
   } else if (auto *IF = dyn_cast<IfStmt>(S)) {
+    llvm::outs() << "\n\nPrint in pulseFromStmt IfStmt\n";
+    S->dumpPretty(Ctx);
+    llvm::outs() << "\nEnd in pulseFromStmt.\n";
+    assert(false && "Not implemented Clang expr in pulseFromStmt\n");
   } else if (auto *RS = dyn_cast<ReturnStmt>(S)) {
+    llvm::outs() << "\n\nPrint in pulseFromStmt ReturnStmt\n";
+    S->dumpPretty(Ctx);
+    llvm::outs() << "\nEnd in pulseFromStmt.\n";
+    assert(false && "Not implemented Clang expr in pulseFromStmt\n");
   } else if (auto *FS = dyn_cast<ForStmt>(S)) {
+    llvm::outs() << "\n\nPrint in pulseFromStmt ForStmt\n";
+    S->dumpPretty(Ctx);
+    llvm::outs() << "\nEnd in pulseFromStmt.\n";
+    assert(false && "Not implemented Clang expr in pulseFromStmt\n");
   } else if (auto *WS = dyn_cast<WhileStmt>(S)) {
+    llvm::outs() << "\n\nPrint in pulseFromStmt WhileStmt\n";
+    S->dumpPretty(Ctx);
+    llvm::outs() << "\nEnd in pulseFromStmt.\n";
+    assert(false && "Not implemented Clang expr in pulseFromStmt\n");
   } else if (auto *US = dyn_cast<UnaryOperator>(S)) {
+    llvm::outs() << "\n\nPrint in pulseFromStmt UnaryOperator\n";
+    S->dumpPretty(Ctx);
+    llvm::outs() << "\nEnd in pulseFromStmt.\n";
+    assert(false && "Not implemented Clang expr in pulseFromStmt\n");
   } else if (auto *NS = dyn_cast<NullStmt>(S)) {
     return nullptr;
   } else {
@@ -355,6 +379,22 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E) {
     llvm::outs() << "\nEnd printing term.\n\n";
     assert(false && "Expression not implemeted in getTermFromCExpr\n");
   } else if (auto *CE = dyn_cast<CallExpr>(E)) {
+    
+      auto *CallAppE = new AppE();
+      auto *FuncName = new VarTerm();
+      FuncName->setVarName(CE->getDirectCallee()->getNameAsString());
+      FuncName->setTag(TermTag::Var);
+      CallAppE->setTag(TermTag::AppE);
+      CallAppE->setCallName(FuncName);
+
+      for (size_t i = 0; i < CE->getNumArgs(); i++){
+        auto *Arg = CE->getArg(i);
+        auto *ArgTerm = getTermFromCExpr(Arg);
+        CallAppE->pushArg(ArgTerm);
+      }
+      
+      return CallAppE;
+
     llvm::outs()
         << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr CallExpr\n";
     E->dumpPretty(Ctx);

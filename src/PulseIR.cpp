@@ -112,8 +112,38 @@ const char* getSymbolKeyForOperator(SymbolTable Val, clang::BinaryOperatorKind &
   }
   case clang::BO_Div:
   case clang::BO_Rem:
-  case clang::BO_Add:
-  case clang::BO_Sub:
+  case clang::BO_Add:{
+    if (Val == SymbolTable::Int8){
+      return lookupSymbol(SymbolTable::Int8_Add);
+    }
+    else if (Val == SymbolTable::Int16){
+      return lookupSymbol(SymbolTable::Int16_Add);
+    }
+    else if (Val == SymbolTable::Int32){
+      return lookupSymbol(SymbolTable::Int32_Add);
+    }
+    else if (Val == SymbolTable::Int64){
+      return lookupSymbol(SymbolTable::Int64_Add);
+    }
+    
+    break;
+  }
+  case clang::BO_Sub:{
+    if (Val == SymbolTable::Int8){
+      return lookupSymbol(SymbolTable::Int8_Sub);
+    }
+    else if (Val == SymbolTable::Int16){
+      return lookupSymbol(SymbolTable::Int16_Sub);
+    }
+    else if (Val == SymbolTable::Int32){
+      return lookupSymbol(SymbolTable::Int32_Sub);
+    }
+    else if (Val == SymbolTable::Int64){
+      return lookupSymbol(SymbolTable::Int64_Sub);
+    }
+    
+    break;
+  }
   case clang::BO_Shl:
   case clang::BO_Shr:
   case clang::BO_Cmp:
@@ -121,7 +151,22 @@ const char* getSymbolKeyForOperator(SymbolTable Val, clang::BinaryOperatorKind &
   case clang::BO_GT:
   case clang::BO_LE:
   case clang::BO_GE:
-  case clang::BO_EQ:
+  case clang::BO_EQ:{
+    if (Val == SymbolTable::Int8){
+      return lookupSymbol(SymbolTable::Int8_Eq);
+    }
+    else if (Val == SymbolTable::Int16){
+      return lookupSymbol(SymbolTable::Int16_Eq);
+    }
+    else if (Val == SymbolTable::Int32){
+      return lookupSymbol(SymbolTable::Int32_Eq);
+    }
+    else if (Val == SymbolTable::Int64){
+      return lookupSymbol(SymbolTable::Int64_Eq);
+    }
+    
+    break;
+  }
   case clang::BO_NE:
   case clang::BO_And:
   case clang::BO_Xor:
@@ -142,11 +187,6 @@ const char* getSymbolKeyForOperator(SymbolTable Val, clang::BinaryOperatorKind &
   case clang::BO_Comma:
     break;
   }
-
-  if (Val == SymbolTable::Int8){
-
-  }
-
 }
 
 // enum class PulseStmtTag {
