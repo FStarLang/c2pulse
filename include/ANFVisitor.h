@@ -14,13 +14,12 @@
 #include <clang/Rewrite/Core/Rewriter.h>
 #include <memory>
 #include <vector>
+#include "Globals.h"
 
 extern llvm::cl::OptionCategory ToolCategory;
 extern llvm::cl::opt<std::string> FunctionNameToProcess;
 extern llvm::cl::opt<std::string> TransformMode;
 using namespace clang;
-
-#define DEBUG_TYPE "anf-pulse-rewriter"
 
 enum class ANFTransformDebugModeKind
 {

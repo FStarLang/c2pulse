@@ -3,6 +3,7 @@
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Comment.h"
 #include "clang/AST/Expr.h"
+#include "clang/AST/OperationKinds.h"
 #include "clang/AST/Stmt.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
@@ -11,6 +12,7 @@
 #include <regex>
 #include <sstream>
 // #include "PulseCodeGen.h"
+#include "Globals.h"
 
 using namespace clang;
 
@@ -264,6 +266,12 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S) {
 Term *PulseVisitor::getTermFromCExpr(Expr *E) {
 
   if (auto *IL = dyn_cast<IntegerLiteral>(E)) {
+
+    auto NewConstTerm = new ConstTerm(); 
+    NewConstTerm->setTag(TermTag::Const);
+    NewConstTerm->ConstantValue = IL->getValue().getSExtValue();
+    return NewConstTerm;
+
     llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "
                     "IntegerLiteral\n";
     E->dumpPretty(Ctx);
@@ -288,6 +296,35 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E) {
     llvm::outs() << "\nEnd printing term.\n\n";
     assert(false && "Expression not implemeted in getTermFromCExpr\n");
   } else if (auto *BO = dyn_cast<BinaryOperator>(E)) {
+
+    auto *Lhs = BO->getLHS(); 
+    auto *Rhs = BO->getRHS(); 
+    auto Op = BO->getOpcode();
+
+    if (Lhs->getType() != Rhs->getType()){
+      E->dumpPretty(Ctx);
+      LLVM_DEBUG(llvm::dbgs() << "\n");
+      assert(false && "Expected types of Lhs and Rhs to be the same. \
+              Unsafe type casting now allowed in Pulse\n");
+    }
+    
+    SymbolTable TypeKey = getSymbolKeyForCType(Lhs->getType(), Ctx);
+    auto OpKey = getSymbolKeyForOperator(TypeKey, Op);
+
+    auto *NewAppENode = new AppE();
+    NewAppENode->setTag(TermTag::AppE);
+    auto LhsTerm = getTermFromCExpr(Lhs);
+    auto RhsTerm = getTermFromCExpr(Rhs);
+    
+    auto *CallNameVar = new VarTerm();
+    CallNameVar->setVarName(OpKey);
+    CallNameVar->setTag(TermTag::Var);
+    NewAppENode->setCallName(CallNameVar);
+    NewAppENode->pushArg(LhsTerm);
+    NewAppENode->pushArg(RhsTerm);
+
+    return NewAppENode;
+
     llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "
                     "BinaryOperator\n";
     E->dumpPretty(Ctx);

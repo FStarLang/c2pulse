@@ -1,4 +1,6 @@
 #include "PulseIR.h"
+#include "clang/AST/Type.h"
+#include "llvm/IR/DerivedTypes.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -30,6 +32,121 @@ llvm::raw_ostream &operator<<(llvm::raw_ostream &os, TermTag T) {
     break;
   }
   return os;
+}
+
+const char* lookupSymbol(SymbolTable Key){
+  return SymbolToStringTable.lookup(Key);
+}
+
+SymbolTable getSymbolKeyForCType(clang::QualType Ty, clang::ASTContext &Ctx){
+
+  if(Ty->isSignedIntegerType()){
+
+    if (Ctx.getTypeSize(Ty) == 8){
+      return SymbolTable::Int8;
+    }
+    else if (Ctx.getTypeSize(Ty) == 16){
+      return SymbolTable::Int16;
+    }
+    else if (Ctx.getTypeSize(Ty) == 32){
+      return SymbolTable::Int32;
+    }
+    else if (Ctx.getTypeSize(Ty) == 64){
+      return SymbolTable::Int64;
+    }
+    else {
+      assert(false && "getSymbolKeyForType: did not expect signed integer size");
+    }
+
+  }
+  else if (Ty->isUnsignedIntegerType()){
+    
+    if (Ctx.getTypeSize(Ty) == 8){
+      return SymbolTable::UInt8;
+    }
+    else if (Ctx.getTypeSize(Ty) == 16){
+      return SymbolTable::UInt16;
+    }
+    else if (Ctx.getTypeSize(Ty) == 32){
+      return SymbolTable::UInt32;
+    }
+    else if (Ctx.getTypeSize(Ty) == 64){
+      return SymbolTable::UInt64;
+    }
+    else if (Ctx.getTypeSize(Ty) == 128){
+      return SymbolTable::UInt128;
+    }
+    else {
+      assert(false && "getSymbolKeyForType: did not expect signed integer size");
+    }
+
+  }
+  else if (Ty.getAsString() == "size_t"){
+    return SymbolTable::SizeT;
+  }
+
+  assert(false && "getSymbolKeyForType: did not expect type.");
+
+}
+
+const char* getSymbolKeyForOperator(SymbolTable Val, clang::BinaryOperatorKind &Op){
+  
+  switch(Op){
+  case clang::BO_PtrMemD:
+  case clang::BO_PtrMemI:
+  case clang::BO_Mul:{
+    if (Val == SymbolTable::Int8){
+      return lookupSymbol(SymbolTable::Int8_Mul);
+    }
+    else if (Val == SymbolTable::Int16){
+      return lookupSymbol(SymbolTable::Int16_Mul);
+    }
+    else if (Val == SymbolTable::Int32){
+      return lookupSymbol(SymbolTable::Int32_Mul);
+    }
+    else if (Val == SymbolTable::Int64){
+      return lookupSymbol(SymbolTable::Int64_Mul);
+    }
+    
+    break;
+  }
+  case clang::BO_Div:
+  case clang::BO_Rem:
+  case clang::BO_Add:
+  case clang::BO_Sub:
+  case clang::BO_Shl:
+  case clang::BO_Shr:
+  case clang::BO_Cmp:
+  case clang::BO_LT:
+  case clang::BO_GT:
+  case clang::BO_LE:
+  case clang::BO_GE:
+  case clang::BO_EQ:
+  case clang::BO_NE:
+  case clang::BO_And:
+  case clang::BO_Xor:
+  case clang::BO_Or:
+  case clang::BO_LAnd:
+  case clang::BO_LOr:
+  case clang::BO_Assign:
+  case clang::BO_MulAssign:
+  case clang::BO_DivAssign:
+  case clang::BO_RemAssign:
+  case clang::BO_AddAssign:
+  case clang::BO_SubAssign:
+  case clang::BO_ShlAssign:
+  case clang::BO_ShrAssign:
+  case clang::BO_AndAssign:
+  case clang::BO_XorAssign:
+  case clang::BO_OrAssign:
+  case clang::BO_Comma:
+    break;
+  }
+
+  if (Val == SymbolTable::Int8){
+
+  }
+
 }
 
 // enum class PulseStmtTag {
@@ -115,8 +232,10 @@ void FStarPointerType::setPointerToTy(FStarType *Type) { PointerTo = Type; }
 
 void AppE::dumpPretty() {
   llvm::outs() << CallName->VarName;
+  llvm::outs() << " ";
   for (auto *Arg : Args) {
     Arg->dumpPretty();
+    llvm::outs() << " ";
   }
 }
 
@@ -150,9 +269,11 @@ void PulseSequence::assignS1(PulseStmt *S) { S1 = S; }
 void PulseSequence::assignS2(PulseStmt *S) { S2 = S; }
 
 void PulseSequence::dumpPretty() {
-  S1->dumpPretty();
-  // llvm::outs() << "\n";
-  S2->dumpPretty();
+  if (S1 != nullptr)
+    S1->dumpPretty();
+
+  if (S2 != nullptr)
+    S2->dumpPretty();
 }
 
 PulseFnKind PulseDecl::getKind() { return Kind; }

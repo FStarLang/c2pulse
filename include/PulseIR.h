@@ -1,9 +1,14 @@
 #pragma once
+#include "clang/AST/ASTContext.h"
+#include "clang/AST/OperationKinds.h"
+#include "llvm/ADT/DenseMap.h"
 #include <string>
 #include <vector>
 #include <memory>
 #include <sstream>
 #include <utility>
+
+
 
 // Define What all kinds of Annotations are there in Pulse.
 enum class PulseAnnKind { Requires, Ensures };
@@ -13,6 +18,69 @@ struct PulseAnnotation {
   PulseAnnKind kind;
   std::string predicate; // ptrName
   std::string regionId;
+};
+
+
+enum class SymbolTable {
+  Int8, 
+  Int16, 
+  Int32, 
+  Int64,
+  UInt8,
+  UInt16,
+  UInt32,
+  UInt64,
+  UInt128, 
+  SizeT,
+  SizeT_Add,
+  SizeT_Sub, 
+  SizeT_Div,
+  SizeT_Mul,
+  Int8_Add,
+  Int8_Sub,
+  Int8_Div,
+  Int8_Mul,
+  Int16_Add,
+  Int16_Sub,
+  Int16_Div,
+  Int16_Mul,
+  Int32_Add,
+  Int32_Sub,
+  Int32_Div,
+  Int32_Mul,
+  Int64_Add,
+  Int64_Sub,
+  Int64_Div,
+  Int64_Mul,
+};
+
+SymbolTable getSymbolKeyForCType(clang::QualType Ty, clang::ASTContext &Ctx);
+const char* getSymbolKeyForOperator(SymbolTable Val, clang::BinaryOperatorKind &Op);
+const char* lookupSymbol(SymbolTable Key);
+
+static const llvm::SmallDenseMap<SymbolTable, const char*> SymbolToStringTable {
+  {SymbolTable::Int8, "Int8"},
+  {SymbolTable::Int16, "Int16"},
+  {SymbolTable::Int32, "Int32"},
+  {SymbolTable::Int64, "Int64"},
+  {SymbolTable::UInt8, "UInt8"},
+  {SymbolTable::UInt16, "UInt16"},
+  {SymbolTable::UInt32, "UInt32"},
+  {SymbolTable::UInt64, "UInt64"},
+  {SymbolTable::UInt128, "UInt128"},
+  {SymbolTable::SizeT, "SizeT"},
+ {SymbolTable::SizeT_Add, "SizeT.add"},
+ {SymbolTable::SizeT_Sub, "SizeT.sub"},
+ {SymbolTable::SizeT_Div, "SizeT.div"},
+ {SymbolTable::SizeT_Mul, "SizeT.mul"},
+ {SymbolTable::Int32_Add, "Int32.add"},
+ {SymbolTable::Int32_Sub, "Int32.sub"},
+ {SymbolTable::Int32_Div, "Int32.div"},
+ {SymbolTable::Int32_Mul, "Int32.mul"},
+ {SymbolTable::Int64_Mul, "Int64.mul"},
+ {SymbolTable::Int64_Add, "Int64.add"},
+ {SymbolTable::Int64_Sub, "Int64.sub"},
+ {SymbolTable::Int64_Div, "Int64.div"},
 };
 
 // Define F* IR Similar to type term
@@ -74,6 +142,8 @@ public:
     return T->Tag == TermTag::FStarPointerType;
   }
 };
+
+
 
 class AppE : public Term {
 public:
