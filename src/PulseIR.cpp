@@ -304,6 +304,11 @@ void LetBinding::dumpPretty() {
   llvm::outs() << "\n";
 }
 
+void PulseIf::dumpPretty(){
+
+  
+}
+
 void PulseSequence::assignS1(PulseStmt *S) { S1 = S; }
 
 void PulseSequence::assignS2(PulseStmt *S) { S2 = S; }

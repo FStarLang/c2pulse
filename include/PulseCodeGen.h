@@ -54,6 +54,8 @@ public:
   CodegenStrTy *LangPulse = "#lang-pulse";
   CodegenStrTy *ModuleSyntax = "module";
   CodegenStrTy *PulseInclude = "open Pulse";
+  CodegenStrTy *PulseIf = "if";
+  CodegenStrTy *PulseElse = "else";
 } PulseSyntax;
 
 // } //namespace

@@ -7,6 +7,7 @@
 #include "clang/AST/Stmt.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
+#include <cstddef>
 #include <filesystem>
 #include <fstream>
 #include <regex>
@@ -152,7 +153,9 @@ FStarType *PulseVisitor::getPulseTyFromCTy(clang::QualType CType) {
   }
 
   PulseTy = new FStarType();
-  PulseTy->setName(CType.getAsString());
+  auto CTyKey = getSymbolKeyForCType(CType, Ctx);
+  auto *CTyKeyStr = lookupSymbol(CTyKey);
+  PulseTy->setName(CTyKeyStr);
   PulseTy->setTag(TermTag::FStarType);
   return PulseTy;
 }
@@ -250,11 +253,39 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S) {
     llvm::outs() << "\nEnd in pulseFromStmt.\n";
     assert(false && "Not implemented Clang expr in pulseFromStmt\n");
   } else if (auto *IF = dyn_cast<IfStmt>(S)) {
+
+    auto *Cond = IF->getCond();
+    auto *Else = IF->getElse(); 
+    auto *Then = IF->getThen();
+    
+    auto PulseCond = getTermFromCExpr(Cond);
+    auto *PulseElse = pulseFromStmt(Else);
+    auto *PulseThen = pulseFromStmt(Then);
+
+    auto PulseIfStmt = new PulseIf();
+    PulseIfStmt->setTag(PulseStmtTag::If);
+    PulseIfStmt->Head = PulseCond;
+    PulseIfStmt->Else = PulseElse; 
+    PulseIfStmt->Then = PulseThen;
+
+    return PulseIfStmt;
+
     llvm::outs() << "\n\nPrint in pulseFromStmt IfStmt\n";
     S->dumpPretty(Ctx);
     llvm::outs() << "\nEnd in pulseFromStmt.\n";
     assert(false && "Not implemented Clang expr in pulseFromStmt\n");
   } else if (auto *RS = dyn_cast<ReturnStmt>(S)) {
+    
+    if (auto *RetVal = RS->getRetValue()){
+      auto NewPulseExpr = new PulseExpr();
+      NewPulseExpr->setTag(PulseStmtTag::Expr);
+      auto RetTerm = getTermFromCExpr(RetVal);
+      NewPulseExpr->E = RetTerm; 
+      return NewPulseExpr; 
+    }
+
+    return nullptr;
+
     llvm::outs() << "\n\nPrint in pulseFromStmt ReturnStmt\n";
     S->dumpPretty(Ctx);
     llvm::outs() << "\nEnd in pulseFromStmt.\n";
@@ -276,7 +307,11 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S) {
     assert(false && "Not implemented Clang expr in pulseFromStmt\n");
   } else if (auto *NS = dyn_cast<NullStmt>(S)) {
     return nullptr;
-  } else {
+  } 
+  else if (auto *CS = dyn_cast<CompoundStmt>(S)){
+    return pulseFromCompoundStmt(CS);
+  }
+  else {
 
     llvm::outs() << "\n\nPrint in pulseFromStmt\n";
     S->dumpPretty(Ctx);

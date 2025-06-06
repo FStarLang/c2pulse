@@ -57,9 +57,10 @@ void PulseCodeGen::generateCodeFromPulseAst(PulseDecl *FD) {
     }
 
     // Codegen Function Body.
-    OS << PulseSyntax.OpeningCurlyBrace << "\n";
+    OS << PulseSyntax.OpeningCurlyBrace << PulseSyntax.NewLine;
     generateCodeFromPulseStmt(FuncBody);
-    OS << PulseSyntax.ClosingCurlyBrace << "\n";
+    OS << PulseSyntax.NewLine;
+    OS << PulseSyntax.ClosingCurlyBrace << PulseSyntax.NewLine;
 
   } else {
     assert(false && "Not implemented function kind");
@@ -88,16 +89,13 @@ std::string PulseCodeGen::generateCodeFromTerm(Term *T) {
 
   std::string TermString = "";
   if (ConstTerm *CT = dyn_cast<ConstTerm>(T)) {
-
+    TermString += std::to_string(CT->ConstantValue);
   } else if (VarTerm *VT = dyn_cast<VarTerm>(T)) {
     TermString += VT->VarName;
   } else if (Name *N = dyn_cast<Name>(T)) {
     TermString += N->NamedValue;
   } else if (FStarType *FT = dyn_cast<FStarType>(T)) {
-
-    // else {
     TermString += FT->NamedValue;
-    //        }
   } else if (FStarPointerType *FPT = dyn_cast<FStarPointerType>(T)) {
     auto StrBase = generateCodeFromTerm(FPT->PointerTo);
     TermString += PulseSyntax.Reference;
@@ -135,7 +133,7 @@ void PulseCodeGen::generateCodeFromPulseStmt(PulseStmt *T) {
     OS << PulseSyntax.NewLine;
 
   } else if (PulseArrayAssignment *AS = dyn_cast<PulseArrayAssignment>(T)) {
-    assert(false && "Did not expect pulse statement type");
+    assert(false && "Did not expect pulse array statement type");
   } else if (LetBinding *Let = dyn_cast<LetBinding>(T)) {
     OS << PulseSyntax.LetBind;
     OS << PulseSyntax.Space;
@@ -147,9 +145,37 @@ void PulseCodeGen::generateCodeFromPulseStmt(PulseStmt *T) {
     OS << PulseSyntax.Semicolon;
     OS << PulseSyntax.NewLine;
   } else if (PulseIf *If = dyn_cast<PulseIf>(T)) {
-    assert(false && "Did not expect pulse statement type");
+
+    OS << PulseSyntax.PulseIf;
+
+    auto *PulseIfCond = If->Head; 
+    auto *PulseThen = If->Then;
+    auto *PulseElse = If->Else; 
+
+    OS << PulseSyntax.OpeningParenthesis;
+    OS << generateCodeFromTerm(PulseIfCond);
+    OS << PulseSyntax.ClosingParenthesis;
+    OS << PulseSyntax.NewLine; 
+
+    OS << PulseSyntax.OpeningCurlyBrace;
+    OS << PulseSyntax.NewLine; 
+    generateCodeFromPulseStmt(PulseThen);
+    OS << PulseSyntax.NewLine;
+    OS << PulseSyntax.ClosingCurlyBrace; 
+    OS << PulseSyntax.NewLine;
+
+    OS << PulseSyntax.PulseElse;
+    OS << PulseSyntax.NewLine; 
+    OS << PulseSyntax.OpeningCurlyBrace; 
+    OS << PulseSyntax.NewLine; 
+    generateCodeFromPulseStmt(PulseElse);
+    OS << PulseSyntax.NewLine;
+    OS << PulseSyntax.ClosingCurlyBrace;
+    OS << PulseSyntax.NewLine;
+    //assert(false && "Did not expect pulse if statement type");
+
   } else if (PulseWhileStmt *While = dyn_cast<PulseWhileStmt>(T)) {
-    assert(false && "Did not expect pulse statement type");
+    assert(false && "Did not expect pulse while statement type");
   } else if (PulseSequence *Seq = dyn_cast<PulseSequence>(T)) {
     auto *S1 = Seq->S1;
     auto *S2 = Seq->S2;

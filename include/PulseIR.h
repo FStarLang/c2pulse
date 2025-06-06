@@ -21,6 +21,7 @@ struct PulseAnnotation {
 };
 
 
+
 enum class SymbolTable {
   Int8, 
   Int16, 
@@ -64,16 +65,16 @@ const char* getSymbolKeyForOperator(SymbolTable Val, clang::BinaryOperatorKind &
 const char* lookupSymbol(SymbolTable Key);
 
 static const llvm::SmallDenseMap<SymbolTable, const char*> SymbolToStringTable {
-  {SymbolTable::Int8, "Int8"},
-  {SymbolTable::Int16, "Int16"},
-  {SymbolTable::Int32, "Int32"},
-  {SymbolTable::Int64, "Int64"},
-  {SymbolTable::UInt8, "UInt8"},
-  {SymbolTable::UInt16, "UInt16"},
-  {SymbolTable::UInt32, "UInt32"},
-  {SymbolTable::UInt64, "UInt64"},
-  {SymbolTable::UInt128, "UInt128"},
-  {SymbolTable::SizeT, "SizeT"},
+  {SymbolTable::Int8, "Int8.t"},
+  {SymbolTable::Int16, "Int16.t"},
+  {SymbolTable::Int32, "Int32.t"},
+  {SymbolTable::Int64, "Int64.t"},
+  {SymbolTable::UInt8, "UInt8.t"},
+  {SymbolTable::UInt16, "UInt16.t"},
+  {SymbolTable::UInt32, "UInt32.t"},
+  {SymbolTable::UInt64, "UInt64.t"},
+  {SymbolTable::UInt128, "UInt128.t"},
+  {SymbolTable::SizeT, "SizeT.t"},
  {SymbolTable::SizeT_Add, "SizeT.add"},
  {SymbolTable::SizeT_Sub, "SizeT.sub"},
  {SymbolTable::SizeT_Div, "SizeT.div"},
@@ -246,6 +247,7 @@ public:
   Term *Head;
   PulseStmt *Then;
   PulseStmt *Else = nullptr;
+  virtual void dumpPretty() override;
   static bool classof(const PulseStmt *S) { return S->Tag == PulseStmtTag::If; }
 
   // virtual void dumpPretty() override = 0;
