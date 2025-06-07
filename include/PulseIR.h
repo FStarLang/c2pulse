@@ -11,6 +11,7 @@
 
 
 // Define What all kinds of Annotations are there in Pulse.
+//TODO: These can be term type in IR, we shoudl refactor these
 enum class PulseAnnKind { Requires, Ensures };
 
 // Struct for Pulse annotations,
