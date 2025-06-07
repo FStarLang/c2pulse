@@ -328,7 +328,8 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E) {
 
     auto NewConstTerm = new ConstTerm(); 
     NewConstTerm->setTag(TermTag::Const);
-    NewConstTerm->ConstantValue = IL->getValue().getSExtValue();
+    NewConstTerm->ConstantValue = std::to_string(IL->getValue().getSExtValue());
+    NewConstTerm->Symbol = getSymbolKeyForCType(IL->getType(), Ctx);
     return NewConstTerm;
 
     llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "

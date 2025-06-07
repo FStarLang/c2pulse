@@ -108,7 +108,8 @@ public:
 
 class ConstTerm : public Term {
 public:
-  int ConstantValue;
+  std::string ConstantValue;
+  SymbolTable Symbol;
   virtual ~ConstTerm() = default;
   virtual void dumpPretty() override;
   static bool classof(const Term *T) { return T->Tag == TermTag::Const; }

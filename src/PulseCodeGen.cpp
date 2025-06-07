@@ -89,7 +89,27 @@ std::string PulseCodeGen::generateCodeFromTerm(Term *T) {
 
   std::string TermString = "";
   if (ConstTerm *CT = dyn_cast<ConstTerm>(T)) {
-    TermString += std::to_string(CT->ConstantValue);
+    switch(CT->Symbol){
+    case SymbolTable::Int32:{
+         TermString += CT->ConstantValue + "l";
+         break;
+    }
+    case SymbolTable::Int64:{
+         TermString += CT->ConstantValue + "L";
+         break;
+    }
+    case SymbolTable::Int8:
+    case SymbolTable::Int16:
+    case SymbolTable::UInt8:
+    case SymbolTable::UInt16:
+    case SymbolTable::UInt32:
+    case SymbolTable::UInt64:
+    case SymbolTable::UInt128:
+    case SymbolTable::SizeT:
+    default: 
+        assert(false && "Did not expect type in switch!");
+      break;
+    }
   } else if (VarTerm *VT = dyn_cast<VarTerm>(T)) {
     TermString += VT->VarName;
   } else if (Name *N = dyn_cast<Name>(T)) {
