@@ -36,21 +36,21 @@ int conditionalProcessing(int x, int y) {
 //     return sum(conditionalProcessing(x, square(x)), recursiveFunction(x + 1, limit));
 // }
 
-int main() {
-    int a = 3, b = 5;
-    int result = complexComputation(a, b);
+// int main() {
+//     int a = 3, b = 5;
+//     int result = complexComputation(a, b);
     
-    int arr[5] = {1, 2, 3, 4, 5};
-    arrayManipulation(arr, 5);
+//     int arr[5] = {1, 2, 3, 4, 5};
+//     arrayManipulation(arr, 5);
 
-    int recursiveResult = recursiveFunction(a, 8);
+//     int recursiveResult = recursiveFunction(a, 8);
 
-    printf("Complex Computation Result: %d\n", result);
-    printf("Array after processing: ");
-    for (int i = 0; i < 5; i++) {
-        printf("%d ", arr[i]);
-    }
-    printf("\nRecursive Computation Result: %d\n", recursiveResult);
+//     printf("Complex Computation Result: %d\n", result);
+//     printf("Array after processing: ");
+//     for (int i = 0; i < 5; i++) {
+//         printf("%d ", arr[i]);
+//     }
+//     printf("\nRecursive Computation Result: %d\n", recursiveResult);
 
-    return 0;
-}
+//     return 0;
+// }
