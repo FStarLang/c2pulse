@@ -3,6 +3,7 @@
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
+#include <cstddef>
 
 // define functions for F* classes.
 
@@ -60,6 +61,11 @@ SymbolTable getSymbolKeyForCType(clang::QualType Ty, clang::ASTContext &Ctx){
 
   }
   else if (Ty->isUnsignedIntegerType()){
+    
+    //check explicitly if it is size_t
+    if (Ty.getAsString() == "size_t"){
+      return SymbolTable::SizeT;
+    }
     
     if (Ctx.getTypeSize(Ty) == 8){
       return SymbolTable::UInt8;
@@ -151,6 +157,9 @@ const char* getSymbolKeyForOperator(SymbolTable Val, clang::BinaryOperatorKind &
     else if (Val == SymbolTable::UInt64){
       return lookupSymbol(SymbolTable::UInt64_Add);
     }
+    else if (Val == SymbolTable::SizeT){
+      return lookupSymbol(SymbolTable::SizeT_Add);
+    }
     else{
       assert(false && "Did not expect case.");
     }
@@ -172,6 +181,9 @@ const char* getSymbolKeyForOperator(SymbolTable Val, clang::BinaryOperatorKind &
     }
     else if (Val == SymbolTable::UInt64){
       return lookupSymbol(SymbolTable::UInt64_Sub);
+    }
+    else if (Val == SymbolTable::SizeT){
+      return lookupSymbol(SymbolTable::SizeT_Sub);
     }
     
     break;
@@ -302,7 +314,53 @@ void Term::printTag() { llvm::outs() << Tag << "\n"; }
 
 void Term::dumpPretty() { printTag(); }
 
+
+Paren::Paren(){
+  llvm::outs() << "Called Paren Constructor!!" << "\n";
+  Tag = TermTag::Paren;
+}
+
+void Paren::setInnerExpr(Term *Inner){
+  InnerExpr = Inner;
+}
+
+void Paren :: dumpPretty() {
+  llvm::outs() << "("; 
+  InnerExpr->dumpPretty(); 
+  llvm::outs() << ")";
+}
+
+ConstTerm::ConstTerm(){
+  Tag = TermTag::Const;
+}
+
+Ensures::Ensures(){
+  Tag = TermTag::Ensures;
+}
+
+void Ensures::dumpPretty(){
+  llvm::outs() << "Ensures ";
+  llvm::outs() << Ann;
+}
+
+void Requires::dumpPretty(){
+  llvm::outs() << "Requires ";
+  llvm::outs() << Ann;
+}
+
+Requires::Requires(){
+  Tag = TermTag::Ensures;
+}
+
 void ConstTerm::dumpPretty() { llvm::outs() << ConstantValue; }
+
+VarTerm::VarTerm(){
+  Tag = TermTag::Var;
+}
+
+Name::Name(){
+  Tag = TermTag::Name;
+}
 
 void VarTerm::setVarName(std::string Name) { VarName = Name; }
 
@@ -325,12 +383,19 @@ void FStarPointerType::dumpPretty() {
 
 void FStarPointerType::setPointerToTy(FStarType *Type) { PointerTo = Type; }
 
+AppE::AppE(){
+  Tag = TermTag::AppE;
+}
+
 void AppE::dumpPretty() {
   llvm::outs() << CallName->VarName;
   llvm::outs() << " ";
+  size_t Idx = 1;
   for (auto *Arg : Args) {
     Arg->dumpPretty();
-    llvm::outs() << " ";
+    if (Idx < Args.size())
+      llvm::outs() << " ";
+    Idx++;
   }
 }
 
@@ -365,6 +430,10 @@ void PulseArrayAssignment::dumpPretty(){
 
 }
 
+LetBinding::LetBinding(){
+  Tag = PulseStmtTag::LetBinding;
+}
+
 void LetBinding::dumpPretty() {
   llvm::outs() << "let ";
   if (Qualifier == MutOrRef::MUT){
@@ -378,6 +447,10 @@ void LetBinding::dumpPretty() {
 void PulseIf::dumpPretty(){
 
   
+}
+
+PulseSequence::PulseSequence(){
+  Tag = PulseStmtTag::Sequence;
 }
 
 void PulseSequence::assignS1(PulseStmt *S) { S1 = S; }
@@ -423,6 +496,13 @@ void PulseFnDefn::dumpPretty() {
       llvm::outs() << ")";
     }
     llvm::outs() << ",";
+  }
+
+  llvm::outs() << "\n\nPrint annotations: " << "\n\n";
+
+  for (auto *Ann : Defn->Annotation){
+    Ann->dumpPretty();
+    llvm::outs() << "\n";
   }
 
   llvm::outs() << "\n\n";

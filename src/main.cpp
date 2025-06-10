@@ -7,9 +7,12 @@
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
 #include <fstream>
+#include "Globals.h"
 
 using namespace clang;
 using namespace clang::tooling;
+
+int GlobalGenSymCounter = 0;
 
 llvm::cl::OptionCategory ToolCategory("anf-pulse-tool options");
 

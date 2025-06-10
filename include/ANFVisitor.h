@@ -898,36 +898,91 @@ std::string rewriteWhile(WhileStmt *WS) {
     return "{ " + stmtToString(S) + " }";
   }
 
-/// Preserve the single comment line immediately before Loc (if any).
+// /// Preserve the single comment line immediately before Loc (if any).
+// std::string commentPrefix(SourceLocation Loc) {
+//   FileID FID = SM.getFileID(Loc);
+//   unsigned ThisLine = SM.getSpellingLineNumber(Loc);
+  
+//   if (LinesSeen.count(ThisLine) > 0) {
+//     // Already processed this line, no need to repeat
+//     return "";
+//   }
+
+//   LinesSeen.insert(ThisLine);
+
+//   if (ThisLine <= 1) return "";
+
+//   // Get the start of the previous line
+//   SourceLocation PrevLineStart = SM.translateLineCol(FID, ThisLine - 1, 1);
+//   if (PrevLineStart.isInvalid()) return "";
+
+//   // Read that line
+//   bool Invalid = false;
+//   StringRef Buffer = SM.getBufferData(FID, &Invalid);
+//   if (Invalid) return "";
+//   // Extract the text of the previous line
+//   unsigned Offset = SM.getFileOffset(PrevLineStart);
+//   StringRef Remaining = Buffer.substr(Offset);
+//   StringRef PrevLine = Remaining.split('\n').first.trim();
+
+//   // Only keep if it’s a single-line comment
+//   if (PrevLine.starts_with("//"))
+//     return PrevLine.str() + "\n";
+//   return "";
+// }
+
 std::string commentPrefix(SourceLocation Loc) {
   FileID FID = SM.getFileID(Loc);
   unsigned ThisLine = SM.getSpellingLineNumber(Loc);
-  
+ 
   if (LinesSeen.count(ThisLine) > 0) {
-    // Already processed this line, no need to repeat
     return "";
   }
-
   LinesSeen.insert(ThisLine);
-
-  if (ThisLine <= 1) return "";
-
-  // Get the start of the previous line
-  SourceLocation PrevLineStart = SM.translateLineCol(FID, ThisLine - 1, 1);
-  if (PrevLineStart.isInvalid()) return "";
-
-  // Read that line
+ 
   bool Invalid = false;
   StringRef Buffer = SM.getBufferData(FID, &Invalid);
   if (Invalid) return "";
-  // Extract the text of the previous line
-  unsigned Offset = SM.getFileOffset(PrevLineStart);
-  StringRef Remaining = Buffer.substr(Offset);
-  StringRef PrevLine = Remaining.split('\n').first.trim();
-
-  // Only keep if it’s a single-line comment
-  if (PrevLine.starts_with("//"))
-    return PrevLine.str() + "\n";
+ 
+  unsigned LocOffset = SM.getFileOffset(Loc);
+ 
+  // Look backward from current location to find a comment
+  int StartOffset = LocOffset - 1;
+ 
+  // Walk back over whitespace or newlines
+  while (StartOffset > 0 && isspace(Buffer[StartOffset])) {
+    StartOffset--;
+  }
+ 
+  // Look for a comment (`///`, `//` or `/*`)
+  if (StartOffset >= 1 && (Buffer.substr(StartOffset - 1, 2) == "//" or Buffer.substr(StartOffset - 1, 2) == "///")) {
+    // Extract line
+    unsigned LineStart = Buffer.rfind('\n', StartOffset);
+    if (LineStart == StringRef::npos) LineStart = 0;
+    StringRef Line = Buffer.substr(LineStart, StartOffset - LineStart + 1);
+    return Line.trim().str() + "\n";
+  }
+ 
+  // Look for end of block comment
+  if (StartOffset >= 1 && Buffer.substr(StartOffset - 1, 2) == "*/") {
+    int CommentEnd = StartOffset + 1;
+    int CommentStart = CommentEnd;
+ 
+    // Scan backward to find opening `/*`
+    while (CommentStart >= 1) {
+      if (Buffer.substr(CommentStart - 1, 2) == "/*") {
+        CommentStart -= 1;
+        break;
+      }
+      CommentStart--;
+    }
+ 
+    if (CommentStart >= 0) {
+      StringRef CommentText = Buffer.substr(CommentStart, CommentEnd - CommentStart + 1);
+      return CommentText.str() + "\n";
+    }
+  }
+ 
   return "";
 }
 

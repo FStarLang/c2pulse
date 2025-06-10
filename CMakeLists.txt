@@ -17,6 +17,7 @@ set(SRC_FILES
   src/PulseIR.cpp
   src/PulseCodeGen.cpp
   src/main.cpp
+  src/Globals.cpp
 )
 
 add_clang_tool(c2pulse
