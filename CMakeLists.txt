@@ -13,6 +13,7 @@ set(SRC_FILES
   src/ANFVisitor.cpp
   src/ANFConsumer.cpp
   src/ANFTransformer.cpp
+  src/ExprLocationAnalyzer.cpp
   src/PulseGenerator.cpp
   src/PulseIR.cpp
   src/PulseCodeGen.cpp
