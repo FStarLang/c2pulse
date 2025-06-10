@@ -45,8 +45,8 @@ int main() {
     //arrayManipulation(arr, 5);
 
     int recursiveResult = recursiveFunction(a, 8);
-
-    printf("Complex Computation Result: %d\n", result);
+    
+    printf("Complex Computation Result: %d\n", ((result + 1) + 3));
     printf("Array after processing: ");
     // for (int i = 0; i < 5; i++) {
     //     printf("%d ", arr[i]);
