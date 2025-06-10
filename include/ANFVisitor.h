@@ -738,8 +738,9 @@ std::string rewriteWhile(WhileStmt *WS) {
 
   std::string Ty = getTyOfExprAsString(Cond); // Cond->getType().getAsString();
   std::string Out;
-
-  if (isEffectful(Cond) || !isLeafNode(Cond)) {
+  
+  //|| !isLeafNode(Cond)
+  if (isEffectful(Cond)) {
 
     auto NewCond = rewriteStmt(Cond);
     auto TempForCond = lookupExprTempVal(Cond);
@@ -778,7 +779,7 @@ std::string rewriteWhile(WhileStmt *WS) {
            rewriteCompound(WS->getBody()) + "\n";
   }
   return Out;
-}
+}                                                                                                                                                                                                                                                                         
 
   /// Rewrite a standalone expr stmt.
   std::string rewriteExprStmt(Expr *E) {

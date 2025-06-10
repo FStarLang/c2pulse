@@ -5,6 +5,7 @@
 #include "clang/AST/DeclBase.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/Type.h"
+#include "clang/Analysis/Analyses/ExprMutationAnalyzer.h"
 #include "clang/Basic/SourceManager.h"
 #include "clang/Frontend/DependencyOutputOptions.h"
 #include "llvm/Support/Debug.h"
@@ -29,8 +30,8 @@ public:
       : TheRewriter(R), Ctx(Ctx), SM(Ctx.getSourceManager()) {}
 
   bool VisitFunctionDecl(FunctionDecl *FD);
-  PulseStmt *pulseFromCompoundStmt(Stmt *S);
-  PulseStmt *pulseFromStmt(Stmt *S);
+  PulseStmt *pulseFromCompoundStmt(Stmt *S, ExprMutationAnalyzer *A);
+  PulseStmt *pulseFromStmt(Stmt *S, ExprMutationAnalyzer *A);
   FStarType *getPulseTyFromCTy(QualType CType);
   Term *getTermFromCExpr(Expr *E);
   std::vector<PulseDecl *> &getFunctionDeclarations();
