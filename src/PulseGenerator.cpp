@@ -5,6 +5,7 @@
 #include "clang/AST/Expr.h"
 #include "clang/AST/OperationKinds.h"
 #include "clang/AST/Stmt.h"
+#include "clang/Analysis/Analyses/ExprMutationAnalyzer.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cstddef>
@@ -116,7 +117,8 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   // Always apply ANF rewriting on user functions
   if (Stmt *Body = FD->getBody()) {
     if (auto *CS = dyn_cast<CompoundStmt>(Body)) {
-      auto *PulseBody = pulseFromCompoundStmt(CS);
+      ExprMutationAnalyzer Analyzer(*CS, Ctx);
+      auto *PulseBody = pulseFromCompoundStmt(CS, &Analyzer);
       // PulseBody->printTag();
       PulseBody->dumpPretty();
       FDefn->Body = PulseBody;
@@ -158,15 +160,15 @@ FStarType *PulseVisitor::getPulseTyFromCTy(clang::QualType CType) {
   PulseTy->setName(CTyKeyStr);
   PulseTy->setTag(TermTag::FStarType);
   return PulseTy;
-}
+} 
 
-PulseStmt *PulseVisitor::pulseFromCompoundStmt(Stmt *S) {
+PulseStmt *PulseVisitor::pulseFromCompoundStmt(Stmt *S, ExprMutationAnalyzer *Analyzer) {
 
   PulseStmt *Stmt = nullptr;
   if (auto *CS = dyn_cast<CompoundStmt>(S)) {
 
     for (auto *InnerStmt : CS->body()) {
-      auto *NextPulseStmt = pulseFromStmt(InnerStmt);
+      auto *NextPulseStmt = pulseFromStmt(InnerStmt, Analyzer);
       if (Stmt == nullptr) {
         Stmt = NextPulseStmt;
       } else {
@@ -182,7 +184,10 @@ PulseStmt *PulseVisitor::pulseFromCompoundStmt(Stmt *S) {
   return Stmt;
 }
 
-PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S) {
+PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer) {
+
+  if (!S)
+      return nullptr;
 
   if (auto *DS = dyn_cast<DeclStmt>(S)) {
 
@@ -194,6 +199,9 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S) {
           // Unsure if we really need the type here.
           // Though it may be usefuel checking invalid casting operations.
           auto VarType = VD->getType();
+          
+          //const Stmt *ConstS = S;
+          //ExprMutationAnalyzer Eval(*ConstS, Ctx);
 
           // This gets converted to the pulse let expression.
           // Vidush : It is probably good to make a setter / pass arguments to
@@ -202,8 +210,16 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S) {
           PulseLet->VarName = VarName;
           PulseLet->LetInit = getTermFromCExpr(Init);
           PulseLet->setTag(PulseStmtTag::LetBinding);
+          if (Analyzer->isPointeeMutated(D) || Analyzer->isMutated(D)){
+            PulseLet->Qualifier = MutOrRef::MUT;
+          }
+          else{
+            PulseLet->Qualifier = MutOrRef::NOTMUT;
+          }
+
           return PulseLet;
         } else {
+
         }
       }
     }
@@ -232,6 +248,18 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S) {
         }
         // assert(false && "Could not dyn cast to a declaration expression.");
       }
+      else if (auto *ArrSub = dyn_cast<ArraySubscriptExpr>(Lhs)){
+
+        auto *ArrayAssignExpr = new PulseArrayAssignment();
+        ArrayAssignExpr->setTag(PulseStmtTag::ArrayAssignment);
+        ArrayAssignExpr->Arr = getTermFromCExpr(ArrSub->getBase());
+        ArrayAssignExpr->Index = getTermFromCExpr(ArrSub->getIdx());
+        ArrayAssignExpr->Value = getTermFromCExpr(Rhs);
+
+        return ArrayAssignExpr;
+        S->dumpPretty(Ctx);
+        assert(false && "Not implemented when Lhs is array sub expr");
+      }
       // TODO:
       // We should generate Lets otherwise
       else {
@@ -244,10 +272,23 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S) {
         return Assignment;
       }
     } else {
+      
+      auto *PExpr = new PulseExpr(); 
+      PExpr->setTag(PulseStmtTag::Expr);
+      PExpr->E = getTermFromCExpr(BO);
+      return PExpr;
+
       assert(false && "Binary Operator not implemented in pulseFromStmt\n");
     }
 
   } else if (auto *E = dyn_cast<Expr>(S)) {
+
+    auto *PulseExpression = new PulseExpr();
+    PulseExpression->setTag(PulseStmtTag::Expr);
+    PulseExpression->E = getTermFromCExpr(E);
+
+    return PulseExpression;
+
     llvm::outs() << "\n\nPrint in pulseFromStmt Expr\n";
     S->dumpPretty(Ctx);
     llvm::outs() << "\nEnd in pulseFromStmt.\n";
@@ -259,8 +300,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S) {
     auto *Then = IF->getThen();
     
     auto PulseCond = getTermFromCExpr(Cond);
-    auto *PulseElse = pulseFromStmt(Else);
-    auto *PulseThen = pulseFromStmt(Then);
+    auto *PulseElse = pulseFromStmt(Else, Analyzer);
+    auto *PulseThen = pulseFromStmt(Then, Analyzer);
 
     auto PulseIfStmt = new PulseIf();
     PulseIfStmt->setTag(PulseStmtTag::If);
@@ -296,6 +337,18 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S) {
     llvm::outs() << "\nEnd in pulseFromStmt.\n";
     assert(false && "Not implemented Clang expr in pulseFromStmt\n");
   } else if (auto *WS = dyn_cast<WhileStmt>(S)) {
+
+    auto *WhileCond = WS->getCond(); 
+    auto *WhileBody = WS->getBody();
+     
+    auto *PulseWhile = new PulseWhileStmt(); 
+    PulseWhile->setTag(PulseStmtTag::WhileStmt);
+
+    PulseWhile->Guard = pulseFromStmt(WhileCond, Analyzer);
+    PulseWhile->Body = pulseFromCompoundStmt(WhileBody, Analyzer);
+
+    return PulseWhile;
+
     llvm::outs() << "\n\nPrint in pulseFromStmt WhileStmt\n";
     S->dumpPretty(Ctx);
     llvm::outs() << "\nEnd in pulseFromStmt.\n";
@@ -309,7 +362,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S) {
     return nullptr;
   } 
   else if (auto *CS = dyn_cast<CompoundStmt>(S)){
-    return pulseFromCompoundStmt(CS);
+    return pulseFromCompoundStmt(CS, Analyzer);
   }
   else {
 
@@ -459,6 +512,22 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E) {
     // assert(false && "Expression not implemeted in getTermFromCExpr\n");
     return VTerm;
   }
+  else if (auto *ArrSubExpr = dyn_cast<ArraySubscriptExpr>(E)){
+    auto *ArrBase = ArrSubExpr->getBase();
+    auto ArrIdx = ArrSubExpr->getIdx();
+
+    auto *PulseCall = new AppE(); 
+    PulseCall->setTag(TermTag::AppE);
+    auto *Call = new VarTerm(); 
+    Call->setTag(TermTag::Var);
+    Call->setVarName("op_Array_Access");
+    PulseCall->setCallName(Call);
+     
+    PulseCall->pushArg(getTermFromCExpr(ArrBase));
+    PulseCall->pushArg(getTermFromCExpr(ArrIdx));
+
+    return PulseCall;
+  } 
 
   else {
     llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr\n";

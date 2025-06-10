@@ -110,7 +110,30 @@ const char* getSymbolKeyForOperator(SymbolTable Val, clang::BinaryOperatorKind &
     
     break;
   }
-  case clang::BO_Div:
+  case clang::BO_Div:{
+     if (Val == SymbolTable::Int8){
+      return lookupSymbol(SymbolTable::Int8_Div);
+    }
+    else if (Val == SymbolTable::Int16){
+      return lookupSymbol(SymbolTable::Int16_Div);
+    }
+    else if (Val == SymbolTable::Int32){
+      return lookupSymbol(SymbolTable::Int32_Div);
+    }
+    else if (Val == SymbolTable::Int64){
+      return lookupSymbol(SymbolTable::Int64_Div);
+    }
+    else if (Val == SymbolTable::SizeT){
+      return lookupSymbol(SymbolTable::SizeT_Div);
+    }
+    else if (Val == SymbolTable::UInt64){
+      return lookupSymbol(SymbolTable::UInt64_Div);
+    }
+    else{
+      assert(false && "unimplemented case.\n");
+    }
+    break;
+  }
   case clang::BO_Rem:
   case clang::BO_Add:{
     if (Val == SymbolTable::Int8){
@@ -124,6 +147,12 @@ const char* getSymbolKeyForOperator(SymbolTable Val, clang::BinaryOperatorKind &
     }
     else if (Val == SymbolTable::Int64){
       return lookupSymbol(SymbolTable::Int64_Add);
+    }
+    else if (Val == SymbolTable::UInt64){
+      return lookupSymbol(SymbolTable::UInt64_Add);
+    }
+    else{
+      assert(false && "Did not expect case.");
     }
     
     break;
@@ -141,13 +170,39 @@ const char* getSymbolKeyForOperator(SymbolTable Val, clang::BinaryOperatorKind &
     else if (Val == SymbolTable::Int64){
       return lookupSymbol(SymbolTable::Int64_Sub);
     }
+    else if (Val == SymbolTable::UInt64){
+      return lookupSymbol(SymbolTable::UInt64_Sub);
+    }
     
     break;
   }
   case clang::BO_Shl:
   case clang::BO_Shr:
   case clang::BO_Cmp:
-  case clang::BO_LT:
+  case clang::BO_LT:{
+     if (Val == SymbolTable::Int8){
+      return lookupSymbol(SymbolTable::Int8_Lt);
+    }
+    else if (Val == SymbolTable::Int16){
+      return lookupSymbol(SymbolTable::Int16_Lt);
+    }
+    else if (Val == SymbolTable::Int32){
+      return lookupSymbol(SymbolTable::Int32_Lt);
+    }
+    else if (Val == SymbolTable::Int64){
+      return lookupSymbol(SymbolTable::Int64_Lt);
+    }
+    else if (Val == SymbolTable::SizeT){
+      return lookupSymbol(SymbolTable::SizeT_Lt);
+    }
+    else if (Val == SymbolTable::UInt64){
+      return lookupSymbol(SymbolTable::UInt64_Lt);
+    }
+    else{
+      assert(false && "unimplemented case.\n");
+    }
+    break;
+  }
   case clang::BO_GT:
   case clang::BO_LE:
   case clang::BO_GE:
@@ -298,8 +353,24 @@ void PulseAssignment::dumpPretty() {
   llvm::outs() << "\n";
 }
 
+void PulseArrayAssignment::dumpPretty(){
+
+  Arr->dumpPretty(); 
+  llvm::outs() << ".(";
+  Index->dumpPretty(); 
+  llvm::outs() << ")";
+  llvm::outs() << " <- ";
+  Value->dumpPretty();
+  llvm::outs() << "\n";
+
+}
+
 void LetBinding::dumpPretty() {
-  llvm::outs() << "let " << VarName << " = ";
+  llvm::outs() << "let ";
+  if (Qualifier == MutOrRef::MUT){
+    llvm::outs() << "mut ";
+  } 
+  llvm::outs() << VarName << " = ";
   LetInit->dumpPretty();
   llvm::outs() << "\n";
 }
@@ -319,6 +390,18 @@ void PulseSequence::dumpPretty() {
 
   if (S2 != nullptr)
     S2->dumpPretty();
+}
+
+
+void PulseWhileStmt::dumpPretty() {
+
+  llvm::outs() << "while("; 
+  Guard->dumpPretty(); 
+  llvm::outs() << ")";
+  llvm::outs() << "{"; 
+  llvm::outs() << "\n";
+  Body->dumpPretty(); 
+  llvm::outs() << "}";
 }
 
 PulseFnKind PulseDecl::getKind() { return Kind; }

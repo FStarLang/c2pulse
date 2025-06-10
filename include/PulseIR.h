@@ -32,6 +32,10 @@ enum class SymbolTable {
   UInt16,
   UInt32,
   UInt64,
+  UInt64_Lt,
+  UInt64_Div,
+  UInt64_Sub,
+  UInt64_Add,
   UInt128, 
   SizeT,
   SizeT_Add,
@@ -39,26 +43,31 @@ enum class SymbolTable {
   SizeT_Div,
   SizeT_Mul,
   SizeT_Eq,
+  SizeT_Lt,
   Int8_Add,
   Int8_Sub,
   Int8_Div,
   Int8_Mul,
   Int8_Eq,
+  Int8_Lt,
   Int16_Add,
   Int16_Sub,
   Int16_Div,
   Int16_Mul,
   Int16_Eq,
+  Int16_Lt,
   Int32_Add,
   Int32_Sub,
   Int32_Div,
   Int32_Mul,
   Int32_Eq,
+  Int32_Lt,
   Int64_Add,
   Int64_Sub,
   Int64_Div,
   Int64_Mul,
   Int64_Eq,
+  Int64_Lt,
 };
 
 SymbolTable getSymbolKeyForCType(clang::QualType Ty, clang::ASTContext &Ctx);
@@ -74,6 +83,10 @@ static const llvm::SmallDenseMap<SymbolTable, const char*> SymbolToStringTable {
   {SymbolTable::UInt16, "UInt16.t"},
   {SymbolTable::UInt32, "UInt32.t"},
   {SymbolTable::UInt64, "UInt64.t"},
+  {SymbolTable::UInt64_Lt, "UInt64.lt"},
+  {SymbolTable::UInt64_Div, "UInt64.div"},
+ {SymbolTable::UInt64_Sub, "UInt64.sub"},
+ {SymbolTable::UInt64_Add, "UInt64.add"},
   {SymbolTable::UInt128, "UInt128.t"},
   {SymbolTable::SizeT, "SizeT.t"},
  {SymbolTable::SizeT_Add, "SizeT.add"},
@@ -81,16 +94,19 @@ static const llvm::SmallDenseMap<SymbolTable, const char*> SymbolToStringTable {
  {SymbolTable::SizeT_Div, "SizeT.div"},
  {SymbolTable::SizeT_Mul, "SizeT.mul"},
  {SymbolTable::SizeT_Eq, "SizeT.eq"},
+ {SymbolTable::SizeT_Lt, "SizeT.lt"},
  {SymbolTable::Int32_Add, "Int32.add"},
  {SymbolTable::Int32_Sub, "Int32.sub"},
  {SymbolTable::Int32_Div, "Int32.div"},
  {SymbolTable::Int32_Mul, "Int32.mul"},
  {SymbolTable::Int32_Eq, "Int32.eq"},
+ {SymbolTable::Int32_Lt, "Int32.lt"},
  {SymbolTable::Int64_Mul, "Int64.mul"},
  {SymbolTable::Int64_Add, "Int64.add"},
  {SymbolTable::Int64_Sub, "Int64.sub"},
  {SymbolTable::Int64_Div, "Int64.div"},
  {SymbolTable::Int64_Eq, "Int64.eq"},
+ {SymbolTable::Int64_Lt, "Int64.lt"},
 };
 
 // Define F* IR Similar to type term
@@ -195,6 +211,13 @@ enum class PulseStmtTag {
   Sequence
 };
 
+
+enum class MutOrRef {
+  MUT, 
+  REF, 
+  NOTMUT
+};
+
 class PulseStmt {
 public:
   PulseStmtTag Tag;
@@ -238,6 +261,7 @@ class LetBinding : public PulseStmt {
 public:
   std::string VarName;
   Term *LetInit;
+  MutOrRef Qualifier;
   virtual void dumpPretty() override;
   static bool classof(const PulseStmt *S) {
     return S->Tag == PulseStmtTag::LetBinding;
@@ -261,6 +285,7 @@ public:
   PulseStmt *Guard;
   std::vector<Slprop *> Invariant;
   PulseStmt *Body;
+  virtual void dumpPretty() override;
   static bool classof(const PulseStmt *S) {
     return S->Tag == PulseStmtTag::WhileStmt;
   }

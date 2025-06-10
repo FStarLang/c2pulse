@@ -141,6 +141,9 @@ std::string PulseCodeGen::generateCodeFromTerm(Term *T) {
 
 void PulseCodeGen::generateCodeFromPulseStmt(PulseStmt *T) {
 
+  if (!T)
+    return;
+
   if (PulseExpr *S = dyn_cast<PulseExpr>(T)) {
     OS << generateCodeFromTerm(S->E);
   } else if (PulseAssignment *A = dyn_cast<PulseAssignment>(T)) {
