@@ -111,7 +111,7 @@ static const llvm::SmallDenseMap<SymbolTable, const char*> SymbolToStringTable {
 
 // Define F* IR Similar to type term
 // https://github.com/FStarLang/FStar/blob/3ff998c60bb0efe9925fc94e8fb8b785b9485af0/src/parser/FStarC.Parser.AST.fsti#L40
-enum class TermTag { Const, Var, Name, AppE, FStarType, FStarPointerType };
+enum class TermTag {Const, Paren, Var, Name, AppE, FStarType, FStarPointerType, Ensures, Requires};
 
 class Term {
 public:
@@ -122,8 +122,41 @@ public:
   virtual ~Term() = default;
 };
 
+
+class Paren : public Term {
+
+  public: 
+    Paren(); 
+    Term *InnerExpr;
+    void setInnerExpr(Term *Inner);
+    virtual void dumpPretty() override;
+    virtual ~Paren() = default;
+    static bool classof(const Term *T) { return T->Tag == TermTag::Paren; }
+
+};
+
+
+class Ensures : public Term {
+  public: 
+    std::string Ann;
+    Ensures();
+    virtual void dumpPretty() override;
+    static bool classof(const Term *T) { return T->Tag == TermTag::Ensures; }
+
+};
+
+class Requires : public Term {
+  public: 
+    std::string Ann;
+    Requires();
+    virtual void dumpPretty() override;
+    static bool classof(const Term *T) { return T->Tag == TermTag::Requires; }
+
+};
+
 class ConstTerm : public Term {
 public:
+  ConstTerm();
   std::string ConstantValue;
   SymbolTable Symbol;
   virtual ~ConstTerm() = default;
@@ -134,6 +167,7 @@ public:
 class VarTerm : public Term {
 public:
   std::string VarName;
+  VarTerm();
   void setVarName(std::string Name);
   virtual ~VarTerm() = default;
   virtual void dumpPretty() override;
@@ -142,6 +176,7 @@ public:
 
 class Name : public Term {
 public:
+  Name(); 
   std::string NamedValue;
   virtual void setName(std::string Name) = 0;
   virtual ~Name() = default;
@@ -176,6 +211,7 @@ class AppE : public Term {
 public:
   VarTerm *CallName;
   std::vector<Term *> Args;
+  AppE();
   virtual ~AppE() = default;
   virtual void dumpPretty() override;
   void setCallName(VarTerm *Call);
@@ -213,9 +249,9 @@ enum class PulseStmtTag {
 
 
 enum class MutOrRef {
+  NOTMUT,
   MUT, 
-  REF, 
-  NOTMUT
+  REF,
 };
 
 class PulseStmt {
@@ -260,6 +296,7 @@ public:
 class LetBinding : public PulseStmt {
 public:
   std::string VarName;
+  LetBinding();
   Term *LetInit;
   MutOrRef Qualifier;
   virtual void dumpPretty() override;
@@ -296,6 +333,7 @@ class PulseSequence : public PulseStmt {
 public:
   PulseStmt *S1;
   PulseStmt *S2;
+  PulseSequence();
   void assignS1(PulseStmt *S);
   void assignS2(PulseStmt *S);
   virtual void dumpPretty() override;
@@ -320,7 +358,7 @@ struct _PulseFnDecl {
 struct _PulseFnDefn {
   std::string Name;
   std::vector<Binder *> Args;
-  std::vector<PulseAnnotation> Annotation;
+  std::vector<PulseExpr*> Annotation;
   bool isRecursive;
   PulseStmt *Body;
 };

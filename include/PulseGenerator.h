@@ -33,11 +33,12 @@ public:
   PulseStmt *pulseFromCompoundStmt(Stmt *S, ExprMutationAnalyzer *A);
   PulseStmt *pulseFromStmt(Stmt *S, ExprMutationAnalyzer *A);
   FStarType *getPulseTyFromCTy(QualType CType);
-  Term *getTermFromCExpr(Expr *E);
+  Term *getTermFromCExpr(Expr *E, ExprMutationAnalyzer *A, llvm::SmallVector<PulseStmt*> &ExprsBef,
+                           QualType ParentType, bool isWrite = false);
   std::vector<PulseDecl *> &getFunctionDeclarations();
   void extractPulseAnnotations(const clang::FunctionDecl *FD,
                                const clang::SourceManager &SM,
-                               std::vector<PulseAnnotation> &Ann);
+                               std::vector<PulseExpr*> &Ann);
 
 private:
   std::vector<PulseDecl *> FunctionDeclarations;

@@ -5,6 +5,7 @@
 #include "clang/AST/Expr.h"
 #include "clang/AST/OperationKinds.h"
 #include "clang/AST/Stmt.h"
+#include "clang/AST/Type.h"
 #include "clang/Analysis/Analyses/ExprMutationAnalyzer.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
@@ -40,16 +41,18 @@ std::vector<PulseDecl *> &PulseVisitor::getFunctionDeclarations() {
 
 void PulseVisitor::extractPulseAnnotations(
     const clang::FunctionDecl *FD, const clang::SourceManager &SM,
-    std::vector<PulseAnnotation> &result) {
+    std::vector<PulseExpr *> &result) {
 
-  // auto *Raw = FD->getASTContext().getRawCommentForAnyRedecl(FD);
-  // llvm::outs() << "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW" << "\n";
-  // llvm::outs() << Raw;
+  auto *Raw = FD->getASTContext().getRawCommentForAnyRedecl(FD);
+  llvm::outs() << "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW" << "\n";
+  llvm::outs() << Raw->getRawText(Ctx.getSourceManager());
+
   if (const auto *C = FD->getASTContext().getRawCommentForAnyRedecl(FD)) {
     std::string cleaned;
     for (char c : C->getRawText(SM))
       if (c != '\r')
         cleaned += c;
+    
 
     std::istringstream in(cleaned);
     std::string line;
@@ -59,10 +62,21 @@ void PulseVisitor::extractPulseAnnotations(
 
     while (std::getline(in, line)) {
       auto trimmed = StringRef(line).trim().str();
-      if (std::regex_search(trimmed, match, reqRegex))
-        result.push_back({PulseAnnKind::Requires, match[1], ""});
-      else if (std::regex_search(trimmed, match, ensRegex))
-        result.push_back({PulseAnnKind::Ensures, match[1], ""});
+      if (std::regex_search(trimmed, match, reqRegex)){
+
+        auto *NewPulseExprNode = new PulseExpr(); 
+        auto *RequiresTerm = new Requires();
+        RequiresTerm->Ann = match[1];
+        NewPulseExprNode->E = RequiresTerm;
+        result.push_back(NewPulseExprNode);
+      }
+      else if (std::regex_search(trimmed, match, ensRegex)){
+        auto *NewPulseExprNode = new PulseExpr(); 
+        auto *EnsuresTerm = new Ensures();
+        EnsuresTerm->Ann = match[1];
+        NewPulseExprNode->E = EnsuresTerm;
+        result.push_back(NewPulseExprNode);
+      }
     }
 
     // llvm::outs() << "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR" << "\n";
@@ -144,6 +158,11 @@ FStarType *PulseVisitor::getPulseTyFromCTy(clang::QualType CType) {
 
   FStarType *PulseTy;
   if (CType->isPointerType()) {
+
+    if (CType->isArrayType()){
+      assert(false && "PulseVisitor: Did not implement array type in clang.\n");
+    }
+
     PulseTy = new FStarPointerType();
     auto *PulsePointerTy = static_cast<FStarPointerType *>(PulseTy);
     PulsePointerTy->setName(CType.getAsString());
@@ -208,15 +227,45 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer) 
           // the constructor.
           auto *PulseLet = new LetBinding();
           PulseLet->VarName = VarName;
-          PulseLet->LetInit = getTermFromCExpr(Init);
+          
+          //Don't forget to release these exprs.
+          SmallVector<PulseStmt*> NewExprs;
+          
+          PulseLet->LetInit = getTermFromCExpr(Init, Analyzer, NewExprs, VD->getType());
           PulseLet->setTag(PulseStmtTag::LetBinding);
-          if (Analyzer->isPointeeMutated(D) || Analyzer->isMutated(D)){
+          if (Analyzer->isMutated(D)){
             PulseLet->Qualifier = MutOrRef::MUT;
           }
           else{
             PulseLet->Qualifier = MutOrRef::NOTMUT;
           }
 
+          //We need to make a sequence of pulse statements.
+          PulseSequence *Start = nullptr;
+          if (!NewExprs.empty()){
+            
+            for (size_t Idx = 0; Idx < NewExprs.size(); Idx++){    
+              if (Start == nullptr){
+                auto *Seq = new PulseSequence();
+                Seq->assignS1(NewExprs[Idx]);
+                Start = Seq; 
+              }
+              
+              auto *NextSeq = new PulseSequence(); 
+              NextSeq->assignS1(NewExprs[Idx]);
+              Start->assignS2(NextSeq);
+              Start = NextSeq;
+            }
+          }
+
+          
+          NewExprs.clear();
+          assert(NewExprs.empty() && "Expected expressions to be released!");
+
+          if (Start != nullptr){
+              Start->assignS2(PulseLet);
+              return Start;
+          }
           return PulseLet;
         } else {
 
@@ -238,23 +287,63 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer) 
         // UO->dumpPretty(Ctx);
         // UO->getSubExpr()->dumpPretty(Ctx);
         if (UO->getOpcode() == UO_Deref) {
-          auto *PulseLhsTerm = getTermFromCExpr(UO->getSubExpr());
-          auto *PulseRhsTerm = getTermFromCExpr(Rhs);
+          
+          //TODO: Make sure to release these expressions
+          SmallVector<PulseStmt*> ExprsBef;
+
+          auto *PulseLhsTerm = getTermFromCExpr(UO->getSubExpr(), Analyzer, ExprsBef, BO->getType());
+          auto *PulseRhsTerm = getTermFromCExpr(Rhs, Analyzer, ExprsBef, BO->getType());
           PulseAssignment *Assignment = new PulseAssignment();
           Assignment->setTag(PulseStmtTag::Assignment);
           Assignment->Lhs = PulseLhsTerm;
           Assignment->Value = PulseRhsTerm;
+
+          assert(ExprsBef.empty() && "Expected expressions to be released!");
+
           return Assignment;
         }
         // assert(false && "Could not dyn cast to a declaration expression.");
       }
       else if (auto *ArrSub = dyn_cast<ArraySubscriptExpr>(Lhs)){
+        
+        //TODO: Make sure to release these expressions
+        SmallVector<PulseStmt*> ExprsBef;
 
         auto *ArrayAssignExpr = new PulseArrayAssignment();
         ArrayAssignExpr->setTag(PulseStmtTag::ArrayAssignment);
-        ArrayAssignExpr->Arr = getTermFromCExpr(ArrSub->getBase());
-        ArrayAssignExpr->Index = getTermFromCExpr(ArrSub->getIdx());
-        ArrayAssignExpr->Value = getTermFromCExpr(Rhs);
+        ArrayAssignExpr->Arr = getTermFromCExpr(ArrSub->getBase(), Analyzer, ExprsBef, BO->getType());
+        ArrayAssignExpr->Index = getTermFromCExpr(ArrSub->getIdx(), Analyzer, ExprsBef, BO->getType());
+        ArrayAssignExpr->Value = getTermFromCExpr(Rhs, Analyzer, ExprsBef, BO->getType());
+
+        //We need to make a sequence of pulse statements.
+        PulseSequence *Start = nullptr;
+        if (!ExprsBef.empty()){
+            
+            for (size_t Idx = 0; Idx < ExprsBef.size(); Idx++){    
+              if (Start == nullptr){
+                auto *Seq = new PulseSequence();
+                Seq->assignS1(ExprsBef[Idx]);
+                Start = Seq; 
+              }
+              
+              auto *NextSeq = new PulseSequence(); 
+              NextSeq->assignS1(ExprsBef[Idx]);
+              Start->assignS2(NextSeq);
+              Start = NextSeq;
+            }
+
+            ExprsBef.clear();
+        }
+
+        
+        assert(ExprsBef.empty() && "Expected expressions to be released!");
+
+
+        if (Start != nullptr){
+          Start->assignS2(ArrayAssignExpr);
+          return Start;
+        }
+
 
         return ArrayAssignExpr;
         S->dumpPretty(Ctx);
@@ -263,19 +352,82 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer) 
       // TODO:
       // We should generate Lets otherwise
       else {
-        auto *PulseLhsTerm = getTermFromCExpr(Lhs);
-        auto *PulseRhsTerm = getTermFromCExpr(Rhs);
+
+        //TODO: Make sure to release these expressions
+        SmallVector<PulseStmt*> ExprsBef;
+      
+        auto *PulseLhsTerm = getTermFromCExpr(Lhs, Analyzer, ExprsBef,BO->getType(), true);
+        auto *PulseRhsTerm = getTermFromCExpr(Rhs, Analyzer, ExprsBef, BO->getType());
         PulseAssignment *Assignment = new PulseAssignment();
         Assignment->Lhs = PulseLhsTerm;
         Assignment->Value = PulseRhsTerm;
         Assignment->setTag(PulseStmtTag::Assignment);
+
+        //We need to make a sequence of pulse statements.
+        PulseSequence *Start = nullptr;
+        if (!ExprsBef.empty()){
+            
+            for (size_t Idx = 0; Idx < ExprsBef.size(); Idx++){    
+              if (Start == nullptr){
+                auto *Seq = new PulseSequence();
+                Seq->assignS1(ExprsBef[Idx]);
+                Start = Seq; 
+              }
+              
+              auto *NextSeq = new PulseSequence(); 
+              NextSeq->assignS1(ExprsBef[Idx]);
+              Start->assignS2(NextSeq);
+              Start = NextSeq;
+            }
+
+            ExprsBef.clear();
+        }
+
+        assert(ExprsBef.empty() && "Expected expressions to be released!");
+
+
+        if (Start != nullptr){
+          Start->assignS2(Assignment);
+          return Start;
+        }
+
         return Assignment;
       }
     } else {
       
+      SmallVector<PulseStmt *> ExprsBefore;
+      
       auto *PExpr = new PulseExpr(); 
       PExpr->setTag(PulseStmtTag::Expr);
-      PExpr->E = getTermFromCExpr(BO);
+      PExpr->E = getTermFromCExpr(BO, Analyzer, ExprsBefore, BO->getType());
+      
+      //We need to make a sequence of pulse statements.
+      PulseSequence *Start = nullptr;
+      if (!ExprsBefore.empty()){
+
+        for (size_t Idx = 0; Idx < ExprsBefore.size(); Idx++){    
+          if (Start == nullptr){
+            auto *Seq = new PulseSequence();
+            Seq->assignS1(ExprsBefore[Idx]);
+            Start = Seq; 
+          }
+
+          auto *NextSeq = new PulseSequence(); 
+          NextSeq->assignS1(ExprsBefore[Idx]);
+          Start->assignS2(NextSeq);
+          Start = NextSeq;
+        }
+
+        //remove all released expressions.
+        ExprsBefore.clear();
+      }
+      
+      if (Start != nullptr){
+        Start->assignS2(PExpr);
+        return Start;
+      }
+
+      assert(ExprsBefore.empty() && "Expected expressions to be released!");
       return PExpr;
 
       assert(false && "Binary Operator not implemented in pulseFromStmt\n");
@@ -283,9 +435,13 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer) 
 
   } else if (auto *E = dyn_cast<Expr>(S)) {
 
+    SmallVector<PulseStmt *> ExprsBefore;
+
     auto *PulseExpression = new PulseExpr();
     PulseExpression->setTag(PulseStmtTag::Expr);
-    PulseExpression->E = getTermFromCExpr(E);
+    PulseExpression->E = getTermFromCExpr(E, Analyzer, ExprsBefore, E->getType());
+
+    assert(ExprsBefore.empty() && "Expected expressions to be released!");
 
     return PulseExpression;
 
@@ -299,7 +455,9 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer) 
     auto *Else = IF->getElse(); 
     auto *Then = IF->getThen();
     
-    auto PulseCond = getTermFromCExpr(Cond);
+    SmallVector<PulseStmt *> ExprsBefore;
+
+    auto PulseCond = getTermFromCExpr(Cond, Analyzer, ExprsBefore, Cond->getType());
     auto *PulseElse = pulseFromStmt(Else, Analyzer);
     auto *PulseThen = pulseFromStmt(Then, Analyzer);
 
@@ -308,6 +466,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer) 
     PulseIfStmt->Head = PulseCond;
     PulseIfStmt->Else = PulseElse; 
     PulseIfStmt->Then = PulseThen;
+    
+    assert(ExprsBefore.empty() && "Expected expressions to be released!");
 
     return PulseIfStmt;
 
@@ -318,10 +478,14 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer) 
   } else if (auto *RS = dyn_cast<ReturnStmt>(S)) {
     
     if (auto *RetVal = RS->getRetValue()){
+      SmallVector<PulseStmt *> ExprsBefore;
       auto NewPulseExpr = new PulseExpr();
       NewPulseExpr->setTag(PulseStmtTag::Expr);
-      auto RetTerm = getTermFromCExpr(RetVal);
+      auto RetTerm = getTermFromCExpr(RetVal, Analyzer, ExprsBefore, RetVal->getType());
       NewPulseExpr->E = RetTerm; 
+
+      assert(ExprsBefore.empty() && "Expected expressions to be released!");
+
       return NewPulseExpr; 
     }
 
@@ -375,14 +539,15 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer) 
   return nullptr;
 }
 
-Term *PulseVisitor::getTermFromCExpr(Expr *E) {
+Term *PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer, 
+  llvm::SmallVector<PulseStmt*> &ExprsBefore, QualType ParentType, bool isWrite) {
 
   if (auto *IL = dyn_cast<IntegerLiteral>(E)) {
 
     auto NewConstTerm = new ConstTerm(); 
     NewConstTerm->setTag(TermTag::Const);
     NewConstTerm->ConstantValue = std::to_string(IL->getValue().getSExtValue());
-    NewConstTerm->Symbol = getSymbolKeyForCType(IL->getType(), Ctx);
+    NewConstTerm->Symbol = getSymbolKeyForCType(ParentType, Ctx);
     return NewConstTerm;
 
     llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "
@@ -426,8 +591,8 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E) {
 
     auto *NewAppENode = new AppE();
     NewAppENode->setTag(TermTag::AppE);
-    auto LhsTerm = getTermFromCExpr(Lhs);
-    auto RhsTerm = getTermFromCExpr(Rhs);
+    auto LhsTerm = getTermFromCExpr(Lhs, MutAnalyzer, ExprsBefore, BO->getType());
+    auto RhsTerm = getTermFromCExpr(Rhs, MutAnalyzer, ExprsBefore, BO->getType());
     
     auto *CallNameVar = new VarTerm();
     CallNameVar->setVarName(OpKey);
@@ -436,7 +601,11 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E) {
     NewAppENode->pushArg(LhsTerm);
     NewAppENode->pushArg(RhsTerm);
 
-    return NewAppENode;
+    //Wrap Call Expr into a Paren to be safe. 
+    auto *NewParen = new Paren();
+    NewParen->setInnerExpr(NewAppENode);
+
+    return NewParen;
 
     llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "
                     "BinaryOperator\n";
@@ -451,7 +620,7 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E) {
       FuncName->setTag(TermTag::Var);
       DerefAppE->setTag(TermTag::AppE);
       DerefAppE->setCallName(FuncName);
-      auto *TermForBaseExpr = getTermFromCExpr(UO->getSubExpr());
+      auto *TermForBaseExpr = getTermFromCExpr(UO->getSubExpr(), MutAnalyzer, ExprsBefore, ParentType);
       DerefAppE->pushArg(TermForBaseExpr);
       return DerefAppE;
     } else {
@@ -478,11 +647,16 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E) {
 
       for (size_t i = 0; i < CE->getNumArgs(); i++){
         auto *Arg = CE->getArg(i);
-        auto *ArgTerm = getTermFromCExpr(Arg);
+        auto *ArgTerm = getTermFromCExpr(Arg, MutAnalyzer, ExprsBefore, ParentType);
         CallAppE->pushArg(ArgTerm);
       }
+
+      //Wrap Call expr in Paren Node
+
+      auto *NewParen = new Paren(); 
+      NewParen->setInnerExpr(CallAppE);
       
-      return CallAppE;
+      return NewParen;
 
     llvm::outs()
         << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr CallExpr\n";
@@ -492,7 +666,7 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E) {
   } else if (auto *IC = dyn_cast<ImplicitCastExpr>(E)) {
 
     auto *SubExpr = IC->getSubExpr();
-    return getTermFromCExpr(SubExpr);
+    return getTermFromCExpr(SubExpr, MutAnalyzer, ExprsBefore, ParentType);
 
     llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "
                     "ImplicitCastExpr\n";
@@ -500,6 +674,41 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E) {
     llvm::outs() << "\nEnd printing term.\n\n";
     assert(false && "Expression not implemeted in getTermFromCExpr\n");
   } else if (auto *DRE = dyn_cast<DeclRefExpr>(E)) {
+    
+    auto *DreDecl = DRE->getDecl();
+
+    if (MutAnalyzer->isMutated(DreDecl) && !isWrite){
+
+      //Create a new variable to be returned.
+      //TODO: Vidush create a gensym for to get variable name.
+
+      std::string LetVar = gensym("new");
+      VarTerm *VTermRet = new VarTerm();
+      VTermRet->setVarName(LetVar);
+
+      //Need a let to extract its value
+      auto *LetForVariable = new LetBinding();
+      LetForVariable->VarName = LetVar;
+      
+      //Generate an AppE for the left hand side. 
+      auto *LetInitAppE = new AppE();
+      auto *CallName = new VarTerm(); 
+      CallName->setVarName("!");
+      LetInitAppE->setCallName(CallName);
+      
+      //The actual variable whose value we want 
+      VarTerm *VTerm = new VarTerm();
+      VTerm->setVarName(DRE->getDecl()->getNameAsString());
+
+      LetInitAppE->pushArg(VTerm);
+
+      LetForVariable->LetInit = LetInitAppE;
+
+      ExprsBefore.push_back(LetForVariable);
+
+      return VTermRet;
+  
+    }
 
     VarTerm *VTerm = new VarTerm();
     VTerm->setTag(TermTag::Var);
@@ -523,10 +732,14 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E) {
     Call->setVarName("op_Array_Access");
     PulseCall->setCallName(Call);
      
-    PulseCall->pushArg(getTermFromCExpr(ArrBase));
-    PulseCall->pushArg(getTermFromCExpr(ArrIdx));
+    PulseCall->pushArg(getTermFromCExpr(ArrBase, MutAnalyzer, ExprsBefore, ParentType));
+    PulseCall->pushArg(getTermFromCExpr(ArrIdx, MutAnalyzer, ExprsBefore, ParentType));
 
-    return PulseCall;
+    //wrap PulseCall in Paren
+    auto *NewParen = new Paren(); 
+    NewParen->setInnerExpr(PulseCall);
+
+    return NewParen;
   } 
 
   else {
