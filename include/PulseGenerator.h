@@ -45,6 +45,7 @@ private:
   Rewriter &TheRewriter;
   ASTContext &Ctx;
   SourceManager &SM;
+  std::map<const Stmt*, std::vector<Slprop*>> StmtToLemmas;
 };
 } // namespace
 

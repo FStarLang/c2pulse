@@ -7,6 +7,7 @@
 #include "clang/AST/Stmt.h"
 #include "clang/AST/Type.h"
 #include "clang/Analysis/Analyses/ExprMutationAnalyzer.h"
+#include "llvm/Support/Casting.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cstddef>
@@ -39,13 +40,14 @@ std::vector<PulseDecl *> &PulseVisitor::getFunctionDeclarations() {
   return FunctionDeclarations;
 }
 
+
 void PulseVisitor::extractPulseAnnotations(
     const clang::FunctionDecl *FD, const clang::SourceManager &SM,
     std::vector<PulseExpr *> &result) {
 
-  auto *Raw = FD->getASTContext().getRawCommentForAnyRedecl(FD);
-  llvm::outs() << "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW" << "\n";
-  llvm::outs() << Raw->getRawText(Ctx.getSourceManager());
+  // auto *Raw = FD->getASTContext().getRawCommentForAnyRedecl(FD);
+  // llvm::outs() << "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW" << "\n";
+  // llvm::outs() << Raw->getRawText(Ctx.getSourceManager());
 
   if (const auto *C = FD->getASTContext().getRawCommentForAnyRedecl(FD)) {
     std::string cleaned;
@@ -134,7 +136,8 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
       ExprMutationAnalyzer Analyzer(*CS, Ctx);
       auto *PulseBody = pulseFromCompoundStmt(CS, &Analyzer);
       // PulseBody->printTag();
-      PulseBody->dumpPretty();
+      if (PulseBody != nullptr) 
+        PulseBody->dumpPretty();
       FDefn->Body = PulseBody;
     }
   }
@@ -183,24 +186,42 @@ FStarType *PulseVisitor::getPulseTyFromCTy(clang::QualType CType) {
 
 PulseStmt *PulseVisitor::pulseFromCompoundStmt(Stmt *S, ExprMutationAnalyzer *Analyzer) {
 
-  PulseStmt *Stmt = nullptr;
+  PulseSequence *Stmt = nullptr;
+  PulseSequence *Head = nullptr;
   if (auto *CS = dyn_cast<CompoundStmt>(S)) {
 
     for (auto *InnerStmt : CS->body()) {
+      // auto *NextPulseStmt = pulseFromStmt(InnerStmt, Analyzer);
+      // if (Stmt == nullptr) {
+      //   Stmt = NextPulseStmt;
+      // } else {
+      //   auto *NewSequence = new PulseSequence();
+      //   NewSequence->setTag(PulseStmtTag::Sequence);
+      //   NewSequence->assignS1(Stmt);
+      //   NewSequence->assignS2(NextPulseStmt);
+      //   Stmt = NewSequence;
+      // }
+
       auto *NextPulseStmt = pulseFromStmt(InnerStmt, Analyzer);
-      if (Stmt == nullptr) {
-        Stmt = NextPulseStmt;
-      } else {
-        auto *NewSequence = new PulseSequence();
-        NewSequence->setTag(PulseStmtTag::Sequence);
-        NewSequence->assignS1(Stmt);
-        NewSequence->assignS2(NextPulseStmt);
-        Stmt = NewSequence;
+      if (NextPulseStmt == nullptr)
+        continue;
+
+      if (Stmt == nullptr){
+        auto *NewSeq = new PulseSequence(); 
+        NewSeq->assignS1(NextPulseStmt); 
+        Stmt = NewSeq;
+        Head = NewSeq;
+        continue; 
       }
+
+      auto *NewSeq = new PulseSequence(); 
+      NewSeq->assignS1(NextPulseStmt);
+      Stmt->assignS2(NewSeq);
+      Stmt = NewSeq;
     }
   }
 
-  return Stmt;
+  return Head;
 }
 
 PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer) {
@@ -399,7 +420,11 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer) 
       
       auto *PExpr = new PulseExpr(); 
       PExpr->setTag(PulseStmtTag::Expr);
-      PExpr->E = getTermFromCExpr(BO, Analyzer, ExprsBefore, BO->getType());
+      auto ExprTerm = getTermFromCExpr(BO, Analyzer, ExprsBefore, BO->getType());
+      if (!ExprTerm)
+          return nullptr; 
+        
+      PExpr->E = ExprTerm;      
       
       //We need to make a sequence of pulse statements.
       PulseSequence *Start = nullptr;
@@ -434,12 +459,18 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer) 
     }
 
   } else if (auto *E = dyn_cast<Expr>(S)) {
-
+    
     SmallVector<PulseStmt *> ExprsBefore;
 
     auto *PulseExpression = new PulseExpr();
     PulseExpression->setTag(PulseStmtTag::Expr);
-    PulseExpression->E = getTermFromCExpr(E, Analyzer, ExprsBefore, E->getType());
+
+    auto *PExprTerm = getTermFromCExpr(E, Analyzer, ExprsBefore, E->getType());
+
+    if (PExprTerm == nullptr)
+      return nullptr;
+    
+    PulseExpression->E = PExprTerm;
 
     assert(ExprsBefore.empty() && "Expected expressions to be released!");
 
@@ -481,7 +512,9 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer) 
       SmallVector<PulseStmt *> ExprsBefore;
       auto NewPulseExpr = new PulseExpr();
       NewPulseExpr->setTag(PulseStmtTag::Expr);
-      auto RetTerm = getTermFromCExpr(RetVal, Analyzer, ExprsBefore, RetVal->getType());
+      auto *RetTerm = getTermFromCExpr(RetVal, Analyzer, ExprsBefore, RetVal->getType());
+      if (RetTerm == nullptr)
+        return nullptr;
       NewPulseExpr->E = RetTerm; 
 
       assert(ExprsBefore.empty() && "Expected expressions to be released!");
@@ -503,10 +536,27 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer) 
   } else if (auto *WS = dyn_cast<WhileStmt>(S)) {
 
     auto *WhileCond = WS->getCond(); 
+    llvm::outs () << "Dump while condition" << "\n";
+    WhileCond->dump();
+    llvm::outs () << "End while condition dump" << "\n";
     auto *WhileBody = WS->getBody();
+
+    llvm::outs () << "Dump while Body" << "\n";
+    WhileBody->dump();
+    llvm::outs () << "End while Body dump" << "\n";
      
     auto *PulseWhile = new PulseWhileStmt(); 
     PulseWhile->setTag(PulseStmtTag::WhileStmt);
+
+    auto It = StmtToLemmas.find(WS);
+    //Remove temporary for now
+    //assert(it != MapExprToAssignedTemporary.end() && "Expression not found in map");
+    if (It == StmtToLemmas.end()) {
+      // If not found, create a new temporary
+      assert(false);
+    }
+
+    PulseWhile->Invariant = It->second;
 
     PulseWhile->Guard = pulseFromStmt(WhileCond, Analyzer);
     PulseWhile->Body = pulseFromCompoundStmt(WhileBody, Analyzer);
@@ -537,6 +587,21 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer) 
   }
 
   return nullptr;
+}
+
+const clang::Stmt *getNextStatement(const clang::Expr *expr, clang::ASTContext &Context) {
+    if (!expr) return nullptr;
+
+    const clang::Stmt *parent = Context.getParents(*expr).begin()->get<clang::Stmt>();  // Get parent node
+    if (!parent) return nullptr;
+
+    bool foundExpr = false;
+    for (const clang::Stmt *child : parent->children()) {
+        if (foundExpr) return child;  // Return next statement after expr
+        if (child == expr) foundExpr = true;
+    }
+
+    return nullptr;  // No next statement found
 }
 
 Term *PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer, 
@@ -637,7 +702,62 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     llvm::outs() << "\nEnd printing term.\n\n";
     assert(false && "Expression not implemeted in getTermFromCExpr\n");
   } else if (auto *CE = dyn_cast<CallExpr>(E)) {
-    
+
+      if (CE->getDirectCallee()->getNameAsString() == pulseProofTermFromC){
+              llvm::outs() << "Encountered function: "; 
+              llvm::outs() << CE->getDirectCallee()->getNameAsString() << "\n";
+              llvm::outs() << "End encountered function.\n\n";
+
+              auto NumArgs = CE->getNumArgs(); 
+              assert(NumArgs == 1 && "Expected number of arguments for Pulse Proof Term to be 1!");
+              auto *UserLemma = new UserProvidedProofTerms(); 
+              if (auto *ArgToString = dyn_cast<StringLiteral>(CE->getArg(0)->IgnoreCasts())){
+                auto ArgString = ArgToString->getString();
+                UserLemma->lemmas.push_back(ArgString.str());
+              }
+              else {
+                 assert (false && "Expected pulse while to have arguments as string literals");
+              }
+
+              // Term *LemmaExpr = new PulseExpr(); 
+              // LemmaExpr->E = UserLemma; 
+              return UserLemma;
+      }
+      else if (CE->getDirectCallee()->getNameAsString() == pulseWhileInvariantFromC){
+        
+        llvm::outs() << "Encountered function: "; 
+        llvm::outs() << CE->getDirectCallee()->getNameAsString() << "\n";
+        llvm::outs() << "End encountered function.\n\n";
+
+        auto NumArgs = CE->getNumArgs();
+        
+        std::vector<Slprop*> VectorLemmas;
+        for (size_t Idx = 0; Idx < NumArgs; Idx++){
+          auto *UserLemma = new UserProvidedProofTerms(); 
+          auto *Arg = CE->getArg(Idx);
+          //assert that each argument is actually a string literal 
+          if (auto *ArgToString = dyn_cast<StringLiteral>(Arg->IgnoreCasts())){
+            auto ArgString = ArgToString->getString();
+            UserLemma->lemmas.push_back(ArgString.str());
+            Slprop *Prop = UserLemma;
+            VectorLemmas.push_back(Prop);
+            //assert that next statement is a while loop
+          }
+          else {
+            assert (false && "Expected pulse while to have arguments as string literals");
+          }
+        }
+
+        //Slprop *Lemma = UserLemmas;
+        auto *Next = getNextStatement(E, Ctx);
+        if (auto *While = dyn_cast<WhileStmt>(Next)){
+                 //Add corresponding while invariant.
+                 StmtToLemmas.insert(std::make_pair(While, VectorLemmas));
+                 return nullptr;
+        }
+        assert(false && "Expected next statement after pulse invariant to be a while!\n");
+      }
+
       auto *CallAppE = new AppE();
       auto *FuncName = new VarTerm();
       FuncName->setVarName(CE->getDirectCallee()->getNameAsString());

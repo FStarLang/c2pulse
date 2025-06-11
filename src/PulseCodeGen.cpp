@@ -13,6 +13,7 @@
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Frontend/FrontendPluginRegistry.h>
 #include <clang/Rewrite/Core/Rewriter.h>
+#include <cstddef>
 #include <fstream>
 #include <memory>
 #include <vector>
@@ -157,6 +158,11 @@ std::string PulseCodeGen::generateCodeFromTerm(Term *T) {
     OS << Require->Ann;
     OS << PulseSyntax.NewLine;
   }
+  else if (UserProvidedProofTerms *UserTerm = dyn_cast<UserProvidedProofTerms>(T)){
+    
+    for (auto Lemma : UserTerm->lemmas)
+          OS << Lemma; 
+  }
   else {
     T->dumpPretty();
     assert(false && "Did not expect Term node in generateCodeFromTerm");
@@ -172,6 +178,11 @@ void PulseCodeGen::generateCodeFromPulseStmt(PulseStmt *T) {
 
   if (PulseExpr *S = dyn_cast<PulseExpr>(T)) {
     OS << generateCodeFromTerm(S->E);
+    if (S->E->Tag == TermTag::UserLemmas){
+      OS << PulseSyntax.Semicolon;
+      OS << PulseSyntax.NewLine;
+
+    }
   } else if (PulseAssignment *A = dyn_cast<PulseAssignment>(T)) {
     OS << generateCodeFromTerm(A->Lhs);
     OS << PulseSyntax.Space;
@@ -251,17 +262,25 @@ void PulseCodeGen::generateCodeFromPulseStmt(PulseStmt *T) {
     auto *WCond = While->Guard; 
     auto *WBod = While->Body; 
 
-    OS << PulseSyntax.PulseWhile; 
+    auto Lemmas = While->Invariant;
+
+    OS << PulseSyntax.PulseWhile;
     OS << PulseSyntax.OpeningParenthesis; 
     generateCodeFromPulseStmt(WCond);
     OS << PulseSyntax.ClosingParenthesis; 
+    OS << PulseSyntax.NewLine;
+    size_t Idx = 1;
+    for (auto *Lemma : Lemmas){
+      OS << generateCodeFromTerm(Lemma);
+      if (Idx < Lemmas.size())
+        OS << "\n";
+      Idx++; 
+    } 
     OS << PulseSyntax.NewLine; 
     OS << PulseSyntax.OpeningCurlyBrace; 
     OS << PulseSyntax.NewLine; 
     generateCodeFromPulseStmt(WBod);
-    OS << PulseSyntax.NewLine;
     OS << PulseSyntax.ClosingCurlyBrace; 
-    OS << PulseSyntax.NewLine;
 
     //assert(false && "Did not expect pulse while statement type");
   } else if (PulseSequence *Seq = dyn_cast<PulseSequence>(T)) {

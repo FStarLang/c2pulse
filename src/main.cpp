@@ -15,6 +15,9 @@ using namespace clang::tooling;
 
 int GlobalGenSymCounter = 0;
 
+const char* pulseProofTermFromC = "__pulseproofterm";
+const char* pulseWhileInvariantFromC = "__pulsewhileinvariant";
+
 llvm::cl::OptionCategory ToolCategory("anf-pulse-tool options");
 
 llvm::cl::opt<std::string>
@@ -61,27 +64,27 @@ int main(int argc, const char **argv) {
     // }
    
 
-    ANFTranformer transformer(ASTList);
-    transformer.transform();
-    std::string transformedCode = transformer.getTransformedCode();
-    auto NewFilePath = transformer.writeToFile();
+    // ANFTranformer transformer(ASTList);
+    // transformer.transform();
+    // std::string transformedCode = transformer.getTransformedCode();
+    // auto NewFilePath = transformer.writeToFile();
 
-    llvm::outs() << "Print the new file path: \n";
-    llvm::outs() << NewFilePath;
-    llvm::outs() << "\n\n";
+    // llvm::outs() << "Print the new file path: \n";
+    // llvm::outs() << NewFilePath;
+    // llvm::outs() << "\n\n";
   
-    std::vector<std::string> SourceFiles;
-    SourceFiles.push_back(NewFilePath);
-    // Run Syntax-Only Action again on transformed output
-    std::unique_ptr<ClangTool> TransformedTool = std::make_unique<ClangTool>(OptionsParser->getCompilations(), SourceFiles);
-    // if (TransformedTool.run(
-    //         newFrontendActionFactory<SyntaxOnlyAction>().get())) {
-    //   llvm::errs() << "Error: Transformed code has syntax errors.\n";
-    //   return 1;
-    // }
+    // std::vector<std::string> SourceFiles;
+    // SourceFiles.push_back(NewFilePath);
+    // // Run Syntax-Only Action again on transformed output
+    // std::unique_ptr<ClangTool> TransformedTool = std::make_unique<ClangTool>(OptionsParser->getCompilations(), SourceFiles);
+    // // if (TransformedTool.run(
+    // //         newFrontendActionFactory<SyntaxOnlyAction>().get())) {
+    // //   llvm::errs() << "Error: Transformed code has syntax errors.\n";
+    // //   return 1;
+    // // }
 
-    std::vector<std::unique_ptr<ASTUnit>> TransformedASTList;
-    TransformedTool->buildASTs(TransformedASTList);
+    // std::vector<std::unique_ptr<ASTUnit>> TransformedASTList;
+    // TransformedTool->buildASTs(TransformedASTList);
 
   //   llvm::outs() << "TransformedASTSize" << TransformedASTList.size() << "\n";
 
@@ -108,7 +111,7 @@ int main(int argc, const char **argv) {
 
     // }
 
-    PulseTransformer _PulseTransformer(TransformedASTList);
+    PulseTransformer _PulseTransformer(ASTList);
     //llvm::outs() << "Generated transformer for Pulse..." << "\n";
     _PulseTransformer.transform();
     //llvm::outs() << "Completed running Pulse transformer..." << "\n";

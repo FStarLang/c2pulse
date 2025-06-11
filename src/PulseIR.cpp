@@ -315,6 +315,17 @@ void Term::printTag() { llvm::outs() << Tag << "\n"; }
 void Term::dumpPretty() { printTag(); }
 
 
+void UserProvidedProofTerms::dumpPretty() {
+  for (auto lemma : lemmas){
+    llvm::outs() << lemma << "\n";
+  }
+}
+
+UserProvidedProofTerms::UserProvidedProofTerms(){
+  Tag = TermTag::UserLemmas;
+}
+
+
 Paren::Paren(){
   llvm::outs() << "Called Paren Constructor!!" << "\n";
   Tag = TermTag::Paren;
@@ -349,7 +360,7 @@ void Requires::dumpPretty(){
 }
 
 Requires::Requires(){
-  Tag = TermTag::Ensures;
+  Tag = TermTag::Requires;
 }
 
 void ConstTerm::dumpPretty() { llvm::outs() << ConstantValue; }
@@ -409,7 +420,10 @@ void PulseStmt::printTag() { llvm::outs() << Tag << "\n"; }
 
 void PulseStmt::dumpPretty() { PulseStmt::printTag(); }
 
-void PulseExpr::dumpPretty() { E->dumpPretty(); }
+void PulseExpr::dumpPretty() { 
+  if (E)
+    E->dumpPretty(); 
+}
 
 void PulseAssignment::dumpPretty() {
   Lhs->dumpPretty();
@@ -451,6 +465,8 @@ void PulseIf::dumpPretty(){
 
 PulseSequence::PulseSequence(){
   Tag = PulseStmtTag::Sequence;
+  S1 = nullptr; 
+  S2 = nullptr;
 }
 
 void PulseSequence::assignS1(PulseStmt *S) { S1 = S; }
@@ -458,11 +474,13 @@ void PulseSequence::assignS1(PulseStmt *S) { S1 = S; }
 void PulseSequence::assignS2(PulseStmt *S) { S2 = S; }
 
 void PulseSequence::dumpPretty() {
-  if (S1 != nullptr)
+  if (S1 != nullptr){
     S1->dumpPretty();
+  }
 
-  if (S2 != nullptr)
-    S2->dumpPretty();
+  if (S2 != nullptr){
+     S2->dumpPretty();
+  }
 }
 
 

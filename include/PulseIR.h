@@ -111,7 +111,7 @@ static const llvm::SmallDenseMap<SymbolTable, const char*> SymbolToStringTable {
 
 // Define F* IR Similar to type term
 // https://github.com/FStarLang/FStar/blob/3ff998c60bb0efe9925fc94e8fb8b785b9485af0/src/parser/FStarC.Parser.AST.fsti#L40
-enum class TermTag {Const, Paren, Var, Name, AppE, FStarType, FStarPointerType, Ensures, Requires};
+enum class TermTag {Const, Paren, Var, Name, AppE, FStarType, FStarPointerType, Ensures, Requires, UserLemmas};
 
 class Term {
 public:
@@ -122,6 +122,16 @@ public:
   virtual ~Term() = default;
 };
 
+
+class UserProvidedProofTerms : public Term{
+  public:
+    UserProvidedProofTerms();
+    std::vector<std::string> lemmas;
+    virtual ~UserProvidedProofTerms() = default;
+    virtual void dumpPretty() override; 
+    static bool classof(const Term *T) { return T->Tag == TermTag::UserLemmas; }
+
+};
 
 class Paren : public Term {
 
