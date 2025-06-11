@@ -109,24 +109,27 @@ void ExprLocationAnalyzer::printExprInfo(const std::string &label, const Expr *E
                << ", column " << colNo
                << ", type: " << QT.getAsString() << "\n";
 
-  printSourceLine(loc);
+  std::optional<std::string> lineText = getSourceLine(loc);
+  if (lineText) {
+    llvm::outs() << "    Source line: " << *lineText << "\n";
+  } else {
+    llvm::outs() << "    [Could not get source line]\n";
+  }
 }
 
-#include <optional> // Use standard optional
-
-void ExprLocationAnalyzer::printSourceLine(SourceLocation loc) {
+std::optional<std::string> ExprLocationAnalyzer::getSourceLine(SourceLocation loc) {
   bool invalid = false;
   const char *bufferStart = SM.getCharacterData(loc, &invalid);
   if (invalid) {
     llvm::outs() << "  [Could not get source line]\n";
-    return;
+    return "";
   }
 
   FileID FID = SM.getFileID(loc);
   std::optional<llvm::MemoryBufferRef> BufRef = SM.getBufferOrNone(FID);
   if (!BufRef) {
     llvm::errs() << "Unable to get buffer\n";
-    return;
+    return "";
   }
 
   const char *fileStart = BufRef->getBufferStart();
@@ -141,7 +144,7 @@ void ExprLocationAnalyzer::printSourceLine(SourceLocation loc) {
     ++lineEnd;
 
   std::string lineText(lineStart, lineEnd);
-  llvm::outs() << "    Source line: " << lineText << "\n";
+  return lineText;
 }
 
 bool ExprLocationAnalyzer::shouldProcess() const {
