@@ -2,6 +2,7 @@
 #include "ANFConsumer.h"
 #include "ANFFrontendAction.h"
 #include "ANFTransformer.h"
+#include "ExprLocationAnalyzer.h"
 #include "PulseGenerator.h"
 #include "clang/Frontend/FrontendActions.h"
 #include "clang/Tooling/CommonOptionsParser.h"
@@ -45,6 +46,13 @@ int main(int argc, const char **argv) {
     std::vector<std::unique_ptr<ASTUnit>> ASTList;
     Tool->buildASTs(ASTList);
     
+    for (const auto &AST : ASTList) {
+      if (!AST) continue;
+      clang::ASTContext &Ctx = AST->getASTContext();
+      ExprLocationAnalyzer Analyzer(Ctx);
+      Analyzer.analyze(Ctx.getTranslationUnitDecl());
+    }
+
 
     //Vidush: Seems like ClangTool runs a pass of syntax only action internally.
     // if (Tool.run(newFrontendActionFactory<clang::SyntaxOnlyAction>().get())){

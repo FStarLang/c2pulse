@@ -1,12 +1,14 @@
 #pragma once
 
 #include <string>
+#include <optional> 
 
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Frontend/ASTUnit.h"
 #include "clang/Lex/Lexer.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/CommandLine.h"
+
 
 extern llvm::cl::OptionCategory ToolCategory;
 extern llvm::cl::opt<std::string> FunctionNameToProcess;

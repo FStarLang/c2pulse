@@ -66,13 +66,30 @@ bool ExprLocationAnalyzer::VisitBinaryOperator(BinaryOperator *BO) {
   if (!shouldProcess()) return true;
 
   unsigned line = SM.getSpellingLineNumber(BO->getBeginLoc());
+
+  // Get the full expression string
   std::string str;
   llvm::raw_string_ostream rso(str);
   BO->printPretty(rso, nullptr, Context.getPrintingPolicy());
-  llvm::outs() << "String: " << rso.str() << " Line: " << line << "\n";
 
-  printExprInfo("  LHS", BO->getLHS());
-  printExprInfo("  RHS", BO->getRHS());
+  // Get the binary operator string (e.g., "+", "=")
+  StringRef OpStr = BinaryOperator::getOpcodeStr(BO->getOpcode());
+
+  llvm::outs() << "String: " << rso.str() << " Line: " << line << "\n";
+  llvm::outs() << "  Operation: " << OpStr << "\n";
+
+  // Get string representation of LHS and RHS for labels
+  std::string lhsStr;
+  llvm::raw_string_ostream lhsOS(lhsStr);
+  BO->getLHS()->printPretty(lhsOS, nullptr, Context.getPrintingPolicy());
+
+  std::string rhsStr;
+  llvm::raw_string_ostream rhsOS(rhsStr);
+  BO->getRHS()->printPretty(rhsOS, nullptr, Context.getPrintingPolicy());
+
+  // Print labeled LHS and RHS info
+  printExprInfo("  LHS (" + lhsOS.str() + ")", BO->getLHS());
+  printExprInfo("  RHS (" + rhsOS.str() + ")", BO->getRHS());
 
   return true;
 }
@@ -95,6 +112,8 @@ void ExprLocationAnalyzer::printExprInfo(const std::string &label, const Expr *E
   printSourceLine(loc);
 }
 
+#include <optional> // Use standard optional
+
 void ExprLocationAnalyzer::printSourceLine(SourceLocation loc) {
   bool invalid = false;
   const char *bufferStart = SM.getCharacterData(loc, &invalid);
@@ -104,16 +123,14 @@ void ExprLocationAnalyzer::printSourceLine(SourceLocation loc) {
   }
 
   FileID FID = SM.getFileID(loc);
-  llvm::Optional<llvm::MemoryBufferRef> BufferOrNone = SM.getBufferOrNone(FID);
-
-  if (!BufferOrNone) {
-    llvm::outs() << "  [Could not get source buffer]\n";
+  std::optional<llvm::MemoryBufferRef> BufRef = SM.getBufferOrNone(FID);
+  if (!BufRef) {
+    llvm::errs() << "Unable to get buffer\n";
     return;
   }
 
-  const llvm::MemoryBufferRef &buffer = *BufferOrNone;
-  const char *fileStart = buffer.getBufferStart();
-  const char *fileEnd = buffer.getBufferEnd();
+  const char *fileStart = BufRef->getBufferStart();
+  const char *fileEnd = BufRef->getBufferEnd();
 
   const char *lineStart = bufferStart;
   while (lineStart > fileStart && (*(lineStart - 1) != '\n' && *(lineStart - 1) != '\r'))
