@@ -68,6 +68,7 @@ enum class SymbolTable {
   Int64_Mul,
   Int64_Eq,
   Int64_Lt,
+  Array,
 };
 
 SymbolTable getSymbolKeyForCType(clang::QualType Ty, clang::ASTContext &Ctx);
@@ -107,11 +108,12 @@ static const llvm::SmallDenseMap<SymbolTable, const char*> SymbolToStringTable {
  {SymbolTable::Int64_Div, "Int64.div"},
  {SymbolTable::Int64_Eq, "Int64.eq"},
  {SymbolTable::Int64_Lt, "Int64.lt"},
+ {SymbolTable::Array, "array"},
 };
 
 // Define F* IR Similar to type term
 // https://github.com/FStarLang/FStar/blob/3ff998c60bb0efe9925fc94e8fb8b785b9485af0/src/parser/FStarC.Parser.AST.fsti#L40
-enum class TermTag {Const, Paren, Var, Name, AppE, FStarType, FStarPointerType, Ensures, Requires, UserLemmas};
+enum class TermTag {Const, Paren, Var, Name, AppE, FStarType, FStarPointerType, FStarArrType, Ensures, Requires, UserLemmas};
 
 class Term {
 public:
@@ -201,6 +203,22 @@ public:
   virtual ~FStarType() = default;
   virtual void dumpPretty() override;
   static bool classof(const Term *T) { return T->Tag == TermTag::FStarType; }
+};
+
+
+class FStarArrType : public FStarType {
+
+  public:
+    FStarArrType();
+    FStarType *ElementType;
+    virtual void setName(std::string Name) override;
+    virtual ~FStarArrType() = default;
+    virtual void dumpPretty() override;
+    void setElementTy(FStarType *Ty);
+    static bool classof(const Term *T) {
+      return T->Tag == TermTag::FStarArrType;
+    }
+
 };
 
 class FStarPointerType : public FStarType {

@@ -385,13 +385,24 @@ void FStarType::setName(std::string Name) { NamedValue = Name; }
 
 void FStarType::dumpPretty() { llvm::outs() << NamedValue; }
 
+void FStarArrType::setName(std::string Name) { NamedValue = Name; }
 void FStarPointerType::setName(std::string Name) { NamedValue = Name; }
+
+void FStarArrType::dumpPretty() {
+  llvm::outs() << "array ";
+  ElementType->dumpPretty();
+}
 
 void FStarPointerType::dumpPretty() {
   llvm::outs() << "ref ";
   PointerTo->dumpPretty();
 }
 
+FStarArrType::FStarArrType(){
+  Tag = TermTag::FStarArrType;
+}
+
+void FStarArrType::setElementTy(FStarType *Type) { ElementType = Type; }
 void FStarPointerType::setPointerToTy(FStarType *Type) { PointerTo = Type; }
 
 AppE::AppE(){

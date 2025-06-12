@@ -46,6 +46,7 @@ public:
   CodegenStrTy *Colon = ":";
   CodegenStrTy *Semicolon = ";";
   CodegenStrTy *Reference = "ref";
+  CodegenStrTy *Array = "array";
   CodegenStrTy *OpeningCurlyBrace = "{";
   CodegenStrTy *ClosingCurlyBrace = "}";
   CodegenStrTy *NewLine = "\n";

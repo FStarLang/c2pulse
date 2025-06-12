@@ -134,7 +134,12 @@ std::string PulseCodeGen::generateCodeFromTerm(Term *T) {
     auto StrBase = generateCodeFromTerm(FPT->PointerTo);
     TermString += PulseSyntax.Reference;
     TermString += " " + StrBase;
-  } else if (AppE *App = dyn_cast<AppE>(T)) {
+  } else if (FStarArrType *FAT = dyn_cast<FStarArrType>(T)) {
+    auto StrBase = generateCodeFromTerm(FAT->ElementType);
+    TermString += PulseSyntax.Array;
+    TermString += " " + StrBase;
+  }
+  else if (AppE *App = dyn_cast<AppE>(T)) {
     TermString += generateCodeFromTerm(App->CallName);
     TermString += " ";
     int i = 0;

@@ -2,6 +2,7 @@
 #include "PulseIR.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Comment.h"
+#include "clang/AST/Decl.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/OperationKinds.h"
 #include "clang/AST/Stmt.h"
@@ -15,6 +16,7 @@
 #include <fstream>
 #include <regex>
 #include <sstream>
+#include <utility>
 // #include "PulseCodeGen.h"
 #include "Globals.h"
 
@@ -92,6 +94,104 @@ void PulseVisitor::extractPulseAnnotations(
   //     ann.regionId = "'n" + std::to_string(counter++);
 }
 
+static void inferArrayTypesStmt(Stmt *InnerStmt, std::map<Decl*, QualType> &DeclToPulseSymbol);
+static void inferArrayTypesExpr(Expr *ExprPtr, std::map<Decl*, QualType> &DeclToPulseSymbol);
+std::map<Decl*, QualType> inferArrayTypes(FunctionDecl *FD){
+  
+  //std::vector<Decl*> VariablesInScope;
+  std::map<Decl*, QualType> DeclToPulseSymbol;
+  //For now do this for all function arguments.
+  // size_t NumDeclarations = FD->getNumParams(); 
+  // for (size_t I = 0; I < NumDeclarations; I++){
+  //   VariablesInScope.push_back(FD->getParamDecl(I));
+  // } 
+
+    if (Stmt *Body = FD->getBody()) {
+      if (auto *CS = dyn_cast<CompoundStmt>(Body)) {
+        for (auto *InnerStmt : CS->body()) {
+          inferArrayTypesStmt(InnerStmt, DeclToPulseSymbol);
+        }
+      }
+    }
+
+    return DeclToPulseSymbol;
+}
+
+
+static void inferArrayTypesStmt(Stmt *InnerStmt, std::map<Decl*, QualType> &DeclToPulseSymbol){
+  
+  //Check the types of the statements here. 
+  if (auto *DS = dyn_cast<DeclStmt>(InnerStmt)) {
+    for (auto *D : DS->decls()) {
+      if (auto *VD = dyn_cast<VarDecl>(D)) {
+        //if we can tell it is an array type from the declaration we just store it in a map. 
+        //Otherwise we use array subscript operations to check.
+        if (VD->getType()->isArrayType()){
+          DeclToPulseSymbol.insert(std::make_pair(VD, VD->getType()->getPointeeType()));
+        }
+      }
+    }
+  }
+  else if (auto *CExpr = dyn_cast<Expr>(InnerStmt)){
+    inferArrayTypesExpr(CExpr, DeclToPulseSymbol);
+  }
+  else if (auto *While = dyn_cast<WhileStmt>(InnerStmt)){
+
+    auto *Cond = While->getCond();
+    auto *Body = While->getBody(); 
+
+    inferArrayTypesExpr(Cond, DeclToPulseSymbol);
+    inferArrayTypesStmt(Body, DeclToPulseSymbol);
+
+  }
+  else if (auto *CS = dyn_cast<CompoundStmt>(InnerStmt)) {
+        for (auto *InnerStmt : CS->body()) {
+          inferArrayTypesStmt(InnerStmt, DeclToPulseSymbol);
+        }
+  }
+  else {
+    InnerStmt->dump();
+    assert(false && "Did not handle statement in inferArrayTypesStmt\n");
+  }
+}
+
+static void inferArrayTypesExpr(Expr *ExprPtr, std::map<Decl*, QualType> &DeclToPulseSymbol){
+                                  
+    if (auto *BinOp = dyn_cast<clang::BinaryOperator>(ExprPtr)) {
+      
+      //TODO: Vidush: 
+      //If this BinOp is of the shape: *Arr + 8 etc, we may conclude it is of an array type.
+      auto *Lhs = BinOp->getLHS(); 
+      auto *Rhs = BinOp->getRHS(); 
+
+      inferArrayTypesExpr(Lhs, DeclToPulseSymbol);
+      inferArrayTypesExpr(Rhs, DeclToPulseSymbol);
+
+
+    }
+    else if (auto *UOp = dyn_cast<clang::UnaryOperator>(ExprPtr)) { 
+      inferArrayTypesExpr(UOp->getSubExpr(), DeclToPulseSymbol);
+
+    }
+    else if (auto *Call = dyn_cast<clang::CallExpr>(ExprPtr)) { 
+      auto NumArgs = Call->getNumArgs(); 
+      for (size_t Idx = 0; Idx < NumArgs; Idx++){
+        auto *Arg = Call->getArg(Idx);
+        inferArrayTypesExpr(Arg, DeclToPulseSymbol);
+      }
+    }
+    else if (auto *ASub = dyn_cast<clang::ArraySubscriptExpr>(ExprPtr)) {
+      if (auto *BaseDecl = ASub->getBase()->getReferencedDeclOfCallee()){
+        //Find if this BaseDecl
+        if (VarDecl *VD = dyn_cast<VarDecl>(BaseDecl)){
+          DeclToPulseSymbol.insert(std::make_pair(BaseDecl, VD->getType()->getPointeeType()));
+        }
+      }
+    }
+    else {return;}
+}
+
+
 bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   
   if (!FD->hasBody() || SM.isInSystemHeader(FD->getLocation()))
@@ -107,6 +207,8 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   auto *FDefn = new _PulseFnDefn();
   FDefn->Name = FuncName;
 
+  ArrTyMap = inferArrayTypes(FD);
+
   // for (unsigned i = 0; i < functionDecl->getNumParams(); ++i) {
   // clang::ParmVarDecl *param = functionDecl->getParamDecl(i);
   // llvm::errs() << "Parameter: " << param->getNameAsString() << "\n";
@@ -116,21 +218,28 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   for (unsigned i = 0; i < FD->getNumParams(); i++) {
     auto *Param = FD->getParamDecl(i);
     auto ParamName = Param->getNameAsString();
-    auto CParamType = Param->getType();
-    FStarType *ParamTy = getPulseTyFromCTy(CParamType);
+    
+    FStarType *ParamTy;
+    auto It = ArrTyMap.find(Param);
+    if (It != ArrTyMap.end()) {
+      auto *FArrTy = new FStarArrType(); 
+      FArrTy->ElementType = getPulseTyFromCTy(It->second);
+      auto *CTyKeyStr = lookupSymbol(SymbolTable::Array);
+      FArrTy->setName(CTyKeyStr);
+      ParamTy = FArrTy;
+    } else {
+      ParamTy = getPulseTyFromCTy(Param->getType());
+    }
+    
+    //auto CParamType = Param->getType();
+    //FStarType *ParamTy = getPulseTyFromCTy(CParamType);
+
     auto *Binder = new struct Binder(ParamName, ParamTy);
     PulseArgs.push_back(Binder);
   }
   FDefn->Args = PulseArgs;
   extractPulseAnnotations(FD, SM, FDefn->Annotation);
 
-  // llvm::outs() << "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP" << "\n";
-  // for (auto &Ann : FDefn->Annotation) {
-  //   llvm::outs() << Ann.predicate << "\n";
-  // }
-  // llvm::outs() << "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP" << "\n";
-
-  // Always apply ANF rewriting on user functions
   if (Stmt *Body = FD->getBody()) {
     if (auto *CS = dyn_cast<CompoundStmt>(Body)) {
       ExprMutationAnalyzer Analyzer(*CS, Ctx);
@@ -553,7 +662,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer) 
     //assert(it != MapExprToAssignedTemporary.end() && "Expression not found in map");
     if (It == StmtToLemmas.end()) {
       // If not found, create a new temporary
-      assert(false);
+      assert(false && "Key not found in map!\n");
     }
 
     PulseWhile->Invariant = It->second;
