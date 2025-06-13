@@ -129,6 +129,9 @@ static void inferArrayTypesStmt(Stmt *InnerStmt, std::map<Decl*, QualType> &Decl
         if (VD->getType()->isArrayType()){
           DeclToPulseSymbol.insert(std::make_pair(VD, VD->getType()->getPointeeType()));
         }
+        if (auto *Annotation = VD->getAttr<AnnotateAttr>()){
+          llvm::outs() << Annotation->getAnnotation() << "\n";
+        }
       }
     }
   }
