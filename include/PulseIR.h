@@ -14,7 +14,7 @@
 
 // // Define What all kinds of Annotations are there in Pulse.
 // //TODO: These can be term type in IR, we shoudl refactor these
-enum class PulseAnnKind { Requires, Ensures, IsArray, Invariants, LemmaStatement};
+enum class PulseAnnKind { Requires, Ensures, Returns, IsArray, Invariants, LemmaStatement};
 
 // Struct for Pulse annotations,
 struct PulseAnnotation {
@@ -115,6 +115,7 @@ static const llvm::SmallDenseMap<SymbolTable, const char*> SymbolToStringTable {
 enum class TermTag {Const, Paren, Var, Name, AppE, FStarType, FStarPointerType, FStarArrType, 
                     Ensures, 
                     Requires,
+                    Returns,
                     Lemma, 
                     LemmaStatement};
                     
@@ -179,6 +180,14 @@ class Requires : public Term {
     virtual void dumpPretty() override;
     static bool classof(const Term *T) { return T->Tag == TermTag::Requires; }
 
+};
+
+class Returns : public Term {
+  public: 
+    std::string Ann; 
+    Returns(); 
+    virtual void dumpPretty() override;
+    static bool classof(const Term *T){ return T->Tag == TermTag::Returns; }
 };
 
 class ConstTerm : public Term {

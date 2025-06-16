@@ -163,6 +163,12 @@ std::string PulseCodeGen::generateCodeFromTerm(Term *T) {
     OS << Require->Ann;
     OS << PulseSyntax.NewLine;
   }
+  else if (Returns *Return = dyn_cast<Returns>(T)){
+    OS << PulseSyntax.Returns;
+    OS << PulseSyntax.Space; 
+    OS << Return->Ann; 
+    OS << PulseSyntax.NewLine;
+  }
   else if (Lemma *UserTerm = dyn_cast<Lemma>(T)){
     
     for (auto Lemma : UserTerm->lemmas)

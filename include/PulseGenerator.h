@@ -40,12 +40,18 @@ public:
                                const clang::SourceManager &SM,
                                std::vector<PulseExpr*> &Ann);
 
+  void inferArrayTypesStmt(Stmt *InnerStmt);
+  void inferArrayTypesExpr(Expr *ExprPtr);
+  void inferDeclType(Decl *Dec, Stmt *InnerStmt);
+  std::map<Decl*, QualType> inferArrayTypes(FunctionDecl *FD);
+  void InferDeclType(Decl* Dec, FunctionDecl *FD);
+
 private:
   std::vector<PulseDecl *> FunctionDeclarations;
   Rewriter &TheRewriter;
   ASTContext &Ctx;
   SourceManager &SM;
-  std::map<Decl*, QualType> ArrTyMap;
+  std::map<Decl*, QualType> DeclTyMap;
   std::map<const Stmt*, std::vector<Slprop*>> StmtToLemmas;
 };
 } // namespace

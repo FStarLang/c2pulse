@@ -49,7 +49,8 @@ PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data, std::string &match)
 
     std::regex requires_pattern(R"(requires:([\w\*\.\|\-]+))");
     std::regex ensures_pattern(u8R"(ensures:(.*))");
-    std::regex isarray_pattern(u8R"(array:(.*):(.*))");
+    std::regex returns_pattern(u8R"(returns:(.*))");
+    std::regex isarray_pattern(u8R"(array:(.*))");
     std::regex invariants_pattern(u8R"(invariants:(.*))");
     std::regex lemma_pattern(u8R"(lemma:(.*))");
 
@@ -60,9 +61,15 @@ PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data, std::string &match)
     if (!Data.empty()){
           
           std::string cleanedString;
+          llvm::outs() << "Print the raw bytes: " << "\n";
+          llvm::outs() << Data.data() << "\n";
+          llvm::outs() << "End\n";
           for (auto c : Data.trim().bytes()){
                 if (c != '\r') {  // Keep only printable ASCII characters
                     cleanedString += c;
+                }
+                if (c == '\0'){
+                  break;
                 }
           }
           // std::wstring DataStr = std::wstring(cleanedString.begin(), cleanedString.end());
@@ -77,9 +84,11 @@ PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data, std::string &match)
         size_t pos = cleanedString.find(delimiter);
         if (pos != std::string::npos) {
           std::string firstPart = cleanedString.substr(0, pos);// Before "requires:"
-          match = cleanedString.substr(pos + delimiter.length()); // After "requires:"
+          match = cleanedString.substr(pos +  delimiter.length() , cleanedString.length() - (pos +  delimiter.length())); // After "requires:"
           //std::cout << "First Part: " << firstPart << std::endl;
           //std::cout << "Second Part: " << secondPart << std::endl;
+          llvm::outs() << "First Part: " << firstPart << "\n";
+          llvm::outs() << "Second Part: " << match << "\n";
         }
 
 
@@ -96,15 +105,27 @@ PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data, std::string &match)
         if (pos != std::string::npos) {
           std::string firstPart = cleanedString.substr(0, pos);// Before "requires:"
           match = cleanedString.substr(pos + delimiter.length()); // After "requires:"
-          //std::cout << "First Part: " << firstPart << std::endl;
-          //std::cout << "Second Part: " << secondPart << std::endl;
+        llvm::outs() << "First Part: " << firstPart << "\n";
+        llvm::outs() << "Second Part: " << match << "\n";
         }
         return PulseAnnKind::Ensures;
     }
     else if (std::regex_search(cleanedString, match2, isarray_pattern)) {
+      // llvm::outs() << cleanedString.data() << "\n";
+      // assert(false && "Unhandeled pulse annotation kind!\n");
+      std::string delimiter = "array:";
+        size_t pos = cleanedString.find(delimiter);
+        if (pos != std::string::npos) {
+          std::string firstPart = cleanedString.substr(0, pos);// Before "requires:"
+          match = cleanedString.substr(pos + delimiter.length()); // After "requires:"
+          //std::cout << "First Part: " << firstPart << std::endl;
+          //std::cout << "Second Part: " << secondPart << std::endl;
+        }
       return PulseAnnKind::IsArray;
     }
     else if (std::regex_search(cleanedString, match2, invariants_pattern)) {
+        llvm::outs() << cleanedString.data() << "\n";
+        assert(false && "Unhandeled pulse annotation kind!\n");
         return PulseAnnKind::Invariants;
     }
     else if (std::regex_search(cleanedString, match2, lemma_pattern)) {
@@ -119,6 +140,17 @@ PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data, std::string &match)
         }
 
         return PulseAnnKind::LemmaStatement;
+    }
+    else if (std::regex_search(cleanedString, match2, returns_pattern)){
+      std::string delimiter = "returns:";
+        size_t pos = cleanedString.find(delimiter);
+        if (pos != std::string::npos) {
+          std::string firstPart = cleanedString.substr(0, pos);// Before "requires:"
+          match = cleanedString.substr(pos + delimiter.length()); // After "requires:"
+          //std::cout << "First Part: " << firstPart << std::endl;
+          //std::cout << "Second Part: " << secondPart << std::endl;
+        }
+      return PulseAnnKind::Returns;
     }
     else{
           llvm::outs() << cleanedString.data() << "\n";
@@ -178,7 +210,11 @@ SymbolTable getSymbolKeyForCType(clang::QualType Ty, clang::ASTContext &Ctx){
   else if (Ty.getAsString() == "size_t"){
     return SymbolTable::SizeT;
   }
-
+  else if (Ty->isArrayType()){
+    return SymbolTable::Array;
+  }
+  
+  Ty->dump();
   assert(false && "getSymbolKeyForType: did not expect type.");
 
 }
@@ -445,6 +481,10 @@ Ensures::Ensures(){
   Tag = TermTag::Ensures;
 }
 
+Returns::Returns(){
+  Tag = TermTag::Returns;
+}
+
 void Ensures::dumpPretty(){
   llvm::outs() << "Ensures ";
   llvm::outs() << Ann;
@@ -455,8 +495,14 @@ void Requires::dumpPretty(){
   llvm::outs() << Ann;
 }
 
+void Returns::dumpPretty(){
+  llvm::outs() << "Requires ";
+  llvm::outs() << Ann;
+}
+
 Requires::Requires(){
   Tag = TermTag::Requires;
+  Ann = "";
 }
 
 void ConstTerm::dumpPretty() { llvm::outs() << ConstantValue; }

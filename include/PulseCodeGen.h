@@ -63,6 +63,7 @@ public:
   CodegenStrTy *ArrAssignment = "<-";
   CodegenStrTy *Requires = "requires";
   CodegenStrTy *Ensures = "ensures";
+  CodegenStrTy *Returns = "returns";
 } PulseSyntax;
 
 // } //namespace

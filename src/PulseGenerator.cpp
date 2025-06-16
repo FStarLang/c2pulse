@@ -9,6 +9,7 @@
 #include "clang/AST/Stmt.h"
 #include "clang/AST/Type.h"
 #include "clang/Analysis/Analyses/ExprMutationAnalyzer.h"
+#include "clang/Basic/SourceLocation.h"
 #include "llvm/CodeGen/TargetOpcodes.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/Debug.h"
@@ -96,9 +97,19 @@ std::vector<PulseDecl *> &PulseVisitor::getFunctionDeclarations() {
 //   //     ann.regionId = "'n" + std::to_string(counter++);
 // }
 
-static void inferArrayTypesStmt(Stmt *InnerStmt, std::map<Decl*, QualType> &DeclToPulseSymbol);
-static void inferArrayTypesExpr(Expr *ExprPtr, std::map<Decl*, QualType> &DeclToPulseSymbol);
-std::map<Decl*, QualType> inferArrayTypes(FunctionDecl *FD){
+void PulseVisitor::InferDeclType(Decl* Dec, FunctionDecl *FD){
+
+     if (Stmt *Body = FD->getBody()) {
+      if (auto *CS = dyn_cast<CompoundStmt>(Body)) {
+        for (auto *InnerStmt : CS->body()) {
+          inferDeclType(Dec, InnerStmt);
+        }
+      }
+    }
+
+}
+
+std::map<Decl*, QualType> PulseVisitor::inferArrayTypes(FunctionDecl *FD){
   
   //std::vector<Decl*> VariablesInScope;
   std::map<Decl*, QualType> DeclToPulseSymbol;
@@ -111,7 +122,7 @@ std::map<Decl*, QualType> inferArrayTypes(FunctionDecl *FD){
     if (Stmt *Body = FD->getBody()) {
       if (auto *CS = dyn_cast<CompoundStmt>(Body)) {
         for (auto *InnerStmt : CS->body()) {
-          inferArrayTypesStmt(InnerStmt, DeclToPulseSymbol);
+          inferArrayTypesStmt(InnerStmt);
         }
       }
     }
@@ -119,17 +130,18 @@ std::map<Decl*, QualType> inferArrayTypes(FunctionDecl *FD){
     return DeclToPulseSymbol;
 }
 
-
-static void inferArrayTypesStmt(Stmt *InnerStmt, std::map<Decl*, QualType> &DeclToPulseSymbol){
+void PulseVisitor::inferDeclType(Decl *Dec, Stmt *InnerStmt){
   
   //Check the types of the statements here. 
   if (auto *DS = dyn_cast<DeclStmt>(InnerStmt)) {
     for (auto *D : DS->decls()) {
+      if (D != Dec)
+         continue;
       if (auto *VD = dyn_cast<VarDecl>(D)) {
         //if we can tell it is an array type from the declaration we just store it in a map. 
         //Otherwise we use array subscript operations to check.
         if (VD->getType()->isArrayType()){
-          DeclToPulseSymbol.insert(std::make_pair(VD, VD->getType()->getPointeeType()));
+          DeclTyMap.insert(std::make_pair(VD, VD->getType()));
         }
         if (auto *Annotation = VD->getAttr<AnnotateAttr>()){
           llvm::outs() << Annotation->getAnnotation() << "\n";
@@ -138,32 +150,76 @@ static void inferArrayTypesStmt(Stmt *InnerStmt, std::map<Decl*, QualType> &Decl
     }
   }
   else if (auto *CExpr = dyn_cast<Expr>(InnerStmt)){
-    inferArrayTypesExpr(CExpr, DeclToPulseSymbol);
+    inferArrayTypesExpr(CExpr);
   }
   else if (auto *While = dyn_cast<WhileStmt>(InnerStmt)){
 
     auto *Cond = While->getCond();
     auto *Body = While->getBody(); 
 
-    inferArrayTypesExpr(Cond, DeclToPulseSymbol);
-    inferArrayTypesStmt(Body, DeclToPulseSymbol);
+    inferArrayTypesExpr(Cond);
+    inferArrayTypesStmt(Body);
 
   }
   else if (auto *CS = dyn_cast<CompoundStmt>(InnerStmt)) {
         for (auto *InnerStmt : CS->body()) {
-          inferArrayTypesStmt(InnerStmt, DeclToPulseSymbol);
+          inferArrayTypesStmt(InnerStmt);
         }
   }
   else if (auto *AttrStmt = dyn_cast<AttributedStmt>(InnerStmt)){
     auto *SubExpr = AttrStmt->getSubStmt();
-    inferArrayTypesStmt(SubExpr, DeclToPulseSymbol);
+    inferArrayTypesStmt(SubExpr);
     //TODO: Vidush see if we want to handle any other statement.
     //InnerStmt->dump();
     //assert(false && "Did not handle statement in inferArrayTypesStmt\n");
   }
 }
 
-static void inferArrayTypesExpr(Expr *ExprPtr, std::map<Decl*, QualType> &DeclToPulseSymbol){
+
+void PulseVisitor::inferArrayTypesStmt(Stmt *InnerStmt){
+  
+  //Check the types of the statements here. 
+  if (auto *DS = dyn_cast<DeclStmt>(InnerStmt)) {
+    for (auto *D : DS->decls()) {
+      if (auto *VD = dyn_cast<VarDecl>(D)) {
+        //if we can tell it is an array type from the declaration we just store it in a map. 
+        //Otherwise we use array subscript operations to check.
+        if (VD->getType()->isArrayType()){
+          DeclTyMap.insert(std::make_pair(VD, VD->getType()));
+        }
+        if (auto *Annotation = VD->getAttr<AnnotateAttr>()){
+          llvm::outs() << Annotation->getAnnotation() << "\n";
+        }
+      }
+    }
+  }
+  else if (auto *CExpr = dyn_cast<Expr>(InnerStmt)){
+    inferArrayTypesExpr(CExpr);
+  }
+  else if (auto *While = dyn_cast<WhileStmt>(InnerStmt)){
+
+    auto *Cond = While->getCond();
+    auto *Body = While->getBody(); 
+
+    inferArrayTypesExpr(Cond);
+    inferArrayTypesStmt(Body);
+
+  }
+  else if (auto *CS = dyn_cast<CompoundStmt>(InnerStmt)) {
+        for (auto *InnerStmt : CS->body()) {
+          inferArrayTypesStmt(InnerStmt);
+        }
+  }
+  else if (auto *AttrStmt = dyn_cast<AttributedStmt>(InnerStmt)){
+    auto *SubExpr = AttrStmt->getSubStmt();
+    inferArrayTypesStmt(SubExpr);
+    //TODO: Vidush see if we want to handle any other statement.
+    //InnerStmt->dump();
+    //assert(false && "Did not handle statement in inferArrayTypesStmt\n");
+  }
+}
+
+void PulseVisitor::inferArrayTypesExpr(Expr *ExprPtr){
                                   
     if (auto *BinOp = dyn_cast<clang::BinaryOperator>(ExprPtr)) {
       
@@ -172,27 +228,33 @@ static void inferArrayTypesExpr(Expr *ExprPtr, std::map<Decl*, QualType> &DeclTo
       auto *Lhs = BinOp->getLHS(); 
       auto *Rhs = BinOp->getRHS(); 
 
-      inferArrayTypesExpr(Lhs, DeclToPulseSymbol);
-      inferArrayTypesExpr(Rhs, DeclToPulseSymbol);
+      inferArrayTypesExpr(Lhs);
+      inferArrayTypesExpr(Rhs);
 
 
     }
     else if (auto *UOp = dyn_cast<clang::UnaryOperator>(ExprPtr)) { 
-      inferArrayTypesExpr(UOp->getSubExpr(), DeclToPulseSymbol);
+      inferArrayTypesExpr(UOp->getSubExpr());
 
     }
     else if (auto *Call = dyn_cast<clang::CallExpr>(ExprPtr)) { 
       auto NumArgs = Call->getNumArgs(); 
       for (size_t Idx = 0; Idx < NumArgs; Idx++){
         auto *Arg = Call->getArg(Idx);
-        inferArrayTypesExpr(Arg, DeclToPulseSymbol);
+        inferArrayTypesExpr(Arg);
       }
     }
     else if (auto *ASub = dyn_cast<clang::ArraySubscriptExpr>(ExprPtr)) {
       if (auto *BaseDecl = ASub->getBase()->getReferencedDeclOfCallee()){
         //Find if this BaseDecl
         if (VarDecl *VD = dyn_cast<VarDecl>(BaseDecl)){
-          DeclToPulseSymbol.insert(std::make_pair(BaseDecl, VD->getType()->getPointeeType()));
+          clang::QualType IncompleteArrayTy = Ctx.getIncompleteArrayType(
+            VD->getType()->getPointeeType(),
+            clang::ArraySizeModifier::Normal,
+            0
+          );
+
+          DeclTyMap.insert(std::make_pair(BaseDecl, IncompleteArrayTy));
         }
       }
     }
@@ -214,8 +276,6 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   //  };
   auto *FDefn = new _PulseFnDefn();
   FDefn->Name = FuncName;
-
-  ArrTyMap = inferArrayTypes(FD);
   
   if (FD->hasAttrs()){
   auto AnnotationsAttachedToFD = FD->getAttrs();
@@ -232,8 +292,8 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
       llvm::outs() << Ref << "\n";
       if (!Ref.empty()) {
         //  std::wsmatch Match;
-         std::string Match;
-         PulseAnnKind AnnKind = getPulseAnnKindFromString(AnnAttr->getAnnotation().ltrim().rtrim().data(), Match);
+         std::string Match = "";
+         PulseAnnKind AnnKind = getPulseAnnKindFromString(AnnAttr->getAnnotation().data(), Match);
          switch(AnnKind){
          case PulseAnnKind::Requires:{
           auto *NewRequires = new Requires(); 
@@ -259,9 +319,18 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
           FDefn->Annotation.push_back(NewEnsures);
           break;
          }
+         case PulseAnnKind::Returns:{
+          Returns * ReturnSpec = new Returns(); 
+          ReturnSpec->Ann = Match;
+          FDefn->Annotation.push_back(ReturnSpec);
+          break;
+         }
          case PulseAnnKind::IsArray:
          case PulseAnnKind::Invariants:
          case PulseAnnKind::LemmaStatement:
+         default:
+           assert(false && "Did not expect specs other than requires and ensures attached \
+                             to function declaration!\n");
            break;
          }
       }
@@ -281,17 +350,113 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   for (unsigned i = 0; i < FD->getNumParams(); i++) {
     auto *Param = FD->getParamDecl(i);
     auto ParamName = Param->getNameAsString();
+
+    //See if this array parameter has any annotations arrached to it.
+    auto Attrs = Param->attrs();
+    for (auto *Attr : Attrs){
+      if (auto *AnnotAttr = dyn_cast<AnnotateAttr>(Attr)){
+        if (AnnotAttr->getAttrName()->getName() == "pulse"){
+          auto AnnotationData = AnnotAttr->getAnnotation();
+          std::string Match;
+          auto PulseAnnotKind = getPulseAnnKindFromString(AnnotationData, Match);
+          assert(PulseAnnotKind == PulseAnnKind::IsArray && "Only expect is array annotations for param decl atm.!\n");
+          //Add type to mape.
+          //Make a clang Array Type
+          //Try to get element type
+          if (!Param->getType()->isPointerType() && !Param->getType()->isArrayType()){
+            assert(false && "Expected parameter to be a ref or array!\n");
+          }
+          
+          QualType ElementType = Param->getType()->getPointeeType();
+
+          if(!std::regex_match(Match, std::regex("[-+]?[0-9]+"))){
+          
+          // Step 2: Create a VarDecl for the size variable 'n'
+          //We should check here is the length is a constant or of variable array type.
+          IdentifierInfo &Id = Ctx.Idents.get(Match);
+          VarDecl *SizeVar = VarDecl::Create(
+            Ctx,
+            Ctx.getTranslationUnitDecl(),
+            SourceLocation(),
+            SourceLocation(),
+            &Id,
+            Ctx.IntTy,
+            nullptr,
+            SC_Auto
+            );
+            
+            // Step 3: Create a DeclRefExpr to refer to 'n'
+            DeclRefExpr *SizeExpr = DeclRefExpr::Create(
+              Ctx,
+              NestedNameSpecifierLoc(),
+              SourceLocation(),
+              SizeVar,
+              false,
+              SourceLocation(),
+              Ctx.IntTy,
+              clang::Expr::getValueKindForType(ElementType)
+            );
+            
+            // Step 4: Create the VLA type
+            QualType VLAType = Ctx.getVariableArrayType(
+              ElementType,
+              SizeExpr,
+              ArraySizeModifier::Normal,
+              0
+            );
+            // llvm::outs() << "Print the element type here!!!\n"; 
+            // llvm::outs() << QualType(VLAType->getPointeeOrArrayElementType(), 0);
+            // llvm::outs() << "End of element type!" << "\n";
+            // exit(1);
+            DeclTyMap.insert(std::make_pair(Param, VLAType));
+          }
+          else {
+            clang::QualType ConstArrayTy = Ctx.getConstantArrayType(
+              ElementType,
+              llvm::APInt(32, std::stoi(Match)),
+              nullptr,
+              ArraySizeModifier::Normal,
+              0
+            );
+            DeclTyMap.insert(std::make_pair(Param, ConstArrayTy));
+
+          }
+          
+        }
+
+      }
+    }
     
     FStarType *ParamTy;
-    auto It = ArrTyMap.find(Param);
-    if (It != ArrTyMap.end()) {
-      auto *FArrTy = new FStarArrType(); 
-      FArrTy->ElementType = getPulseTyFromCTy(It->second);
-      auto *CTyKeyStr = lookupSymbol(SymbolTable::Array);
-      FArrTy->setName(CTyKeyStr);
-      ParamTy = FArrTy;
+    auto It = DeclTyMap.find(Param);
+    if (It != DeclTyMap.end()) {
+      //Get the qualification
+      auto Ty = It->second;
+      if (Ty->isArrayType() || Ty->isConstantArrayType() || Ty->isVariableArrayType()){
+        auto *FArrTy = new FStarArrType(); 
+        FArrTy->ElementType = getPulseTyFromCTy(QualType(Ty->getPointeeOrArrayElementType(), 0));
+        auto *CTyKeyStr = lookupSymbol(SymbolTable::Array);
+        FArrTy->setName(CTyKeyStr);
+        ParamTy = FArrTy;
+      }
+      else {
+        ParamTy = getPulseTyFromCTy(Param->getType()); 
+      }
     } else {
-      ParamTy = getPulseTyFromCTy(Param->getType());
+       InferDeclType(Param, FD);
+       auto It = DeclTyMap.find(Param);
+       if (It != DeclTyMap.end()) {
+        auto Ty = It->second;
+        auto *FArrTy = new FStarArrType(); 
+        FArrTy->ElementType = getPulseTyFromCTy(QualType(Ty->getPointeeOrArrayElementType(), 0));
+        auto *CTyKeyStr = lookupSymbol(SymbolTable::Array);
+        FArrTy->setName(CTyKeyStr);
+        ParamTy = FArrTy;
+
+       }
+       else{
+        ParamTy = getPulseTyFromCTy(Param->getType());
+       }
     }
     
     //auto CParamType = Param->getType();
@@ -428,9 +593,6 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer) 
           PulseLet->setTag(PulseStmtTag::LetBinding);
           if (Analyzer->isMutated(D)){
             PulseLet->Qualifier = MutOrRef::MUT;
-          }
-          else{
-            PulseLet->Qualifier = MutOrRef::NOTMUT;
           }
 
           //We need to make a sequence of pulse statements.
@@ -1182,8 +1344,17 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     NewParen->setInnerExpr(PulseCall);
 
     return NewParen;
-  } 
+  }
+  else if (auto *ParenExpr = dyn_cast<clang::ParenExpr>(E)){
 
+    auto *ClangSubExpr = ParenExpr->getSubExpr();
+    auto *PulseParenExpr = new Paren();
+
+    auto *PulseSubExpr = getTermFromCExpr(ClangSubExpr, MutAnalyzer, ExprsBefore, ParentType);
+    
+    PulseParenExpr->setInnerExpr(PulseSubExpr);
+    return PulseParenExpr;
+  }
   else {
     llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr\n";
     E->dumpPretty(Ctx);
