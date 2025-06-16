@@ -1,0 +1,6 @@
+#define REQUIRES(s) [[clang::pulse("requires:"#s)]]
+#define ENSURES(s) [[clang::pulse("ensures:"#s)]]
+#define RETURNS(s) [[clang::pulse("returns:"#s)]]
+#define ISARRAY(len) [[clang::pulse("array:"#len)]]
+#define INVARIANTS(...) [[clang::pulse("invariants:"#__VA_ARGS__)]]
+#define LEMMA(l) [[clang::pulse("lemma:"#l)]]

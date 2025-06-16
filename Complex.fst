@@ -60,7 +60,7 @@ ensures pure (Int32.v x + Int32.v y == Int32.v res)
 fn complexComputation
 (x : Int32.t)
 (y : Int32.t)
-requires pure (abs (Int32.v x) < 1000 /\ abs (Int32.v y) < 1000)ðØR9\`
+requires pure (abs (Int32.v x) < 1000 /\ abs (Int32.v y) < 1000)À¶Mæ[
 returns res : Int32.t
 {
 (Int32.add (square (triple (sum (doubleValue x) y))) (doubleValue (square (Int32.sub y x))));
@@ -88,7 +88,7 @@ fn recursiveFunction
 (x : Int32.t)
 (limit : Int32.t)
 requires pure False
-ensures res : Int32.t`
+ensures res : Int32.t[
 {
 if((Int32.eq x limit))
 {
