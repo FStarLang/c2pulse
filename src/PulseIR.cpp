@@ -84,7 +84,7 @@ PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data, std::string &match)
         size_t pos = cleanedString.find(delimiter);
         if (pos != std::string::npos) {
           std::string firstPart = cleanedString.substr(0, pos);// Before "requires:"
-          match = cleanedString.substr(pos +  delimiter.length() , cleanedString.length() - (pos +  delimiter.length())); // After "requires:"
+          match = cleanedString.substr(pos +  delimiter.length() , cleanedString.length() - (pos +  delimiter.length()));
           //std::cout << "First Part: " << firstPart << std::endl;
           //std::cout << "Second Part: " << secondPart << std::endl;
           llvm::outs() << "First Part: " << firstPart << "\n";
