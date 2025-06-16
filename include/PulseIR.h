@@ -2,6 +2,8 @@
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/OperationKinds.h"
 #include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/StringRef.h"
+#include <regex>
 #include <string>
 #include <vector>
 #include <memory>
@@ -10,17 +12,14 @@
 
 
 
-// Define What all kinds of Annotations are there in Pulse.
-//TODO: These can be term type in IR, we shoudl refactor these
-enum class PulseAnnKind { Requires, Ensures };
+// // Define What all kinds of Annotations are there in Pulse.
+// //TODO: These can be term type in IR, we shoudl refactor these
+enum class PulseAnnKind { Requires, Ensures, IsArray, Invariants, LemmaStatement};
 
 // Struct for Pulse annotations,
 struct PulseAnnotation {
-  PulseAnnKind kind;
-  std::string predicate; // ptrName
-  std::string regionId;
+  PulseAnnKind kind; 
 };
-
 
 
 enum class SymbolTable {
@@ -113,7 +112,12 @@ static const llvm::SmallDenseMap<SymbolTable, const char*> SymbolToStringTable {
 
 // Define F* IR Similar to type term
 // https://github.com/FStarLang/FStar/blob/3ff998c60bb0efe9925fc94e8fb8b785b9485af0/src/parser/FStarC.Parser.AST.fsti#L40
-enum class TermTag {Const, Paren, Var, Name, AppE, FStarType, FStarPointerType, FStarArrType, Ensures, Requires, UserLemmas};
+enum class TermTag {Const, Paren, Var, Name, AppE, FStarType, FStarPointerType, FStarArrType, 
+                    Ensures, 
+                    Requires,
+                    Lemma, 
+                    LemmaStatement};
+                    
 
 class Term {
 public:
@@ -125,15 +129,26 @@ public:
 };
 
 
-class UserProvidedProofTerms : public Term{
+class Lemma : public Term{
   public:
-    UserProvidedProofTerms();
+    Lemma();
     std::vector<std::string> lemmas;
-    virtual ~UserProvidedProofTerms() = default;
+    virtual ~Lemma() = default;
     virtual void dumpPretty() override; 
-    static bool classof(const Term *T) { return T->Tag == TermTag::UserLemmas; }
+    static bool classof(const Term *T) { return T->Tag == TermTag::Lemma; }
 
 };
+
+class LemmaStatement : public Term{
+  public:
+    LemmaStatement();
+    std::string Lemma;
+    virtual ~LemmaStatement() = default;
+    virtual void dumpPretty() override; 
+    static bool classof(const Term *T) { return T->Tag == TermTag::LemmaStatement; }
+
+};
+
 
 class Paren : public Term {
 
@@ -386,7 +401,7 @@ struct _PulseFnDecl {
 struct _PulseFnDefn {
   std::string Name;
   std::vector<Binder *> Args;
-  std::vector<PulseExpr*> Annotation;
+  std::vector<Term*> Annotation;
   bool isRecursive;
   PulseStmt *Body;
 };
@@ -420,3 +435,6 @@ public:
     return D->Kind == PulseFnKind::FnDecl;
   }
 };
+// PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data, std::wsmatch &match);
+
+PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data, std::string &match);

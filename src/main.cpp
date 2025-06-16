@@ -8,6 +8,7 @@
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
 #include <fstream>
+#include <unistd.h>
 #include "Globals.h"
 
 using namespace clang;
@@ -110,6 +111,8 @@ int main(int argc, const char **argv) {
     // }
 
     // }
+
+    // int pid = fork();
 
     PulseTransformer _PulseTransformer(ASTList);
     //llvm::outs() << "Generated transformer for Pulse..." << "\n";

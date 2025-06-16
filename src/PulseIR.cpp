@@ -39,6 +39,94 @@ const char* lookupSymbol(SymbolTable Key){
   return SymbolToStringTable.lookup(Key);
 }
 
+PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data, std::string &match){
+
+    // std::wregex requires_pattern(L"(requires:(.*))");
+    // std::wregex ensures_pattern(L"(ensures:(.*))");
+    // std::wregex isarray_pattern(L"(array:(.*):(.*))");
+    // std::wregex invariants_pattern(L"(invariants:(.*))");
+    // std::wregex lemma_pattern(L"(lemma:(.*))");
+
+    std::regex requires_pattern(R"(requires:([\w\*\.\|\-]+))");
+    std::regex ensures_pattern(u8R"(ensures:(.*))");
+    std::regex isarray_pattern(u8R"(array:(.*):(.*))");
+    std::regex invariants_pattern(u8R"(invariants:(.*))");
+    std::regex lemma_pattern(u8R"(lemma:(.*))");
+
+    llvm::outs() << "Print StringRef!!!!!!\n";
+    llvm::outs() << Data.str() << "\n";
+    llvm::outs() << "End of StringRef.\n";
+    std::smatch match2;
+    if (!Data.empty()){
+          
+          std::string cleanedString;
+          for (auto c : Data.trim().bytes()){
+                if (c != '\r') {  // Keep only printable ASCII characters
+                    cleanedString += c;
+                }
+          }
+          // std::wstring DataStr = std::wstring(cleanedString.begin(), cleanedString.end());
+           
+          //std::string DataStr = Data.trim().str();
+
+    if (std::regex_search(cleanedString, match2, requires_pattern)) {
+        // auto NewRequires = new Requires(); 
+        // NewRequires->Ann = match[1];
+        // Anns.push_back(NewRequires);
+        std::string delimiter = "requires:";
+        size_t pos = cleanedString.find(delimiter);
+        if (pos != std::string::npos) {
+          std::string firstPart = cleanedString.substr(0, pos);// Before "requires:"
+          match = cleanedString.substr(pos + delimiter.length()); // After "requires:"
+          //std::cout << "First Part: " << firstPart << std::endl;
+          //std::cout << "Second Part: " << secondPart << std::endl;
+        }
+
+
+        return PulseAnnKind::Requires;
+        
+    }
+    else if (std::regex_search(cleanedString, match2, ensures_pattern)) {
+        // auto NewEnsures = new Ensures(); 
+        // NewEnsures->Ann = match[1];
+        // Anns.push_back(NewEnsures);
+
+        std::string delimiter = "ensures:";
+        size_t pos = cleanedString.find(delimiter);
+        if (pos != std::string::npos) {
+          std::string firstPart = cleanedString.substr(0, pos);// Before "requires:"
+          match = cleanedString.substr(pos + delimiter.length()); // After "requires:"
+          //std::cout << "First Part: " << firstPart << std::endl;
+          //std::cout << "Second Part: " << secondPart << std::endl;
+        }
+        return PulseAnnKind::Ensures;
+    }
+    else if (std::regex_search(cleanedString, match2, isarray_pattern)) {
+      return PulseAnnKind::IsArray;
+    }
+    else if (std::regex_search(cleanedString, match2, invariants_pattern)) {
+        return PulseAnnKind::Invariants;
+    }
+    else if (std::regex_search(cleanedString, match2, lemma_pattern)) {
+
+       std::string delimiter = "lemma:";
+        size_t pos = cleanedString.find(delimiter);
+        if (pos != std::string::npos) {
+          std::string firstPart = cleanedString.substr(0, pos);// Before "requires:"
+          match = cleanedString.substr(pos + delimiter.length()); // After "requires:"
+          //std::cout << "First Part: " << firstPart << std::endl;
+          //std::cout << "Second Part: " << secondPart << std::endl;
+        }
+
+        return PulseAnnKind::LemmaStatement;
+    }
+    else{
+          llvm::outs() << cleanedString.data() << "\n";
+          assert(false && "Unhandeled pulse annotation kind!\n");
+    }
+  }
+}
+
 SymbolTable getSymbolKeyForCType(clang::QualType Ty, clang::ASTContext &Ctx){
 
   if(Ty->isSignedIntegerType()){
@@ -315,14 +403,22 @@ void Term::printTag() { llvm::outs() << Tag << "\n"; }
 void Term::dumpPretty() { printTag(); }
 
 
-void UserProvidedProofTerms::dumpPretty() {
+void Lemma::dumpPretty() {
   for (auto lemma : lemmas){
     llvm::outs() << lemma << "\n";
   }
 }
 
-UserProvidedProofTerms::UserProvidedProofTerms(){
-  Tag = TermTag::UserLemmas;
+void LemmaStatement::dumpPretty() {
+  llvm::outs() << Lemma << "\n";
+}
+
+Lemma::Lemma(){
+  Tag = TermTag::Lemma;
+}
+
+LemmaStatement::LemmaStatement(){
+  Tag = TermTag::LemmaStatement;
 }
 
 

@@ -1,6 +1,7 @@
 #include "PulseGenerator.h"
 #include "PulseIR.h"
 #include "clang/AST/ASTContext.h"
+#include "clang/AST/Attrs.inc"
 #include "clang/AST/Comment.h"
 #include "clang/AST/Decl.h"
 #include "clang/AST/Expr.h"
@@ -8,6 +9,7 @@
 #include "clang/AST/Stmt.h"
 #include "clang/AST/Type.h"
 #include "clang/Analysis/Analyses/ExprMutationAnalyzer.h"
+#include "llvm/CodeGen/TargetOpcodes.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
@@ -43,56 +45,56 @@ std::vector<PulseDecl *> &PulseVisitor::getFunctionDeclarations() {
 }
 
 
-void PulseVisitor::extractPulseAnnotations(
-    const clang::FunctionDecl *FD, const clang::SourceManager &SM,
-    std::vector<PulseExpr *> &result) {
+// void PulseVisitor::extractPulseAnnotations(
+//     const clang::FunctionDecl *FD, const clang::SourceManager &SM,
+//     std::vector<PulseExpr *> &result) {
 
-  // auto *Raw = FD->getASTContext().getRawCommentForAnyRedecl(FD);
-  // llvm::outs() << "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW" << "\n";
-  // llvm::outs() << Raw->getRawText(Ctx.getSourceManager());
+//   // auto *Raw = FD->getASTContext().getRawCommentForAnyRedecl(FD);
+//   // llvm::outs() << "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW" << "\n";
+//   // llvm::outs() << Raw->getRawText(Ctx.getSourceManager());
 
-  if (const auto *C = FD->getASTContext().getRawCommentForAnyRedecl(FD)) {
-    std::string cleaned;
-    for (char c : C->getRawText(SM))
-      if (c != '\r')
-        cleaned += c;
+//   if (const auto *C = FD->getASTContext().getRawCommentForAnyRedecl(FD)) {
+//     std::string cleaned;
+//     for (char c : C->getRawText(SM))
+//       if (c != '\r')
+//         cleaned += c;
     
 
-    std::istringstream in(cleaned);
-    std::string line;
-    std::regex reqRegex(R"(@requires\s+(.*))");
-    std::regex ensRegex(R"(@ensures\s+(.*))");
-    std::smatch match;
+//     std::istringstream in(cleaned);
+//     std::string line;
+//     std::regex reqRegex(R"(@requires\s+(.*))");
+//     std::regex ensRegex(R"(@ensures\s+(.*))");
+//     std::smatch match;
 
-    while (std::getline(in, line)) {
-      auto trimmed = StringRef(line).trim().str();
-      if (std::regex_search(trimmed, match, reqRegex)){
+//     while (std::getline(in, line)) {
+//       auto trimmed = StringRef(line).trim().str();
+//       if (std::regex_search(trimmed, match, reqRegex)){
 
-        auto *NewPulseExprNode = new PulseExpr(); 
-        auto *RequiresTerm = new Requires();
-        RequiresTerm->Ann = match[1];
-        NewPulseExprNode->E = RequiresTerm;
-        result.push_back(NewPulseExprNode);
-      }
-      else if (std::regex_search(trimmed, match, ensRegex)){
-        auto *NewPulseExprNode = new PulseExpr(); 
-        auto *EnsuresTerm = new Ensures();
-        EnsuresTerm->Ann = match[1];
-        NewPulseExprNode->E = EnsuresTerm;
-        result.push_back(NewPulseExprNode);
-      }
-    }
+//         auto *NewPulseExprNode = new PulseExpr(); 
+//         auto *RequiresTerm = new Requires();
+//         RequiresTerm->Ann = match[1];
+//         NewPulseExprNode->E = RequiresTerm;
+//         result.push_back(NewPulseExprNode);
+//       }
+//       else if (std::regex_search(trimmed, match, ensRegex)){
+//         auto *NewPulseExprNode = new PulseExpr(); 
+//         auto *EnsuresTerm = new Ensures();
+//         EnsuresTerm->Ann = match[1];
+//         NewPulseExprNode->E = EnsuresTerm;
+//         result.push_back(NewPulseExprNode);
+//       }
+//     }
 
-    // llvm::outs() << "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR" << "\n";
-    // llvm::outs() << result.back().predicate << "\n";
-    // llvm::outs() << "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR" << "\n";
+//     // llvm::outs() << "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR" << "\n";
+//     // llvm::outs() << result.back().predicate << "\n";
+//     // llvm::outs() << "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR" << "\n";
     
-  }
+//   }
 
-  // int counter = 1;
-  // for (auto& ann : result)
-  //     ann.regionId = "'n" + std::to_string(counter++);
-}
+//   // int counter = 1;
+//   // for (auto& ann : result)
+//   //     ann.regionId = "'n" + std::to_string(counter++);
+// }
 
 static void inferArrayTypesStmt(Stmt *InnerStmt, std::map<Decl*, QualType> &DeclToPulseSymbol);
 static void inferArrayTypesExpr(Expr *ExprPtr, std::map<Decl*, QualType> &DeclToPulseSymbol);
@@ -152,9 +154,12 @@ static void inferArrayTypesStmt(Stmt *InnerStmt, std::map<Decl*, QualType> &Decl
           inferArrayTypesStmt(InnerStmt, DeclToPulseSymbol);
         }
   }
-  else {
-    InnerStmt->dump();
-    assert(false && "Did not handle statement in inferArrayTypesStmt\n");
+  else if (auto *AttrStmt = dyn_cast<AttributedStmt>(InnerStmt)){
+    auto *SubExpr = AttrStmt->getSubStmt();
+    inferArrayTypesStmt(SubExpr, DeclToPulseSymbol);
+    //TODO: Vidush see if we want to handle any other statement.
+    //InnerStmt->dump();
+    //assert(false && "Did not handle statement in inferArrayTypesStmt\n");
   }
 }
 
@@ -211,6 +216,61 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   FDefn->Name = FuncName;
 
   ArrTyMap = inferArrayTypes(FD);
+  
+  if (FD->hasAttrs()){
+  auto AnnotationsAttachedToFD = FD->getAttrs();
+  for (auto *Attr : AnnotationsAttachedToFD){
+
+    if (auto *AnnAttr = dyn_cast<AnnotateAttr>(Attr)){
+
+    if (AnnAttr->getAttrName()->getName() == "pulse"){
+      llvm::outs() << "Attribute Name: ";
+      llvm::outs() << Attr->getAttrName()->getName();
+      llvm::outs() << "\n";
+      llvm::outs() << AnnAttr->getAnnotation() << "\n";
+      auto Ref = AnnAttr->getAnnotation();
+      llvm::outs() << Ref << "\n";
+      if (!Ref.empty()) {
+        //  std::wsmatch Match;
+         std::string Match;
+         PulseAnnKind AnnKind = getPulseAnnKindFromString(AnnAttr->getAnnotation().ltrim().rtrim().data(), Match);
+         switch(AnnKind){
+         case PulseAnnKind::Requires:{
+          auto *NewRequires = new Requires(); 
+          // std::wstring matched_wstring = Match[1].str();
+          // std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+          // std::string matched_string = converter.to_bytes(matched_wstring);
+          //auto matched_string = Match[1].str();
+          //llvm::outs() << matched_string << "\n";
+          //NewRequires->Ann = matched_string;
+          NewRequires->Ann = Match;
+          FDefn->Annotation.push_back(NewRequires);
+          break;
+         }
+         case PulseAnnKind::Ensures:{
+          auto *NewEnsures = new Ensures();
+          // std::wstring matched_wstring = Match[1].str();
+          // std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+          // std::string matched_string = converter.to_bytes(matched_wstring);
+          //auto matched_string = Match[1].str();
+          //llvm::outs() << matched_string << "\n"; 
+          //NewEnsures->Ann = matched_string;
+          NewEnsures->Ann = Match;
+          FDefn->Annotation.push_back(NewEnsures);
+          break;
+         }
+         case PulseAnnKind::IsArray:
+         case PulseAnnKind::Invariants:
+         case PulseAnnKind::LemmaStatement:
+           break;
+         }
+      }
+         }
+      }
+    }
+  }
+  
+  // exit(0);
 
   // for (unsigned i = 0; i < functionDecl->getNumParams(); ++i) {
   // clang::ParmVarDecl *param = functionDecl->getParamDecl(i);
@@ -241,7 +301,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
     PulseArgs.push_back(Binder);
   }
   FDefn->Args = PulseArgs;
-  extractPulseAnnotations(FD, SM, FDefn->Annotation);
+  //extractPulseAnnotations(FD, SM, FDefn->Annotation);
 
   if (Stmt *Body = FD->getBody()) {
     if (auto *CS = dyn_cast<CompoundStmt>(Body)) {
@@ -397,11 +457,62 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer) 
 
           if (Start != nullptr){
               Start->assignS2(PulseLet);
+
+              //check for any lemmas to be released. 
+              auto Attrs = VD->attrs();
+              for (auto *Att : Attrs){
+                if (AnnotateAttr *AnnonAttr = dyn_cast<AnnotateAttr>(Att)){
+                  if (AnnonAttr->getAttrName()->getName() == "pulse"){
+                    std::string Match; 
+                    auto AnnKind = getPulseAnnKindFromString(AnnonAttr->getAnnotation(), Match);
+                    assert((AnnKind == PulseAnnKind::LemmaStatement) && "Expected a Lemma statement!\n");
+                    auto *LS = new LemmaStatement(); 
+                    LS->Lemma = Match; 
+                    auto *LSE = new PulseExpr();
+                    LSE->E = LS;
+                    llvm::outs() << "Found Lemma: " << "\n";
+                    llvm::outs() << Match << "\n";
+                    llvm::outs() << "End.\n";
+                    auto *NewS = new PulseSequence(); 
+                    NewS->assignS1(LSE);
+                    NewS->assignS2(Start);
+                    Start = NewS;
+                  }
+                }
+              }
               return Start;
           }
-          return PulseLet;
-        } else {
 
+          //check for any lemmas to be released. 
+              auto Attrs = VD->attrs();
+              for (auto *Att : Attrs){
+                if (AnnotateAttr *AnnonAttr = dyn_cast<AnnotateAttr>(Att)){
+                  if (AnnonAttr->getAttrName()->getName() == "pulse"){
+                    std::string Match; 
+                    auto AnnKind = getPulseAnnKindFromString(AnnonAttr->getAnnotation(), Match);
+                    assert((AnnKind == PulseAnnKind::LemmaStatement) && "Expected a Lemma statement!\n");
+                    auto *LS = new LemmaStatement(); 
+                    LS->Lemma = Match;
+                    llvm::outs() << "Found Lemma: " << "\n";
+                    llvm::outs() << Match << "\n";
+                    llvm::outs() << "End.\n"; 
+                    auto *LSE = new PulseExpr();
+                    LSE->E = LS;
+                    if (Start == nullptr){
+                      auto *NewS = new PulseSequence(); 
+                      NewS->assignS1(LSE);
+                      Start = NewS;
+                    }
+                    Start->assignS2(LSE);
+                  }
+                }
+              }
+
+              auto *AppendLet = new PulseSequence(); 
+              AppendLet->assignS1(Start);
+              AppendLet->assignS2(PulseLet);
+
+          return AppendLet;
         }
       }
     }
@@ -656,19 +767,72 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer) 
     llvm::outs () << "Dump while Body" << "\n";
     WhileBody->dump();
     llvm::outs () << "End while Body dump" << "\n";
+
+
+    if (auto *AttrStmt = dyn_cast<AttributedStmt>(WhileBody)){
+      llvm::outs() << "Found while invariant" << "\n";
+      AttrStmt->getSubStmt()->dump();
+      auto *CompundBody = AttrStmt->getSubStmt();
+
+      auto Attributes = AttrStmt->getAttrs();
+      auto *PulseWhile = new PulseWhileStmt(); 
+      for (auto *Attr : Attributes){
+
+        if (auto *AnnAttr = dyn_cast<AnnotateAttr>(Attr)){
+          if (AnnAttr->getAttrName()->getName() == "pulse"){
+
+            auto AnnotationData = AnnAttr->getAnnotation().str();
+            std::string delimiter = "invariants:";
+            size_t pos = AnnotationData.find(delimiter);
+            std::string match;
+            if (pos != std::string::npos) {
+              std::string firstPart = AnnotationData.substr(0, pos);
+              match = AnnotationData.substr(pos + delimiter.length());
+            }
+
+            std::vector<std::string> tokens;
+            std::stringstream ss(match);
+            std::string token;
+            while (std::getline(ss, token, ',')) {
+              tokens.push_back(token.c_str());
+            }
+
+            llvm::outs() << "PRINT OUT the invarinat tokens\n";
+            for (auto token : tokens){
+              llvm::outs() << token << "\n";
+              auto *NewLemmaTerm = new LemmaStatement();
+              NewLemmaTerm->Lemma.assign(token.c_str());
+              PulseWhile->Invariant.push_back(NewLemmaTerm);
+            }
+            llvm::outs() << "\n";
+
+          }
+        }
+
+      }
+
+      PulseWhile->setTag(PulseStmtTag::WhileStmt);
+      PulseWhile->Guard = pulseFromStmt(WhileCond, Analyzer);
+      PulseWhile->Body = pulseFromCompoundStmt(CompundBody, Analyzer);
+
+      return PulseWhile;
+
+      //exit(1);
+    }
+    else{
      
     auto *PulseWhile = new PulseWhileStmt(); 
     PulseWhile->setTag(PulseStmtTag::WhileStmt);
 
-    auto It = StmtToLemmas.find(WS);
+    // auto It = StmtToLemmas.find(WS);
     //Remove temporary for now
     //assert(it != MapExprToAssignedTemporary.end() && "Expression not found in map");
-    if (It == StmtToLemmas.end()) {
-      // If not found, create a new temporary
-      assert(false && "Key not found in map!\n");
-    }
+    // if (It == StmtToLemmas.end()) {
+    //   // If not found, create a new temporary
+    //   assert(false && "Key not found in map!\n");
+    // }
 
-    PulseWhile->Invariant = It->second;
+    // PulseWhile->Invariant = It->second;
 
     PulseWhile->Guard = pulseFromStmt(WhileCond, Analyzer);
     PulseWhile->Body = pulseFromCompoundStmt(WhileBody, Analyzer);
@@ -679,6 +843,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer) 
     S->dumpPretty(Ctx);
     llvm::outs() << "\nEnd in pulseFromStmt.\n";
     assert(false && "Not implemented Clang expr in pulseFromStmt\n");
+    }
   } else if (auto *US = dyn_cast<UnaryOperator>(S)) {
     llvm::outs() << "\n\nPrint in pulseFromStmt UnaryOperator\n";
     S->dumpPretty(Ctx);
@@ -690,8 +855,42 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer) 
   else if (auto *CS = dyn_cast<CompoundStmt>(S)){
     return pulseFromCompoundStmt(CS, Analyzer);
   }
-  else {
+  else if (auto *AttrStmt = dyn_cast<AttributedStmt>(S)){
 
+    auto *SubStmt = AttrStmt->getSubStmt();
+    PulseSequence *NewSequence = nullptr;
+    
+    auto Attrs = AttrStmt->getAttrs();
+    for (auto *Attr : Attrs){
+      if (auto *AnnotAttr = dyn_cast<AnnotateAttr>(Attr)){
+        if (AnnotAttr->getAttrName()->getName() == "pulse"){
+          std::string Match;
+          auto AttrKind = getPulseAnnKindFromString(AnnotAttr->getAnnotation(), Match);
+          assert(AttrKind == PulseAnnKind::LemmaStatement && "Only Lemmas allowed in the middle of the body!");
+          if (NewSequence == nullptr){
+            auto *LS = new LemmaStatement(); 
+            LS->Lemma = Match;
+            auto *PE = new PulseExpr(); 
+            PE->E = LS; 
+            auto *NewSeq = new PulseSequence(); 
+            NewSeq->assignS1(PE);
+            NewSequence = NewSeq;
+            continue;
+          }
+          auto *LS = new LemmaStatement(); 
+          LS->Lemma = Match;
+          auto *PE = new PulseExpr(); 
+          PE->E = LS; 
+          auto *NewSeq = new PulseSequence();
+          NewSequence->assignS2(NewSeq);
+          NewSequence = NewSeq;
+        }
+      }
+    }
+    NewSequence->assignS2(pulseFromStmt(SubStmt, Analyzer));
+    return NewSequence;
+  }
+  else {
     llvm::outs() << "\n\nPrint in pulseFromStmt\n";
     S->dumpPretty(Ctx);
     llvm::outs() << "\nEnd in pulseFromStmt.\n";
@@ -799,7 +998,12 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       DerefAppE->setCallName(FuncName);
       auto *TermForBaseExpr = getTermFromCExpr(UO->getSubExpr(), MutAnalyzer, ExprsBefore, ParentType);
       DerefAppE->pushArg(TermForBaseExpr);
-      return DerefAppE;
+
+      //Wrap this deref in a parenthesis. 
+      auto *Parenthesis = new Paren(); 
+      Parenthesis->setInnerExpr(DerefAppE);
+      return Parenthesis;
+
     } else {
       llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "
                       "UnaryOperator\n";
@@ -822,7 +1026,7 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
 
               auto NumArgs = CE->getNumArgs(); 
               assert(NumArgs == 1 && "Expected number of arguments for Pulse Proof Term to be 1!");
-              auto *UserLemma = new UserProvidedProofTerms(); 
+              auto *UserLemma = new Lemma(); 
               if (auto *ArgToString = dyn_cast<StringLiteral>(CE->getArg(0)->IgnoreCasts())){
                 auto ArgString = ArgToString->getString();
                 UserLemma->lemmas.push_back(ArgString.str());
@@ -845,7 +1049,7 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
         
         std::vector<Slprop*> VectorLemmas;
         for (size_t Idx = 0; Idx < NumArgs; Idx++){
-          auto *UserLemma = new UserProvidedProofTerms(); 
+          auto *UserLemma = new Lemma(); 
           auto *Arg = CE->getArg(Idx);
           //assert that each argument is actually a string literal 
           if (auto *ArgToString = dyn_cast<StringLiteral>(Arg->IgnoreCasts())){
@@ -914,31 +1118,37 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       //Create a new variable to be returned.
       //TODO: Vidush create a gensym for to get variable name.
 
-      std::string LetVar = gensym("new");
-      VarTerm *VTermRet = new VarTerm();
-      VTermRet->setVarName(LetVar);
+      //std::string LetVar = DRE->getDecl()->getNameAsString(); //gensym("new");
+      //VarTerm *VTermRet = new VarTerm();
+      //VTermRet->setVarName(LetVar);
 
       //Need a let to extract its value
-      auto *LetForVariable = new LetBinding();
-      LetForVariable->VarName = LetVar;
+      //auto *LetForVariable = new LetBinding();
+      //LetForVariable->VarName = LetVar;
       
       //Generate an AppE for the left hand side. 
-      auto *LetInitAppE = new AppE();
+      auto *InitAppE = new AppE();
       auto *CallName = new VarTerm(); 
       CallName->setVarName("!");
-      LetInitAppE->setCallName(CallName);
+      InitAppE->setCallName(CallName);
       
       //The actual variable whose value we want 
       VarTerm *VTerm = new VarTerm();
       VTerm->setVarName(DRE->getDecl()->getNameAsString());
 
-      LetInitAppE->pushArg(VTerm);
+      InitAppE->pushArg(VTerm);
 
-      LetForVariable->LetInit = LetInitAppE;
+      //Wrap this AppE in a Parenthesis. 
 
-      ExprsBefore.push_back(LetForVariable);
+      auto *PulseParenthesis = new Paren(); 
+      PulseParenthesis->setInnerExpr(InitAppE);
 
-      return VTermRet;
+      //LetForVariable->LetInit = LetInitAppE;
+
+      //ExprsBefore.push_back(LetForVariable);
+
+      //return VTermRet;
+      return PulseParenthesis;
   
     }
 

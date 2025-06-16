@@ -52,7 +52,7 @@ void PulseCodeGen::generateCodeFromPulseAst(PulseDecl *FD) {
 
     // Print out the Ensures
     for (auto *A : FuncDef->Annotation) {
-      generateCodeFromPulseStmt(A);
+      generateCodeFromTerm(A);
     }
 
     // Codegen Function Body.
@@ -163,10 +163,13 @@ std::string PulseCodeGen::generateCodeFromTerm(Term *T) {
     OS << Require->Ann;
     OS << PulseSyntax.NewLine;
   }
-  else if (UserProvidedProofTerms *UserTerm = dyn_cast<UserProvidedProofTerms>(T)){
+  else if (Lemma *UserTerm = dyn_cast<Lemma>(T)){
     
     for (auto Lemma : UserTerm->lemmas)
           OS << Lemma; 
+  }
+  else if (LemmaStatement *S = dyn_cast<LemmaStatement>(T)){
+    OS << S->Lemma;
   }
   else {
     T->dumpPretty();
@@ -183,11 +186,8 @@ void PulseCodeGen::generateCodeFromPulseStmt(PulseStmt *T) {
 
   if (PulseExpr *S = dyn_cast<PulseExpr>(T)) {
     OS << generateCodeFromTerm(S->E);
-    if (S->E->Tag == TermTag::UserLemmas){
       OS << PulseSyntax.Semicolon;
       OS << PulseSyntax.NewLine;
-
-    }
   } else if (PulseAssignment *A = dyn_cast<PulseAssignment>(T)) {
     OS << generateCodeFromTerm(A->Lhs);
     OS << PulseSyntax.Space;
