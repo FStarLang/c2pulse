@@ -55,6 +55,7 @@ int main(int argc, const char **argv) {
       clang::ASTContext &Ctx = AST->getASTContext();
       ExprLocationAnalyzer Analyzer(Ctx);
       Analyzer.analyze(Ctx.getTranslationUnitDecl());
+      Analyzer.printNodeInfoMap();
     }
 
 
