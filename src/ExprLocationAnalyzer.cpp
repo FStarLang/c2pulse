@@ -54,6 +54,7 @@ bool ExprLocationAnalyzer::VisitDeclStmt(DeclStmt *DS) {
   for (auto *D : DS->decls()) {
     if (auto *VD = dyn_cast<VarDecl>(D)) {
       if (Expr *Init = VD->getInit()) {
+        recordSourceInfo("Init of " + VD->getNameAsString(), Init, "");
         printExprInfo("  " + VD->getNameAsString(), Init);
       }
     }
@@ -90,6 +91,11 @@ bool ExprLocationAnalyzer::VisitBinaryOperator(BinaryOperator *BO) {
   // Print labeled LHS and RHS info
   printExprInfo("  LHS (" + lhsOS.str() + ")", BO->getLHS());
   printExprInfo("  RHS (" + rhsOS.str() + ")", BO->getRHS());
+
+  recordSourceInfo("BinaryOperator", BO, OpStr.str());
+  recordSourceInfo("LHS (" + lhsOS.str() + ")", BO->getLHS(), OpStr.str());
+  recordSourceInfo("RHS (" + rhsOS.str() + ")", BO->getRHS(), OpStr.str());
+
 
   return true;
 }
@@ -150,3 +156,49 @@ std::optional<std::string> ExprLocationAnalyzer::getSourceLine(SourceLocation lo
 bool ExprLocationAnalyzer::shouldProcess() const {
   return FunctionNameToProcess.empty() || FunctionNameToProcess == CurrentFunctionName;
 }
+
+void ExprLocationAnalyzer::recordSourceInfo(const std::string &context, const clang::Expr *E, const std::string &op) {
+  if (!E) return;
+
+  const Expr *ExprNode = E->IgnoreParenImpCasts();
+  SourceLocation loc = SM.getSpellingLoc(ExprNode->getExprLoc());
+
+  unsigned line = SM.getSpellingLineNumber(loc);
+  unsigned column = SM.getSpellingColumnNumber(loc);
+  QualType QT = ExprNode->getType();
+
+  std::string pretty;
+  llvm::raw_string_ostream rso(pretty);
+  ExprNode->printPretty(rso, nullptr, Context.getPrintingPolicy());
+
+  std::optional<std::string> srcLine = getSourceLine(loc);
+
+  SourceInfo info;
+  info.PrettyString = rso.str();
+  info.Line = line;
+  info.Column = column;
+  info.Type = QT.getAsString();
+  info.SourceLine = srcLine.value_or("[Unavailable]");
+  info.Context = context;
+  info.Operation = op;
+
+  NodeInfoMap[E] = std::move(info);
+}
+
+const  std::map<const clang::Stmt*, SourceInfo>  &ExprLocationAnalyzer::getNodeInfoMap() const {
+  return NodeInfoMap;
+}
+
+void ExprLocationAnalyzer::printNodeInfoMap() const {
+  for (const auto &entry : NodeInfoMap) {
+    const SourceInfo &info = entry.second;
+    llvm::outs() << "-------------------------------\n";
+    llvm::outs() << "Pretty:    " << info.PrettyString << "\n";
+    llvm::outs() << "Location:  Line " << info.Line << ", Column " << info.Column << "\n";
+    llvm::outs() << "Type:      " << info.Type << "\n";
+    llvm::outs() << "Source:    " << info.SourceLine << "\n";
+    llvm::outs() << "Context:   " << info.Context << "\n";
+    llvm::outs() << "Operation: " << info.Operation << "\n";
+  }
+}
+

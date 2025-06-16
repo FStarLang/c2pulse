@@ -16,6 +16,17 @@ extern llvm::cl::opt<std::string> TransformMode;
 
 #define DEBUG_TYPE "anf-pulse-rewriter"
 
+/// Struct that captures detailed source information for an AST node.
+struct SourceInfo {
+  std::string PrettyString;  // Formatted string representation of the AST node or expression
+  unsigned Line;             // Line number in the source code where the node/expression appears
+  unsigned Column;           // Column number in the source code for precise location
+  std::string Type;          // The data type of the expression or node (e.g., int, float)
+  std::string SourceLine;    // The full source code line text where the node/expression is located
+  std::string Context;       // Semantic or syntactic context describing the node's role (e.g., "RHS")
+  std::string Operation;     // Operation or operator associated with the node (e.g., "+", "=")
+};
+
 class ExprLocationAnalyzer : public clang::RecursiveASTVisitor<ExprLocationAnalyzer> {
 public:
   explicit ExprLocationAnalyzer(clang::ASTContext &Ctx);
@@ -30,26 +41,19 @@ public:
 
   // Needed for assignments like `*r1 = *r2;`
   bool VisitBinaryOperator(clang::BinaryOperator *BO);
+  
+  const std::map<const clang::Stmt *, SourceInfo> &getNodeInfoMap() const;
+  void printNodeInfoMap() const;
 
 private:
   clang::ASTContext &Context;
   const clang::SourceManager &SM;
   std::string CurrentFunctionName = "";
 
+  std::map<const clang::Stmt*, SourceInfo> NodeInfoMap;
+
   bool shouldProcess() const;
   void printExprInfo(const std::string &label, const clang::Expr *E);
   std::optional<std::string>  getSourceLine(clang::SourceLocation loc);
   void recordSourceInfo(const std::string &role, const clang::Expr *E, const std::string &op);
-
-struct SourceInfo {
-  std::string PrettyString;  // Formatted string representation of the AST node or expression
-  unsigned Line;             // Line number in the source code where the node/expression appears
-  unsigned Column;           // Column number in the source code for precise location
-  std::string Type;          // The data type of the expression or node (e.g., int, float)
-  std::string SourceLine;    // The full source code line text where the node/expression is located
-  std::string Context;       // Semantic or syntactic context describing the node's role (e.g., "RHS")
-  std::string Operation;     // Operation or operator associated with the node (e.g., "+", "=")
-};
-
-  std::map<const clang::Stmt*, SourceInfo> NodeInfoMap;
 };
