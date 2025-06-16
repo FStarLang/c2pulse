@@ -1,12 +1,8 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "pulse_macros.h"
 
-#define REQUIRES(s) [[clang::pulse("requires:"#s)]]
-#define ENSURES(s) [[clang::pulse("ensures:"#s)]]
-#define ISARRAY(len) [[clang::pulse("array:"#len)]]
-#define INVARIANTS(...) [[clang::pulse("invariants:"#__VA_ARGS__)]]
-#define LEMMA(l) [[clang::pulse("lemma:"#l)]]
 
 REQUIRES(exists* s.arr |-> s)
 REQUIRES(pure (length arr == SizeT.v len))

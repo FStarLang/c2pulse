@@ -2,18 +2,53 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include "pulse_macros.h"
 
-// Helper functions
-int triple(int x) { return x * 3; }
-int square(int x) { return x * x; }
-int doubleValue(int x) { return x * 2; }
-int sum(int a, int b) { return a + b; }
+
 int recursiveFunction(int x, int limit);
-int randomOffset(int x) { return x + (rand() % 10); }
 
+REQUIRES(pure (Int32.fits (Int32.v x * 3)))
+RETURNS(res : Int32.t)
+ENSURES(pure (Int32.v x * 3 == Int32.v res))
+int triple(int x) { 
+    return x * 3; 
+}
+
+REQUIRES(pure (Int32.fits (Int32.v x * Int32.v x)))
+RETURNS(res : Int32.t)
+ENSURES(pure (Int32.v x * Int32.v x == Int32.v res))
+int square(int x) { 
+    return x * x; 
+}
+
+REQUIRES(pure (Int32.fits (Int32.v x * 2)))
+RETURNS(res : Int32.t)
+ENSURES(pure (Int32.v x * 2 == Int32.v res))
+int doubleValue(int x) { 
+    return x * 2; 
+}
+
+
+REQUIRES(pure (Int32.fits (Int32.v x + Int32.v y)))
+RETURNS(res : Int32.t)
+ENSURES(pure (Int32.v x + Int32.v y == Int32.v res))
+int sum(int x, int y) { 
+    return x + y; 
+}
+
+
+// int randomOffset(int x) { 
+//     return x + (rand() % 10); 
+// }
+
+//From Guido
+// Precondition could be more liberal, this is just one
+// possibility. User should annotate what they want.
+REQUIRES(pure (abs (Int32.v x) < 1000 /\\ abs (Int32.v y) < 1000))
+RETURNS(res : Int32.t)
 int complexComputation(int x, int y) {
     return square(triple(sum(doubleValue(x), y))) + 
-           doubleValue(square(y - x)) - randomOffset(sum(x, y));
+           doubleValue(square(y - x)) /*- randomOffset(sum(x, y))*/;
 }
 
 // void arrayManipulation(int *arr, int size) {
@@ -24,34 +59,46 @@ int complexComputation(int x, int y) {
 //     }
 // }
 
+
+//From Guido
+// Precondition could be more liberal, this is just one
+// possibility. User should annotate what they want.
+REQUIRES(pure (abs (Int32.v x) < 1000 /\\ abs (Int32.v y) < 1000))
+RETURNS(res : Int32.t)
 int conditionalProcessing(int x, int y) {
     if ((x * y) % 2 == 0) {
         return sum(triple(x), square(y - x));
     } else {
-        return doubleValue(square(sum(x, y))) - randomOffset(x);
+        return doubleValue(square(sum(x, y))) /*- randomOffset(x)*/;
     }
 }
 
+//From Guido
+// This is a hack to get this function to pass. To properly
+// check this function we need to find some invariant about
+// the size of the returned value.
+REQUIRES(pure False)
+ENSURES(res : Int32.t)
 int recursiveFunction(int x, int limit) {
     if (x >= limit) return x;
     return sum(conditionalProcessing(x, square(x)), recursiveFunction(x + 1, limit));
 }
 
-int main() {
-    int a = 3, b = 5;
-    int result = complexComputation(a, b);
+// int main() {
+//     int a = 3, b = 5;
+//     int result = complexComputation(a, b);
     
-    int arr[5] = {1, 2, 3, 4, 5};
-    //arrayManipulation(arr, 5);
+//     int arr[5] = {1, 2, 3, 4, 5};
+//     //arrayManipulation(arr, 5);
 
-    int recursiveResult = recursiveFunction(a, 8);
+//     int recursiveResult = recursiveFunction(a, 8);
     
-    printf("Complex Computation Result: %d\n", ((result + 1) + 3));
-    printf("Array after processing: ");
-    // for (int i = 0; i < 5; i++) {
-    //     printf("%d ", arr[i]);
-    // }
-    printf("\nRecursive Computation Result: %d\n", recursiveResult);
+//     printf("Complex Computation Result: %d\n", ((result + 1) + 3));
+//     printf("Array after processing: ");
+//     // for (int i = 0; i < 5; i++) {
+//     //     printf("%d ", arr[i]);
+//     // }
+//     printf("\nRecursive Computation Result: %d\n", recursiveResult);
 
-    return 0;
-}
+//     return 0;
+// }
