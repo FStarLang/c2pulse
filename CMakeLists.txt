@@ -49,6 +49,8 @@ set(SRC_FILES
 # Executable Name
 add_executable(c2pulse ${SRC_FILES})
 
+add_subdirectory(test)
+
 # Link dependencies
 target_link_libraries(c2pulse
   PRIVATE
