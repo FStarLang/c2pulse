@@ -1,11 +1,18 @@
 cmake_minimum_required(VERSION 3.13)
 project(ANFAndPulseRewriter LANGUAGES C CXX)
 
+# Point to your LLVM build
+set(LLVM_DIR "${CMAKE_SOURCE_DIR}/llvm-build/lib/cmake/llvm")
+find_package(LLVM REQUIRED CONFIG)
+
+
 set(LLVM_LINK_COMPONENTS support)
 
 # Define which LLVM components we need
 llvm_map_components_to_libnames(LLVM_LIBS
   support
+  Tooling
+  Frontend
 )
 
 # Gather source files
@@ -55,3 +62,5 @@ set_target_properties(c2pulse PROPERTIES
 
 # Export compile commands (e.g., for clangd or clang-tidy)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+target_link_libraries(ANFAndPulseRewriter ${LLVM_LIBS})
