@@ -3,6 +3,7 @@
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Attrs.inc"
 #include "clang/AST/Comment.h"
+#include "clang/AST/CurrentSourceLocExprScope.h"
 #include "clang/AST/Decl.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/OperationKinds.h"
@@ -128,6 +129,20 @@ std::map<Decl*, QualType> PulseVisitor::inferArrayTypes(FunctionDecl *FD){
     }
 
     return DeclToPulseSymbol;
+}
+
+bool PulseVisitor::checkIsRecursiveFunction(FunctionDecl *FD){
+    
+  bool result = false;
+    if (Stmt *Body = FD->getBody()) {
+      if (auto *CS = dyn_cast<CompoundStmt>(Body)) {
+        for (auto *InnerStmt : CS->body()) {
+          result = result || checkIsRecursiveStmt(InnerStmt, FD);
+        }
+      }
+    }
+
+    return result;
 }
 
 void PulseVisitor::inferDeclType(Decl *Dec, Stmt *InnerStmt){
@@ -261,6 +276,86 @@ void PulseVisitor::inferArrayTypesExpr(Expr *ExprPtr){
     else {return;}
 }
 
+bool PulseVisitor::checkIsRecursiveStmt(Stmt *InnerStmt, FunctionDecl *CurrFunction){
+
+  if (!InnerStmt)
+    return false;
+  
+  if (auto *N = dyn_cast<NullStmt>(InnerStmt)){
+    return false;
+  }
+  //Check the types of the statements here. 
+  else if (auto *DS = dyn_cast<DeclStmt>(InnerStmt)) {
+    return false;
+  }
+  else if (auto *CExpr = dyn_cast<Expr>(InnerStmt)){
+    return checkIsRecursiveExpr(CExpr, CurrFunction);
+  }
+  else if (auto *While = dyn_cast<WhileStmt>(InnerStmt)){
+
+    auto *Cond = While->getCond();
+    auto *Body = While->getBody(); 
+
+    auto isRecCond = checkIsRecursiveExpr(Cond, CurrFunction);
+    auto isRecBody = checkIsRecursiveStmt(Body, CurrFunction);
+
+    return isRecCond || isRecBody;
+
+  }
+  else if (auto *CS = dyn_cast<CompoundStmt>(InnerStmt)) {
+      bool result = false;  
+      for (auto *InnerStmt : CS->body()) {
+          result = result || checkIsRecursiveStmt(InnerStmt, CurrFunction);
+        }
+      return result;
+  }
+  else if (auto *AttrStmt = dyn_cast<AttributedStmt>(InnerStmt)){
+    auto *SubExpr = AttrStmt->getSubStmt();
+    return checkIsRecursiveStmt(SubExpr, CurrFunction);
+    //TODO: Vidush see if we want to handle any other statement.
+    //InnerStmt->dump();
+    //assert(false && "Did not handle statement in inferArrayTypesStmt\n");
+  }
+}
+
+//Recurse all expressions.
+bool PulseVisitor::checkIsRecursiveExpr(Expr *ExprPtr, FunctionDecl *CurrFunction){
+                                  
+    if (auto *BinOp = dyn_cast<clang::BinaryOperator>(ExprPtr)) {
+      
+      //TODO: Vidush: 
+      //If this BinOp is of the shape: *Arr + 8 etc, we may conclude it is of an array type.
+      auto *Lhs = BinOp->getLHS(); 
+      auto *Rhs = BinOp->getRHS(); 
+
+      return checkIsRecursiveExpr(Lhs, CurrFunction) || checkIsRecursiveExpr(Rhs, CurrFunction);
+
+
+    }
+    else if (auto *UOp = dyn_cast<clang::UnaryOperator>(ExprPtr)) { 
+      return checkIsRecursiveExpr(UOp->getSubExpr(), CurrFunction);
+
+    }
+    else if (auto *Call = dyn_cast<clang::CallExpr>(ExprPtr)) { 
+      auto NumArgs = Call->getNumArgs();
+      bool isRec = false; 
+      for (size_t Idx = 0; Idx < NumArgs; Idx++){
+        auto *Arg = Call->getArg(Idx);
+        isRec = isRec ||  checkIsRecursiveExpr(Arg, CurrFunction);
+      }
+      
+      const FunctionDecl *callee = Call->getDirectCallee();
+      if (callee && callee == CurrFunction) {
+        isRec = isRec || true;
+      }
+
+      return isRec;
+    }
+    else if (auto *ASub = dyn_cast<clang::ArraySubscriptExpr>(ExprPtr)) {
+      return false;
+    }
+    else {return false;}
+}
 
 bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   
@@ -276,6 +371,11 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   //  };
   auto *FDefn = new _PulseFnDefn();
   FDefn->Name = FuncName;
+  FDefn->isRecursive = true;
+
+  if (!checkIsRecursiveFunction(FD)){
+    FDefn->isRecursive = false;
+  }
   
   if (FD->hasAttrs()){
   auto AnnotationsAttachedToFD = FD->getAttrs();

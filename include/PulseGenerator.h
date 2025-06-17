@@ -45,6 +45,9 @@ public:
   void inferDeclType(Decl *Dec, Stmt *InnerStmt);
   std::map<Decl*, QualType> inferArrayTypes(FunctionDecl *FD);
   void InferDeclType(Decl* Dec, FunctionDecl *FD);
+  bool checkIsRecursiveExpr(Expr *ExprPtr, FunctionDecl *CurrFunction);
+  bool checkIsRecursiveStmt(Stmt *InnerStmt, FunctionDecl *CurrFunction);
+  bool checkIsRecursiveFunction(FunctionDecl *FD);
 
 private:
   std::vector<PulseDecl *> FunctionDeclarations;

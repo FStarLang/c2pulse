@@ -25,6 +25,7 @@ cmake -G Ninja .. \
 	-DCMAKE_CXX_COMPILER="$CLANG_BIN/clang++" \
 	-DCMAKE_BUILD_TYPE=$BUILD_TYPE \
 	-DCMAKE_PREFIX_PATH="$LLVM_DIR" \
+	-DLLVM_ENABLE_LLD=ON \
 	-DCMAKE_CXX_FLAGS="-frtti"
 
 # use all cores for ninja
