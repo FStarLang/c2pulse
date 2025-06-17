@@ -944,12 +944,20 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer) 
           if (AnnAttr->getAttrName()->getName() == "pulse"){
 
             auto AnnotationData = AnnAttr->getAnnotation().str();
-            std::string delimiter = "invariants:";
-            size_t pos = AnnotationData.find(delimiter);
+            
+            std::string StartDelimiter = "invariants:";
+            size_t pos = AnnotationData.find(StartDelimiter);
+            std::string EndDelimiter = "|END";
+
+            size_t end = AnnotationData.find(EndDelimiter);
             std::string match;
             if (pos != std::string::npos) {
-              std::string firstPart = AnnotationData.substr(0, pos);
-              match = AnnotationData.substr(pos + delimiter.length());
+            std::string firstPart = AnnotationData.substr(0, pos);
+            match = AnnotationData.substr(pos +  StartDelimiter.length() , end - (pos + StartDelimiter.length()));            
+            // if (pos != std::string::npos) {
+            //   std::string firstPart = AnnotationData.substr(0, pos);
+            //   match = AnnotationData.substr(pos + delimiter.length());
+            //}
             }
 
             std::vector<std::string> tokens;
