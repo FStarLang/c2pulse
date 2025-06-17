@@ -1,21 +1,39 @@
 cmake_minimum_required(VERSION 3.13)
-project(ANFAndPulseRewriter LANGUAGES C CXX)
+project(C2Pulse LANGUAGES C CXX)
 
-# Point to your LLVM build
-set(LLVM_DIR "${CMAKE_SOURCE_DIR}/llvm-build/lib/cmake/llvm")
+# Hard code LLVM path
+set(LLVM_ROOT "${CMAKE_SOURCE_DIR}/../external_tools/llvm-project/build")
+
+set(CMAKE_PREFIX_PATH "${LLVM_ROOT}")
+
 find_package(LLVM REQUIRED CONFIG)
+find_package(Clang REQUIRED CONFIG)
+
+# debug messages
+message(STATUS "Using custom LLVM from: ${LLVM_DIR}")
+message(STATUS "Using custom Clang from: ${CLANG_DIR}")
+
+# Use Clang to compile C2Pulse
+set(CMAKE_C_COMPILER "${LLVM_ROOT}/bin/clang")
+set(CMAKE_CXX_COMPILER "${LLVM_ROOT}/bin/clang++")
+
+# Compiler settings
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+add_definitions(${LLVM_DEFINITIONS})
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -frtti")
 
 
-set(LLVM_LINK_COMPONENTS support)
-
-# Define which LLVM components we need
-llvm_map_components_to_libnames(LLVM_LIBS
-  support
-  Tooling
-  Frontend
+# Header Files
+include_directories(
+  ${LLVM_INCLUDE_DIRS}
+  ${CLANG_INCLUDE_DIRS}
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-# Gather source files
+# Source files
 set(SRC_FILES
   src/ANFVisitor.cpp
   src/ANFConsumer.cpp
@@ -28,39 +46,32 @@ set(SRC_FILES
   src/Globals.cpp
 )
 
-add_clang_tool(c2pulse
-  ${SRC_FILES}
-  DEPENDS
-    intrinsics_gen
-)
+# Executable Name
+add_executable(c2pulse ${SRC_FILES})
 
-# Include directories for headers
-target_include_directories(c2pulse
-  PRIVATE
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
-
-# Link against LLVM and Clang libraries
+# Link dependencies
 target_link_libraries(c2pulse
   PRIVATE
-    ${LLVM_LIBS}
     clangAST
     clangASTMatchers
     clangBasic
     clangFrontend
     clangRewrite
     clangTooling
+    LLVMCore
+    LLVMSupport
 )
 
-# Set C++ standard and other properties
-set_target_properties(c2pulse PROPERTIES
-  CXX_STANDARD 17
-  INTERPROCEDURAL_OPTIMIZATION OFF
-)
-
-# Export compile commands (e.g., for clangd or clang-tidy)
+# Export compile_commands.json for clangd
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-target_link_libraries(ANFAndPulseRewriter ${LLVM_LIBS})
+# Limit parallel link jobs since this is a Debug build
+set_property(GLOBAL PROPERTY JOB_POOLS link_pool=2)
+set_property(TARGET c2pulse PROPERTY JOB_POOL_LINK link_pool)
+
+# Absolutely force RTTI during compilation of this target
+target_compile_options(c2pulse PRIVATE -frtti)
+
+# Also ensure any LLVM headers behave consistently
+set(LLVM_ENABLE_RTTI ON CACHE BOOL "Enable RTTI" FORCE)
+
