@@ -254,7 +254,6 @@ void PulseCodeGen::generateCodeFromPulseStmt(PulseStmt *T) {
     OS << PulseSyntax.OpeningCurlyBrace;
     OS << PulseSyntax.NewLine; 
     generateCodeFromPulseStmt(PulseThen);
-    OS << PulseSyntax.NewLine;
     OS << PulseSyntax.ClosingCurlyBrace; 
     OS << PulseSyntax.NewLine;
 
@@ -263,7 +262,6 @@ void PulseCodeGen::generateCodeFromPulseStmt(PulseStmt *T) {
     OS << PulseSyntax.OpeningCurlyBrace; 
     OS << PulseSyntax.NewLine; 
     generateCodeFromPulseStmt(PulseElse);
-    OS << PulseSyntax.NewLine;
     OS << PulseSyntax.ClosingCurlyBrace;
     OS << PulseSyntax.NewLine;
     //assert(false && "Did not expect pulse if statement type");
