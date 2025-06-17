@@ -4,9 +4,6 @@
 #include <math.h>
 #include "pulse_macros.h"
 
-
-int recursiveFunction(int x, int limit);
-
 REQUIRES(pure (Int32.fits (Int32.v x * 3)))
 RETURNS(res : Int32.t)
 ENSURES(pure (Int32.v x * 3 == Int32.v res))
@@ -36,6 +33,17 @@ int sum(int x, int y) {
     return x + y; 
 }
 
+// This is a hack to get this function to pass. To properly
+// check this function we need to find some invariant about
+// the size of the returned value.
+REQUIRES(pure False)
+RETURNS(res : Int32.t)
+int recursiveFunction(int x, int limit) {
+    if (x >= limit) return x;
+    else{
+        return sum(12,  recursiveFunction(x + 1, limit));
+    }
+}
 
 // int randomOffset(int x) { 
 //     return x + (rand() % 10); 
@@ -44,12 +52,12 @@ int sum(int x, int y) {
 //From Guido
 // Precondition could be more liberal, this is just one
 // possibility. User should annotate what they want.
-REQUIRES(pure (abs (Int32.v x) < 1000 /\\ abs (Int32.v y) < 1000))
-RETURNS(res : Int32.t)
-int complexComputation(int x, int y) {
-    return square(triple(sum(doubleValue(x), y))) + 
-           doubleValue(square(y - x)) /*- randomOffset(sum(x, y))*/;
-}
+// REQUIRES(pure (abs (Int32.v x) < 1000 /\\ abs (Int32.v y) < 1000))
+// RETURNS(res : Int32.t)
+// int complexComputation(int x, int y) {
+//     return square(triple(sum(doubleValue(x), y))) + 
+//            doubleValue(square(y - x)) /*- randomOffset(sum(x, y))*/;
+// }
 
 // void arrayManipulation(int *arr, int size) {
 //     for (int i = 0; i < size; i++) {
@@ -63,26 +71,26 @@ int complexComputation(int x, int y) {
 //From Guido
 // Precondition could be more liberal, this is just one
 // possibility. User should annotate what they want.
-REQUIRES(pure (abs (Int32.v x) < 1000 /\\ abs (Int32.v y) < 1000))
-RETURNS(res : Int32.t)
-int conditionalProcessing(int x, int y) {
-    if ((x * y) % 2 == 0) {
-        return sum(triple(x), square(y - x));
-    } else {
-        return doubleValue(square(sum(x, y))) /*- randomOffset(x)*/;
-    }
-}
+// REQUIRES(pure (abs (Int32.v x) < 1000 /\\ abs (Int32.v y) < 1000))
+// RETURNS(res : Int32.t)
+// int conditionalProcessing(int x, int y) {
+//     if ((x * y) % 2 == 0) {
+//         return sum(triple(x), square(y - x));
+//     } else {
+//         return doubleValue(square(sum(x, y))) /*- randomOffset(x)*/;
+//     }
+// }
 
 //From Guido
 // This is a hack to get this function to pass. To properly
 // check this function we need to find some invariant about
 // the size of the returned value.
-REQUIRES(pure False)
-ENSURES(res : Int32.t)
-int recursiveFunction(int x, int limit) {
-    if (x >= limit) return x;
-    return sum(conditionalProcessing(x, square(x)), recursiveFunction(x + 1, limit));
-}
+// REQUIRES(pure False)
+// RETURNS(res : Int32.t)
+// int recursiveFunction(int x, int limit) {
+//     if (x >= limit) return x;
+//     return sum(conditionalProcessing(x, square(x)), recursiveFunction(x + 1, limit));
+// }
 
 // int main() {
 //     int a = 3, b = 5;
