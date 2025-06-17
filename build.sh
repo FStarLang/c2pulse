@@ -20,11 +20,12 @@ cd "$BUILD_DIR"
 
 # Cmake Command
 cmake -G Ninja .. \
-  -DCMAKE_C_COMPILER="$CLANG_BIN/clang" \
-  -DCMAKE_CXX_COMPILER="$CLANG_BIN/clang++" \
-  -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
-  -DCMAKE_PREFIX_PATH="$LLVM_DIR" \
-  -DCMAKE_CXX_FLAGS="-frtti"
+	-DCMAKE_EXPORT_COMPILE_COMMANDS="ON" \
+	-DCMAKE_C_COMPILER="$CLANG_BIN/clang" \
+	-DCMAKE_CXX_COMPILER="$CLANG_BIN/clang++" \
+	-DCMAKE_BUILD_TYPE=$BUILD_TYPE \
+	-DCMAKE_PREFIX_PATH="$LLVM_DIR" \
+	-DCMAKE_CXX_FLAGS="-frtti"
 
 # use all cores for ninja
 ninja -j"$(nproc)"
