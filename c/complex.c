@@ -52,13 +52,14 @@ int recursiveFunction(int x, int limit) {
 //From Guido
 // Precondition could be more liberal, this is just one
 // possibility. User should annotate what they want.
-// REQUIRES(pure (abs (Int32.v x) < 1000 /\\ abs (Int32.v y) < 1000))
-// RETURNS(res : Int32.t)
-// int complexComputation(int x, int y) {
-//     return square(triple(sum(doubleValue(x), y))) + 
-//            doubleValue(square(y - x)) /*- randomOffset(sum(x, y))*/;
-// }
+REQUIRES(pure (abs (Int32.v x) < 1000 /\\ abs (Int32.v y) < 1000))
+RETURNS(res : Int32.t)
+int complexComputation(int x, int y) {
+    return square(triple(sum(doubleValue(x), y))) + 
+           doubleValue(square(y - x)) /*- randomOffset(sum(x, y))*/;
+}
 
+// Vidush: Pulse does not handle for loops at the moment.
 // void arrayManipulation(int *arr, int size) {
 //     for (int i = 0; i < size; i++) {
 //         arr[i] = complexComputation(arr[i], sum(arr[(i + 1) % size], arr[i]));
@@ -71,16 +72,18 @@ int recursiveFunction(int x, int limit) {
 //From Guido
 // Precondition could be more liberal, this is just one
 // possibility. User should annotate what they want.
-// REQUIRES(pure (abs (Int32.v x) < 1000 /\\ abs (Int32.v y) < 1000))
-// RETURNS(res : Int32.t)
-// int conditionalProcessing(int x, int y) {
-//     if ((x * y) % 2 == 0) {
-//         return sum(triple(x), square(y - x));
-//     } else {
-//         return doubleValue(square(sum(x, y))) /*- randomOffset(x)*/;
-//     }
-// }
+REQUIRES(pure (abs (Int32.v x) < 1000 /\\ abs (Int32.v y) < 1000))
+RETURNS(res : Int32.t)
+int conditionalProcessing(int x, int y) {
+    if ((x * y) % 2 == 0) {
+        return sum(triple(x), square(y - x));
+    } else {
+        return doubleValue(square(sum(x, y))) /*- randomOffset(x)*/;
+    }
+}
 
+//The recursive function in the below form does not work. 
+//Since pulse cannot handle non void returns after if without an else.
 //From Guido
 // This is a hack to get this function to pass. To properly
 // check this function we need to find some invariant about
