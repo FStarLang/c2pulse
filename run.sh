@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-SYSTEM_CLANG_INCLUDE="/usr/lib/clang/18.1.3/include"
+SYSTEM_CC_INCLUDE="/usr/lib/clang/18.1.3/include"
 SYSTEM_INCLUDE="/usr/include"
 SYSTEM_ARCH_INCLUDE="/usr/include/x86_64-linux-gnu"
 C_STD="-std=c23"
@@ -19,7 +19,7 @@ exec ../external_tools/llvm-project/build/bin/c2pulse "$SRC_FILE" \
   --extra-arg-before="-resource-dir" \
   --extra-arg-before="../external_tools/llvm-project/build/lib/clang/21" \
   --extra-arg-before="-isystem" \
-  --extra-arg-before=$SYSTEM_CLANG_INCLUDE \
+  --extra-arg-before=$SYSTEM_CC_INCLUDE \
   --extra-arg-before="-isystem" \
   --extra-arg-before=$SYSTEM_ARCH_INCLUDE \
   --extra-arg-before="-isystem"  \
