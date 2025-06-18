@@ -13,22 +13,24 @@ if [[ ! -x "$CLANG_BIN/clang++" ]]; then
   exit 1
 fi
 
-echo "Sourcing LLVM from: $LLVM_DIR"
-rm -rf "$BUILD_DIR"
-mkdir -p "$BUILD_DIR"
-cd "$BUILD_DIR"
+if [[ ! -x "$CLANG_BIN/C2Pulse" ]]; then
+  echo "C2Pulse exists in $CLANG_BIN!"
+  echo "Rebuilding existing project!"
+  cd ../external_tools/llvm-project/build/
+  ninja -j $(nproc)
+  exit 0
+fi
 
-# Cmake Command
-cmake -G Ninja .. \
-	-DCMAKE_EXPORT_COMPILE_COMMANDS="ON" \
-	-DCMAKE_C_COMPILER="$CLANG_BIN/clang" \
-	-DCMAKE_CXX_COMPILER="$CLANG_BIN/clang++" \
-	-DCMAKE_BUILD_TYPE=$BUILD_TYPE \
-	-DCMAKE_PREFIX_PATH="$LLVM_DIR" \
-	-DLLVM_ENABLE_LLD=ON \
-	-DCMAKE_CXX_FLAGS="-frtti"
+ln -s "$(pwd)" ../external_tools/llvm-project/clang/tools/CtoPulse
 
-# use all cores for ninja
-ninja -j"$(nproc)"
+if grep -q 'add_clang_subdirectory(CtoPulse)' ../external_tools/llvm-project/clang/tools/CMakeLists.txt; then
+    echo "CtoPulse already added as a build target!"
+else
+    echo "Adding CtoPulse as a clang project!"
+    echo 'add_clang_subdirectory(CtoPulse)' >> ../external_tools/llvm-project/clang/tools/CMakeLists.txt
+fi
 
-echo "Build Successful! Please find the binary C2pulse in the build directory."
+cd ../external_tools/llvm-project/build/
+ninja -j $(nproc)
+
+echo "Build Successful! Please find the binary C2pulse in the llvm build directory. Use the run.sh script to invoke it from the current directory."

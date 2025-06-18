@@ -41,6 +41,7 @@ public:
   CodegenStrTy *PulseAssignmentOpRef = ":=";
   CodegenStrTy *PulseLetAssignmentOpRef = "=";
   CodegenStrTy *PulseFunctionDeclaration = "fn";
+  CodegenStrTy *PulseRecursiveFunctionDeclaration = "fn rec";
   CodegenStrTy *OpeningParenthesis = "(";
   CodegenStrTy *ClosingParenthesis = ")";
   CodegenStrTy *Colon = ":";

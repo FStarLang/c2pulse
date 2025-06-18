@@ -278,8 +278,9 @@ void PulseVisitor::inferArrayTypesExpr(Expr *ExprPtr){
 
 bool PulseVisitor::checkIsRecursiveStmt(Stmt *InnerStmt, FunctionDecl *CurrFunction){
 
-  if (!InnerStmt)
+  if (!InnerStmt){
     return false;
+  }
   
   if (auto *N = dyn_cast<NullStmt>(InnerStmt)){
     return false;
@@ -312,9 +313,29 @@ bool PulseVisitor::checkIsRecursiveStmt(Stmt *InnerStmt, FunctionDecl *CurrFunct
   else if (auto *AttrStmt = dyn_cast<AttributedStmt>(InnerStmt)){
     auto *SubExpr = AttrStmt->getSubStmt();
     return checkIsRecursiveStmt(SubExpr, CurrFunction);
-    //TODO: Vidush see if we want to handle any other statement.
-    //InnerStmt->dump();
-    //assert(false && "Did not handle statement in inferArrayTypesStmt\n");
+  }
+  else if (auto *RetStmt = dyn_cast<ReturnStmt>(InnerStmt)){
+    auto *RetExpr = RetStmt->getRetValue();
+
+    return checkIsRecursiveExpr(RetExpr, CurrFunction);
+  }
+  else if (auto *ClangIfStmt = dyn_cast<IfStmt>(InnerStmt)){
+    auto *Cond = ClangIfStmt->getCond(); 
+    auto *Then = ClangIfStmt->getThen(); 
+    auto *Else = ClangIfStmt->getElse();
+
+    auto CondIsRec = checkIsRecursiveExpr(Cond, CurrFunction);
+    auto ThenIsRec = checkIsRecursiveStmt(Then, CurrFunction);
+    auto ElseIsRec = checkIsRecursiveStmt(Else, CurrFunction);
+
+    return CondIsRec || ThenIsRec || ElseIsRec;
+
+  }
+  else{
+        //TODO: Vidush see if we want to handle any other statement.
+    InnerStmt->dump();
+    assert(false && "Did not handle statement in inferArrayTypesStmt\n");
+
   }
 }
 
@@ -343,9 +364,17 @@ bool PulseVisitor::checkIsRecursiveExpr(Expr *ExprPtr, FunctionDecl *CurrFunctio
         auto *Arg = Call->getArg(Idx);
         isRec = isRec ||  checkIsRecursiveExpr(Arg, CurrFunction);
       }
+
+
+      llvm::outs() << "Found a Call Expression!!!" << "\n";
+      llvm::outs() << Call->getDirectCallee()->getNameAsString() << "\n";
+      llvm::outs() << "End found a recursive call!" << "\n";
       
       const FunctionDecl *callee = Call->getDirectCallee();
       if (callee && callee == CurrFunction) {
+        llvm::outs() << "Found a recursive Call!!" << "\n";
+        llvm::outs() << callee << "\n";
+        llvm::outs() << "End found a recursive call!" << "\n";
         isRec = isRec || true;
       }
 
@@ -374,6 +403,10 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   FDefn->isRecursive = true;
 
   if (!checkIsRecursiveFunction(FD)){
+    llvm::outs() << "Found Function to be non recursive!!" << "\n";
+    llvm::outs() << FD->getNameAsString() << "\n";
+    llvm::outs() << "End function name\n";
+    
     FDefn->isRecursive = false;
   }
   

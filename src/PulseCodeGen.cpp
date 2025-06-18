@@ -38,8 +38,13 @@ void PulseCodeGen::generateCodeFromPulseAst(PulseDecl *FD) {
     auto Args = FuncDef->Args;
     auto FuncName = FuncDef->Name;
     auto *FuncBody = FuncDef->Body;
-
-    OS << PulseSyntax.PulseFunctionDeclaration << " ";
+    
+    if (FuncDef->isRecursive){
+      OS << PulseSyntax.PulseRecursiveFunctionDeclaration << " ";
+    }
+    else {
+      OS << PulseSyntax.PulseFunctionDeclaration << " ";
+    }
     OS << FuncName << "\n";
     for (auto *Arg : Args) {
       auto *Ty = Arg->Type;
