@@ -13,7 +13,7 @@ if [[ ! -x "$CLANG_BIN/clang++" ]]; then
   exit 1
 fi
 
-if [[ ! -x "$CLANG_BIN/C2Pulse" ]]; then
+if [[ -x "$CLANG_BIN/c2pulse" ]]; then
   echo "C2Pulse exists in $CLANG_BIN!"
   echo "Rebuilding existing project!"
   cd ../external_tools/llvm-project/build/
