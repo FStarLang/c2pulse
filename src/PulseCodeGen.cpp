@@ -63,7 +63,6 @@ void PulseCodeGen::generateCodeFromPulseAst(PulseDecl *FD) {
     // Codegen Function Body.
     OS << PulseSyntax.OpeningCurlyBrace << PulseSyntax.NewLine;
     generateCodeFromPulseStmt(FuncBody);
-    OS << PulseSyntax.NewLine;
     OS << PulseSyntax.ClosingCurlyBrace << PulseSyntax.NewLine;
 
   } else {
