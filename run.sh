@@ -1,6 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
+SYSTEM_CLANG_INCLUDE="/usr/lib/clang/18.1.3/include"
+SYSTEM_INCLUDE="/usr/include"
+SYSTEM_ARCH_INCLUDE="/usr/include/x86_64-linux-gnu"
+C_STD="-std=c23"
+
 if [ $# -lt 1 ]; then
   echo "Usage: $0 <source.c> [additional args...]"
   exit 1
@@ -10,5 +15,19 @@ SRC_FILE="$1"
 shift  # shift out the filename, leave the rest
 
 exec ../external_tools/llvm-project/build/bin/c2pulse "$SRC_FILE" \
-  -p build \
+  -p  ../external_tools/llvm-project/build/ \
+  --extra-arg-before="-resource-dir" \
+  --extra-arg-before="../external_tools/llvm-project/build/lib/clang/21" \
+  --extra-arg-before="-isystem" \
+  --extra-arg-before=$SYSTEM_CLANG_INCLUDE \
+  --extra-arg-before="-isystem" \
+  --extra-arg-before=$SYSTEM_ARCH_INCLUDE \
+  --extra-arg-before="-isystem"  \
+  --extra-arg-before=$SYSTEM_INCLUDE \
+  --extra-arg-before="-isystem" \
+  --extra-arg-before="../external_tools/llvm-project/build/lib/clang/21/include" \
+  --extra-arg-before="-x" \
+  --extra-arg-before="c" \
+  --extra-arg-before=$C_STD \
+  --extra-arg-before="-c"
   "$@"

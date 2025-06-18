@@ -53,4 +53,4 @@ set_target_properties(c2pulse PROPERTIES
 )
 
 # Export compile commands (e.g., for clangd or clang-tidy)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+#set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
