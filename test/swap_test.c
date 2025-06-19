@@ -16,13 +16,12 @@ void ref_swap(int* r1, int* r2)
 // CHECK: Print Program:
 
 // CHECK: fn ref_swap
-// CHECK: (r1 : ref Int32.t)
-// CHECK: (r2 : ref Int32.t)
+// CHECK-NEXT: (r1 : ref Int32.t)
+// CHECK-NEXT: (r2 : ref Int32.t)
 // CHECK: {
-// CHECK: let tmp = (! r1);
-// CHECK: r1 := (! r2);
-// CHECK: r2 := tmp;
+// CHECK-NEXT: let tmp = (! r1);
+// CHECK-NEXT: r1 := (! r2);
+// CHECK-NEXT: r2 := tmp;
 // CHECK: }
 
 // CHECK: Success: Code transformed and syntax validated.
-
