@@ -415,6 +415,7 @@ struct _PulseFnDefn {
   PulseStmt *Body;
 };
 
+
 enum class PulseFnKind {
   FnDefn, // Function definition
   FnDecl  // Function declaration
@@ -444,6 +445,16 @@ public:
     return D->Kind == PulseFnKind::FnDecl;
   }
 };
+
+
+class PulseModul {
+public:
+  std::string ModuleName; 
+  std::vector<PulseDecl*> Decls;
+};
+
+typedef PulseModul File;
+
 // PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data, std::wsmatch &match);
 
 PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data, std::string &match);
