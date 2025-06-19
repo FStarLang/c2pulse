@@ -30,11 +30,11 @@ u32_pair_struct* new_u32_pair_struct ()
 fn new_u32_pair_struct ()
 requires emp
 returns x:Box.box u32_pair_struct
-ensures exists* (s:u32_pair_struct_spec). u32_pair_struct_pred (Box.box_to_ref x) s ** pure (s == {first = 0ul; second = 1ul})
+ensures exists* (s:u32_pair_struct_spec). SwapStruct.Types.u32_pair_struct_pred (Box.box_to_ref x) s ** pure (s == {first = 0ul; second = 1ul})
 {
   let x = SwapStruct.Types.alloc (); //note the translatio of the casted malloc to a typed allocation
-  set_first (Box.box_to_ref x) 0ul; // assigning to a field of the struct translated to a setter
-  set_second (Box.box_to_ref x) 1ul; // assigning to a field of the struct translated to a getter
+  SwapStruct.Types.set_first (Box.box_to_ref x) 0ul; // assigning to a field of the struct translated to a setter
+  SwapStruct.Types.set_second (Box.box_to_ref x) 1ul; // assigning to a field of the struct translated to a getter
   x
 }
 
@@ -50,12 +50,12 @@ void swap_fields (u32_pair_struct* x, #s:u32_pair_struct_spec s)
 }
 *)
 fn swap_fields (x:ref u32_pair_struct) (#s:u32_pair_struct_spec)
-requires u32_pair_struct_pred x s
-ensures exists* (s':u32_pair_struct_spec). u32_pair_struct_pred x s' ** pure (s' == ({first = s.second; second = s.first}))
+requires SwapStruct.Types.u32_pair_struct_pred x s
+ensures exists* (s':u32_pair_struct_spec). SwapStruct.Types.u32_pair_struct_pred x s' ** pure (s' == ({first = s.second; second = s.first}))
 {
-  let f1 = get_first x;
-  set_first x (get_second x);
-  set_second x f1;
+  let f1 = SwapStruct.Types.get_first x;
+  SwapStruct.Types.set_first x (SwapStruct.Types.get_second x);
+  SwapStruct.Types.set_second x f1;
 }
 
 
@@ -94,14 +94,14 @@ void swap_fields_alt (u32_pair_struct* x)
 }
 *)
 fn swap_fields_alt (x:ref u32_pair_struct) (#s:u32_pair_struct_spec)
-requires u32_pair_struct_pred x s
-ensures exists* (s':u32_pair_struct_spec). u32_pair_struct_pred x s' ** pure (s' == {first = s.second; second = s.first})
+requires SwapStruct.Types.u32_pair_struct_pred x s
+ensures exists* (s':u32_pair_struct_spec). SwapStruct.Types.u32_pair_struct_pred x s' ** pure (s' == {first = s.second; second = s.first})
 {
-  let y = explode x;
-  u32_pair_struct_refs_pred_unfold y;
+  let y = SwapStruct.Types.explode x;
+  SwapStruct.Types.u32_pair_struct_refs_pred_unfold y;
   swap_refs y.first y.second;
-  u32_pair_struct_refs_pred_fold y;
-  restore x y;
+  SwapStruct.Types.u32_pair_struct_refs_pred_fold y;
+  SwapStruct.Types.restore x y;
 }
 
 (*
@@ -126,7 +126,7 @@ ensures emp
 
   swap_fields_alt (Box.box_to_ref x);
 
-  assert (u32_pair_struct_pred (Box.box_to_ref x) {first = 0ul; second = 1ul});
+  assert (SwapStruct.Types.u32_pair_struct_pred (Box.box_to_ref x) {first = 0ul; second = 1ul});
 
   SwapStruct.Types.free x;
 }
