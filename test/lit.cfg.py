@@ -10,7 +10,12 @@ config.test_exec_root = config.test_source_root
 # Get the paths from environment variables or provide default fallback
 c2pulse_path = os.environ.get("C2PULSE_PATH", os.path.abspath("./bin/c2pulse"))
 filecheck_path = os.environ.get("FILECHECK", os.path.abspath("./bin/FileCheck"))
+fstar_run_script = os.environ.get("FSTAR_RUN_SCRIPT", os.path.abspath("../../../CtoPulse/run_fstar.sh"))
 
 # Substitutions
 config.substitutions.append(("%c2pulse", c2pulse_path))
 config.substitutions.append(("%{FILECHECK}", filecheck_path))
+config.substitutions.append(("%run_fstar.sh", fstar_run_script))
+
+# Add environment variables if needed (optional)
+config.environment["FSTAR_Z3VERSION"] = "4.13.3"

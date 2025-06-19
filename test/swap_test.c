@@ -1,4 +1,5 @@
 // RUN: %c2pulse %s 2>&1 | %{FILECHECK} %s
+// RUN: %run_fstar.sh %p/Swap_test.fst 2>&1 | %{FILECHECK} %s --check-prefix=PULSE
 
 #include "../../test-transpiler/c/pulse_macros.h"
 
@@ -25,3 +26,6 @@ void ref_swap(int* r1, int* r2)
 // CHECK: }
 
 // CHECK: Success: Code transformed and syntax validated.
+
+// PULSE: Verified module: Swap
+// PULSE-NEXT: All verification conditions discharged successfully

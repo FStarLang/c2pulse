@@ -1,5 +1,6 @@
 
 // RUN: %c2pulse %s 2>&1 | %{FILECHECK} %s
+// RUN: %run_fstar.sh %p/Reverse_test.fst 2>&1 | %{FILECHECK} %s --check-prefix=PULSE
 
 #include "../../test-transpiler/c/pulse_macros.h"
 
@@ -53,3 +54,6 @@ void reverse(ISARRAY(len) uint32_t *arr, size_t len) {
 
 
 // CHECK: Success: Code transformed and syntax validated.
+
+// PULSE: Verified module: Reverse
+// PULSE-NEXT: All verification conditions discharged successfully
