@@ -9,6 +9,8 @@
 #include "clang/Tooling/Tooling.h"
 #include <fstream>
 #include <unistd.h>
+#include <memory>
+
 #include "Globals.h"
 
 using namespace clang;
