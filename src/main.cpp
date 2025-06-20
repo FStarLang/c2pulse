@@ -126,9 +126,6 @@ int main(int argc, const char **argv) {
     // int pid = fork();
 
     PulseTransformer _PulseTransformer(ASTList);
-    return 0;
-
-
     //---------------------- this part needs be fixed
 
     //llvm::outs() << "Generated transformer for Pulse..." << "\n";
