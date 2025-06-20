@@ -11,25 +11,25 @@ if [ "$#" -lt 1 ]; then
   exit 1
 fi
 
-for SRC_FILE in "$@"; do
-  echo "Processing $SRC_FILE"
-  ../external_tools/llvm-project/build/bin/c2pulse "$SRC_FILE" \
-    -p ../external_tools/llvm-project/build/ \
-    --extra-arg-before="-resource-dir" \
-    --extra-arg-before="../external_tools/llvm-project/build/lib/clang/21" \
-    --extra-arg-before="-isystem" \
-    --extra-arg-before="$SYSTEM_CC_INCLUDE" \
-    --extra-arg-before="-isystem" \
-    --extra-arg-before="$SYSTEM_ARCH_INCLUDE" \
-    --extra-arg-before="-isystem" \
-    --extra-arg-before="$SYSTEM_INCLUDE" \
-    --extra-arg-before="-isystem" \
-    --extra-arg-before="../external_tools/llvm-project/build/lib/clang/21/include" \
-    --extra-arg-before="-x" \
-    --extra-arg-before="c" \
-    --extra-arg-before="$C_STD" \
-    --extra-arg-before="-c" \
-    --extra-arg-before=-fmodules \
-    --extra-arg-before=-fimplicit-modules \
-    --extra-arg-before=-fmodules-cache-path=/tmp/clang-modules
-done
+
+echo "Processing all files: $@"
+
+../external_tools/llvm-project/build/bin/c2pulse "$@" \
+  -p ../external_tools/llvm-project/build/ \
+  --extra-arg-before="-resource-dir" \
+  --extra-arg-before="../external_tools/llvm-project/build/lib/clang/21" \
+  --extra-arg-before="-isystem" \
+  --extra-arg-before="$SYSTEM_CC_INCLUDE" \
+  --extra-arg-before="-isystem" \
+  --extra-arg-before="$SYSTEM_ARCH_INCLUDE" \
+  --extra-arg-before="-isystem" \
+  --extra-arg-before="$SYSTEM_INCLUDE" \
+  --extra-arg-before="-isystem" \
+  --extra-arg-before="../external_tools/llvm-project/build/lib/clang/21/include" \
+  --extra-arg-before="-x" \
+  --extra-arg-before="c" \
+  --extra-arg-before="$C_STD" \
+  --extra-arg-before="-c" \
+  --extra-arg-before=-fmodules \
+  --extra-arg-before=-fimplicit-modules \
+  --extra-arg-before=-fmodules-cache-path=/tmp/clang-modules
