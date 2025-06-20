@@ -2,6 +2,7 @@
 
 #include "PulseCodeGen.h"
 #include "PulseIR.h"
+#include "clang/AST/ASTContext.h"
 #include "clang/AST/DeclBase.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/Type.h"
@@ -87,15 +88,16 @@ private:
 
 class PulseTransformer {
 public:
-  PulseTransformer(std::vector<std::unique_ptr<ASTUnit>> &ASTList);
+  PulseTransformer(ASTContext &Ctx); //std::vector<std::unique_ptr<ASTUnit>> &ASTList
   // std::string getTransformedCode();
   void transform();
   std::string writeToFile();
 
 private:
+  ASTContext &AstCtx;
   PulseCodeGen CodeGen;
   clang::Rewriter RewriterForPlugin;
   std::string TransformedCode;
-  std::vector<std::unique_ptr<ASTUnit>>
-      &InternalAstList; // Store the ASTList for processing
+  //std::vector<std::unique_ptr<ASTUnit>>
+  //    &InternalAstList; // Store the ASTList for processing
 };

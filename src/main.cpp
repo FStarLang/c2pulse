@@ -66,9 +66,9 @@ int main(int argc, const char **argv) {
       _analyzer.analyze(Ctx.getTranslationUnitDecl());
       _analyzer.printNodeInfoMap();
 
-      // PulseTransformer _PulseTransformer(Ctx);
-      // _PulseTransformer.transform(Ctx.getTranslationUnitDecl()); 
-      // _PulseTransformer.writeToFile();
+       PulseTransformer _PulseTransformer(Ctx);
+       _PulseTransformer.transform(); 
+       _PulseTransformer.writeToFile();
     }
 
 

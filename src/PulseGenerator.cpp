@@ -1603,18 +1603,21 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
   return nullptr;
 }
 
-PulseTransformer::PulseTransformer(
-    std::vector<std::unique_ptr<ASTUnit>> &ASTList)
-    : InternalAstList(ASTList) {
+//std::vector<std::unique_ptr<ASTUnit>> &ASTList
+//InternalAstList(ASTList)
+PulseTransformer::PulseTransformer(ASTContext &Ctx) 
+    : AstCtx(Ctx)  {
       
   // Initialize the rewriter with the first AST unit's context
-  if (!ASTList.empty()) {
-    RewriterForPlugin.setSourceMgr(ASTList[0]->getSourceManager(),
-                                   ASTList[0]->getLangOpts());
-  } else {
-    llvm::errs() << "Error: No AST units provided for transformation.\n";
-    exit(1);
-  }
+  //if (!ASTList.empty()) {
+  //  RewriterForPlugin.setSourceMgr(ASTList[0]->getSourceManager(),
+  //                                 ASTList[0]->getLangOpts());
+      RewriterForPlugin.setSourceMgr(Ctx.getSourceManager(),
+                                   Ctx.getLangOpts());                                 
+  //} else {
+  //  llvm::errs() << "Error: No AST units provided for transformation.\n";
+  //  exit(1);
+  //}
 }
 
 //TODO: Make this return a bool instead of a string. 
@@ -1701,9 +1704,9 @@ std::string PulseTransformer::writeToFile() {
 }
 
 void PulseTransformer::transform() {
-  for (auto &AstCtx : InternalAstList) {
-    PulseConsumer Consumer(AstCtx->getASTContext(), RewriterForPlugin);
-    Consumer.HandleTranslationUnit(AstCtx->getASTContext());
+  //for (auto &AstCtx : InternalAstList) {
+    PulseConsumer Consumer(AstCtx, RewriterForPlugin);
+    Consumer.HandleTranslationUnit(AstCtx);
 
     auto &Modules = Consumer.getNewModules();
     for (auto &Pair : Modules) {
@@ -1714,7 +1717,7 @@ void PulseTransformer::transform() {
       auto *Module = Pair.second;
       CodeGen.generateCodeFromModule(ModuleName, Module);
     }
-  }
+  //}
 
   // clang::SourceManager &SM = RewriterForPlugin.getSourceMgr();
   // clang::FileID MainFileID = SM.getMainFileID();
