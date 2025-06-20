@@ -30,6 +30,9 @@ public:
       : TheRewriter(R), Ctx(Ctx), SM(Ctx.getSourceManager()) {}
 
   bool VisitFunctionDecl(FunctionDecl *FD);
+  bool VisitRecordDecl(RecordDecl *RD);
+  bool VisitTypedefDecl(TypedefDecl *TypeDefDec);
+
   PulseStmt *pulseFromCompoundStmt(Stmt *S, ExprMutationAnalyzer *A);
   PulseStmt *pulseFromStmt(Stmt *S, ExprMutationAnalyzer *A);
   FStarType *getPulseTyFromCTy(QualType CType);

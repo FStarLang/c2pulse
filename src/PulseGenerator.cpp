@@ -402,6 +402,56 @@ bool PulseVisitor::checkIsRecursiveExpr(Expr *ExprPtr, FunctionDecl *CurrFunctio
     else {return false;}
 }
 
+
+bool PulseVisitor::VisitRecordDecl(RecordDecl *RD){
+
+  // llvm::outs() << "Encountered a Record Declaration!!" << "\n";
+  // llvm::outs() << RD->getNameAsString() << "\n";
+  // llvm::outs() << "End record definition!" << "\n";
+
+  return true;
+}
+
+bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec){
+
+    // llvm::outs() << "Print TypedefDecl" << "\n";
+    // llvm::outs() << TypeDefDec->getNameAsString() << "\n";
+    // llvm::outs() << "End typedef declaration!" << "\n";
+
+    auto *Def = TypeDefDec->getUnderlyingDecl();
+    // llvm::outs() << "Get underlying declaration name!" << "\n";
+    // llvm::outs() << Def->getDeclName() << "\n";
+    // llvm::outs() << "End underlying decl name\n";
+    
+    //Check if we have a record declaration associated with the typedefDecl.
+    if (const auto *RT = TypeDefDec->getUnderlyingType()->getAs<RecordType>()) {
+    const RecordDecl *RD = RT->getDecl();
+    // Now you can inspect RD, cast to CXXRecordDecl if needed
+
+      llvm::outs() << "Encountered a Record Declaration!!" << "\n";
+      llvm::outs() << RD->getNameAsString() << "\n";
+      llvm::outs() << "End record definition!" << "\n";
+
+      //Make a Value Declaraion for the record type. 
+      //auto *ValDecl = new ValueDecl();
+
+
+    }
+
+
+    // auto *DefBody = Def->getBody(); 
+    
+    // ExprMutationAnalyzer Analyzer(*DefBody, Ctx);
+    
+    // if (DefBody)
+    //   llvm::outs() << DefBody->getStmtClassName() << "\n";
+
+    // PulseStmt * PStmt = pulseFromStmt(DefBody, &Analyzer);
+    // if (PStmt)
+    //   PStmt->dumpPretty();
+    return true;
+}
+
 bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   
   if (!FD->hasBody() || SM.isInSystemHeader(FD->getLocation()))
@@ -414,6 +464,9 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   // bool isRecursive;
   // PulseStmt *Body;
   //  };
+
+  //Is it safe to say that a module == 1 file??
+  //Ret
   std::string ClangModuleName = "Module_";
 
   auto ModuleId = FD->getOwningModuleID();
@@ -641,7 +694,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   PulseFn->dumpPretty();
   llvm::outs() << "\nEnd printing the function Definition\n\n";
   llvm::outs() << "=================================================\n";
-  PulseFn->Kind = PulseFnKind::FnDefn;
+  PulseFn->Kind = PulseDeclKind::FnDefn;
 
   auto It = Modules.find(ClangModuleName);
 
@@ -1564,6 +1617,8 @@ PulseTransformer::PulseTransformer(
   }
 }
 
+//TODO: Make this return a bool instead of a string. 
+// Bool says if the function passed or failed. instead of exiting.
 std::string PulseTransformer::writeToFile() {
 
   clang::SourceManager &SM = RewriterForPlugin.getSourceMgr();
@@ -1591,6 +1646,7 @@ std::string PulseTransformer::writeToFile() {
 
   auto NewPath = TempFilePathWithoutExtension.parent_path();
   // NewPath += "/";
+  //NewPath += "/SRC/";
   NewPath += "/" + FileNameStr + "/";
 
   if (!std::filesystem::exists(NewPath)) {

@@ -427,12 +427,12 @@ llvm::raw_ostream &operator<<(llvm::raw_ostream &os, PulseStmtTag T) {
   return os;
 }
 
-llvm::raw_ostream &operator<<(llvm::raw_ostream &os, PulseFnKind T) {
+llvm::raw_ostream &operator<<(llvm::raw_ostream &os, PulseDeclKind T) {
   switch (T) {
-  case PulseFnKind::FnDecl:
+  case PulseDeclKind::FnDecl:
     os << "FnDecl";
     break;
-  case PulseFnKind::FnDefn:
+  case PulseDeclKind::FnDefn:
     os << "FnDefn";
     break;
   }
@@ -655,7 +655,7 @@ void PulseWhileStmt::dumpPretty() {
   llvm::outs() << "}";
 }
 
-PulseFnKind PulseDecl::getKind() { return Kind; }
+PulseDeclKind PulseDecl::getKind() { return Kind; }
 
 PulseFnDefn::PulseFnDefn(_PulseFnDefn *Defn) : Defn(Defn) {}
 
@@ -687,3 +687,12 @@ void PulseFnDefn::dumpPretty() {
   llvm::outs() << "Print the function body: " << "\n\n";
   Defn->Body->dumpPretty();
 }
+
+ValDecl::ValDecl(){
+  Kind = PulseDeclKind::ValDecl;
+}
+
+
+// FstarValDecl::FstarValDecl(){
+//   Tag = FStarDeclTag::ValDecl;
+// }

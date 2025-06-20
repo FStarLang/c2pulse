@@ -415,15 +415,26 @@ struct _PulseFnDefn {
   PulseStmt *Body;
 };
 
-enum class PulseFnKind {
+enum class PulseDeclKind {
   FnDefn, // Function definition
-  FnDecl  // Function declaration
+  FnDecl,  // Function declaration
+  ValDecl // Value declaration
 };
 
 class PulseDecl {
 public:
-  PulseFnKind Kind;
-  PulseFnKind getKind();
+  PulseDeclKind Kind;
+  PulseDeclKind getKind();
+};
+
+class ValDecl : public PulseDecl {
+  public:
+    ValDecl();
+    std::string Ident; 
+    Term *ValTerm;
+    static bool classof(const PulseDecl *D) {
+    return D->Kind == PulseDeclKind::ValDecl;
+  }
 };
 
 class PulseFnDefn : public PulseDecl {
@@ -431,7 +442,7 @@ public:
   PulseFnDefn(_PulseFnDefn *Defn);
   _PulseFnDefn *Defn;
   static bool classof(const PulseDecl *D) {
-    return D->Kind == PulseFnKind::FnDefn;
+    return D->Kind == PulseDeclKind::FnDefn;
   }
 
   void dumpPretty();
@@ -441,7 +452,7 @@ class PulseFnDecl : public PulseDecl {
 public:
   _PulseFnDecl *Defn;
   static bool classof(const PulseDecl *D) {
-    return D->Kind == PulseFnKind::FnDecl;
+    return D->Kind == PulseDeclKind::FnDecl;
   }
 };
 
@@ -451,9 +462,29 @@ public:
   std::vector<std::string> IncludedModules;
   std::string ModuleName;
   std::vector<PulseDecl *> Decls;
+  //extension field
 };
 
+// class File : 
+//Moduel == file in clang
 typedef PulseModul File;
+
+// enum class FStarDeclTag {BaseDecl, ValDecl};
+
+// class FStarDecl {
+//   public: 
+//     FStarDeclTag Tag; 
+// };
+
+// class FstarValDecl : public FStarDecl {
+//   public:
+//     FstarValDecl();
+//     std::string Ident; 
+//     Term *ValTerm;
+//     static bool classof(const FStarDecl *D) {
+//     return D->Tag == FStarDeclTag::ValDecl;
+//   }
+// };
 
 // PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data, std::wsmatch &match);
 
