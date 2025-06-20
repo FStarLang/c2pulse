@@ -46,17 +46,37 @@ int main(int argc, const char **argv) {
     
     // Create a Clang tool instance
     std::unique_ptr<ClangTool> Tool = std::make_unique<ClangTool>(OptionsParser->getCompilations(), OptionsParser->getSourcePathList());
+    for (const auto& file : OptionsParser->getSourcePathList())
+        llvm::outs() << "Parsing: " << file << "\n";
+
 
     std::vector<std::unique_ptr<ASTUnit>> ASTList;
     Tool->buildASTs(ASTList);
     
+    llvm::outs() << "Number of parsed ASTs: " << ASTList.size() << "\n";
+
+
+    // for (const auto &AST : ASTList) {
+    //   if (!AST) continue;
+    //   clang::ASTContext &Ctx = AST->getASTContext();
+    //   ExprLocationAnalyzer Analyzer(Ctx);
+    //   Analyzer.analyze(Ctx.getTranslationUnitDecl());
+    //   Analyzer.printNodeInfoMap();
+    // }
+
+    int fileIndex = 0;
     for (const auto &AST : ASTList) {
-      if (!AST) continue;
+        const std::string& fileName = OptionsParser->getSourcePathList()[fileIndex++];
+        if (!AST) {
+            llvm::errs() << "Failed to parse file: " << fileName << "\n";
+            continue;
+        }
       clang::ASTContext &Ctx = AST->getASTContext();
       ExprLocationAnalyzer Analyzer(Ctx);
       Analyzer.analyze(Ctx.getTranslationUnitDecl());
       Analyzer.printNodeInfoMap();
     }
+
 
 
     //Vidush: Seems like ClangTool runs a pass of syntax only action internally.
