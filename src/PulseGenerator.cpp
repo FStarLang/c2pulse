@@ -10,6 +10,7 @@
 #include "clang/AST/Stmt.h"
 #include "clang/AST/Type.h"
 #include "clang/Analysis/Analyses/ExprMutationAnalyzer.h"
+#include "clang/Basic/Module.h"
 #include "clang/Basic/SourceLocation.h"
 #include "llvm/CodeGen/TargetOpcodes.h"
 #include "llvm/Support/Casting.h"
@@ -20,18 +21,29 @@
 #include <fstream>
 #include <regex>
 #include <sstream>
+#include <string>
 #include <utility>
 // #include "PulseCodeGen.h"
 #include "Globals.h"
 
 using namespace clang;
 
-void PulseConsumer::setNewFunctionDeclarations(std::vector<PulseDecl *> &FVec) {
-  FunctionDeclarations = FVec;
+// void PulseConsumer::setNewFunctionDeclarations(std::vector<PulseDecl *>
+// &FVec) {
+//   FunctionDeclarations = FVec;
+// }
+
+void PulseConsumer::setNewModules(
+    std::map<std::string, PulseModul *> &PulseModules) {
+  Modules = PulseModules;
 }
 
-std::vector<PulseDecl *> &PulseConsumer::getNewFunctionDeclarations() {
-  return FunctionDeclarations;
+// std::vector<PulseDecl *> &PulseConsumer::getNewFunctionDeclarations() {
+//   return FunctionDeclarations;
+// }
+
+std::map<std::string, PulseModul *> &PulseConsumer::getNewModules() {
+  return Modules;
 }
 
 PulseConsumer::PulseConsumer(clang::ASTContext &Ctx, clang::Rewriter &R)
@@ -39,13 +51,17 @@ PulseConsumer::PulseConsumer(clang::ASTContext &Ctx, clang::Rewriter &R)
 
 void PulseConsumer::HandleTranslationUnit(clang::ASTContext &Ctx) {
   Visitor.TraverseDecl(Ctx.getTranslationUnitDecl());
-  setNewFunctionDeclarations(Visitor.getFunctionDeclarations());
+  // setNewFunctionDeclarations(Visitor.getFunctionDeclarations());
+  setNewModules(Visitor.getPulseModules());
 }
 
-std::vector<PulseDecl *> &PulseVisitor::getFunctionDeclarations() {
-  return FunctionDeclarations;
-}
+// std::vector<PulseDecl *> &PulseVisitor::getFunctionDeclarations() {
+//   return FunctionDeclarations;
+// }
 
+std::map<std::string, PulseModul *> &PulseVisitor::getPulseModules() {
+  return Modules;
+}
 
 // void PulseVisitor::extractPulseAnnotations(
 //     const clang::FunctionDecl *FD, const clang::SourceManager &SM,
@@ -398,6 +414,11 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   // bool isRecursive;
   // PulseStmt *Body;
   //  };
+  std::string ClangModuleName = "Module_";
+
+  auto ModuleId = FD->getOwningModuleID();
+  ClangModuleName += std::to_string(ModuleId);
+
   auto *FDefn = new _PulseFnDefn();
   FDefn->Name = FuncName;
   FDefn->isRecursive = true;
@@ -621,7 +642,28 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   llvm::outs() << "\nEnd printing the function Definition\n\n";
   llvm::outs() << "=================================================\n";
   PulseFn->Kind = PulseFnKind::FnDefn;
-  FunctionDeclarations.push_back(PulseFn);
+
+  auto It = Modules.find(ClangModuleName);
+
+  llvm::outs() << "Found a Module with ModuleName: " << "\n";
+  llvm::outs() << ClangModuleName << "\n";
+  llvm::outs() << "End printing Module name" << "\n";
+
+  // Get a pointer to existing function definitions.
+  if (It != Modules.end()) {
+
+    auto &Module = It->second;
+    Module->Decls.push_back(PulseFn);
+  }
+  // Create new function defintions.
+  else {
+    PulseModul *Modul = new PulseModul();
+    Modul->ModuleName = ClangModuleName;
+    Modul->Decls.push_back(PulseFn);
+    Modules.insert(std::make_pair(ClangModuleName, Modul));
+  }
+
+  // FunctionDeclarations.push_back(PulseFn);
 
   return true;
 }
@@ -1547,21 +1589,48 @@ std::string PulseTransformer::writeToFile() {
   std::replace(FileNameStr.begin(), FileNameStr.end(), '.', '_');
 
   auto NewPath = TempFilePathWithoutExtension.parent_path();
-  NewPath += "/" + FileNameStr;
+  NewPath += "/";
+  // NewPath += "/" + FileNameStr;
 
   // Vidush: Maybe add an assertion here that the extension is supposed to be .c
 
-  std::string TempFilePath = NewPath.string() + ".fst";
-  std::ofstream OutFile(TempFilePath);
-  if (!OutFile.is_open()) {
-    llvm::errs()
-        << "Error: Failed to create temporary file for transformed code.\n";
+  // std::string TempFilePath = NewPath.string() + ".fst";
+  // std::ofstream OutFile(TempFilePath);
+  // if (!OutFile.is_open()) {
+  //   llvm::errs()
+  //       << "Error: Failed to create temporary file for transformed code.\n";
+  // }
+
+  // CodeGen.writeHeaders(FileNameStr, OutFile);
+  // OutFile << getTransformedCode();
+  // OutFile.close();
+  // return TempFilePath;
+
+  auto &ModulesToBeOutputted = CodeGen.returnOutPutModules();
+
+  for (auto &M : ModulesToBeOutputted) {
+
+    auto ModuleName = FileNameStr + "_" + M.first;
+    auto &OutputString = M.second;
+
+    NewPath += ModuleName;
+    std::string FilePath = NewPath.string() + ".fst";
+    std::ofstream OutFile(FilePath);
+    if (!OutFile.is_open()) {
+      llvm::errs()
+          << "Error: Failed to create temporary file for transformed code.\n";
+    }
+
+    CodeGen.writeHeaders(ModuleName, OutFile);
+    OutFile << OutputString->str();
+    OutFile.close();
+    llvm::outs() << "Print the filename!\n";
+    llvm::outs() << FilePath << "\n";
+    llvm::outs() << "End printing the filename!\n";
   }
 
-  CodeGen.writeHeaders(FileNameStr, OutFile);
-  OutFile << getTransformedCode();
-  OutFile.close();
-  return TempFilePath;
+  // TODO what should we return for writeToFile
+  return "";
 }
 
 void PulseTransformer::transform() {
@@ -1569,9 +1638,14 @@ void PulseTransformer::transform() {
     PulseConsumer Consumer(AstCtx->getASTContext(), RewriterForPlugin);
     Consumer.HandleTranslationUnit(AstCtx->getASTContext());
 
-    auto &FuncDecls = Consumer.getNewFunctionDeclarations();
-    for (auto *FD : FuncDecls) {
-      CodeGen.generateCodeFromPulseAst(FD);
+    auto &Modules = Consumer.getNewModules();
+    for (auto &Pair : Modules) {
+      llvm::outs() << "Generating code for Module: ";
+      llvm::outs() << Pair.first;
+      llvm::outs() << "End generating code for Module.\n";
+      auto ModuleName = Pair.first;
+      auto *Module = Pair.second;
+      CodeGen.generateCodeFromModule(ModuleName, Module);
     }
   }
 
@@ -1598,6 +1672,7 @@ void PulseTransformer::transform() {
   // TransformedCode = std::string(Buffer->begin(), Buffer->end());
 }
 
-std::string PulseTransformer::getTransformedCode() {
-  return CodeGen.getGeneratedCode();
-}
+// std::string PulseTransformer::getTransformedCode() {
+//   auto &CodeForModules = CodeGen.returnOutPutModules();
+
+// }

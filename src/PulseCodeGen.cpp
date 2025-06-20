@@ -31,7 +31,50 @@ void PulseCodeGen::writeHeaders(std::string ModuleName, std::ofstream &Stream) {
   Stream << PulseSyntax.NewLine;
 }
 
-void PulseCodeGen::generateCodeFromPulseAst(PulseDecl *FD) {
+std::map<std::string, std::unique_ptr<llvm::raw_string_ostream>> &
+PulseCodeGen::returnOutPutModules() {
+  return OutputModules;
+}
+
+std::string PulseCodeGen::getGeneratedCodeForModule(std::string &ModuleName) {
+
+  auto It = OutputModules.find(ModuleName);
+  // found a stream for module
+  if (It != OutputModules.end()) {
+    return It->second->str();
+  }
+  assert(false && "Could not find a output stream for Module!\n");
+}
+
+void PulseCodeGen::generateCodeFromModule(std::string ModuleName,
+                                          PulseModul *Modul) {
+
+  // check if a stream exists for the module already.
+
+  auto It = OutputModules.find(ModuleName);
+  // Found a stream for module
+  if (It != OutputModules.end()) {
+
+    auto &OutputStream = It->second;
+    for (auto *F : Modul->Decls) {
+      generateCodeFromPulseAst(*OutputStream, F);
+    }
+
+  } else {
+
+    std::string *Str = new std::string();
+    auto OS = std::make_unique<llvm::raw_string_ostream>(*Str);
+    for (auto *F : Modul->Decls) {
+      llvm::outs() << "Trying to generate code for Function.\n";
+
+      generateCodeFromPulseAst(*OS, F);
+    }
+    OutputModules.emplace(ModuleName, std::move(OS));
+  }
+}
+
+void PulseCodeGen::generateCodeFromPulseAst(llvm::raw_string_ostream &OS,
+                                            PulseDecl *FD) {
 
   if (PulseFnDefn *F = dyn_cast<PulseFnDefn>(FD)) {
     auto *FuncDef = F->Defn;
@@ -50,19 +93,19 @@ void PulseCodeGen::generateCodeFromPulseAst(PulseDecl *FD) {
       auto *Ty = Arg->Type;
       auto Val = Arg->Ident;
       OS << PulseSyntax.OpeningParenthesis << Val << PulseSyntax.Space
-         << PulseSyntax.Colon << PulseSyntax.Space << generateCodeFromTerm(Ty)
-         << PulseSyntax.ClosingParenthesis;
+         << PulseSyntax.Colon << PulseSyntax.Space
+         << generateCodeFromTerm(OS, Ty) << PulseSyntax.ClosingParenthesis;
       OS << "\n";
     }
 
     // Print out the Ensures
     for (auto *A : FuncDef->Annotation) {
-      generateCodeFromTerm(A);
+      generateCodeFromTerm(OS, A);
     }
 
     // Codegen Function Body.
     OS << PulseSyntax.OpeningCurlyBrace << PulseSyntax.NewLine;
-    generateCodeFromPulseStmt(FuncBody);
+    generateCodeFromPulseStmt(OS, FuncBody);
     OS << PulseSyntax.ClosingCurlyBrace << PulseSyntax.NewLine;
 
   } else {
@@ -88,12 +131,13 @@ void PulseCodeGen::generateCodeFromPulseAst(PulseDecl *FD) {
 
 // }
 
-std::string PulseCodeGen::generateCodeFromTerm(Term *T) {
+std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
+                                               Term *T) {
 
   std::string TermString = "";
   if (Paren *P = dyn_cast<Paren>(T)){
-    TermString += PulseSyntax.OpeningParenthesis; 
-    TermString += generateCodeFromTerm(P->InnerExpr);
+    TermString += PulseSyntax.OpeningParenthesis;
+    TermString += generateCodeFromTerm(OS, P->InnerExpr);
     TermString += PulseSyntax.ClosingParenthesis;
   }
   else if (ConstTerm *CT = dyn_cast<ConstTerm>(T)) {
@@ -135,20 +179,20 @@ std::string PulseCodeGen::generateCodeFromTerm(Term *T) {
   } else if (FStarType *FT = dyn_cast<FStarType>(T)) {
     TermString += FT->NamedValue;
   } else if (FStarPointerType *FPT = dyn_cast<FStarPointerType>(T)) {
-    auto StrBase = generateCodeFromTerm(FPT->PointerTo);
+    auto StrBase = generateCodeFromTerm(OS, FPT->PointerTo);
     TermString += PulseSyntax.Reference;
     TermString += " " + StrBase;
   } else if (FStarArrType *FAT = dyn_cast<FStarArrType>(T)) {
-    auto StrBase = generateCodeFromTerm(FAT->ElementType);
+    auto StrBase = generateCodeFromTerm(OS, FAT->ElementType);
     TermString += PulseSyntax.Array;
     TermString += " " + StrBase;
   }
   else if (AppE *App = dyn_cast<AppE>(T)) {
-    TermString += generateCodeFromTerm(App->CallName);
+    TermString += generateCodeFromTerm(OS, App->CallName);
     TermString += " ";
     int i = 0;
     for (auto *Arg : App->Args) {
-      TermString += generateCodeFromTerm(Arg);
+      TermString += generateCodeFromTerm(OS, Arg);
       if (i < (App->Args).size() - 1) {
         TermString += " ";
       }
@@ -189,21 +233,22 @@ std::string PulseCodeGen::generateCodeFromTerm(Term *T) {
   return TermString;
 }
 
-void PulseCodeGen::generateCodeFromPulseStmt(PulseStmt *T) {
+void PulseCodeGen::generateCodeFromPulseStmt(llvm::raw_string_ostream &OS,
+                                             PulseStmt *T) {
 
   if (!T)
     return;
 
   if (PulseExpr *S = dyn_cast<PulseExpr>(T)) {
-    OS << generateCodeFromTerm(S->E);
-      OS << PulseSyntax.Semicolon;
-      OS << PulseSyntax.NewLine;
+    OS << generateCodeFromTerm(OS, S->E);
+    OS << PulseSyntax.Semicolon;
+    OS << PulseSyntax.NewLine;
   } else if (PulseAssignment *A = dyn_cast<PulseAssignment>(T)) {
-    OS << generateCodeFromTerm(A->Lhs);
+    OS << generateCodeFromTerm(OS, A->Lhs);
     OS << PulseSyntax.Space;
     OS << PulseSyntax.PulseAssignmentOpRef;
     OS << PulseSyntax.Space;
-    OS << generateCodeFromTerm(A->Value);
+    OS << generateCodeFromTerm(OS, A->Value);
     OS << PulseSyntax.Semicolon;
     OS << PulseSyntax.NewLine;
 
@@ -213,15 +258,15 @@ void PulseCodeGen::generateCodeFromPulseStmt(PulseStmt *T) {
     auto *Idx = AS->Index;
     auto *LVal = AS->Value;
 
-    OS << generateCodeFromTerm(Base);
-    OS << PulseSyntax.Dot; 
-    OS << PulseSyntax.OpeningParenthesis; 
-    OS << generateCodeFromTerm(Idx); 
+    OS << generateCodeFromTerm(OS, Base);
+    OS << PulseSyntax.Dot;
+    OS << PulseSyntax.OpeningParenthesis;
+    OS << generateCodeFromTerm(OS, Idx);
     OS << PulseSyntax.ClosingParenthesis;
     OS << PulseSyntax.Space; 
     OS << PulseSyntax.ArrAssignment;
     OS << PulseSyntax.Space;
-    OS << generateCodeFromTerm(LVal);
+    OS << generateCodeFromTerm(OS, LVal);
     OS << PulseSyntax.Semicolon;
     OS << PulseSyntax.NewLine;
 
@@ -239,7 +284,7 @@ void PulseCodeGen::generateCodeFromPulseStmt(PulseStmt *T) {
     OS << PulseSyntax.Space;
     OS << PulseSyntax.PulseLetAssignmentOpRef;
     OS << PulseSyntax.Space;
-    OS << generateCodeFromTerm(Let->LetInit);
+    OS << generateCodeFromTerm(OS, Let->LetInit);
     OS << PulseSyntax.Semicolon;
     OS << PulseSyntax.NewLine;
   } else if (PulseIf *If = dyn_cast<PulseIf>(T)) {
@@ -251,21 +296,21 @@ void PulseCodeGen::generateCodeFromPulseStmt(PulseStmt *T) {
     auto *PulseElse = If->Else; 
 
     OS << PulseSyntax.OpeningParenthesis;
-    OS << generateCodeFromTerm(PulseIfCond);
+    OS << generateCodeFromTerm(OS, PulseIfCond);
     OS << PulseSyntax.ClosingParenthesis;
     OS << PulseSyntax.NewLine; 
 
     OS << PulseSyntax.OpeningCurlyBrace;
-    OS << PulseSyntax.NewLine; 
-    generateCodeFromPulseStmt(PulseThen);
+    OS << PulseSyntax.NewLine;
+    generateCodeFromPulseStmt(OS, PulseThen);
     OS << PulseSyntax.ClosingCurlyBrace; 
     OS << PulseSyntax.NewLine;
 
     OS << PulseSyntax.PulseElse;
-    OS << PulseSyntax.NewLine; 
-    OS << PulseSyntax.OpeningCurlyBrace; 
-    OS << PulseSyntax.NewLine; 
-    generateCodeFromPulseStmt(PulseElse);
+    OS << PulseSyntax.NewLine;
+    OS << PulseSyntax.OpeningCurlyBrace;
+    OS << PulseSyntax.NewLine;
+    generateCodeFromPulseStmt(OS, PulseElse);
     OS << PulseSyntax.ClosingCurlyBrace;
     OS << PulseSyntax.NewLine;
     //assert(false && "Did not expect pulse if statement type");
@@ -278,29 +323,29 @@ void PulseCodeGen::generateCodeFromPulseStmt(PulseStmt *T) {
     auto Lemmas = While->Invariant;
 
     OS << PulseSyntax.PulseWhile;
-    OS << PulseSyntax.OpeningParenthesis; 
-    generateCodeFromPulseStmt(WCond);
+    OS << PulseSyntax.OpeningParenthesis;
+    generateCodeFromPulseStmt(OS, WCond);
     OS << PulseSyntax.ClosingParenthesis; 
     OS << PulseSyntax.NewLine;
     size_t Idx = 1;
     for (auto *Lemma : Lemmas){
-      OS << generateCodeFromTerm(Lemma);
+      OS << generateCodeFromTerm(OS, Lemma);
       if (Idx < Lemmas.size())
         OS << "\n";
-      Idx++; 
-    } 
-    OS << PulseSyntax.NewLine; 
-    OS << PulseSyntax.OpeningCurlyBrace; 
-    OS << PulseSyntax.NewLine; 
-    generateCodeFromPulseStmt(WBod);
+      Idx++;
+    }
+    OS << PulseSyntax.NewLine;
+    OS << PulseSyntax.OpeningCurlyBrace;
+    OS << PulseSyntax.NewLine;
+    generateCodeFromPulseStmt(OS, WBod);
     OS << PulseSyntax.ClosingCurlyBrace; 
 
     //assert(false && "Did not expect pulse while statement type");
   } else if (PulseSequence *Seq = dyn_cast<PulseSequence>(T)) {
     auto *S1 = Seq->S1;
     auto *S2 = Seq->S2;
-    generateCodeFromPulseStmt(S1);
-    generateCodeFromPulseStmt(S2);
+    generateCodeFromPulseStmt(OS, S1);
+    generateCodeFromPulseStmt(OS, S2);
   } else {
     assert(false && "Did not expect pulse statement type");
   }

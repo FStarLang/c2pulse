@@ -23,17 +23,22 @@ using CodegenStrTy = const char;
 class PulseCodeGen {
 
 public:
-  std::string getGeneratedCode() { return OS.str(); }
+  std::string getGeneratedCodeForModule(std::string &ModuleName);
 
-  void generateCodeFromPulseAst(PulseDecl *FD);
-  std::string generateCodeFromTerm(Term *T);
-  void generateCodeFromPulseStmt(PulseStmt *T);
+  std::map<std::string, std::unique_ptr<llvm::raw_string_ostream>> &
+  returnOutPutModules();
+
+  void generateCodeFromModule(std::string ModuleName, PulseModul *Modul);
+  void generateCodeFromPulseAst(llvm::raw_string_ostream &S, PulseDecl *FD);
+  std::string generateCodeFromTerm(llvm::raw_string_ostream &OS, Term *T);
+  void generateCodeFromPulseStmt(llvm::raw_string_ostream &S, PulseStmt *T);
   std::string formatAsComments(PulseDecl *Decl);
   void writeHeaders(std::string ModuleName, std::ofstream &Stream);
 
 private:
-  std::string OutputBuffer;
-  llvm::raw_string_ostream OS{OutputBuffer};
+  std::map<std::string, std::unique_ptr<llvm::raw_string_ostream>>
+      OutputModules;
+  // llvm::raw_string_ostream OS{OutputBuffer};
 };
 
 static class PulseSyntax {

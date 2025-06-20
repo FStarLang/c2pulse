@@ -36,6 +36,7 @@ public:
   Term *getTermFromCExpr(Expr *E, ExprMutationAnalyzer *A, llvm::SmallVector<PulseStmt*> &ExprsBef,
                            QualType ParentType, bool isWrite = false);
   std::vector<PulseDecl *> &getFunctionDeclarations();
+  std::map<std::string, PulseModul *> &getPulseModules();
   void extractPulseAnnotations(const clang::FunctionDecl *FD,
                                const clang::SourceManager &SM,
                                std::vector<PulseExpr*> &Ann);
@@ -50,7 +51,8 @@ public:
   bool checkIsRecursiveFunction(FunctionDecl *FD);
 
 private:
-  std::vector<PulseDecl *> FunctionDeclarations;
+  std::map<std::string, PulseModul *> Modules;
+  // std::vector<PulseDecl *> FunctionDeclarations;
   Rewriter &TheRewriter;
   ASTContext &Ctx;
   SourceManager &SM;
@@ -65,20 +67,25 @@ public:
 
   void HandleTranslationUnit(ASTContext &Ctx) override;
 
-  void
-  setNewFunctionDeclarations(std::vector<PulseDecl *> &FunctionDeclarations);
+  // void
+  // setNewFunctionDeclarations(std::vector<PulseDecl *> &FunctionDeclarations);
 
-  std::vector<PulseDecl *> &getNewFunctionDeclarations();
+  void setNewModules(std::map<std::string, PulseModul *> &PulseModules);
+
+  std::map<std::string, PulseModul *> &getNewModules();
+
+  // std::vector<PulseDecl *> &getNewFunctionDeclarations();
 
 private:
-  std::vector<PulseDecl *> FunctionDeclarations;
+  // std::vector<PulseDecl *> FunctionDeclarations;
+  std::map<std::string, PulseModul *> Modules;
   PulseVisitor Visitor;
 };
 
 class PulseTransformer {
 public:
   PulseTransformer(std::vector<std::unique_ptr<ASTUnit>> &ASTList);
-  std::string getTransformedCode();
+  // std::string getTransformedCode();
   void transform();
   std::string writeToFile();
 

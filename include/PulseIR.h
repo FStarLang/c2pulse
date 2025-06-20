@@ -415,7 +415,6 @@ struct _PulseFnDefn {
   PulseStmt *Body;
 };
 
-
 enum class PulseFnKind {
   FnDefn, // Function definition
   FnDecl  // Function declaration
@@ -446,11 +445,10 @@ public:
   }
 };
 
-
 class PulseModul {
 public:
-  std::string ModuleName; 
-  std::vector<PulseDecl*> Decls;
+  std::string ModuleName;
+  std::vector<PulseDecl *> Decls;
 };
 
 typedef PulseModul File;

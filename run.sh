@@ -29,5 +29,8 @@ exec ../external_tools/llvm-project/build/bin/c2pulse "$SRC_FILE" \
   --extra-arg-before="-x" \
   --extra-arg-before="c" \
   --extra-arg-before=$C_STD \
-  --extra-arg-before="-c"
+  --extra-arg-before="-c" \
+  --extra-arg-before=-fmodules \
+  --extra-arg-before=-fimplicit-modules \
+  --extra-arg-before=-fmodules-cache-path=/tmp/clang-modules
   "$@"

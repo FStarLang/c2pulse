@@ -121,10 +121,10 @@ int main(int argc, const char **argv) {
     //llvm::outs() << "Completed running Pulse transformer..." << "\n";
     _PulseTransformer.writeToFile();
     // auto &FunctionDeclarations = _PulseTransformer
-    auto Code = _PulseTransformer.getTransformedCode();
+    // auto Code = _PulseTransformer.getTransformedCode();
 
-    llvm::outs() << "Print Program: \n\n";
-    llvm::outs() << Code << "\n";
+    // llvm::outs() << "Print Program: \n\n";
+    // llvm::outs() << Code << "\n";
 
     llvm::outs() << "Success: Code transformed and syntax validated.\n";
     return 0;
