@@ -62,9 +62,13 @@ int main(int argc, const char **argv) {
             continue;
         }
       clang::ASTContext &Ctx = AST->getASTContext();
-      ExprLocationAnalyzer Analyzer(Ctx);
-      Analyzer.analyze(Ctx.getTranslationUnitDecl());
-      Analyzer.printNodeInfoMap();
+      ExprLocationAnalyzer _analyzer(Ctx);
+      _analyzer.analyze(Ctx.getTranslationUnitDecl());
+      _analyzer.printNodeInfoMap();
+
+      // PulseTransformer _PulseTransformer(Ctx);
+      // _PulseTransformer.transform(Ctx.getTranslationUnitDecl()); 
+      // _PulseTransformer.writeToFile();
     }
 
 
@@ -125,19 +129,19 @@ int main(int argc, const char **argv) {
 
     // int pid = fork();
 
-    PulseTransformer _PulseTransformer(ASTList);
-    //---------------------- this part needs be fixed
+    // PulseTransformer _PulseTransformer(ASTList);
+    // //---------------------- this part needs be fixed
 
-    //llvm::outs() << "Generated transformer for Pulse..." << "\n";
-    _PulseTransformer.transform(); 
+    // //llvm::outs() << "Generated transformer for Pulse..." << "\n";
+    // _PulseTransformer.transform(); 
    
-    //llvm::outs() << "Completed running Pulse transformer..." << "\n";
-    _PulseTransformer.writeToFile();
-    // auto &FunctionDeclarations = _PulseTransformer
-    // auto Code = _PulseTransformer.getTransformedCode();
+    // //llvm::outs() << "Completed running Pulse transformer..." << "\n";
+    // _PulseTransformer.writeToFile();
+    // // auto &FunctionDeclarations = _PulseTransformer
+    // // auto Code = _PulseTransformer.getTransformedCode();
 
-    // llvm::outs() << "Print Program: \n\n";
-    // llvm::outs() << Code << "\n";
+    // // llvm::outs() << "Print Program: \n\n";
+    // // llvm::outs() << Code << "\n";
 
     llvm::outs() << "Success: Code transformed and syntax validated.\n";
     return 0;
