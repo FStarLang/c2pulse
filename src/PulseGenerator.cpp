@@ -658,6 +658,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   // Create new function defintions.
   else {
     PulseModul *Modul = new PulseModul();
+    Modul->includePulsePrelude = true;
     Modul->ModuleName = ClangModuleName;
     Modul->Decls.push_back(PulseFn);
     Modules.insert(std::make_pair(ClangModuleName, Modul));
@@ -1589,8 +1590,19 @@ std::string PulseTransformer::writeToFile() {
   std::replace(FileNameStr.begin(), FileNameStr.end(), '.', '_');
 
   auto NewPath = TempFilePathWithoutExtension.parent_path();
-  NewPath += "/";
-  // NewPath += "/" + FileNameStr;
+  // NewPath += "/";
+  NewPath += "/" + FileNameStr + "/";
+
+  if (!std::filesystem::exists(NewPath)) {
+    std::error_code create_ec;
+    if (std::filesystem::create_directories(NewPath, create_ec)) {
+      llvm::outs() << "Created directory: " << NewPath << "\n";
+    } else {
+      llvm::outs() << "Failed to create directory: " << NewPath << " ("
+                   << create_ec.message() << ")\n";
+      exit(1);
+    }
+  }
 
   // Vidush: Maybe add an assertion here that the extension is supposed to be .c
 
@@ -1610,7 +1622,7 @@ std::string PulseTransformer::writeToFile() {
 
   for (auto &M : ModulesToBeOutputted) {
 
-    auto ModuleName = FileNameStr + "_" + M.first;
+    auto ModuleName = M.first; // FileNameStr + "_" +
     auto &OutputString = M.second;
 
     NewPath += ModuleName;
@@ -1621,7 +1633,6 @@ std::string PulseTransformer::writeToFile() {
           << "Error: Failed to create temporary file for transformed code.\n";
     }
 
-    CodeGen.writeHeaders(ModuleName, OutFile);
     OutFile << OutputString->str();
     OutFile.close();
     llvm::outs() << "Print the filename!\n";

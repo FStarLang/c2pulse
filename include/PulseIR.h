@@ -447,6 +447,8 @@ public:
 
 class PulseModul {
 public:
+  bool includePulsePrelude;
+  std::vector<std::string> IncludedModules;
   std::string ModuleName;
   std::vector<PulseDecl *> Decls;
 };

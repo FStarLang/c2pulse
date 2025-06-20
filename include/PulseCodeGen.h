@@ -33,7 +33,7 @@ public:
   std::string generateCodeFromTerm(llvm::raw_string_ostream &OS, Term *T);
   void generateCodeFromPulseStmt(llvm::raw_string_ostream &S, PulseStmt *T);
   std::string formatAsComments(PulseDecl *Decl);
-  void writeHeaders(std::string ModuleName, std::ofstream &Stream);
+  void writeHeaders(PulseModul *Modul, llvm::raw_string_ostream &Stream);
 
 private:
   std::map<std::string, std::unique_ptr<llvm::raw_string_ostream>>

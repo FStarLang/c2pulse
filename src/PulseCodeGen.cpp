@@ -20,15 +20,21 @@
 
 using namespace clang;
 
-void PulseCodeGen::writeHeaders(std::string ModuleName, std::ofstream &Stream) {
+void PulseCodeGen::writeHeaders(PulseModul *Modul,
+                                llvm::raw_string_ostream &Stream) {
 
-  Stream << PulseSyntax.ModuleSyntax << PulseSyntax.Space << ModuleName
+  Stream << PulseSyntax.ModuleSyntax << PulseSyntax.Space << Modul->ModuleName
          << PulseSyntax.NewLine;
   Stream << PulseSyntax.NewLine;
   Stream << PulseSyntax.LangPulse << PulseSyntax.NewLine;
   Stream << PulseSyntax.NewLine;
-  Stream << PulseSyntax.PulseInclude << PulseSyntax.NewLine;
-  Stream << PulseSyntax.NewLine;
+
+  if (Modul->includePulsePrelude) {
+    Stream << PulseSyntax.PulseInclude << PulseSyntax.NewLine;
+    Stream << PulseSyntax.NewLine;
+  }
+
+  // TODO: Make sure all dependent modules are outputted as well.
 }
 
 std::map<std::string, std::unique_ptr<llvm::raw_string_ostream>> &
@@ -56,6 +62,8 @@ void PulseCodeGen::generateCodeFromModule(std::string ModuleName,
   if (It != OutputModules.end()) {
 
     auto &OutputStream = It->second;
+
+    writeHeaders(Modul, *OutputStream);
     for (auto *F : Modul->Decls) {
       generateCodeFromPulseAst(*OutputStream, F);
     }
@@ -64,6 +72,7 @@ void PulseCodeGen::generateCodeFromModule(std::string ModuleName,
 
     std::string *Str = new std::string();
     auto OS = std::make_unique<llvm::raw_string_ostream>(*Str);
+    writeHeaders(Modul, *OS);
     for (auto *F : Modul->Decls) {
       llvm::outs() << "Trying to generate code for Function.\n";
 
