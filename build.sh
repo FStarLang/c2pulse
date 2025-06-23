@@ -21,7 +21,9 @@ if [[ -x "$CLANG_BIN/c2pulse" ]]; then
   exit 0
 fi
 
-ln -s "$(pwd)" ../external_tools/llvm-project/clang/tools/CtoPulse
+if [[ ! -x "../external_tools/llvm-project/clang/tools/CtoPulse" ]]; then
+	ln -s "$(pwd)" ../external_tools/llvm-project/clang/tools/CtoPulse
+fi
 
 if grep -q 'add_clang_subdirectory(CtoPulse)' ../external_tools/llvm-project/clang/tools/CMakeLists.txt; then
     echo "CtoPulse already added as a build target!"

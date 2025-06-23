@@ -213,16 +213,18 @@ public:
 class Name : public Term {
 public:
   Name(); 
+  Name(std::string Name);
   std::string NamedValue;
-  virtual void setName(std::string Name) = 0;
+  virtual void setName(std::string Name);
   virtual ~Name() = default;
   virtual void dumpPretty() override;
   static bool classof(const Term *T) { return T->Tag == TermTag::Name; }
 };
 
 class FStarType : public Name {
-
 public:
+  FStarType();
+  FStarType(std::string Name);
   virtual void setName(std::string Name) override;
   virtual ~FStarType() = default;
   virtual void dumpPretty() override;
@@ -247,6 +249,7 @@ class FStarArrType : public FStarType {
 
 class FStarPointerType : public FStarType {
 public:
+  FStarPointerType();
   FStarType *PointerTo;
   virtual void setName(std::string Name) override;
   virtual ~FStarPointerType() = default;
@@ -407,7 +410,10 @@ struct _PulseFnDecl {
   std::vector<Binder *> Args;
 };
 
+typedef std::vector<Term*> Attributes;
+
 struct _PulseFnDefn {
+  Attributes Attr;
   std::string Name;
   std::vector<Binder *> Args;
   std::vector<Term*> Annotation;
@@ -415,16 +421,66 @@ struct _PulseFnDefn {
   PulseStmt *Body;
 };
 
+struct RecordElement {
+  std::string Ident; 
+  Attributes Attrs;
+  Term *ElementTerm;
+};
+
+enum class TyConTag {Base, TyConAbstract, TyConAbbrev, TyConRecord, TyConVariant};
+
+class TyCon {
+  public: 
+    TyCon();
+    TyConTag Tag;
+    std::string Ident; 
+    std::vector<Binder*> Binders;
+
+};
+
+class TyConRecord : public TyCon {
+  public:
+    TyConRecord();
+    Attributes Attrs;
+    std::vector<RecordElement*> RecordFields;
+    static bool classof(const TyCon *T) {
+     return T->Tag == TyConTag::TyConRecord;
+    }
+};
+
 enum class PulseDeclKind {
   FnDefn, // Function definition
   FnDecl,  // Function declaration
-  ValDecl // Value declaration
+  ValDecl,  // Value declaration
+  TyconDecl, //TyCon declaration
+  TopLevelLet // Top level let binding
 };
 
 class PulseDecl {
 public:
   PulseDeclKind Kind;
   PulseDeclKind getKind();
+};
+
+class TopLevelLet : public PulseDecl {
+public:
+  TopLevelLet();
+  std::string Ident; 
+  std::string Lhs;
+  static bool classof(const PulseDecl *D) {
+    return D->Kind == PulseDeclKind::TopLevelLet;
+  }
+};
+
+class TyConDecl : public PulseDecl {
+  public: 
+    TyConDecl(); 
+    bool Effect; 
+    bool TypeClass; 
+    std::vector<TyCon*> TyCons;
+    static bool classof(const PulseDecl *D) {
+    return D->Kind == PulseDeclKind::TyconDecl;
+  }
 };
 
 class ValDecl : public PulseDecl {
@@ -468,6 +524,9 @@ public:
 // class File : 
 //Moduel == file in clang
 typedef PulseModul File;
+
+
+
 
 // enum class FStarDeclTag {BaseDecl, ValDecl};
 

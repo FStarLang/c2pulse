@@ -70,6 +70,8 @@ public:
   CodegenStrTy *Requires = "requires";
   CodegenStrTy *Ensures = "ensures";
   CodegenStrTy *Returns = "returns";
+  CodegenStrTy *Val = "val";
+  CodegenStrTy *Typ = "type";
 } PulseSyntax;
 
 // } //namespace

@@ -435,6 +435,12 @@ llvm::raw_ostream &operator<<(llvm::raw_ostream &os, PulseDeclKind T) {
   case PulseDeclKind::FnDefn:
     os << "FnDefn";
     break;
+  case PulseDeclKind::TyconDecl:
+    os << "TyconDecl";
+    break;
+  case PulseDeclKind::ValDecl:
+    os << "ValDecl";
+    break;  
   }
   return os;
 }
@@ -522,6 +528,11 @@ Name::Name(){
   Tag = TermTag::Name;
 }
 
+Name::Name(std::string Name){
+  Tag = TermTag::Name;
+  NamedValue = Name;
+}
+
 void VarTerm::setVarName(std::string Name) { VarName = Name; }
 
 void VarTerm::dumpPretty() { llvm::outs() << VarName; }
@@ -533,6 +544,15 @@ void Name::dumpPretty() { llvm::outs() << NamedValue; }
 void FStarType::setName(std::string Name) { NamedValue = Name; }
 
 void FStarType::dumpPretty() { llvm::outs() << NamedValue; }
+
+FStarType::FStarType() {
+  Tag = TermTag::FStarType;
+}
+
+FStarType::FStarType(std::string Name) {
+  Tag = TermTag::FStarType;
+  NamedValue = Name;
+}
 
 void FStarArrType::setName(std::string Name) { NamedValue = Name; }
 void FStarPointerType::setName(std::string Name) { NamedValue = Name; }
@@ -553,6 +573,10 @@ FStarArrType::FStarArrType(){
 
 void FStarArrType::setElementTy(FStarType *Type) { ElementType = Type; }
 void FStarPointerType::setPointerToTy(FStarType *Type) { PointerTo = Type; }
+
+FStarPointerType::FStarPointerType(){
+  Tag = TermTag::FStarPointerType;
+}
 
 AppE::AppE(){
   Tag = TermTag::AppE;
@@ -657,7 +681,9 @@ void PulseWhileStmt::dumpPretty() {
 
 PulseDeclKind PulseDecl::getKind() { return Kind; }
 
-PulseFnDefn::PulseFnDefn(_PulseFnDefn *Defn) : Defn(Defn) {}
+PulseFnDefn::PulseFnDefn(_PulseFnDefn *Defn) : Defn(Defn) {
+  Kind = PulseDeclKind::FnDefn;
+}
 
 void PulseFnDefn::dumpPretty() {
 
@@ -688,10 +714,25 @@ void PulseFnDefn::dumpPretty() {
   Defn->Body->dumpPretty();
 }
 
+TyConDecl::TyConDecl(){
+  Kind = PulseDeclKind::TyconDecl;
+}
+
 ValDecl::ValDecl(){
   Kind = PulseDeclKind::ValDecl;
 }
 
+TyCon::TyCon(){
+  Tag = TyConTag::Base;
+}
+
+TyConRecord::TyConRecord(){
+  Tag = TyConTag::TyConRecord;
+}
+
+TopLevelLet::TopLevelLet() {
+  Kind = PulseDeclKind::TopLevelLet;
+}
 
 // FstarValDecl::FstarValDecl(){
 //   Tag = FStarDeclTag::ValDecl;

@@ -14,6 +14,7 @@
 #include <clang/Frontend/FrontendPluginRegistry.h>
 #include <clang/Rewrite/Core/Rewriter.h>
 #include <cstddef>
+#include <cstdio>
 #include <fstream>
 #include <memory>
 #include <vector>
@@ -35,6 +36,12 @@ void PulseCodeGen::writeHeaders(PulseModul *Modul,
   }
 
   // TODO: Make sure all dependent modules are outputted as well.
+  auto &DependentModules = Modul->IncludedModules;
+  for (auto ModulName : DependentModules){
+    Stream << ModulName;
+    Stream << "\n";
+  }
+
 }
 
 std::map<std::string, std::unique_ptr<llvm::raw_string_ostream>> &
@@ -90,14 +97,29 @@ void PulseCodeGen::generateCodeFromPulseAst(llvm::raw_string_ostream &OS,
     auto Args = FuncDef->Args;
     auto FuncName = FuncDef->Name;
     auto *FuncBody = FuncDef->Body;
-    
+
+    for (auto *Att : FuncDef->Attr) {
+      OS << generateCodeFromTerm(OS, Att);
+      OS << PulseSyntax.NewLine;
+    }
+
     if (FuncDef->isRecursive){
       OS << PulseSyntax.PulseRecursiveFunctionDeclaration << " ";
     }
     else {
       OS << PulseSyntax.PulseFunctionDeclaration << " ";
     }
-    OS << FuncName << "\n";
+    OS << FuncName;
+    
+    //If there were no args, we still want to write () in the function
+    if (Args.empty()){
+      OS << PulseSyntax.Space;
+      OS << PulseSyntax.OpeningParenthesis; 
+      OS << PulseSyntax.ClosingParenthesis;
+    }
+
+    OS << "\n";
+
     for (auto *Arg : Args) {
       auto *Ty = Arg->Type;
       auto Val = Arg->Ident;
@@ -113,11 +135,82 @@ void PulseCodeGen::generateCodeFromPulseAst(llvm::raw_string_ostream &OS,
     }
 
     // Codegen Function Body.
-    OS << PulseSyntax.OpeningCurlyBrace << PulseSyntax.NewLine;
-    generateCodeFromPulseStmt(OS, FuncBody);
-    OS << PulseSyntax.ClosingCurlyBrace << PulseSyntax.NewLine;
+    if (FuncBody != nullptr){
+      OS << PulseSyntax.OpeningCurlyBrace << PulseSyntax.NewLine;
+      generateCodeFromPulseStmt(OS, FuncBody);
+      OS << PulseSyntax.ClosingCurlyBrace << PulseSyntax.NewLine;
+    }
 
-  } else {
+  }
+  else if (auto *ValD = dyn_cast<ValDecl>(FD)){
+    OS << PulseSyntax.Val;
+    OS << PulseSyntax.Space; 
+    OS << ValD->Ident; 
+    OS << PulseSyntax.Space;
+    OS << PulseSyntax.Colon;
+    OS << PulseSyntax.Space; 
+    OS << generateCodeFromTerm(OS, ValD->ValTerm);
+    OS << PulseSyntax.NewLine;
+  }
+  else if (auto *TyCDecl = dyn_cast<TyConDecl>(FD)){
+
+    auto TCons = TyCDecl->TyCons;
+    for (auto TCon : TCons){
+
+      if (auto *TCRecord = dyn_cast<TyConRecord>(TCon)){
+        auto Attrs = TCRecord->Attrs;
+        auto Fields = TCRecord->RecordFields;
+        for (auto Attr : Attrs){
+          OS << generateCodeFromTerm(OS, Attr);
+          OS << PulseSyntax.NewLine;
+        }
+
+        OS << PulseSyntax.Typ;
+        OS << PulseSyntax.Space;
+        OS << TCRecord->Ident;
+        OS << PulseSyntax.Space; 
+        OS << PulseSyntax.PulseLetAssignmentOpRef;
+        OS << PulseSyntax.Space;
+        OS << PulseSyntax.OpeningCurlyBrace; 
+        OS << PulseSyntax.NewLine; 
+         
+        auto Flds = TCRecord->RecordFields;
+        auto FldsSize = Flds.size();
+        size_t I = 0;
+        for (auto *Elem : Flds){
+          auto *ElemTerm = Elem->ElementTerm; 
+          OS << Elem->Ident; 
+          OS << PulseSyntax.Space; 
+          OS << PulseSyntax.Colon; 
+          OS << PulseSyntax.Space;
+          OS << generateCodeFromTerm(OS, ElemTerm);
+          if (I < FldsSize - 1){
+            OS << PulseSyntax.Semicolon;
+          }
+          I++;
+          OS << PulseSyntax.NewLine;
+        }
+
+        OS << PulseSyntax.NewLine; 
+        OS << PulseSyntax.ClosingCurlyBrace;
+        OS << PulseSyntax.NewLine;
+      }
+    }  
+  }
+  else if (auto *PulseTopLevelLet = dyn_cast<TopLevelLet>(FD)){
+    OS << PulseSyntax.LetBind;
+    OS << PulseSyntax.Space;
+    OS << PulseTopLevelLet->Ident; 
+    OS << PulseSyntax.Space; 
+    OS << PulseSyntax.PulseLetAssignmentOpRef;
+    OS << PulseSyntax.Space; 
+    OS << PulseTopLevelLet->Lhs;
+    OS << PulseSyntax.NewLine;
+  }
+  else if (auto PulseFunDecl = dyn_cast<PulseFnDecl>(FD)){
+    assert(false && "Not implemented Pulse Fun Decl\n");
+  }
+  else {
     assert(false && "Not implemented function kind");
   }
 }
@@ -260,7 +353,6 @@ void PulseCodeGen::generateCodeFromPulseStmt(llvm::raw_string_ostream &OS,
     OS << generateCodeFromTerm(OS, A->Value);
     OS << PulseSyntax.Semicolon;
     OS << PulseSyntax.NewLine;
-
   } else if (PulseArrayAssignment *AS = dyn_cast<PulseArrayAssignment>(T)) {
 
     auto *Base = AS->Arr;
