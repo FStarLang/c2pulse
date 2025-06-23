@@ -417,6 +417,10 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec){
     // llvm::outs() << "Print TypedefDecl" << "\n";
     // llvm::outs() << TypeDefDec->getNameAsString() << "\n";
     // llvm::outs() << "End typedef declaration!" << "\n";
+    
+    auto SourceLoc = TypeDefDec->getLocation();
+    if (!SM.isInMainFile(SourceLoc))
+      return true;
 
     auto *Def = TypeDefDec->getUnderlyingDecl();
     // llvm::outs() << "Get underlying declaration name!" << "\n";
@@ -849,7 +853,7 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec){
      //add Modules to Modules 
      Modules.insert(std::make_pair(NewModul->ModuleName, NewModul));
     }
-    
+
     return true;
 }
 
@@ -2085,8 +2089,11 @@ std::string PulseTransformer::writeToFile() {
     auto ModuleName = M.first; // FileNameStr + "_" +
     auto &OutputString = M.second;
 
-    NewPath += ModuleName;
-    std::string FilePath = NewPath.string() + ".fst";
+    llvm::outs() << "What is the Module Name?\n";
+    llvm::outs() << ModuleName << "\n";
+    llvm::outs() << "End printing the module name!\n";
+
+    auto FilePath = NewPath.string() + ModuleName + ".fst";
     std::ofstream OutFile(FilePath);
     if (!OutFile.is_open()) {
       llvm::errs()

@@ -518,7 +518,8 @@ public:
   std::vector<std::string> IncludedModules;
   std::string ModuleName;
   std::vector<PulseDecl *> Decls;
-  //extension field
+  //True of .fsti files
+  bool isHeader = false;
 };
 
 // class File : 
