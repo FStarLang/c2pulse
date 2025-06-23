@@ -72,6 +72,8 @@ let u32_pair_struct_refs_pred (x:u32_pair_struct_refs) (s:u32_pair_struct_spec) 
   (x.first |-> s.first) **
   (x.second |-> s.second)
 
+
+
 //7. A predicate that relates a u32_pair_struct to its field pointers, u32_pair_struct_refs
 val recover (x:ref u32_pair_struct) (y:u32_pair_struct_refs) : slprop
 
@@ -100,7 +102,7 @@ ensures x.second |-> s.second
 
 //11. A ghost function that folds the predicate for u32_pair_struct_refs
 ghost
-fn u32_pair_struct_refs_pred_fold (x:u32_pair_struct_refs) (#f #s:erased U32.t)
-requires x.first |-> f
-requires x.second |-> s
-ensures u32_pair_struct_refs_pred x ({first = f; second = s})
+fn u32_pair_struct_refs_pred_fold (x:u32_pair_struct_refs) (#a0 #a1 :erased U32.t)
+requires x.first |-> a0
+requires x.second |-> a1
+ensures u32_pair_struct_refs_pred x ({first = a0; second = a1})
