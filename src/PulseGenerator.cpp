@@ -434,6 +434,7 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec){
     // Now you can inspect RD, cast to CXXRecordDecl if needed
       
       PulseModul *NewModul = new PulseModul(); 
+      NewModul->isHeader = true;
       NewModul->includePulsePrelude = true;
       auto StructName = Def->getNameAsString();
       NewModul->ModuleName = "Module_" + Def->getNameAsString();
@@ -2093,7 +2094,7 @@ std::string PulseTransformer::writeToFile() {
     llvm::outs() << ModuleName << "\n";
     llvm::outs() << "End printing the module name!\n";
 
-    auto FilePath = NewPath.string() + ModuleName + ".fst";
+    auto FilePath = NewPath.string() + ModuleName;
     std::ofstream OutFile(FilePath);
     if (!OutFile.is_open()) {
       llvm::errs()
@@ -2123,7 +2124,10 @@ void PulseTransformer::transform() {
       llvm::outs() << "End generating code for Module.\n";
       auto ModuleName = Pair.first;
       auto *Module = Pair.second;
-      CodeGen.generateCodeFromModule(ModuleName, Module);
+      std::string Extension = ".fst";
+      if (Module->isHeader)
+        Extension = ".fsti";
+      CodeGen.generateCodeFromModule(ModuleName + Extension, Module);
     }
   //}
 

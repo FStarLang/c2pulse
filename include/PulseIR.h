@@ -518,7 +518,7 @@ public:
   std::vector<std::string> IncludedModules;
   std::string ModuleName;
   std::vector<PulseDecl *> Decls;
-  //True of .fsti files
+  //set to true for .fsti files
   bool isHeader = false;
 };
 
