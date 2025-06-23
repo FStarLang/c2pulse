@@ -92,6 +92,8 @@ void PulseCodeGen::generateCodeFromModule(std::string ModuleName,
 void PulseCodeGen::generateCodeFromPulseAst(llvm::raw_string_ostream &OS,
                                             PulseDecl *FD) {
 
+  OS << PulseSyntax.NewLine;                                            
+
   if (PulseFnDefn *F = dyn_cast<PulseFnDefn>(FD)) {
     auto *FuncDef = F->Defn;
     auto Args = FuncDef->Args;
