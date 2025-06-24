@@ -5,14 +5,17 @@
 
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/StringRef.h"
-
+#include <regex>
+#include <set>
 #include <string>
 #include <vector>
 #include <utility>
 
-// Pulse annotation kinds used in the IR.
-// TODO: Consider refactoring these as term types in the IR.
-enum class PulseAnnKind { Requires, Ensures, Returns, IsArray, Invariants, LemmaStatement};
+
+
+// // Define What all kinds of Annotations are there in Pulse.
+// //TODO: These can be term type in IR, we shoudl refactor these
+enum class PulseAnnKind { ErasedArg, Requires, Ensures, Returns, IsArray, Invariants, LemmaStatement};
 
 // Struct for Pulse annotations,
 struct PulseAnnotation {
@@ -65,6 +68,8 @@ enum class SymbolTable {
   Int64_Eq,
   Int64_Lt,
   Array,
+  Ref,
+  UNKNOWN,
 };
 
 SymbolTable getSymbolKeyForCType(clang::QualType Ty, clang::ASTContext &Ctx);
@@ -105,6 +110,7 @@ static const llvm::SmallDenseMap<SymbolTable, const char*> SymbolToStringTable {
  {SymbolTable::Int64_Eq, "Int64.eq"},
  {SymbolTable::Int64_Lt, "Int64.lt"},
  {SymbolTable::Array, "array"},
+ {SymbolTable::Ref, "ref"},
 };
 
 // Define F* IR Similar to type term
@@ -374,8 +380,10 @@ public:
 struct Binder {
 public:
   Binder(std::string ident, Term *type) : Ident(std::move(ident)), Type(type) {}
+  Binder(std::string fallback);
   std::string Ident;
   Term *Type;
+  bool useFallBack = false;
 };
 
 struct _PulseFnDecl {
@@ -488,7 +496,7 @@ public:
 class PulseModul {
 public:
   bool includePulsePrelude;
-  std::vector<std::string> IncludedModules;
+  std::set<std::string> IncludedModules;
   std::string ModuleName;
   std::vector<PulseDecl *> Decls;
   // set to true for .fsti files

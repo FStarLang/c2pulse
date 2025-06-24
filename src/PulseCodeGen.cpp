@@ -125,10 +125,18 @@ void PulseCodeGen::generateCodeFromPulseAst(llvm::raw_string_ostream &OS,
     for (auto *Arg : Args) {
       auto *Ty = Arg->Type;
       auto Val = Arg->Ident;
-      OS << PulseSyntax.OpeningParenthesis << Val << PulseSyntax.Space
-         << PulseSyntax.Colon << PulseSyntax.Space
-         << generateCodeFromTerm(OS, Ty) << PulseSyntax.ClosingParenthesis;
-      OS << "\n";
+
+      if (!Arg->useFallBack){
+        OS << PulseSyntax.OpeningParenthesis << Val << PulseSyntax.Space
+           << PulseSyntax.Colon << PulseSyntax.Space
+          << generateCodeFromTerm(OS, Ty) << PulseSyntax.ClosingParenthesis;
+        OS << "\n";
+      }
+      else {
+        OS << PulseSyntax.OpeningParenthesis << Val << PulseSyntax.ClosingParenthesis;
+        OS << "\n";
+      }
+      
     }
 
     // Print out the Ensures

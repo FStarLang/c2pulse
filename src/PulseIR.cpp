@@ -85,6 +85,9 @@ PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data, std::string &match)
         if (pos != std::string::npos) {
           std::string firstPart = cleanedString.substr(0, pos);// Before "requires:"
           match = cleanedString.substr(pos +  delimiter.length() , end - (pos + delimiter.length()));
+          if (!match.empty() && match.front() == '"' && match.back() == '"') {
+            match = match.substr(1, match.size() - 2);
+          }
           //std::cout << "First Part: " << firstPart << std::endl;
           //std::cout << "Second Part: " << secondPart << std::endl;
           llvm::outs() << "First Part: " << firstPart << "\n";
@@ -107,6 +110,10 @@ PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data, std::string &match)
         if (pos != std::string::npos) {
           std::string firstPart = cleanedString.substr(0, pos);
           match = cleanedString.substr(pos +  delimiter.length() , end - (pos + delimiter.length()));
+          if (!match.empty() && match.front() == '"' && match.back() == '"') {
+            match = match.substr(1, match.size() - 2);
+          }
+
         llvm::outs() << "First Part: " << firstPart << "\n";
         llvm::outs() << "Second Part: " << match << "\n";
         //}
@@ -122,6 +129,9 @@ PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data, std::string &match)
         if (pos != std::string::npos) {
           std::string firstPart = cleanedString.substr(0, pos);// Before "requires:"
           match = cleanedString.substr(pos +  delimiter.length() , end - (pos + delimiter.length()));
+          if (!match.empty() && match.front() == '"' && match.back() == '"') {
+            match = match.substr(1, match.size() - 2);
+          }
           //std::cout << "First Part: " << firstPart << std::endl;
           //std::cout << "Second Part: " << secondPart << std::endl;
         //}
@@ -141,6 +151,9 @@ PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data, std::string &match)
         if (pos != std::string::npos) {
           std::string firstPart = cleanedString.substr(0, pos);// Before "requires:"
           match = cleanedString.substr(pos +  delimiter.length() , end - (pos + delimiter.length()));
+          if (!match.empty() && match.front() == '"' && match.back() == '"') {
+            match = match.substr(1, match.size() - 2);
+          }
           //std::cout << "First Part: " << firstPart << std::endl;
           //std::cout << "Second Part: " << secondPart << std::endl;
         //}
@@ -155,10 +168,29 @@ PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data, std::string &match)
         if (pos != std::string::npos) {
           std::string firstPart = cleanedString.substr(0, pos);// Before "requires:"
           match = cleanedString.substr(pos +  delimiter.length() , end - (pos + delimiter.length()));
+          if (!match.empty() && match.front() == '"' && match.back() == '"') {
+            match = match.substr(1, match.size() - 2);
+          }
           //std::cout << "First Part: " << firstPart << std::endl;
           //std::cout << "Second Part: " << secondPart << std::endl;
         //}
       return PulseAnnKind::Returns;
+    }
+     //else if (std::regex_search(cleanedString, match2, returns_pattern)){
+       delimiter = "erased_arg:";
+      //std::string EndDelimiter = "|END";
+      //size_t end = cleanedString.find(EndDelimiter);
+       pos = cleanedString.find(delimiter);
+        if (pos != std::string::npos) {
+          std::string firstPart = cleanedString.substr(0, pos);// Before "requires:"
+          match = cleanedString.substr(pos +  delimiter.length() , end - (pos + delimiter.length()));
+          if (!match.empty() && match.front() == '"' && match.back() == '"') {
+            match = match.substr(1, match.size() - 2);
+          }
+          //std::cout << "First Part: " << firstPart << std::endl;
+          //std::cout << "Second Part: " << secondPart << std::endl;
+        //}
+      return PulseAnnKind::ErasedArg;
     }
     //else{
           llvm::outs() << cleanedString.data() << "\n";
@@ -220,6 +252,19 @@ SymbolTable getSymbolKeyForCType(clang::QualType Ty, clang::ASTContext &Ctx){
   }
   else if (Ty->isArrayType()){
     return SymbolTable::Array;
+  }
+  //What about structs
+  else if (Ty->isStructureType() || Ty->isUnionType()) {
+    // We do not handle structs and unions in this function.
+    // This is a placeholder for future implementation.
+    // Return a reference type for now. 
+    return SymbolTable::UNKNOWN;
+    llvm::outs() << "getSymbolKeyForType: Struct or Union type encountered.\n";
+    Ty->dump();
+    assert(false && "getSymbolKeyForType: Struct or Union type not implemented.");
+  }
+  else if (Ty->isPointerType()){
+    return SymbolTable::Ref;
   }
   
   Ty->dump();
@@ -397,6 +442,10 @@ const char* getSymbolKeyForOperator(SymbolTable Val, clang::BinaryOperatorKind &
 //   WhileStmt,
 //   Sequence
 // };
+
+Binder::Binder(std::string FallBack){
+  Ident = FallBack;
+}
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &os, PulseStmtTag T) {
   switch (T) {
@@ -589,6 +638,8 @@ void AppE::dumpPretty() {
   llvm::outs() << " ";
   size_t Idx = 1;
   for (auto *Arg : Args) {
+    if (Arg == nullptr)
+      continue;
     Arg->dumpPretty();
     if (Idx < Args.size())
       llvm::outs() << " ";
@@ -644,7 +695,8 @@ void LetBinding::dumpPretty() {
     llvm::outs() << "mut ";
   } 
   llvm::outs() << VarName << " = ";
-  LetInit->dumpPretty();
+  if (LetInit != nullptr)
+    LetInit->dumpPretty();
   llvm::outs() << "\n";
 }
 
@@ -699,6 +751,12 @@ void PulseFnDefn::dumpPretty() {
   llvm::outs() << "\n";
   llvm::outs() << "Print function arguments: ";
   for (auto *Arg : (Defn->Args)) {
+    if (Arg->useFallBack){
+     llvm::outs() << "(" << Arg->Ident << ")";
+     llvm::outs() << ",";
+     continue;
+    }
+
     llvm::outs() << "(" << Arg->Ident << ",";
     // Arg->Type->printTag();
     if (auto *Ty = static_cast<FStarType *>((Arg->Type))) {
