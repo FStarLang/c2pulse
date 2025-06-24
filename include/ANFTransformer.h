@@ -4,6 +4,7 @@
 
 #include "clang/Frontend/ASTUnit.h"
 #include "clang/Rewrite/Core/Rewriter.h"
+#include "clang/Frontend/ASTUnit.h"
 
 #include "ANFConsumer.h"
 
