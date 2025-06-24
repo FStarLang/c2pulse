@@ -7,6 +7,7 @@
 #include "clang/Frontend/FrontendActions.h"
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
+#include "llvm/Support/Debug.h"
 #include <fstream>
 #include <unistd.h>
 #include <memory>
@@ -47,101 +48,55 @@ int main(int argc, const char **argv) {
     }
     
     // Create a Clang tool instance
-    std::unique_ptr<ClangTool> Tool = std::make_unique<ClangTool>(OptionsParser->getCompilations(), OptionsParser->getSourcePathList());
-    for (const auto& file : OptionsParser->getSourcePathList())
-        llvm::outs() << "Parsing: " << file << "\n";
-    std::vector<std::unique_ptr<ASTUnit>> ASTList;
-    Tool->buildASTs(ASTList);
-    llvm::outs() << "Number of parsed ASTs: " << ASTList.size() << "\n";
-
-    int fileIndex = 0;
-    for (const auto &AST : ASTList) {
-        const std::string& fileName = OptionsParser->getSourcePathList()[fileIndex++];
-        if (!AST) {
-            llvm::errs() << "Failed to parse file: " << fileName << "\n";
-            continue;
+    const auto &SourceFiles = OptionsParser->getSourcePathList();
+    auto Tool = std::make_unique<ClangTool>(
+        OptionsParser->getCompilations(), SourceFiles
+    );
+    
+    if (llvm::DebugFlag) {
+        for (const auto &file : SourceFiles) {
+            DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Parsing: " << file << "\n");
         }
-      clang::ASTContext &Ctx = AST->getASTContext();
-      ExprLocationAnalyzer _analyzer(Ctx);
-      _analyzer.analyze(Ctx.getTranslationUnitDecl());
-      _analyzer.printNodeInfoMap();
-
-       PulseTransformer _PulseTransformer(Ctx);
-       _PulseTransformer.transform(); 
-       _PulseTransformer.writeToFile();
     }
 
+    std::vector<std::unique_ptr<ASTUnit>> ASTList;
+    // Syntax and semantic checks are performed internally by Clang during AST construction
+    Tool->buildASTs(ASTList); 
 
+    llvm::outs() << "Number of parsed ASTs: " << ASTList.size() << "\n";
+    DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs()
+                                        << "Number of parsed ASTs: " 
+                                        << ASTList.size() << "\n"); 
 
-    //Vidush: Seems like ClangTool runs a pass of syntax only action internally.
-    // if (Tool.run(newFrontendActionFactory<clang::SyntaxOnlyAction>().get())){
-	  //   llvm::errs() << "Error: the provided C program has a compilation error";
-    // 	    return 0;
-    // }
-   
+    int fileIndex = 0;
+    size_t failedASTs = 0;
+    for (const auto &AST : ASTList) {
+        const std::string &fileName = SourceFiles[fileIndex++];
 
-    // ANFTranformer transformer(ASTList);
-    // transformer.transform();
-    // std::string transformedCode = transformer.getTransformedCode();
-    // auto NewFilePath = transformer.writeToFile();
+        if (!AST) {
+            llvm::errs() << "Failed to parse file: " << fileName << "\n";
+            ++failedASTs;
+            continue;
+        }
 
-    // llvm::outs() << "Print the new file path: \n";
-    // llvm::outs() << NewFilePath;
-    // llvm::outs() << "\n\n";
-  
-    // std::vector<std::string> SourceFiles;
-    // SourceFiles.push_back(NewFilePath);
-    // // Run Syntax-Only Action again on transformed output
-    // std::unique_ptr<ClangTool> TransformedTool = std::make_unique<ClangTool>(OptionsParser->getCompilations(), SourceFiles);
-    // // if (TransformedTool.run(
-    // //         newFrontendActionFactory<SyntaxOnlyAction>().get())) {
-    // //   llvm::errs() << "Error: Transformed code has syntax errors.\n";
-    // //   return 1;
-    // // }
+        clang::ASTContext &Ctx = AST->getASTContext();
 
-    // std::vector<std::unique_ptr<ASTUnit>> TransformedASTList;
-    // TransformedTool->buildASTs(TransformedASTList);
+        ExprLocationAnalyzer Analyzer(Ctx);
+        Analyzer.analyze(Ctx.getTranslationUnitDecl());
 
-  //   llvm::outs() << "TransformedASTSize" << TransformedASTList.size() << "\n";
+        if (llvm::DebugFlag) {
+            Analyzer.printNodeInfoMap();
+        }
 
-  //   for (auto &t_ast : TransformedASTList) {
-  //   for (auto FD : t_ast->getASTContext().getTranslationUnitDecl()->decls()) {
-  //       if (auto *Func = llvm::dyn_cast<FunctionDecl>(FD)) {
-  //           llvm::outs() << "Function found: " << Func->getNameAsString() << "\n";
-  //       }
-  //   }
-  //  }
+        PulseTransformer Transformer(Ctx);
+        Transformer.transform();
+        Transformer.writeToFile();
+    }
 
-    // for (auto &t_ast : TransformedASTList){
-    //   auto *Ast = t_ast.get();
-    //    const clang::SourceManager &SM = Ast->getSourceManager();
-    //    const clang::FileEntry *FE = SM.getFileEntryForID(SM.getMainFileID());
-    //        if (FE) {
-    //     std::ifstream file(FE->tryGetRealPathName().str());
-    //     llvm::outs() << FE->tryGetRealPathName().str() << "\n";
-    //     llvm::outs() << "Raw Source File:\n";
-    //     llvm::outs() << file.rdbuf(); // Print entire file content
-    // } else {
-    //     llvm::outs() << "Error: Could not retrieve source file.\n";
-    // }
-
-    // }
-
-    // int pid = fork();
-
-    // PulseTransformer _PulseTransformer(ASTList);
-    // //---------------------- this part needs be fixed
-
-    // //llvm::outs() << "Generated transformer for Pulse..." << "\n";
-    // _PulseTransformer.transform(); 
-   
-    // //llvm::outs() << "Completed running Pulse transformer..." << "\n";
-    // _PulseTransformer.writeToFile();
-    // // auto &FunctionDeclarations = _PulseTransformer
-    // // auto Code = _PulseTransformer.getTransformedCode();
-
-    // // llvm::outs() << "Print Program: \n\n";
-    // // llvm::outs() << Code << "\n";
+    if (failedASTs > 0) {
+        llvm::errs() << failedASTs << " file(s) failed to compile.\n";
+        return 1;
+    }
 
     llvm::outs() << "Success: Code transformed and syntax validated.\n";
     return 0;

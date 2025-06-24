@@ -1,21 +1,26 @@
 #pragma once
 
 #include "PulseIR.h"
+
 #include "clang/AST/DeclBase.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/Type.h"
 #include "clang/Basic/SourceManager.h"
 #include "clang/Frontend/DependencyOutputOptions.h"
+#include "clang/AST/RecursiveASTVisitor.h"
+#include "clang/ASTMatchers/ASTMatchFinder.h"
+#include "clang/Frontend/ASTConsumers.h"
+#include "clang/Frontend/CompilerInstance.h"
+#include "clang/Frontend/FrontendPluginRegistry.h"
+#include "clang/Rewrite/Core/Rewriter.h"
+
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
-#include <clang/AST/RecursiveASTVisitor.h>
-#include <clang/ASTMatchers/ASTMatchFinder.h>
-#include <clang/Frontend/ASTConsumers.h>
-#include <clang/Frontend/CompilerInstance.h>
-#include <clang/Frontend/FrontendPluginRegistry.h>
-#include <clang/Rewrite/Core/Rewriter.h>
+
 #include <memory>
 #include <vector>
+
+#define DEBUG_TYPE "pulse-codegen"
 
 // namespace{
 

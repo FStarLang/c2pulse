@@ -1,8 +1,12 @@
 #pragma once
+
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/OperationKinds.h"
+
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/StringRef.h"
+#include "llvm/Support/Debug.h"
+
 #include <regex>
 #include <string>
 #include <vector>
@@ -10,7 +14,7 @@
 #include <sstream>
 #include <utility>
 
-
+#define DEBUG_TYPE "pulse-ir"
 
 // // Define What all kinds of Annotations are there in Pulse.
 // //TODO: These can be term type in IR, we shoudl refactor these

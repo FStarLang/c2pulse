@@ -1,20 +1,21 @@
 #pragma once
 
-#include <string>
-#include <map>
-#include <optional>
-
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Frontend/ASTUnit.h"
 #include "clang/Lex/Lexer.h"
+
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/CommandLine.h"
+
+#include <string>
+#include <map>
+#include <optional>
 
 extern llvm::cl::OptionCategory ToolCategory;
 extern llvm::cl::opt<std::string> FunctionNameToProcess;
 extern llvm::cl::opt<std::string> TransformMode;
 
-#define DEBUG_TYPE "anf-pulse-rewriter"
+#define DEBUG_TYPE "source-loc-map"
 
 /// Struct that captures detailed source information for an AST node.
 struct SourceInfo {

@@ -49,7 +49,10 @@ bool ExprLocationAnalyzer::VisitDeclStmt(DeclStmt *DS) {
   DS->printPretty(rso, nullptr, Context.getPrintingPolicy());
 
   unsigned line = SM.getSpellingLineNumber(DS->getBeginLoc());
-  llvm::outs() << "String: " << rso.str() << " Line: " << line << "\n";
+
+  DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs()
+                                        << "String: " << rso.str() 
+                                        << " Line: " << line << "\n"); 
 
   for (auto *D : DS->decls()) {
     if (auto *VD = dyn_cast<VarDecl>(D)) {
@@ -76,8 +79,10 @@ bool ExprLocationAnalyzer::VisitBinaryOperator(BinaryOperator *BO) {
   // Get the binary operator string (e.g., "+", "=")
   StringRef OpStr = BinaryOperator::getOpcodeStr(BO->getOpcode());
 
-  llvm::outs() << "String: " << rso.str() << " Line: " << line << "\n";
-  llvm::outs() << "  Operation: " << OpStr << "\n";
+  DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs()
+                                          << "String: " << rso.str() 
+                                          << " Line: " << line << "\n"
+                                          << "  Operation: " << OpStr << "\n");                                       
 
   // Get string representation of LHS and RHS for labels
   std::string lhsStr;
@@ -127,7 +132,7 @@ std::optional<std::string> ExprLocationAnalyzer::getSourceLine(SourceLocation lo
   bool invalid = false;
   const char *bufferStart = SM.getCharacterData(loc, &invalid);
   if (invalid) {
-    llvm::outs() << "  [Could not get source line]\n";
+    llvm::errs() << "  [Could not get source line]\n";
     return "";
   }
 
