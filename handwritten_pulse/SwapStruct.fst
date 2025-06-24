@@ -32,7 +32,7 @@ requires emp
 returns x:Box.box u32_pair_struct
 ensures exists* (s:u32_pair_struct_spec). SwapStruct.Types.u32_pair_struct_pred (Box.box_to_ref x) s ** pure (s == {first = 0ul; second = 1ul})
 {
-  let x = SwapStruct.Types.alloc (); //note the translatio of the casted malloc to a typed allocation
+  let x = SwapStruct.Types.alloc(); //note the translatio of the casted malloc to a typed allocation
   SwapStruct.Types.set_first (Box.box_to_ref x) 0ul; // assigning to a field of the struct translated to a setter
   SwapStruct.Types.set_second (Box.box_to_ref x) 1ul; // assigning to a field of the struct translated to a getter
   x
