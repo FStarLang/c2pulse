@@ -4,9 +4,11 @@
 
 #include "clang/Frontend/ASTConsumers.h"
 #include "clang/Frontend/CompilerInstance.h"
+#include "clang/Frontend/FrontendPluginRegistry.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 
 #include "llvm/Support/CommandLine.h"
+
 
 #include <memory>
 #include <vector>

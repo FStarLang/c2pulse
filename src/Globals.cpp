@@ -1,14 +1,14 @@
 #include "Globals.h"
-#include <atomic>
 
+using namespace std;
 
 extern int GlobalGenSymCounter;
 
-static std::string counterToVar(){
-    return std::to_string(GlobalGenSymCounter++);
+static string counterToVar(){
+    return to_string(GlobalGenSymCounter++);
 }
 
 
-std::string gensym(const std::string base = "var") {
+string gensym(const string base = "var") {
     return base + counterToVar();
 }

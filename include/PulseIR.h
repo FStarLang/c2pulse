@@ -5,7 +5,7 @@
 
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/StringRef.h"
-#include <regex>
+
 #include <set>
 #include <string>
 #include <vector>

@@ -1,3 +1,5 @@
+#pragma once
+
 #include <string>
 
 extern int GlobalGenSymCounter; // Declaration of global variable

@@ -1,21 +1,11 @@
 #include "PulseCodeGen.h"
 #include "PulseIR.h"
-#include "clang/AST/DeclBase.h"
-#include "clang/AST/Expr.h"
-#include "clang/AST/Type.h"
-#include "clang/Basic/SourceManager.h"
-#include "clang/Frontend/DependencyOutputOptions.h"
+
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
-#include <clang/AST/RecursiveASTVisitor.h>
-#include <clang/ASTMatchers/ASTMatchFinder.h>
-#include <clang/Frontend/ASTConsumers.h>
-#include <clang/Frontend/CompilerInstance.h>
-#include <clang/Frontend/FrontendPluginRegistry.h>
-#include <clang/Rewrite/Core/Rewriter.h>
+
 #include <cstddef>
 #include <cstdio>
-#include <fstream>
 #include <memory>
 #include <vector>
 
@@ -44,7 +34,7 @@ void PulseCodeGen::writeHeaders(PulseModul *Modul,
 
 }
 
-std::map<std::string, std::unique_ptr<llvm::raw_string_ostream>> &
+std::map<const std::string, std::unique_ptr<llvm::raw_string_ostream>> &
 PulseCodeGen::returnOutPutModules() {
   return OutputModules;
 }
@@ -59,11 +49,10 @@ std::string PulseCodeGen::getGeneratedCodeForModule(std::string &ModuleName) {
   assert(false && "Could not find a output stream for Module!\n");
 }
 
-void PulseCodeGen::generateCodeFromModule(std::string ModuleName,
+void PulseCodeGen::generateCodeFromModule(const std::string ModuleName,
                                           PulseModul *Modul) {
 
   // check if a stream exists for the module already.
-
   auto It = OutputModules.find(ModuleName);
   // Found a stream for module
   if (It != OutputModules.end()) {
@@ -225,24 +214,6 @@ void PulseCodeGen::generateCodeFromPulseAst(llvm::raw_string_ostream &OS,
   }
 }
 
-// std::string PulseCodeGen::formatAsComments(PulseDecl *Decl)
-// {
-
-//     if (PulseFnDefn *FDefn = dyn_cast<PulseFnDefn>(Decl)){
-//         //We should have a getter for this.
-//         auto &Annotations = FDefn->Defn->Annotation;
-//         std::string Out;
-//         for (const PulseAnnotation& Ann : Annotations) {
-//             Out += "// @";
-//             Out += (Ann.kind == PulseAnnKind::Requires ? "requires " :
-//             "ensures "); Out += Ann.predicate + "\n";
-//         }
-//         return Out;
-//     }
-//     assert(false && "Format As Comments not implemented yet!");
-
-// }
-
 std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
                                                Term *T) {
 
@@ -384,7 +355,6 @@ void PulseCodeGen::generateCodeFromPulseStmt(llvm::raw_string_ostream &OS,
     OS << PulseSyntax.Semicolon;
     OS << PulseSyntax.NewLine;
 
-    //assert(false && "Did not expect pulse array statement type");
   } else if (LetBinding *Let = dyn_cast<LetBinding>(T)) {
     
     if (Let->Qualifier == MutOrRef::MUT){
@@ -427,7 +397,6 @@ void PulseCodeGen::generateCodeFromPulseStmt(llvm::raw_string_ostream &OS,
     generateCodeFromPulseStmt(OS, PulseElse);
     OS << PulseSyntax.ClosingCurlyBrace;
     OS << PulseSyntax.NewLine;
-    //assert(false && "Did not expect pulse if statement type");
 
   } else if (PulseWhileStmt *While = dyn_cast<PulseWhileStmt>(T)) {
 
@@ -454,7 +423,6 @@ void PulseCodeGen::generateCodeFromPulseStmt(llvm::raw_string_ostream &OS,
     generateCodeFromPulseStmt(OS, WBod);
     OS << PulseSyntax.ClosingCurlyBrace; 
 
-    //assert(false && "Did not expect pulse while statement type");
   } else if (PulseSequence *Seq = dyn_cast<PulseSequence>(T)) {
     auto *S1 = Seq->S1;
     auto *S2 = Seq->S2;

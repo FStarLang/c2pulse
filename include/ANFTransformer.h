@@ -4,9 +4,6 @@
 
 #include "clang/Frontend/ASTUnit.h"
 #include "clang/Rewrite/Core/Rewriter.h"
-#include "clang/Frontend/ASTUnit.h"
-
-#include "ANFConsumer.h"
 
 #include <memory>
 #include <string>
@@ -19,7 +16,7 @@ extern llvm::cl::opt<std::string> TransformMode;
 class ANFTranformer {
 
     public: 
-      ANFTranformer(std::vector<std::unique_ptr<ASTUnit>> &ASTList); 
+      ANFTranformer(std::vector<std::unique_ptr<clang::ASTUnit>> &ASTList); 
       std::string getTransformedCode();
       void transform();
       std::string writeToFile();
@@ -27,6 +24,6 @@ class ANFTranformer {
     private:
        clang::Rewriter RewriterForPlugin;
        std::string TransformedCode;
-       std::vector<std::unique_ptr<ASTUnit>> &InternalAstList; // Store the ASTList for processing
+       std::vector<std::unique_ptr<clang::ASTUnit>> &InternalAstList; // Store the ASTList for processing
 
 };
