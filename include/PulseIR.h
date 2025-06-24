@@ -5,26 +5,19 @@
 
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/StringRef.h"
-#include "llvm/Support/Debug.h"
 
-#include <regex>
 #include <string>
 #include <vector>
-#include <memory>
-#include <sstream>
 #include <utility>
 
-#define DEBUG_TYPE "pulse-ir"
-
-// // Define What all kinds of Annotations are there in Pulse.
-// //TODO: These can be term type in IR, we shoudl refactor these
+// Pulse annotation kinds used in the IR.
+// TODO: Consider refactoring these as term types in the IR.
 enum class PulseAnnKind { Requires, Ensures, Returns, IsArray, Invariants, LemmaStatement};
 
 // Struct for Pulse annotations,
 struct PulseAnnotation {
   PulseAnnKind kind; 
 };
-
 
 enum class SymbolTable {
   Int8, 
@@ -91,8 +84,8 @@ static const llvm::SmallDenseMap<SymbolTable, const char*> SymbolToStringTable {
   {SymbolTable::UInt64_Div, "UInt64.div"},
  {SymbolTable::UInt64_Sub, "UInt64.sub"},
  {SymbolTable::UInt64_Add, "UInt64.add"},
-  {SymbolTable::UInt128, "UInt128.t"},
-  {SymbolTable::SizeT, "SizeT.t"},
+ {SymbolTable::UInt128, "UInt128.t"},
+ {SymbolTable::SizeT, "SizeT.t"},
  {SymbolTable::SizeT_Add, "SizeT.add"},
  {SymbolTable::SizeT_Sub, "SizeT.sub"},
  {SymbolTable::SizeT_Div, "SizeT.div"},
@@ -123,7 +116,6 @@ enum class TermTag {Const, Paren, Var, Name, AppE, FStarType, FStarPointerType, 
                     Lemma, 
                     LemmaStatement};
                     
-
 class Term {
 public:
   TermTag Tag;
@@ -132,7 +124,6 @@ public:
   virtual void dumpPretty() = 0;
   virtual ~Term() = default;
 };
-
 
 class Lemma : public Term{
   public:
@@ -153,7 +144,6 @@ class LemmaStatement : public Term{
     static bool classof(const Term *T) { return T->Tag == TermTag::LemmaStatement; }
 
 };
-
 
 class Paren : public Term {
 
@@ -235,7 +225,6 @@ public:
   static bool classof(const Term *T) { return T->Tag == TermTag::FStarType; }
 };
 
-
 class FStarArrType : public FStarType {
 
   public:
@@ -264,8 +253,6 @@ public:
   }
 };
 
-
-
 class AppE : public Term {
 public:
   VarTerm *CallName;
@@ -278,23 +265,7 @@ public:
   static bool classof(const Term *T) { return T->Tag == TermTag::AppE; }
 };
 
-// Define pattern class
-
-// class Pattern { };
-
-// class PatWild : public Pattern {
-// };
-
-// class PatVar
-
-// Define Pulse IR
-
 typedef Term Slprop;
-
-// enum class MutOrRef {
-//     Mut,
-//     Ref
-// };
 
 enum class PulseStmtTag {
   Expr,
@@ -372,8 +343,6 @@ public:
   PulseStmt *Else = nullptr;
   virtual void dumpPretty() override;
   static bool classof(const PulseStmt *S) { return S->Tag == PulseStmtTag::If; }
-
-  // virtual void dumpPretty() override = 0;
 };
 
 class PulseWhileStmt : public PulseStmt {
@@ -386,7 +355,6 @@ public:
   static bool classof(const PulseStmt *S) {
     return S->Tag == PulseStmtTag::WhileStmt;
   }
-  // virtual void dumpPretty() override = 0;
 };
 
 class PulseSequence : public PulseStmt {
@@ -527,30 +495,11 @@ public:
   bool isHeader = false;
 };
 
-// class File : 
-//Moduel == file in clang
+// Class File:
+// We treat a Module as equivalent to a source file.
+// In Clang, a Translation Unit represents a single compilable file—
+// that is, the source file along with all its includes and other necessary
+// context required to compile it.
 typedef PulseModul File;
-
-
-
-
-// enum class FStarDeclTag {BaseDecl, ValDecl};
-
-// class FStarDecl {
-//   public: 
-//     FStarDeclTag Tag; 
-// };
-
-// class FstarValDecl : public FStarDecl {
-//   public:
-//     FstarValDecl();
-//     std::string Ident; 
-//     Term *ValTerm;
-//     static bool classof(const FStarDecl *D) {
-//     return D->Tag == FStarDeclTag::ValDecl;
-//   }
-// };
-
-// PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data, std::wsmatch &match);
 
 PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data, std::string &match);

@@ -1,18 +1,12 @@
 #pragma once
 
-#include "llvm/Support/Debug.h"
-#include "llvm/Support/CommandLine.h"
+#include "ANFConsumer.h"
 
-#include "clang/AST/DeclBase.h"
-#include "clang/AST/Expr.h"
-#include "clang/AST/RecursiveASTVisitor.h"
-#include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Frontend/ASTConsumers.h"
 #include "clang/Frontend/CompilerInstance.h"
-#include "clang/Frontend/FrontendPluginRegistry.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 
-#include "ANFConsumer.h"
+#include "llvm/Support/CommandLine.h"
 
 #include <memory>
 #include <vector>
@@ -21,6 +15,7 @@ extern llvm::cl::OptionCategory ToolCategory;
 extern llvm::cl::opt<std::string> FunctionNameToProcess;
 extern llvm::cl::opt<std::string> TransformMode;
 
+/// Frontend action to create the AST consumer and handle plugin lifecycle.
 class ANFFrontendAction : public clang::PluginASTAction {
 
 protected:

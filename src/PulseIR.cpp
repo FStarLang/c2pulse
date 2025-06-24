@@ -4,6 +4,7 @@
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cstddef>
+#include <regex.h>
 
 // define functions for F* classes.
 
@@ -57,7 +58,7 @@ PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data, std::string &match)
     llvm::outs() << "Print StringRef!!!!!!\n";
     llvm::outs() << Data.str() << "\n";
     llvm::outs() << "End of StringRef.\n";
-    std::smatch match2;
+    // std::smatch match2;
     if (!Data.empty()){
           
           std::string cleanedString;

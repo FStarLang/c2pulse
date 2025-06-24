@@ -4,7 +4,6 @@
 #include "clang/Frontend/ASTUnit.h"
 #include "clang/Lex/Lexer.h"
 
-#include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/CommandLine.h"
 
 #include <string>
@@ -14,8 +13,6 @@
 extern llvm::cl::OptionCategory ToolCategory;
 extern llvm::cl::opt<std::string> FunctionNameToProcess;
 extern llvm::cl::opt<std::string> TransformMode;
-
-#define DEBUG_TYPE "source-loc-map"
 
 /// Struct that captures detailed source information for an AST node.
 struct SourceInfo {
