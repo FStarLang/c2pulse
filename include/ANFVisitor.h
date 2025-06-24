@@ -3,7 +3,6 @@
 #include "clang/AST/DeclBase.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/Type.h"
-#include "clang/Frontend/DependencyOutputOptions.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 #include <clang/AST/RecursiveASTVisitor.h>
@@ -12,9 +11,11 @@
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Frontend/FrontendPluginRegistry.h>
 #include <clang/Rewrite/Core/Rewriter.h>
-#include <memory>
 #include <vector>
 #include "Globals.h"
+
+#undef DEBUG_TYPE
+#define DEBUG_TYPE "anf-visitor"
 
 extern llvm::cl::OptionCategory ToolCategory;
 extern llvm::cl::opt<std::string> FunctionNameToProcess;
@@ -58,14 +59,14 @@ static bool isLeafNode(const clang::Expr* E) {
 }
 
 
-static ANFTransformDebugModeKind getTransformMode()
-{
-    if (TransformMode == "anf")
-        return ANFTransformDebugModeKind::ANFOnly;
-    if (TransformMode == "pulse")
-        return ANFTransformDebugModeKind::PulseOnly;
-    return ANFTransformDebugModeKind::Both;
-}
+// static ANFTransformDebugModeKind getTransformMode()
+// {
+//     if (TransformMode == "anf")
+//         return ANFTransformDebugModeKind::ANFOnly;
+//     if (TransformMode == "pulse")
+//         return ANFTransformDebugModeKind::PulseOnly;
+//     return ANFTransformDebugModeKind::Both;
+// }
 
 namespace {
 /// \brief Visitor that rewrites effectful expressions into ANF.
@@ -663,7 +664,7 @@ private:
 /// Rewrite an if statement, lifting its condition.
 std::string rewriteIf(IfStmt *IS) {
   Expr *Cond = IS->getCond();
-  Stmt *ThenBody = IS->getThen();
+  // Stmt *ThenBody = IS->getThen();
   std::string Out;
 
   // Get the source‐spelled type of the condition
@@ -957,7 +958,7 @@ std::string commentPrefix(SourceLocation Loc) {
   // Look for a comment (`///`, `//` or `/*`)
   if (StartOffset >= 1 && (Buffer.substr(StartOffset - 1, 2) == "//" or Buffer.substr(StartOffset - 1, 2) == "///")) {
     // Extract line
-    unsigned LineStart = Buffer.rfind('\n', StartOffset);
+    size_t LineStart = Buffer.rfind('\n', StartOffset);
     if (LineStart == StringRef::npos) LineStart = 0;
     StringRef Line = Buffer.substr(LineStart, StartOffset - LineStart + 1);
     return Line.trim().str() + "\n";

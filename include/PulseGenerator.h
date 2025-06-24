@@ -8,102 +8,88 @@
 #include "clang/AST/Expr.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/AST/Type.h"
-#include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Analysis/Analyses/ExprMutationAnalyzer.h"
 #include "clang/Basic/SourceManager.h"
-#include "clang/Frontend/DependencyOutputOptions.h"
 #include "clang/Frontend/ASTConsumers.h"
 #include "clang/Frontend/CompilerInstance.h"
-#include "clang/Frontend/FrontendPluginRegistry.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 
-#include "llvm/Support/Debug.h"
-#include "llvm/Support/raw_ostream.h"
-#include "llvm/Support/Debug.h"
-
-#include <memory>
 #include <vector>
 
-#define DEBUG_TYPE "pulse-gen"
-
-using namespace clang;
+#undef DEBUG_TYPE
+#define DEBUG_TYPE "pulse-codegen"
 
 namespace {
 
-class PulseVisitor : public RecursiveASTVisitor<PulseVisitor> {
-
+/// Visitor class to traverse AST nodes and generate Pulse IR.
+class PulseVisitor : public clang::RecursiveASTVisitor<PulseVisitor> {
 public:
-  PulseVisitor(Rewriter &R, ASTContext &Ctx)
+  PulseVisitor(clang::Rewriter &R, clang::ASTContext &Ctx)
       : TheRewriter(R), Ctx(Ctx), SM(Ctx.getSourceManager()) {}
 
-  bool VisitFunctionDecl(FunctionDecl *FD);
-  bool VisitRecordDecl(RecordDecl *RD);
-  bool VisitTypedefDecl(TypedefDecl *TypeDefDec);
+  bool VisitFunctionDecl(clang::FunctionDecl *FD);
+  bool VisitRecordDecl(clang::RecordDecl *RD);
+  bool VisitTypedefDecl(clang::TypedefDecl *TypeDefDec);
 
-  PulseStmt *pulseFromCompoundStmt(Stmt *S, ExprMutationAnalyzer *A);
-  PulseStmt *pulseFromStmt(Stmt *S, ExprMutationAnalyzer *A);
-  FStarType *getPulseTyFromCTy(QualType CType);
-  Term *getTermFromCExpr(Expr *E, ExprMutationAnalyzer *A, llvm::SmallVector<PulseStmt*> &ExprsBef,
-                           QualType ParentType, bool isWrite = false);
+  PulseStmt *pulseFromCompoundStmt(clang::Stmt *S,
+                                   clang::ExprMutationAnalyzer *A);
+  PulseStmt *pulseFromStmt(clang::Stmt *S, clang::ExprMutationAnalyzer *A);
+  FStarType *getPulseTyFromCTy(clang::QualType CType);
+  Term *getTermFromCExpr(clang::Expr *E, clang::ExprMutationAnalyzer *A,
+                         llvm::SmallVector<PulseStmt *> &ExprsBef,
+                         clang::QualType ParentType, bool isWrite = false);
   std::vector<PulseDecl *> &getFunctionDeclarations();
   std::map<std::string, PulseModul *> &getPulseModules();
   void extractPulseAnnotations(const clang::FunctionDecl *FD,
                                const clang::SourceManager &SM,
-                               std::vector<PulseExpr*> &Ann);
+                               std::vector<PulseExpr *> &Ann);
 
-  void inferArrayTypesStmt(Stmt *InnerStmt);
-  void inferArrayTypesExpr(Expr *ExprPtr);
-  void inferDeclType(Decl *Dec, Stmt *InnerStmt);
-  std::map<Decl*, QualType> inferArrayTypes(FunctionDecl *FD);
-  void InferDeclType(Decl* Dec, FunctionDecl *FD);
-  bool checkIsRecursiveExpr(Expr *ExprPtr, FunctionDecl *CurrFunction);
-  bool checkIsRecursiveStmt(Stmt *InnerStmt, FunctionDecl *CurrFunction);
-  bool checkIsRecursiveFunction(FunctionDecl *FD);
+  void inferArrayTypesStmt(clang::Stmt *InnerStmt);
+  void inferArrayTypesExpr(clang::Expr *ExprPtr);
+  void inferDeclType(clang::Decl *Dec, clang::Stmt *InnerStmt);
+  std::map<clang::Decl *, clang::QualType>
+  inferArrayTypes(clang::FunctionDecl *FD);
+  void InferDeclType(clang::Decl *Dec, clang::FunctionDecl *FD);
+  bool checkIsRecursiveExpr(clang::Expr *ExprPtr,
+                            clang::FunctionDecl *CurrFunction);
+  bool checkIsRecursiveStmt(clang::Stmt *InnerStmt,
+                            clang::FunctionDecl *CurrFunction);
+  bool checkIsRecursiveFunction(clang::FunctionDecl *FD);
 
 private:
   std::map<std::string, PulseModul *> Modules;
-  // std::vector<PulseDecl *> FunctionDeclarations;
-  Rewriter &TheRewriter;
-  ASTContext &Ctx;
-  SourceManager &SM;
-  std::map<Decl*, QualType> DeclTyMap;
-  std::map<const Stmt*, std::vector<Slprop*>> StmtToLemmas;
+  clang::Rewriter &TheRewriter;
+  clang::ASTContext &Ctx;
+  clang::SourceManager &SM;
+  std::map<clang::Decl *, clang::QualType> DeclTyMap;
+  std::map<const clang::Stmt *, std::vector<Slprop *>> StmtToLemmas;
 };
-} // namespace
 
-class PulseConsumer : public ASTConsumer {
+} // end of anonymous namespace
+
+class PulseConsumer : public clang::ASTConsumer {
 public:
   PulseConsumer(clang::ASTContext &Ctx, clang::Rewriter &R);
 
-  void HandleTranslationUnit(ASTContext &Ctx) override;
-
-  // void
-  // setNewFunctionDeclarations(std::vector<PulseDecl *> &FunctionDeclarations);
-
+  void HandleTranslationUnit(clang::ASTContext &Ctx) override;
   void setNewModules(std::map<std::string, PulseModul *> &PulseModules);
 
   std::map<std::string, PulseModul *> &getNewModules();
 
-  // std::vector<PulseDecl *> &getNewFunctionDeclarations();
-
 private:
-  // std::vector<PulseDecl *> FunctionDeclarations;
   std::map<std::string, PulseModul *> Modules;
   PulseVisitor Visitor;
 };
 
 class PulseTransformer {
 public:
-  PulseTransformer(ASTContext &Ctx); //std::vector<std::unique_ptr<ASTUnit>> &ASTList
-  // std::string getTransformedCode();
+  PulseTransformer(clang::ASTContext &Ctx);
   void transform();
   std::string writeToFile();
 
 private:
-  ASTContext &AstCtx;
+  clang::ASTContext &AstCtx;
   PulseCodeGen CodeGen;
   clang::Rewriter RewriterForPlugin;
   std::string TransformedCode;
-  //std::vector<std::unique_ptr<ASTUnit>>
-  //    &InternalAstList; // Store the ASTList for processing
 };

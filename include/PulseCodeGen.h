@@ -20,10 +20,6 @@
 #include <memory>
 #include <vector>
 
-#define DEBUG_TYPE "pulse-codegen"
-
-// namespace{
-
 using CodegenStrTy = const char;
 class PulseCodeGen {
 
@@ -43,7 +39,6 @@ public:
 private:
   std::map<std::string, std::unique_ptr<llvm::raw_string_ostream>>
       OutputModules;
-  // llvm::raw_string_ostream OS{OutputBuffer};
 };
 
 static class PulseSyntax {
@@ -78,5 +73,3 @@ public:
   CodegenStrTy *Val = "val";
   CodegenStrTy *Typ = "type";
 } PulseSyntax;
-
-// } //namespace
