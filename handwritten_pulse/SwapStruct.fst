@@ -49,7 +49,7 @@ void swap_fields (u32_pair_struct* x, #s:u32_pair_struct_spec s)
   x->f2 = f1;
 }
 *)
-fn swap_fields (x:ref u32_pair_struct) (#s:u32_pair_struct_spec)
+fn swap_fields (#s:u32_pair_struct_spec) (x:ref u32_pair_struct)
 requires SwapStruct.Types.u32_pair_struct_pred x s
 ensures exists* (s':u32_pair_struct_spec). SwapStruct.Types.u32_pair_struct_pred x s' ** pure (s' == ({first = s.second; second = s.first}))
 {
