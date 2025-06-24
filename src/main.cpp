@@ -53,17 +53,16 @@ int main(int argc, const char **argv) {
         OptionsParser->getCompilations(), SourceFiles
     );
     
-    if (llvm::DebugFlag) {
+    LLVM_DEBUG({
         for (const auto &file : SourceFiles) {
-            DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs() << "Parsing: " << file << "\n");
+            llvm::dbgs() << "Parsing: " << file << "\n";
         }
-    }
+    });
 
     std::vector<std::unique_ptr<ASTUnit>> ASTList;
     // Syntax and semantic checks are performed internally by Clang during AST construction
     Tool->buildASTs(ASTList); 
 
-    llvm::outs() << "Number of parsed ASTs: " << ASTList.size() << "\n";
     DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs()
                                         << "Number of parsed ASTs: " 
                                         << ASTList.size() << "\n"); 
@@ -81,12 +80,11 @@ int main(int argc, const char **argv) {
 
         clang::ASTContext &Ctx = AST->getASTContext();
 
-        ExprLocationAnalyzer Analyzer(Ctx);
-        Analyzer.analyze(Ctx.getTranslationUnitDecl());
-
-        if (llvm::DebugFlag) {
+        LLVM_DEBUG({
+            ExprLocationAnalyzer Analyzer(Ctx);
+            Analyzer.analyze(Ctx.getTranslationUnitDecl());
             Analyzer.printNodeInfoMap();
-        }
+        });
 
         PulseTransformer Transformer(Ctx);
         Transformer.transform();

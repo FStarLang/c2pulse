@@ -2,7 +2,9 @@
 #include "clang/AST/Expr.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/PrettyPrinter.h"
+#include "clang/AST/ParentMapContext.h"
 #include "clang/Basic/SourceManager.h"
+#include "llvm/Support/Debug.h"
 
 using namespace clang;
 
@@ -13,12 +15,24 @@ void ExprLocationAnalyzer::analyze(TranslationUnitDecl *TU) {
   TraverseDecl(TU);
 }
 
-bool ExprLocationAnalyzer::VisitFunctionDecl(FunctionDecl *FD) {
-  if (!FD->hasBody()) return true;
+bool ExprLocationAnalyzer::TraverseFunctionDecl(FunctionDecl *FD){
+
+  // Skip functions whithout a body, system headers, implicit, or macro functions not in main file
+  if (!FD->hasBody() || SM.isInSystemHeader(FD->getLocation()) ||
+      FD->isImplicit() ||
+      (FD->getLocation().isMacroID() &&
+       !SM.isWrittenInMainFile(SM.getExpansionLoc(FD->getLocation())))) {
+    return true; 
+  }
+
+  CurrentFunctionName = FD->getNameAsString();    
+
   if (!shouldProcess()) return true;
 
-  CurrentFunctionName = FD->getNameAsString();
+  return RecursiveASTVisitor::TraverseFunctionDecl(FD);
+}
 
+bool ExprLocationAnalyzer::VisitFunctionDecl(FunctionDecl *FD) {
   unsigned startLine = SM.getSpellingLineNumber(FD->getBeginLoc());
   unsigned endLine = SM.getSpellingLineNumber(FD->getEndLoc());
 
@@ -66,8 +80,49 @@ bool ExprLocationAnalyzer::VisitDeclStmt(DeclStmt *DS) {
   return true;
 }
 
+const FunctionDecl *ExprLocationAnalyzer::getContainingFunction(const Stmt *S) const {
+  const Stmt *Current = S;
+  while (true) {
+    auto Parents = Context.getParents(*Current);
+    if (Parents.empty())
+      return nullptr;
+
+    // Check if any parent is FunctionDecl
+    for (const auto &P : Parents) {
+      if (const FunctionDecl *FD = P.get<FunctionDecl>()) {
+        return FD;
+      }
+    }
+
+    // If no FunctionDecl parent, go one level up the first Stmt parent
+    const Stmt *Next = nullptr;
+    for (const auto &P : Parents) {
+      if (const Stmt *PS = P.get<Stmt>()) {
+        Next = PS;
+        break;
+      }
+    }
+    if (!Next)
+      return nullptr; // no further parent stmt found
+    Current = Next;
+  }
+}
+
+
 bool ExprLocationAnalyzer::VisitBinaryOperator(BinaryOperator *BO) {
   if (!shouldProcess()) return true;
+
+  const FunctionDecl *FD = getContainingFunction(BO);
+  if (!FD) {
+    // Not inside any function — skip or handle accordingly
+    return true;
+  }
+  std::string FuncName = FD->getNameAsString();
+
+  if (!FunctionNameToProcess.empty() && FuncName != FunctionNameToProcess)
+    return true; // skipping if function name doesn't match
+
+  LLVM_DEBUG(llvm::outs() << "Function: " << FuncName << "\n";);
 
   unsigned line = SM.getSpellingLineNumber(BO->getBeginLoc());
 
@@ -93,9 +148,11 @@ bool ExprLocationAnalyzer::VisitBinaryOperator(BinaryOperator *BO) {
   llvm::raw_string_ostream rhsOS(rhsStr);
   BO->getRHS()->printPretty(rhsOS, nullptr, Context.getPrintingPolicy());
 
+
   // Print labeled LHS and RHS info
   printExprInfo("  LHS (" + lhsOS.str() + ")", BO->getLHS());
   printExprInfo("  RHS (" + rhsOS.str() + ")", BO->getRHS());
+  
 
   recordSourceInfo("BinaryOperator", BO, OpStr.str());
   recordSourceInfo("LHS (" + lhsOS.str() + ")", BO->getLHS(), OpStr.str());

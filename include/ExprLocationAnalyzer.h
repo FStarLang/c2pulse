@@ -34,6 +34,11 @@ public:
 
   void analyze(clang::TranslationUnitDecl *TU);
 
+  const clang::FunctionDecl *getContainingFunction(const clang::Stmt *S) const;
+
+  // Needed for controling whether we descend into the body
+  bool TraverseFunctionDecl(clang::FunctionDecl *FD);
+
   // Needed for extracting function metadata
   bool VisitFunctionDecl(clang::FunctionDecl *FD);
 

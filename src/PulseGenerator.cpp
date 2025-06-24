@@ -870,7 +870,8 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec){
 
 bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   
-  if (!FD->hasBody() || SM.isInSystemHeader(FD->getLocation()))
+  if (!FD->hasBody() || SM.isInSystemHeader(FD->getLocation()) ||  FD->isImplicit() ||
+       (FD->getLocation().isMacroID() && !SM.isWrittenInMainFile(SM.getExpansionLoc(FD->getLocation()))))
     return true;
   // llvm::outs() << "Processing Function: " << FD->getNameAsString() << "\n";
   auto FuncName = FD->getNameAsString();
@@ -1834,7 +1835,7 @@ const clang::Stmt *getNextStatement(const clang::Expr *expr, clang::ASTContext &
 Term *PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer, 
   llvm::SmallVector<PulseStmt*> &ExprsBefore, QualType ParentType, bool isWrite) {
 
-  if (auto *IL = dyn_cast<IntegerLiteral>(E)) {
+ if (auto *IL = dyn_cast<IntegerLiteral>(E)) {
 
     auto NewConstTerm = new ConstTerm(); 
     NewConstTerm->setTag(TermTag::Const);
@@ -2163,6 +2164,21 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
   //     auto VarName = Decl->getNameAsString();
   //   }
   // }
+  else if (auto *RE = dyn_cast<clang::RecoveryExpr>(E)) {
+      if (Expr *SubExpr = RE->getExprStmt()) {
+          llvm::outs() << "RecoveryExpr contains sub-expression, processing it instead.\n";
+          
+      RE->dump();
+
+      SubExpr->dump();
+      assert(false && "Should not reach here!");
+          return getTermFromCExpr(SubExpr, MutAnalyzer, ExprsBefore, ParentType);
+      }
+      RE->dump();
+      llvm::errs() << "RecoveryExpr without sub-expression, returning nullptr.\n";
+      assert(false && "Should not reach here!");
+      return nullptr;
+  }
   else {
     llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr\n";
     E->dump();
