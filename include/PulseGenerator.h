@@ -56,7 +56,6 @@ public:
 
 private:
   std::map<std::string, PulseModul *> Modules;
-  // std::vector<PulseDecl *> FunctionDeclarations;
   clang::Rewriter &TheRewriter;
   clang::ASTContext &Ctx;
   clang::SourceManager &SM;
