@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-SYSTEM_CC_INCLUDE="/usr/lib/clang/20.1.5/include" 
+SYSTEM_CC_INCLUDE="/usr/lib/clang/18.1.3/include" #"/usr/lib/clang/20.1.5/include" 
 SYSTEM_INCLUDE="/usr/include"
 SYSTEM_ARCH_INCLUDE="/usr/include/x86_64-linux-gnu"
 C_STD="-std=c23"
