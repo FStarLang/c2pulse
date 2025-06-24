@@ -6,3 +6,4 @@
 #define INVARIANTS(...) [[clang::pulse("invariants:" STR(__VA_ARGS__)"|END")]]
 #define LEMMA(l) [[clang::pulse("lemma:" STR(l)"|END")]]
 #define ERASED_ARG(arg) [[clang::pulse("erased_arg:" STR(arg)"|END")]]
+#define ASSERT(message) [[clang::pulse("assert:" STR(message)"|END")]]
