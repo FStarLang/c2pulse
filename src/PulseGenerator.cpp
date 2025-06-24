@@ -68,7 +68,8 @@ std::map<std::string, PulseModul *> &PulseVisitor::getPulseModules() {
 //     std::vector<PulseExpr *> &result) {
 
 //   // auto *Raw = FD->getASTContext().getRawCommentForAnyRedecl(FD);
-//   // llvm::outs() << "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW" << "\n";
+//   // llvm::outs() << "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW" <<
+//   "\n";
 //   // llvm::outs() << Raw->getRawText(Ctx.getSourceManager());
 
 //   if (const auto *C = FD->getASTContext().getRawCommentForAnyRedecl(FD)) {
@@ -76,7 +77,6 @@ std::map<std::string, PulseModul *> &PulseVisitor::getPulseModules() {
 //     for (char c : C->getRawText(SM))
 //       if (c != '\r')
 //         cleaned += c;
-    
 
 //     std::istringstream in(cleaned);
 //     std::string line;
@@ -88,14 +88,14 @@ std::map<std::string, PulseModul *> &PulseVisitor::getPulseModules() {
 //       auto trimmed = StringRef(line).trim().str();
 //       if (std::regex_search(trimmed, match, reqRegex)){
 
-//         auto *NewPulseExprNode = new PulseExpr(); 
+//         auto *NewPulseExprNode = new PulseExpr();
 //         auto *RequiresTerm = new Requires();
 //         RequiresTerm->Ann = match[1];
 //         NewPulseExprNode->E = RequiresTerm;
 //         result.push_back(NewPulseExprNode);
 //       }
 //       else if (std::regex_search(trimmed, match, ensRegex)){
-//         auto *NewPulseExprNode = new PulseExpr(); 
+//         auto *NewPulseExprNode = new PulseExpr();
 //         auto *EnsuresTerm = new Ensures();
 //         EnsuresTerm->Ann = match[1];
 //         NewPulseExprNode->E = EnsuresTerm;
@@ -103,10 +103,12 @@ std::map<std::string, PulseModul *> &PulseVisitor::getPulseModules() {
 //       }
 //     }
 
-//     // llvm::outs() << "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR" << "\n";
+//     // llvm::outs() << "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR" <<
+//     "\n";
 //     // llvm::outs() << result.back().predicate << "\n";
-//     // llvm::outs() << "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR" << "\n";
-    
+//     // llvm::outs() << "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR" <<
+//     "\n";
+
 //   }
 
 //   // int counter = 1;
@@ -114,251 +116,235 @@ std::map<std::string, PulseModul *> &PulseVisitor::getPulseModules() {
 //   //     ann.regionId = "'n" + std::to_string(counter++);
 // }
 
-void PulseVisitor::InferDeclType(Decl* Dec, FunctionDecl *FD){
+void PulseVisitor::InferDeclType(Decl *Dec, FunctionDecl *FD) {
 
-     if (Stmt *Body = FD->getBody()) {
-      if (auto *CS = dyn_cast<CompoundStmt>(Body)) {
-        for (auto *InnerStmt : CS->body()) {
-          inferDeclType(Dec, InnerStmt);
-        }
+  if (Stmt *Body = FD->getBody()) {
+    if (auto *CS = dyn_cast<CompoundStmt>(Body)) {
+      for (auto *InnerStmt : CS->body()) {
+        inferDeclType(Dec, InnerStmt);
       }
     }
-
+  }
 }
 
-std::map<Decl*, QualType> PulseVisitor::inferArrayTypes(FunctionDecl *FD){
-  
-  //std::vector<Decl*> VariablesInScope;
-  std::map<Decl*, QualType> DeclToPulseSymbol;
-  //For now do this for all function arguments.
-  // size_t NumDeclarations = FD->getNumParams(); 
-  // for (size_t I = 0; I < NumDeclarations; I++){
-  //   VariablesInScope.push_back(FD->getParamDecl(I));
-  // } 
+std::map<Decl *, QualType> PulseVisitor::inferArrayTypes(FunctionDecl *FD) {
 
-    if (Stmt *Body = FD->getBody()) {
-      if (auto *CS = dyn_cast<CompoundStmt>(Body)) {
-        for (auto *InnerStmt : CS->body()) {
-          inferArrayTypesStmt(InnerStmt);
-        }
+  // std::vector<Decl*> VariablesInScope;
+  std::map<Decl *, QualType> DeclToPulseSymbol;
+  // For now do this for all function arguments.
+  //  size_t NumDeclarations = FD->getNumParams();
+  //  for (size_t I = 0; I < NumDeclarations; I++){
+  //    VariablesInScope.push_back(FD->getParamDecl(I));
+  //  }
+
+  if (Stmt *Body = FD->getBody()) {
+    if (auto *CS = dyn_cast<CompoundStmt>(Body)) {
+      for (auto *InnerStmt : CS->body()) {
+        inferArrayTypesStmt(InnerStmt);
       }
     }
+  }
 
-    return DeclToPulseSymbol;
+  return DeclToPulseSymbol;
 }
 
-bool PulseVisitor::checkIsRecursiveFunction(FunctionDecl *FD){
-    
+bool PulseVisitor::checkIsRecursiveFunction(FunctionDecl *FD) {
+
   bool result = false;
-    if (Stmt *Body = FD->getBody()) {
-      if (auto *CS = dyn_cast<CompoundStmt>(Body)) {
-        for (auto *InnerStmt : CS->body()) {
-          result = result || checkIsRecursiveStmt(InnerStmt, FD);
-        }
+  if (Stmt *Body = FD->getBody()) {
+    if (auto *CS = dyn_cast<CompoundStmt>(Body)) {
+      for (auto *InnerStmt : CS->body()) {
+        result = result || checkIsRecursiveStmt(InnerStmt, FD);
       }
     }
+  }
 
-    return result;
+  return result;
 }
 
-void PulseVisitor::inferDeclType(Decl *Dec, Stmt *InnerStmt){
-  
-  //Check the types of the statements here. 
+void PulseVisitor::inferDeclType(Decl *Dec, Stmt *InnerStmt) {
+
+  // Check the types of the statements here.
   if (auto *DS = dyn_cast<DeclStmt>(InnerStmt)) {
     for (auto *D : DS->decls()) {
       if (D != Dec)
-         continue;
+        continue;
       if (auto *VD = dyn_cast<VarDecl>(D)) {
-        //if we can tell it is an array type from the declaration we just store it in a map. 
-        //Otherwise we use array subscript operations to check.
-        if (VD->getType()->isArrayType()){
+        // if we can tell it is an array type from the declaration we just store
+        // it in a map. Otherwise we use array subscript operations to check.
+        if (VD->getType()->isArrayType()) {
           DeclTyMap.insert(std::make_pair(VD, VD->getType()));
         }
-        if (auto *Annotation = VD->getAttr<AnnotateAttr>()){
+        if (auto *Annotation = VD->getAttr<AnnotateAttr>()) {
           llvm::outs() << Annotation->getAnnotation() << "\n";
         }
       }
     }
-  }
-  else if (auto *CExpr = dyn_cast<Expr>(InnerStmt)){
+  } else if (auto *CExpr = dyn_cast<Expr>(InnerStmt)) {
     inferArrayTypesExpr(CExpr);
-  }
-  else if (auto *While = dyn_cast<WhileStmt>(InnerStmt)){
+  } else if (auto *While = dyn_cast<WhileStmt>(InnerStmt)) {
 
     auto *Cond = While->getCond();
-    auto *Body = While->getBody(); 
+    auto *Body = While->getBody();
 
     inferArrayTypesExpr(Cond);
     inferArrayTypesStmt(Body);
 
-  }
-  else if (auto *CS = dyn_cast<CompoundStmt>(InnerStmt)) {
-        for (auto *InnerStmt : CS->body()) {
-          inferArrayTypesStmt(InnerStmt);
-        }
-  }
-  else if (auto *AttrStmt = dyn_cast<AttributedStmt>(InnerStmt)){
+  } else if (auto *CS = dyn_cast<CompoundStmt>(InnerStmt)) {
+    for (auto *InnerStmt : CS->body()) {
+      inferArrayTypesStmt(InnerStmt);
+    }
+  } else if (auto *AttrStmt = dyn_cast<AttributedStmt>(InnerStmt)) {
     auto *SubExpr = AttrStmt->getSubStmt();
     inferArrayTypesStmt(SubExpr);
-    //TODO: Vidush see if we want to handle any other statement.
-    //InnerStmt->dump();
-    //assert(false && "Did not handle statement in inferArrayTypesStmt\n");
+    // TODO: Vidush see if we want to handle any other statement.
+    // InnerStmt->dump();
+    // assert(false && "Did not handle statement in inferArrayTypesStmt\n");
   }
 }
 
+void PulseVisitor::inferArrayTypesStmt(Stmt *InnerStmt) {
 
-void PulseVisitor::inferArrayTypesStmt(Stmt *InnerStmt){
-  
-  //Check the types of the statements here. 
+  // Check the types of the statements here.
   if (auto *DS = dyn_cast<DeclStmt>(InnerStmt)) {
     for (auto *D : DS->decls()) {
       if (auto *VD = dyn_cast<VarDecl>(D)) {
-        //if we can tell it is an array type from the declaration we just store it in a map. 
-        //Otherwise we use array subscript operations to check.
-        if (VD->getType()->isArrayType()){
+        // if we can tell it is an array type from the declaration we just store
+        // it in a map. Otherwise we use array subscript operations to check.
+        if (VD->getType()->isArrayType()) {
           DeclTyMap.insert(std::make_pair(VD, VD->getType()));
         }
-        if (auto *Annotation = VD->getAttr<AnnotateAttr>()){
+        if (auto *Annotation = VD->getAttr<AnnotateAttr>()) {
           llvm::outs() << Annotation->getAnnotation() << "\n";
         }
 
-        auto *Init = VD->getInit(); 
-        if (const CallExpr *Call = dyn_cast<CallExpr>(Init->IgnoreParenImpCasts()->IgnoreCasts())) {
+        auto *Init = VD->getInit();
+        if (const CallExpr *Call = dyn_cast<CallExpr>(
+                Init->IgnoreParenImpCasts()->IgnoreCasts())) {
           if (const FunctionDecl *FD = Call->getDirectCallee()) {
             if (FD->getName() == "malloc") {
               IsAllocatedOnHeap.insert(VD);
             }
           }
         }
-
       }
     }
-  }
-  else if (auto *CExpr = dyn_cast<Expr>(InnerStmt)){
+  } else if (auto *CExpr = dyn_cast<Expr>(InnerStmt)) {
     inferArrayTypesExpr(CExpr);
-  }
-  else if (auto *While = dyn_cast<WhileStmt>(InnerStmt)){
+  } else if (auto *While = dyn_cast<WhileStmt>(InnerStmt)) {
 
     auto *Cond = While->getCond();
-    auto *Body = While->getBody(); 
+    auto *Body = While->getBody();
 
     inferArrayTypesExpr(Cond);
     inferArrayTypesStmt(Body);
 
-  }
-  else if (auto *CS = dyn_cast<CompoundStmt>(InnerStmt)) {
-        for (auto *InnerStmt : CS->body()) {
-          inferArrayTypesStmt(InnerStmt);
-        }
-  }
-  else if (auto *AttrStmt = dyn_cast<AttributedStmt>(InnerStmt)){
+  } else if (auto *CS = dyn_cast<CompoundStmt>(InnerStmt)) {
+    for (auto *InnerStmt : CS->body()) {
+      inferArrayTypesStmt(InnerStmt);
+    }
+  } else if (auto *AttrStmt = dyn_cast<AttributedStmt>(InnerStmt)) {
     auto *SubExpr = AttrStmt->getSubStmt();
     inferArrayTypesStmt(SubExpr);
-    //TODO: Vidush see if we want to handle any other statement.
-    //InnerStmt->dump();
-    //assert(false && "Did not handle statement in inferArrayTypesStmt\n");
+    // TODO: Vidush see if we want to handle any other statement.
+    // InnerStmt->dump();
+    // assert(false && "Did not handle statement in inferArrayTypesStmt\n");
   }
 }
 
-void PulseVisitor::inferArrayTypesExpr(Expr *ExprPtr){
-                                  
-    if (auto *BinOp = dyn_cast<clang::BinaryOperator>(ExprPtr)) {
-      
-      //TODO: Vidush: 
-      //If this BinOp is of the shape: *Arr + 8 etc, we may conclude it is of an array type.
-      auto *Lhs = BinOp->getLHS(); 
-      auto *Rhs = BinOp->getRHS(); 
+void PulseVisitor::inferArrayTypesExpr(Expr *ExprPtr) {
 
-      inferArrayTypesExpr(Lhs);
-      inferArrayTypesExpr(Rhs);
-      
-      //try to figure out if the variable is allocated on the heap.
-      if (const CallExpr *Call = dyn_cast<CallExpr>(Rhs->IgnoreParenImpCasts()->IgnoreCasts())) {
-          if (const FunctionDecl *FD = Call->getDirectCallee()) {
-            if (FD->getName() == "malloc") {
-              if (DeclRefExpr *DRE = dyn_cast<DeclRefExpr>(Lhs->IgnoreParenImpCasts()->IgnoreCasts())) {
-                ValueDecl *VD = DRE->getDecl();
-                IsAllocatedOnHeap.insert(VD);
-            }
+  if (auto *BinOp = dyn_cast<clang::BinaryOperator>(ExprPtr)) {
+
+    // TODO: Vidush:
+    // If this BinOp is of the shape: *Arr + 8 etc, we may conclude it is of an
+    // array type.
+    auto *Lhs = BinOp->getLHS();
+    auto *Rhs = BinOp->getRHS();
+
+    inferArrayTypesExpr(Lhs);
+    inferArrayTypesExpr(Rhs);
+
+    // try to figure out if the variable is allocated on the heap.
+    if (const CallExpr *Call =
+            dyn_cast<CallExpr>(Rhs->IgnoreParenImpCasts()->IgnoreCasts())) {
+      if (const FunctionDecl *FD = Call->getDirectCallee()) {
+        if (FD->getName() == "malloc") {
+          if (DeclRefExpr *DRE = dyn_cast<DeclRefExpr>(
+                  Lhs->IgnoreParenImpCasts()->IgnoreCasts())) {
+            ValueDecl *VD = DRE->getDecl();
+            IsAllocatedOnHeap.insert(VD);
           }
         }
       }
-
     }
-    else if (auto *UOp = dyn_cast<clang::UnaryOperator>(ExprPtr)) { 
-      inferArrayTypesExpr(UOp->getSubExpr());
 
+  } else if (auto *UOp = dyn_cast<clang::UnaryOperator>(ExprPtr)) {
+    inferArrayTypesExpr(UOp->getSubExpr());
+
+  } else if (auto *Call = dyn_cast<clang::CallExpr>(ExprPtr)) {
+    auto NumArgs = Call->getNumArgs();
+    for (size_t Idx = 0; Idx < NumArgs; Idx++) {
+      auto *Arg = Call->getArg(Idx);
+      inferArrayTypesExpr(Arg);
     }
-    else if (auto *Call = dyn_cast<clang::CallExpr>(ExprPtr)) { 
-      auto NumArgs = Call->getNumArgs(); 
-      for (size_t Idx = 0; Idx < NumArgs; Idx++){
-        auto *Arg = Call->getArg(Idx);
-        inferArrayTypesExpr(Arg);
+  } else if (auto *ASub = dyn_cast<clang::ArraySubscriptExpr>(ExprPtr)) {
+    if (auto *BaseDecl = ASub->getBase()->getReferencedDeclOfCallee()) {
+      // Find if this BaseDecl
+      if (VarDecl *VD = dyn_cast<VarDecl>(BaseDecl)) {
+        clang::QualType IncompleteArrayTy =
+            Ctx.getIncompleteArrayType(VD->getType()->getPointeeType(),
+                                       clang::ArraySizeModifier::Normal, 0);
+
+        DeclTyMap.insert(std::make_pair(BaseDecl, IncompleteArrayTy));
       }
     }
-    else if (auto *ASub = dyn_cast<clang::ArraySubscriptExpr>(ExprPtr)) {
-      if (auto *BaseDecl = ASub->getBase()->getReferencedDeclOfCallee()){
-        //Find if this BaseDecl
-        if (VarDecl *VD = dyn_cast<VarDecl>(BaseDecl)){
-          clang::QualType IncompleteArrayTy = Ctx.getIncompleteArrayType(
-            VD->getType()->getPointeeType(),
-            clang::ArraySizeModifier::Normal,
-            0
-          );
-
-          DeclTyMap.insert(std::make_pair(BaseDecl, IncompleteArrayTy));
-        }
-      }
-    }
-    else {return;}
+  } else {
+    return;
+  }
 }
 
-bool PulseVisitor::checkIsRecursiveStmt(Stmt *InnerStmt, FunctionDecl *CurrFunction){
+bool PulseVisitor::checkIsRecursiveStmt(Stmt *InnerStmt,
+                                        FunctionDecl *CurrFunction) {
 
-  if (!InnerStmt){
+  if (!InnerStmt) {
     return false;
   }
-  
-  if (auto *N = dyn_cast<NullStmt>(InnerStmt)){
+
+  if (auto *N = dyn_cast<NullStmt>(InnerStmt)) {
     return false;
   }
-  //Check the types of the statements here. 
+  // Check the types of the statements here.
   else if (auto *DS = dyn_cast<DeclStmt>(InnerStmt)) {
     return false;
-  }
-  else if (auto *CExpr = dyn_cast<Expr>(InnerStmt)){
+  } else if (auto *CExpr = dyn_cast<Expr>(InnerStmt)) {
     return checkIsRecursiveExpr(CExpr, CurrFunction);
-  }
-  else if (auto *While = dyn_cast<WhileStmt>(InnerStmt)){
+  } else if (auto *While = dyn_cast<WhileStmt>(InnerStmt)) {
 
     auto *Cond = While->getCond();
-    auto *Body = While->getBody(); 
+    auto *Body = While->getBody();
 
     auto isRecCond = checkIsRecursiveExpr(Cond, CurrFunction);
     auto isRecBody = checkIsRecursiveStmt(Body, CurrFunction);
 
     return isRecCond || isRecBody;
 
-  }
-  else if (auto *CS = dyn_cast<CompoundStmt>(InnerStmt)) {
-      bool result = false;  
-      for (auto *InnerStmt : CS->body()) {
-          result = result || checkIsRecursiveStmt(InnerStmt, CurrFunction);
-        }
-      return result;
-  }
-  else if (auto *AttrStmt = dyn_cast<AttributedStmt>(InnerStmt)){
+  } else if (auto *CS = dyn_cast<CompoundStmt>(InnerStmt)) {
+    bool result = false;
+    for (auto *InnerStmt : CS->body()) {
+      result = result || checkIsRecursiveStmt(InnerStmt, CurrFunction);
+    }
+    return result;
+  } else if (auto *AttrStmt = dyn_cast<AttributedStmt>(InnerStmt)) {
     auto *SubExpr = AttrStmt->getSubStmt();
     return checkIsRecursiveStmt(SubExpr, CurrFunction);
-  }
-  else if (auto *RetStmt = dyn_cast<ReturnStmt>(InnerStmt)){
+  } else if (auto *RetStmt = dyn_cast<ReturnStmt>(InnerStmt)) {
     auto *RetExpr = RetStmt->getRetValue();
 
     return checkIsRecursiveExpr(RetExpr, CurrFunction);
-  }
-  else if (auto *ClangIfStmt = dyn_cast<IfStmt>(InnerStmt)){
-    auto *Cond = ClangIfStmt->getCond(); 
-    auto *Then = ClangIfStmt->getThen(); 
+  } else if (auto *ClangIfStmt = dyn_cast<IfStmt>(InnerStmt)) {
+    auto *Cond = ClangIfStmt->getCond();
+    auto *Then = ClangIfStmt->getThen();
     auto *Else = ClangIfStmt->getElse();
 
     auto CondIsRec = checkIsRecursiveExpr(Cond, CurrFunction);
@@ -367,64 +353,60 @@ bool PulseVisitor::checkIsRecursiveStmt(Stmt *InnerStmt, FunctionDecl *CurrFunct
 
     return CondIsRec || ThenIsRec || ElseIsRec;
 
-  }
-  else{
-        //TODO: Vidush see if we want to handle any other statement.
+  } else {
+    // TODO: Vidush see if we want to handle any other statement.
     InnerStmt->dump();
     assert(false && "Did not handle statement in inferArrayTypesStmt\n");
-
   }
 }
 
-//Recurse all expressions.
-bool PulseVisitor::checkIsRecursiveExpr(Expr *ExprPtr, FunctionDecl *CurrFunction){
-                                  
-    if (auto *BinOp = dyn_cast<clang::BinaryOperator>(ExprPtr)) {
-      
-      //TODO: Vidush: 
-      //If this BinOp is of the shape: *Arr + 8 etc, we may conclude it is of an array type.
-      auto *Lhs = BinOp->getLHS(); 
-      auto *Rhs = BinOp->getRHS(); 
+// Recurse all expressions.
+bool PulseVisitor::checkIsRecursiveExpr(Expr *ExprPtr,
+                                        FunctionDecl *CurrFunction) {
 
-      return checkIsRecursiveExpr(Lhs, CurrFunction) || checkIsRecursiveExpr(Rhs, CurrFunction);
+  if (auto *BinOp = dyn_cast<clang::BinaryOperator>(ExprPtr)) {
 
+    // TODO: Vidush:
+    // If this BinOp is of the shape: *Arr + 8 etc, we may conclude it is of an
+    // array type.
+    auto *Lhs = BinOp->getLHS();
+    auto *Rhs = BinOp->getRHS();
 
+    return checkIsRecursiveExpr(Lhs, CurrFunction) ||
+           checkIsRecursiveExpr(Rhs, CurrFunction);
+
+  } else if (auto *UOp = dyn_cast<clang::UnaryOperator>(ExprPtr)) {
+    return checkIsRecursiveExpr(UOp->getSubExpr(), CurrFunction);
+
+  } else if (auto *Call = dyn_cast<clang::CallExpr>(ExprPtr)) {
+    auto NumArgs = Call->getNumArgs();
+    bool isRec = false;
+    for (size_t Idx = 0; Idx < NumArgs; Idx++) {
+      auto *Arg = Call->getArg(Idx);
+      isRec = isRec || checkIsRecursiveExpr(Arg, CurrFunction);
     }
-    else if (auto *UOp = dyn_cast<clang::UnaryOperator>(ExprPtr)) { 
-      return checkIsRecursiveExpr(UOp->getSubExpr(), CurrFunction);
 
-    }
-    else if (auto *Call = dyn_cast<clang::CallExpr>(ExprPtr)) { 
-      auto NumArgs = Call->getNumArgs();
-      bool isRec = false; 
-      for (size_t Idx = 0; Idx < NumArgs; Idx++){
-        auto *Arg = Call->getArg(Idx);
-        isRec = isRec ||  checkIsRecursiveExpr(Arg, CurrFunction);
-      }
+    llvm::outs() << "Found a Call Expression!!!" << "\n";
+    llvm::outs() << Call->getDirectCallee()->getNameAsString() << "\n";
+    llvm::outs() << "End found a recursive call!" << "\n";
 
-
-      llvm::outs() << "Found a Call Expression!!!" << "\n";
-      llvm::outs() << Call->getDirectCallee()->getNameAsString() << "\n";
+    const FunctionDecl *callee = Call->getDirectCallee();
+    if (callee && callee == CurrFunction) {
+      llvm::outs() << "Found a recursive Call!!" << "\n";
+      llvm::outs() << callee << "\n";
       llvm::outs() << "End found a recursive call!" << "\n";
-      
-      const FunctionDecl *callee = Call->getDirectCallee();
-      if (callee && callee == CurrFunction) {
-        llvm::outs() << "Found a recursive Call!!" << "\n";
-        llvm::outs() << callee << "\n";
-        llvm::outs() << "End found a recursive call!" << "\n";
-        isRec = isRec || true;
-      }
+      isRec = isRec || true;
+    }
 
-      return isRec;
-    }
-    else if (auto *ASub = dyn_cast<clang::ArraySubscriptExpr>(ExprPtr)) {
-      return false;
-    }
-    else {return false;}
+    return isRec;
+  } else if (auto *ASub = dyn_cast<clang::ArraySubscriptExpr>(ExprPtr)) {
+    return false;
+  } else {
+    return false;
+  }
 }
 
-
-bool PulseVisitor::VisitRecordDecl(RecordDecl *RD){
+bool PulseVisitor::VisitRecordDecl(RecordDecl *RD) {
 
   // llvm::outs() << "Encountered a Record Declaration!!" << "\n";
   // llvm::outs() << RD->getNameAsString() << "\n";
@@ -433,26 +415,26 @@ bool PulseVisitor::VisitRecordDecl(RecordDecl *RD){
   return true;
 }
 
-bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec){
+bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
 
-    // llvm::outs() << "Print TypedefDecl" << "\n";
-    // llvm::outs() << TypeDefDec->getNameAsString() << "\n";
-    // llvm::outs() << "End typedef declaration!" << "\n";
+  // llvm::outs() << "Print TypedefDecl" << "\n";
+  // llvm::outs() << TypeDefDec->getNameAsString() << "\n";
+  // llvm::outs() << "End typedef declaration!" << "\n";
 
-    // TODO: Angelica: This might fail for analyzing programs that use
-    //  struct definitions from system libraries or C standard libraries.
-    auto SourceLoc = TypeDefDec->getLocation();
-    if (SM.isInSystemHeader(SourceLoc))
-      return true;
+  // TODO: Angelica: This might fail for analyzing programs that use
+  //  struct definitions from system libraries or C standard libraries.
+  auto SourceLoc = TypeDefDec->getLocation();
+  if (SM.isInSystemHeader(SourceLoc))
+    return true;
 
-    auto *Def = TypeDefDec->getUnderlyingDecl();
-    // llvm::outs() << "Get underlying declaration name!" << "\n";
-    // llvm::outs() << Def->getDeclName() << "\n";
-    // llvm::outs() << "End underlying decl name\n";
-    
-    //Check if we have a record declaration associated with the typedefDecl.
-    // For every record type we create a new Module. 
-    if (const auto *RT = TypeDefDec->getUnderlyingType()->getAs<RecordType>()) {
+  auto *Def = TypeDefDec->getUnderlyingDecl();
+  // llvm::outs() << "Get underlying declaration name!" << "\n";
+  // llvm::outs() << Def->getDeclName() << "\n";
+  // llvm::outs() << "End underlying decl name\n";
+
+  // Check if we have a record declaration associated with the typedefDecl.
+  //  For every record type we create a new Module.
+  if (const auto *RT = TypeDefDec->getUnderlyingType()->getAs<RecordType>()) {
     const RecordDecl *RD = RT->getDecl();
     // Now you can inspect RD, cast to CXXRecordDecl if needed
 
@@ -508,391 +490,403 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec){
       Fields.push_back(Element);
     }
 
-      auto NumRecordFields = Fields.size();
+    auto NumRecordFields = Fields.size();
 
-      TyconRec->RecordFields = Fields;
-      Tycon->TyCons.push_back(TyconRec);
+    TyconRec->RecordFields = Fields;
+    Tycon->TyCons.push_back(TyconRec);
 
-      NewModul->Decls.push_back(Tycon);
+    NewModul->Decls.push_back(Tycon);
 
-      //Generate predicate 
-      //3. A predicate that relates a u32_pair_struct to its specification
-      auto RecPredicate = new ValDecl();
-      RecPredicate->Ident = "u32_pair_struct_pred (_:ref u32_pair_struct) (_:u32_pair_struct_spec)";
-      
-      auto *PredTy = new Name(); 
-      PredTy->NamedValue = "slprop";
-      RecPredicate->ValTerm = PredTy;
+    // Generate predicate
+    // 3. A predicate that relates a u32_pair_struct to its specification
+    auto RecPredicate = new ValDecl();
+    RecPredicate->Ident =
+        "u32_pair_struct_pred (_:ref u32_pair_struct) (_:u32_pair_struct_spec)";
 
-      NewModul->Decls.push_back(RecPredicate);
+    auto *PredTy = new Name();
+    PredTy->NamedValue = "slprop";
+    RecPredicate->ValTerm = PredTy;
 
+    NewModul->Decls.push_back(RecPredicate);
 
-      //4. A utility function to heap allocate and free a u32_pair_struct
-      auto NewFunctionDefAlloc = new _PulseFnDefn();
-      NewFunctionDefAlloc->Name = "alloc";
+    // 4. A utility function to heap allocate and free a u32_pair_struct
+    auto NewFunctionDefAlloc = new _PulseFnDefn();
+    NewFunctionDefAlloc->Name = "alloc";
 
-      auto ReqAlloc = new Requires(); 
-      ReqAlloc->Ann = "emp";
-      NewFunctionDefAlloc->Annotation.push_back(ReqAlloc);
+    auto ReqAlloc = new Requires();
+    ReqAlloc->Ann = "emp";
+    NewFunctionDefAlloc->Annotation.push_back(ReqAlloc);
 
-      auto RetAlloc = new Returns(); 
-      RetAlloc->Ann = "x:Box.box " + Def->getNameAsString();
-      NewFunctionDefAlloc->Annotation.push_back(RetAlloc);
+    auto RetAlloc = new Returns();
+    RetAlloc->Ann = "x:Box.box " + Def->getNameAsString();
+    NewFunctionDefAlloc->Annotation.push_back(RetAlloc);
 
-      auto EnsuresAlloc = new Ensures(); 
-      EnsuresAlloc->Ann = "exists* v. " + Def->getNameAsString() + "_pred " +  "(Box.box_to_ref x) v";
-      NewFunctionDefAlloc->Annotation.push_back(EnsuresAlloc);
+    auto EnsuresAlloc = new Ensures();
+    EnsuresAlloc->Ann = "exists* v. " + Def->getNameAsString() + "_pred " +
+                        "(Box.box_to_ref x) v";
+    NewFunctionDefAlloc->Annotation.push_back(EnsuresAlloc);
 
-      auto AllocFunction = new PulseFnDefn(NewFunctionDefAlloc);
-      NewModul->Decls.push_back(AllocFunction);
+    auto AllocFunction = new PulseFnDefn(NewFunctionDefAlloc);
+    NewModul->Decls.push_back(AllocFunction);
 
-      //Make the free function
-      auto NewFunctionDefFree = new _PulseFnDefn();
-      NewFunctionDefFree->Name = "free";
-      
-      auto ParamTy = new Name(); 
-      ParamTy->NamedValue = "Box.box u32_pair_struct";
-      auto ParamName = "x";
-      auto *Binder = new struct Binder(ParamName, ParamTy);
+    // Make the free function
+    auto NewFunctionDefFree = new _PulseFnDefn();
+    NewFunctionDefFree->Name = "free";
 
-      std::vector<struct Binder *> Binders; 
-      Binders.push_back(Binder);
-      NewFunctionDefFree->Args = Binders;
-      
+    auto ParamTy = new Name();
+    ParamTy->NamedValue = "Box.box u32_pair_struct";
+    auto ParamName = "x";
+    auto *Binder = new struct Binder(ParamName, ParamTy);
 
-      auto ReqFree = new Requires(); 
-      ReqFree->Ann = "exists* v. " + Def->getNameAsString() + "_pred " +  "(Box.box_to_ref x) v";
-      NewFunctionDefFree->Annotation.push_back(ReqFree);
+    std::vector<struct Binder *> Binders;
+    Binders.push_back(Binder);
+    NewFunctionDefFree->Args = Binders;
 
-      auto EnsuresFree = new Ensures(); 
-      EnsuresFree->Ann = "emp";
-      NewFunctionDefFree->Annotation.push_back(EnsuresFree);
+    auto ReqFree = new Requires();
+    ReqFree->Ann = "exists* v. " + Def->getNameAsString() + "_pred " +
+                   "(Box.box_to_ref x) v";
+    NewFunctionDefFree->Annotation.push_back(ReqFree);
 
-      auto FreeFunction = new PulseFnDefn(NewFunctionDefFree);
-      NewModul->Decls.push_back(FreeFunction);
-      
+    auto EnsuresFree = new Ensures();
+    EnsuresFree->Ann = "emp";
+    NewFunctionDefFree->Annotation.push_back(EnsuresFree);
 
-      //5. Setters and getters for each field
-      // fn set_first (x:ref u32_pair_struct) (f:U32.t) (#s:u32_pair_struct_spec)
+    auto FreeFunction = new PulseFnDefn(NewFunctionDefFree);
+    NewModul->Decls.push_back(FreeFunction);
+
+    // 5. Setters and getters for each field
+    //  fn set_first (x:ref u32_pair_struct) (f:U32.t) (#s:u32_pair_struct_spec)
+    //  requires u32_pair_struct_pred x s
+    //  ensures exists* s'. u32_pair_struct_pred x s' ** pure (s' == {s with
+    //  first=f})
+
+    for (size_t i = 0; i < NumRecordFields; i++) {
+
+      auto FieldName = Fields[i]->Ident;
+
+      auto *SetterFirstFnDefn = new _PulseFnDefn();
+      SetterFirstFnDefn->Name = "set_" + FieldName;
+      std::vector<struct Binder *> SetterFirstBinders;
+
+      auto *FirstBinderTy = new FStarPointerType();
+      auto *FirstBinderSubTy = new FStarType(Def->getNameAsString());
+      FirstBinderTy->setPointerToTy(FirstBinderSubTy);
+
+      auto *FirstBinder = new struct Binder("x", FirstBinderTy);
+
+      auto *SecondBinderTy = new FStarType("UInt32.t");
+      auto *SecondBinder = new struct Binder("f", SecondBinderTy);
+
+      auto *ThirdBinderTy = new FStarType(Def->getNameAsString() + "_spec");
+      auto *ThirdBinder = new struct Binder("#s", ThirdBinderTy);
+
+      SetterFirstBinders.push_back(FirstBinder);
+      SetterFirstBinders.push_back(SecondBinder);
+      SetterFirstBinders.push_back(ThirdBinder);
+
+      SetterFirstFnDefn->Args = SetterFirstBinders;
+
+      auto *ReqFirstSetter = new Requires();
+      ReqFirstSetter->Ann = Def->getNameAsString() + "_pred x s";
+      SetterFirstFnDefn->Annotation.push_back(ReqFirstSetter);
+
+      auto *EnsuresFirstSetter = new Ensures();
+      EnsuresFirstSetter->Ann = "exists* s'. " + Def->getNameAsString() +
+                                "_pred x s' ** pure (s' == {s with " +
+                                FieldName + "=f})";
+      SetterFirstFnDefn->Annotation.push_back(EnsuresFirstSetter);
+
+      auto *SetterFirstFunction = new PulseFnDefn(SetterFirstFnDefn);
+      NewModul->Decls.push_back(SetterFirstFunction);
+
+      // fn get_first (x:ref u32_pair_struct) (#s:u32_pair_struct_spec)
       // requires u32_pair_struct_pred x s
-      // ensures exists* s'. u32_pair_struct_pred x s' ** pure (s' == {s with first=f})
+      // returns f:U32.t
+      // ensures u32_pair_struct_pred x s ** pure (f == s.first)
 
-      for (size_t i = 0; i < NumRecordFields; i++){
+      auto *GetterFirstFnDefn = new _PulseFnDefn();
+      GetterFirstFnDefn->Name = "get_" + FieldName;
+      std::vector<struct Binder *> GetterFirstBinders;
 
-        auto FieldName = Fields[i]->Ident;
+      auto *GetFirstBinderTy = new FStarPointerType();
+      auto *GetFirstBinderSubTy = new FStarType(Def->getNameAsString());
+      GetFirstBinderTy->setPointerToTy(GetFirstBinderSubTy);
 
-        auto *SetterFirstFnDefn = new _PulseFnDefn();
-        SetterFirstFnDefn->Name = "set_" + FieldName;
-        std::vector<struct Binder*> SetterFirstBinders;
+      auto *GetFirstBinder = new struct Binder("x", GetFirstBinderTy);
 
-        auto *FirstBinderTy = new FStarPointerType(); 
-        auto *FirstBinderSubTy = new FStarType(Def->getNameAsString());
-        FirstBinderTy->setPointerToTy(FirstBinderSubTy);
+      auto *GetThirdBinderTy = new FStarType(Def->getNameAsString() + "_spec");
+      auto *GetThirdBinder = new struct Binder("#s", GetThirdBinderTy);
 
-        auto *FirstBinder = new struct Binder("x", FirstBinderTy);
+      GetterFirstBinders.push_back(GetFirstBinder);
+      GetterFirstBinders.push_back(GetThirdBinder);
 
-        auto *SecondBinderTy = new FStarType("UInt32.t");
-        auto *SecondBinder = new struct Binder("f", SecondBinderTy);
+      GetterFirstFnDefn->Args = GetterFirstBinders;
 
-        auto *ThirdBinderTy = new FStarType(Def->getNameAsString() + "_spec");
-        auto *ThirdBinder = new struct Binder("#s", ThirdBinderTy);
+      auto *ReqFirstGetter = new Requires();
+      ReqFirstGetter->Ann = Def->getNameAsString() + "_pred x s";
+      GetterFirstFnDefn->Annotation.push_back(ReqFirstGetter);
 
-        SetterFirstBinders.push_back(FirstBinder);
-        SetterFirstBinders.push_back(SecondBinder);
-        SetterFirstBinders.push_back(ThirdBinder);
+      auto *RetFirstGetter = new Returns();
+      RetFirstGetter->Ann = "f:UInt32.t";
+      GetterFirstFnDefn->Annotation.push_back(RetFirstGetter);
 
-        SetterFirstFnDefn->Args = SetterFirstBinders;
+      auto *EnsuresFirstGetter = new Ensures();
+      EnsuresFirstGetter->Ann = Def->getNameAsString() +
+                                "_pred x s ** pure (f == s." + FieldName + ")";
+      GetterFirstFnDefn->Annotation.push_back(EnsuresFirstGetter);
 
-        auto *ReqFirstSetter = new Requires(); 
-        ReqFirstSetter->Ann = Def->getNameAsString() + "_pred x s";
-        SetterFirstFnDefn->Annotation.push_back(ReqFirstSetter);
-
-        auto *EnsuresFirstSetter = new Ensures();
-        EnsuresFirstSetter->Ann = "exists* s'. " + Def->getNameAsString() + "_pred x s' ** pure (s' == {s with "  + FieldName + "=f})";
-        SetterFirstFnDefn->Annotation.push_back(EnsuresFirstSetter);
-
-        auto *SetterFirstFunction = new PulseFnDefn(SetterFirstFnDefn);
-        NewModul->Decls.push_back(SetterFirstFunction);
-
-        // fn get_first (x:ref u32_pair_struct) (#s:u32_pair_struct_spec)
-        // requires u32_pair_struct_pred x s
-        // returns f:U32.t
-        // ensures u32_pair_struct_pred x s ** pure (f == s.first)
-
-        auto *GetterFirstFnDefn = new _PulseFnDefn();
-        GetterFirstFnDefn->Name = "get_" + FieldName;
-        std::vector<struct Binder*> GetterFirstBinders;
-
-        auto *GetFirstBinderTy = new FStarPointerType(); 
-        auto *GetFirstBinderSubTy = new FStarType(Def->getNameAsString());
-        GetFirstBinderTy->setPointerToTy(GetFirstBinderSubTy);
-
-        auto *GetFirstBinder = new struct Binder("x", GetFirstBinderTy);
-
-        auto *GetThirdBinderTy = new FStarType(Def->getNameAsString() + "_spec");
-        auto *GetThirdBinder = new struct Binder("#s", GetThirdBinderTy);
-
-        GetterFirstBinders.push_back(GetFirstBinder);
-        GetterFirstBinders.push_back(GetThirdBinder);
-
-        GetterFirstFnDefn->Args = GetterFirstBinders;
-
-        auto *ReqFirstGetter = new Requires(); 
-        ReqFirstGetter->Ann = Def->getNameAsString() + "_pred x s";
-        GetterFirstFnDefn->Annotation.push_back(ReqFirstGetter);
-
-        auto *RetFirstGetter = new Returns();
-        RetFirstGetter->Ann = "f:UInt32.t";
-        GetterFirstFnDefn->Annotation.push_back(RetFirstGetter);
-
-        auto *EnsuresFirstGetter = new Ensures();
-        EnsuresFirstGetter->Ann = Def->getNameAsString() + "_pred x s ** pure (f == s." + FieldName + ")";
-        GetterFirstFnDefn->Annotation.push_back(EnsuresFirstGetter);
-
-        auto *GetterFirstFunction = new PulseFnDefn(GetterFirstFnDefn);
-        NewModul->Decls.push_back(GetterFirstFunction);
-      }
-
-      // noeq
-      // type u32_pair_struct_refs = {
-      //   first: ref FStar.UInt32.t;
-      //   second: ref FStar.UInt32.t;
-      // }
-
-       //A purely function specification type for the struct.
-      auto TyconRef = new TyConDecl();
-      auto *TyconRefRec = new TyConRecord();
-
-      TyconRefRec->Ident = Def->getNameAsString() + "_refs";
-
-      TyconRefRec->Attrs.push_back(NoEqTerm);
-      
-      std::vector<RecordElement*> RefFields;
-      for (const FieldDecl *FD : RD->fields()) {
-        auto *Element = new RecordElement();
-        auto *ElementPointerTy = new FStarPointerType();
-        ElementPointerTy->setPointerToTy(getPulseTyFromCTy(FD->getType()));
-        Element->ElementTerm = ElementPointerTy;
-        Element->Ident = FD->getNameAsString();
-        RefFields.push_back(Element);
-      }
-
-      TyconRefRec->RecordFields = RefFields;
-      TyconRef->TyCons.push_back(TyconRefRec);
-      NewModul->Decls.push_back(TyconRef);
-
-      //let u32_pair_struct_refs_pred (x:u32_pair_struct_refs) (s:u32_pair_struct_spec) : slprop =
-      //(x.first |-> s.first) **
-      //(x.second |-> s.second)
-      
-      auto *TopLevelLetIns = new TopLevelLet();
-
-      TopLevelLetIns->Ident = StructName + "_refs_pred" + 
-                               " (x:" + StructName + "_refs)" + 
-                               " (s:" + StructName + "_spec)" + 
-                                " : slprop";
-      for (size_t i = 0; i < NumRecordFields; i++){
-        auto FieldString = Fields[i]->Ident;
-        TopLevelLetIns->Lhs += "(x." + FieldString + " |-> s." + FieldString + ")";
-        if (i < NumRecordFields - 1){
-          TopLevelLetIns->Lhs += " ** ";
-        }
-      }
-
-      NewModul->Decls.push_back(TopLevelLetIns);
-
-      // val recover (x:ref u32_pair_struct) (y:u32_pair_struct_refs) : slprop
-
-      auto *RecoverVal = new ValDecl();
-      RecoverVal->Ident = "recover (x:ref " + StructName + ") " + "(y:" + StructName + "_refs)"; 
-
-      auto *RecSlpropTyp = new Name();
-      RecSlpropTyp->NamedValue = "slprop";
-      RecoverVal->ValTerm = RecSlpropTyp;
-
-      NewModul->Decls.push_back(RecoverVal);
-
-      // //8. A function that converts a u32_pair_struct to u32_pair_struct_refs
-      // //   i.e., borrowing pointrs to the fields of a struct
-      // fn explode (x:ref u32_pair_struct) (#s:u32_pair_struct_spec)
-      // requires u32_pair_struct_pred x s
-      // returns y:u32_pair_struct_refs
-      // ensures u32_pair_struct_refs_pred y s
-      // ensures recover x y
-
-      auto *ExplodeFnDefn = new _PulseFnDefn();
-      ExplodeFnDefn->Name = "explode";
-      std::vector<struct Binder*> ExplodeBinders;
-      auto *ExplodeFirstBinderTy = new FStarPointerType();
-      auto *ExplodeFirstBinderSubTy = new FStarType(Def->getNameAsString());
-      ExplodeFirstBinderTy->setPointerToTy(ExplodeFirstBinderSubTy);
-      auto *ExplodeFirstBinder = new struct Binder("x", ExplodeFirstBinderTy);
-      auto *ExplodeSecondBinderTy = new FStarType(Def->getNameAsString() + "_spec");
-      auto *ExplodeSecondBinder = new struct Binder("#s", ExplodeSecondBinderTy);
-      ExplodeBinders.push_back(ExplodeFirstBinder);
-      ExplodeBinders.push_back(ExplodeSecondBinder);
-      ExplodeFnDefn->Args = ExplodeBinders;
-
-      auto *ExplodeReqOne = new Requires(); 
-      auto *ExplodeRetTwo = new Returns();
-      auto *ExplodeEnsuresOne = new Ensures();
-      auto *ExplodeEnsuresTwo = new Ensures(); 
-
-      ExplodeReqOne->Ann = StructName + "_pred x s";
-      ExplodeRetTwo->Ann = "y:" + StructName + "_refs";
-      ExplodeEnsuresOne->Ann = StructName + "_refs_pred y s";
-      ExplodeEnsuresTwo->Ann = "recover x y";
-
-      ExplodeFnDefn->Annotation.push_back(ExplodeReqOne);
-      ExplodeFnDefn->Annotation.push_back(ExplodeRetTwo);
-      ExplodeFnDefn->Annotation.push_back(ExplodeEnsuresOne);
-      ExplodeFnDefn->Annotation.push_back(ExplodeEnsuresTwo);
-
-      auto *PulseExplodeFunction = new PulseFnDefn(ExplodeFnDefn);
-      NewModul->Decls.push_back(PulseExplodeFunction);
-
-      // //9. A function that converts u32_pair_struct_refs back to u32_pair_struct
-      // //   i.e., restoring the struct from its field pointers
-      // ghost
-      // fn restore (x:ref u32_pair_struct) (y:u32_pair_struct_refs) (#s:u32_pair_struct_spec)
-      // requires u32_pair_struct_refs_pred y s
-      // requires recover x y
-      // ensures u32_pair_struct_pred x s
-
-      auto *RestoreFnDefn = new _PulseFnDefn();
-      RestoreFnDefn->Attr.push_back(new Name("ghost"));
-      RestoreFnDefn->Name = "restore";
-      std::vector<struct Binder*> RestoreBinders;
-      auto *RestoreFirstBinderTy = new FStarPointerType();
-      auto *RestoreFirstBinderSubTy = new FStarType(Def->getNameAsString());
-      RestoreFirstBinderTy->setPointerToTy(RestoreFirstBinderSubTy);
-      auto *RestoreFirstBinder = new struct Binder("x", RestoreFirstBinderTy);
-      auto *RestoreSecondBinderTy = new FStarType(Def->getNameAsString() + "_refs");
-      auto *RestoreSecondBinder = new struct Binder("y", RestoreSecondBinderTy);
-      auto *RestoreThirdBinderTy = new FStarType(Def->getNameAsString() + "_spec");
-      auto *RestoreThirdBinder = new struct Binder("#s", RestoreThirdBinderTy);
-      RestoreBinders.push_back(RestoreFirstBinder);
-      RestoreBinders.push_back(RestoreSecondBinder);
-      RestoreBinders.push_back(RestoreThirdBinder);
-      RestoreFnDefn->Args = RestoreBinders;
-
-      auto *RestoreReqOne = new Requires(); 
-      auto *RestoreReqTwo = new Requires();
-      auto *RestoreEnsuresOne = new Ensures(); 
-
-      RestoreReqOne->Ann = StructName + "_refs_pred y s";
-      RestoreReqTwo->Ann = "recover x y";
-      RestoreEnsuresOne->Ann = StructName + "_pred x s";
-
-      RestoreFnDefn->Annotation.push_back(RestoreReqOne);
-      RestoreFnDefn->Annotation.push_back(RestoreReqTwo);
-      RestoreFnDefn->Annotation.push_back(RestoreEnsuresOne);
-
-      auto *PulseRestoreFunction = new PulseFnDefn(RestoreFnDefn);
-      NewModul->Decls.push_back(PulseRestoreFunction);
-
-      // //10. A ghost function that unfolds the predicate for u32_pair_struct_refs
-      // ghost
-      // fn u32_pair_struct_refs_pred_unfold (x:u32_pair_struct_refs) (#s:u32_pair_struct_spec)
-      // requires u32_pair_struct_refs_pred x s
-      // ensures x.first |-> s.first
-      // ensures x.second |-> s.second
-
-      auto *GhostUnFoldFnDefn = new _PulseFnDefn();
-      GhostUnFoldFnDefn->Attr.push_back(new Name("ghost"));
-      GhostUnFoldFnDefn->Name = StructName + "_refs_pred_unfold";
-      std::vector<struct Binder*> GhostUnFoldFnDefnBinders;
-      auto *GhostUnFoldFirstBinderTy = new FStarType(Def->getNameAsString() + "_refs");
-      auto *GhostUnFoldFirstBinder = new struct Binder("x", GhostUnFoldFirstBinderTy);
-      auto *GhostUnFoldSecondBinderTy = new FStarType(Def->getNameAsString() + "_spec");
-      auto *GhostUnFoldSecondBinder = new struct Binder("#s", GhostUnFoldSecondBinderTy);
-      GhostUnFoldFnDefnBinders.push_back(GhostUnFoldFirstBinder);
-      GhostUnFoldFnDefnBinders.push_back(GhostUnFoldSecondBinder);
-      GhostUnFoldFnDefn->Args = GhostUnFoldFnDefnBinders;
-
-      auto *GhostUnFoldReqOne = new Requires();
-
-      GhostUnFoldReqOne->Ann = StructName + "_refs_pred x s";
-
-      GhostUnFoldFnDefn->Annotation.push_back(GhostUnFoldReqOne);
-
-      //Generate ensures for fields 
-      for (size_t i = 0; i < NumRecordFields; i++){
-        auto FieldString = Fields[i]->Ident;
-        auto *EnsuresField = new Ensures();
-        EnsuresField->Ann = "x." + FieldString + " |-> s." + FieldString;
-        GhostUnFoldFnDefn->Annotation.push_back(EnsuresField);
-      }
-
-      auto *PulseGhostUnFoldFunction = new PulseFnDefn(GhostUnFoldFnDefn);
-      NewModul->Decls.push_back(PulseGhostUnFoldFunction);
-
-
-      // //11. A ghost function that folds the predicate for u32_pair_struct_refs
-      // ghost
-      // fn u32_pair_struct_refs_pred_fold (x:u32_pair_struct_refs) (#f #s:erased U32.t)
-      // requires x.first |-> f
-      // requires x.second |-> s
-      // ensures u32_pair_struct_refs_pred x ({first = f; second = s})
-      
-      std::string FieldPrefix = "a";
-      auto *GhostFoldFnDefn = new _PulseFnDefn();
-      GhostFoldFnDefn->Attr.push_back(new Name("ghost"));
-      GhostFoldFnDefn->Name = StructName + "_refs_pred_fold";
-      std::vector<struct Binder*> GhostFoldFnDefnBinders;
-      auto *GhostFoldFirstBinderTy = new FStarType(Def->getNameAsString() + "_refs");
-      auto *GhostFoldFirstBinder = new struct Binder("x", GhostFoldFirstBinderTy);
-      auto *GhostFoldSecondBinderTy = new FStarType("erased UInt32.t");
-
-      std::string SecondBinderTerms = "";
-      for (size_t i = 0; i < NumRecordFields; i++){
-        SecondBinderTerms += "#" + FieldPrefix + std::to_string(i);
-        SecondBinderTerms += " ";
-      }
-
-      auto *GhostFoldSecondBinder = new struct Binder(SecondBinderTerms, GhostFoldSecondBinderTy);
-      GhostFoldFnDefnBinders.push_back(GhostFoldFirstBinder);
-      GhostFoldFnDefnBinders.push_back(GhostFoldSecondBinder);
-      GhostFoldFnDefn->Args = GhostFoldFnDefnBinders;
-
-      //Generate requires for fields 
-      for (size_t i = 0; i < NumRecordFields; i++){
-        auto FieldString = Fields[i]->Ident;
-        auto *RequiresField = new Requires();
-        RequiresField->Ann = "x." + FieldString + " |-> " + FieldPrefix + std::to_string(i);
-        GhostFoldFnDefn->Annotation.push_back(RequiresField);
-      }
-
-      auto *GhostFoldEnsureOne = new Ensures();
-
-      GhostFoldEnsureOne->Ann = StructName + "_refs_pred x";
-      GhostFoldEnsureOne->Ann += " ({";
-
-      for (size_t i = 0; i < NumRecordFields; i++){
-        auto FieldString = Fields[i]->Ident;
-        GhostFoldEnsureOne->Ann += FieldString + " = ";
-        GhostFoldEnsureOne->Ann +=  FieldPrefix + std::to_string(i); 
-        GhostFoldEnsureOne->Ann += ";";
-      }
-      GhostFoldEnsureOne->Ann += "})";
-      GhostFoldFnDefn->Annotation.push_back(GhostFoldEnsureOne);
-
-
-      auto *PulseGhostFoldFunction = new PulseFnDefn(GhostFoldFnDefn);
-      NewModul->Decls.push_back(PulseGhostFoldFunction);
-
-
-     //add Modules to Modules 
-     Modules.insert(std::make_pair(NewModul->ModuleName, NewModul));
+      auto *GetterFirstFunction = new PulseFnDefn(GetterFirstFnDefn);
+      NewModul->Decls.push_back(GetterFirstFunction);
     }
 
-    return true;
+    // noeq
+    // type u32_pair_struct_refs = {
+    //   first: ref FStar.UInt32.t;
+    //   second: ref FStar.UInt32.t;
+    // }
+
+    // A purely function specification type for the struct.
+    auto TyconRef = new TyConDecl();
+    auto *TyconRefRec = new TyConRecord();
+
+    TyconRefRec->Ident = Def->getNameAsString() + "_refs";
+
+    TyconRefRec->Attrs.push_back(NoEqTerm);
+
+    std::vector<RecordElement *> RefFields;
+    for (const FieldDecl *FD : RD->fields()) {
+      auto *Element = new RecordElement();
+      auto *ElementPointerTy = new FStarPointerType();
+      ElementPointerTy->setPointerToTy(getPulseTyFromCTy(FD->getType()));
+      Element->ElementTerm = ElementPointerTy;
+      Element->Ident = FD->getNameAsString();
+      RefFields.push_back(Element);
+    }
+
+    TyconRefRec->RecordFields = RefFields;
+    TyconRef->TyCons.push_back(TyconRefRec);
+    NewModul->Decls.push_back(TyconRef);
+
+    // let u32_pair_struct_refs_pred (x:u32_pair_struct_refs)
+    // (s:u32_pair_struct_spec) : slprop = (x.first |-> s.first) ** (x.second
+    //|-> s.second)
+
+    auto *TopLevelLetIns = new TopLevelLet();
+
+    TopLevelLetIns->Ident = StructName + "_refs_pred" + " (x:" + StructName +
+                            "_refs)" + " (s:" + StructName + "_spec)" +
+                            " : slprop";
+    for (size_t i = 0; i < NumRecordFields; i++) {
+      auto FieldString = Fields[i]->Ident;
+      TopLevelLetIns->Lhs +=
+          "(x." + FieldString + " |-> s." + FieldString + ")";
+      if (i < NumRecordFields - 1) {
+        TopLevelLetIns->Lhs += " ** ";
+      }
+    }
+
+    NewModul->Decls.push_back(TopLevelLetIns);
+
+    // val recover (x:ref u32_pair_struct) (y:u32_pair_struct_refs) : slprop
+
+    auto *RecoverVal = new ValDecl();
+    RecoverVal->Ident =
+        "recover (x:ref " + StructName + ") " + "(y:" + StructName + "_refs)";
+
+    auto *RecSlpropTyp = new Name();
+    RecSlpropTyp->NamedValue = "slprop";
+    RecoverVal->ValTerm = RecSlpropTyp;
+
+    NewModul->Decls.push_back(RecoverVal);
+
+    // //8. A function that converts a u32_pair_struct to u32_pair_struct_refs
+    // //   i.e., borrowing pointrs to the fields of a struct
+    // fn explode (x:ref u32_pair_struct) (#s:u32_pair_struct_spec)
+    // requires u32_pair_struct_pred x s
+    // returns y:u32_pair_struct_refs
+    // ensures u32_pair_struct_refs_pred y s
+    // ensures recover x y
+
+    auto *ExplodeFnDefn = new _PulseFnDefn();
+    ExplodeFnDefn->Name = "explode";
+    std::vector<struct Binder *> ExplodeBinders;
+    auto *ExplodeFirstBinderTy = new FStarPointerType();
+    auto *ExplodeFirstBinderSubTy = new FStarType(Def->getNameAsString());
+    ExplodeFirstBinderTy->setPointerToTy(ExplodeFirstBinderSubTy);
+    auto *ExplodeFirstBinder = new struct Binder("x", ExplodeFirstBinderTy);
+    auto *ExplodeSecondBinderTy =
+        new FStarType(Def->getNameAsString() + "_spec");
+    auto *ExplodeSecondBinder = new struct Binder("#s", ExplodeSecondBinderTy);
+    ExplodeBinders.push_back(ExplodeFirstBinder);
+    ExplodeBinders.push_back(ExplodeSecondBinder);
+    ExplodeFnDefn->Args = ExplodeBinders;
+
+    auto *ExplodeReqOne = new Requires();
+    auto *ExplodeRetTwo = new Returns();
+    auto *ExplodeEnsuresOne = new Ensures();
+    auto *ExplodeEnsuresTwo = new Ensures();
+
+    ExplodeReqOne->Ann = StructName + "_pred x s";
+    ExplodeRetTwo->Ann = "y:" + StructName + "_refs";
+    ExplodeEnsuresOne->Ann = StructName + "_refs_pred y s";
+    ExplodeEnsuresTwo->Ann = "recover x y";
+
+    ExplodeFnDefn->Annotation.push_back(ExplodeReqOne);
+    ExplodeFnDefn->Annotation.push_back(ExplodeRetTwo);
+    ExplodeFnDefn->Annotation.push_back(ExplodeEnsuresOne);
+    ExplodeFnDefn->Annotation.push_back(ExplodeEnsuresTwo);
+
+    auto *PulseExplodeFunction = new PulseFnDefn(ExplodeFnDefn);
+    NewModul->Decls.push_back(PulseExplodeFunction);
+
+    // //9. A function that converts u32_pair_struct_refs back to
+    // u32_pair_struct
+    // //   i.e., restoring the struct from its field pointers
+    // ghost
+    // fn restore (x:ref u32_pair_struct) (y:u32_pair_struct_refs)
+    // (#s:u32_pair_struct_spec) requires u32_pair_struct_refs_pred y s requires
+    // recover x y ensures u32_pair_struct_pred x s
+
+    auto *RestoreFnDefn = new _PulseFnDefn();
+    RestoreFnDefn->Attr.push_back(new Name("ghost"));
+    RestoreFnDefn->Name = "restore";
+    std::vector<struct Binder *> RestoreBinders;
+    auto *RestoreFirstBinderTy = new FStarPointerType();
+    auto *RestoreFirstBinderSubTy = new FStarType(Def->getNameAsString());
+    RestoreFirstBinderTy->setPointerToTy(RestoreFirstBinderSubTy);
+    auto *RestoreFirstBinder = new struct Binder("x", RestoreFirstBinderTy);
+    auto *RestoreSecondBinderTy =
+        new FStarType(Def->getNameAsString() + "_refs");
+    auto *RestoreSecondBinder = new struct Binder("y", RestoreSecondBinderTy);
+    auto *RestoreThirdBinderTy =
+        new FStarType(Def->getNameAsString() + "_spec");
+    auto *RestoreThirdBinder = new struct Binder("#s", RestoreThirdBinderTy);
+    RestoreBinders.push_back(RestoreFirstBinder);
+    RestoreBinders.push_back(RestoreSecondBinder);
+    RestoreBinders.push_back(RestoreThirdBinder);
+    RestoreFnDefn->Args = RestoreBinders;
+
+    auto *RestoreReqOne = new Requires();
+    auto *RestoreReqTwo = new Requires();
+    auto *RestoreEnsuresOne = new Ensures();
+
+    RestoreReqOne->Ann = StructName + "_refs_pred y s";
+    RestoreReqTwo->Ann = "recover x y";
+    RestoreEnsuresOne->Ann = StructName + "_pred x s";
+
+    RestoreFnDefn->Annotation.push_back(RestoreReqOne);
+    RestoreFnDefn->Annotation.push_back(RestoreReqTwo);
+    RestoreFnDefn->Annotation.push_back(RestoreEnsuresOne);
+
+    auto *PulseRestoreFunction = new PulseFnDefn(RestoreFnDefn);
+    NewModul->Decls.push_back(PulseRestoreFunction);
+
+    // //10. A ghost function that unfolds the predicate for
+    // u32_pair_struct_refs ghost fn u32_pair_struct_refs_pred_unfold
+    // (x:u32_pair_struct_refs) (#s:u32_pair_struct_spec) requires
+    // u32_pair_struct_refs_pred x s ensures x.first |-> s.first ensures
+    // x.second |-> s.second
+
+    auto *GhostUnFoldFnDefn = new _PulseFnDefn();
+    GhostUnFoldFnDefn->Attr.push_back(new Name("ghost"));
+    GhostUnFoldFnDefn->Name = StructName + "_refs_pred_unfold";
+    std::vector<struct Binder *> GhostUnFoldFnDefnBinders;
+    auto *GhostUnFoldFirstBinderTy =
+        new FStarType(Def->getNameAsString() + "_refs");
+    auto *GhostUnFoldFirstBinder =
+        new struct Binder("x", GhostUnFoldFirstBinderTy);
+    auto *GhostUnFoldSecondBinderTy =
+        new FStarType(Def->getNameAsString() + "_spec");
+    auto *GhostUnFoldSecondBinder =
+        new struct Binder("#s", GhostUnFoldSecondBinderTy);
+    GhostUnFoldFnDefnBinders.push_back(GhostUnFoldFirstBinder);
+    GhostUnFoldFnDefnBinders.push_back(GhostUnFoldSecondBinder);
+    GhostUnFoldFnDefn->Args = GhostUnFoldFnDefnBinders;
+
+    auto *GhostUnFoldReqOne = new Requires();
+
+    GhostUnFoldReqOne->Ann = StructName + "_refs_pred x s";
+
+    GhostUnFoldFnDefn->Annotation.push_back(GhostUnFoldReqOne);
+
+    // Generate ensures for fields
+    for (size_t i = 0; i < NumRecordFields; i++) {
+      auto FieldString = Fields[i]->Ident;
+      auto *EnsuresField = new Ensures();
+      EnsuresField->Ann = "x." + FieldString + " |-> s." + FieldString;
+      GhostUnFoldFnDefn->Annotation.push_back(EnsuresField);
+    }
+
+    auto *PulseGhostUnFoldFunction = new PulseFnDefn(GhostUnFoldFnDefn);
+    NewModul->Decls.push_back(PulseGhostUnFoldFunction);
+
+    // //11. A ghost function that folds the predicate for u32_pair_struct_refs
+    // ghost
+    // fn u32_pair_struct_refs_pred_fold (x:u32_pair_struct_refs) (#f #s:erased
+    // U32.t) requires x.first |-> f requires x.second |-> s ensures
+    // u32_pair_struct_refs_pred x ({first = f; second = s})
+
+    std::string FieldPrefix = "a";
+    auto *GhostFoldFnDefn = new _PulseFnDefn();
+    GhostFoldFnDefn->Attr.push_back(new Name("ghost"));
+    GhostFoldFnDefn->Name = StructName + "_refs_pred_fold";
+    std::vector<struct Binder *> GhostFoldFnDefnBinders;
+    auto *GhostFoldFirstBinderTy =
+        new FStarType(Def->getNameAsString() + "_refs");
+    auto *GhostFoldFirstBinder = new struct Binder("x", GhostFoldFirstBinderTy);
+    auto *GhostFoldSecondBinderTy = new FStarType("erased UInt32.t");
+
+    std::string SecondBinderTerms = "";
+    for (size_t i = 0; i < NumRecordFields; i++) {
+      SecondBinderTerms += "#" + FieldPrefix + std::to_string(i);
+      SecondBinderTerms += " ";
+    }
+
+    auto *GhostFoldSecondBinder =
+        new struct Binder(SecondBinderTerms, GhostFoldSecondBinderTy);
+    GhostFoldFnDefnBinders.push_back(GhostFoldFirstBinder);
+    GhostFoldFnDefnBinders.push_back(GhostFoldSecondBinder);
+    GhostFoldFnDefn->Args = GhostFoldFnDefnBinders;
+
+    // Generate requires for fields
+    for (size_t i = 0; i < NumRecordFields; i++) {
+      auto FieldString = Fields[i]->Ident;
+      auto *RequiresField = new Requires();
+      RequiresField->Ann =
+          "x." + FieldString + " |-> " + FieldPrefix + std::to_string(i);
+      GhostFoldFnDefn->Annotation.push_back(RequiresField);
+    }
+
+    auto *GhostFoldEnsureOne = new Ensures();
+
+    GhostFoldEnsureOne->Ann = StructName + "_refs_pred x";
+    GhostFoldEnsureOne->Ann += " ({";
+
+    for (size_t i = 0; i < NumRecordFields; i++) {
+      auto FieldString = Fields[i]->Ident;
+      GhostFoldEnsureOne->Ann += FieldString + " = ";
+      GhostFoldEnsureOne->Ann += FieldPrefix + std::to_string(i);
+      GhostFoldEnsureOne->Ann += ";";
+    }
+    GhostFoldEnsureOne->Ann += "})";
+    GhostFoldFnDefn->Annotation.push_back(GhostFoldEnsureOne);
+
+    auto *PulseGhostFoldFunction = new PulseFnDefn(GhostFoldFnDefn);
+    NewModul->Decls.push_back(PulseGhostFoldFunction);
+
+    // add Modules to Modules
+    Modules.insert(std::make_pair(NewModul->ModuleName, NewModul));
+  }
+
+  return true;
 }
 
 bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
-  
-  if (!FD->hasBody() || SM.isInSystemHeader(FD->getLocation()) ||  FD->isImplicit() ||
-       (FD->getLocation().isMacroID() && !SM.isWrittenInMainFile(SM.getExpansionLoc(FD->getLocation()))))
+
+  if (!FD->hasBody() || SM.isInSystemHeader(FD->getLocation()) ||
+      FD->isImplicit() ||
+      (FD->getLocation().isMacroID() &&
+       !SM.isWrittenInMainFile(SM.getExpansionLoc(FD->getLocation()))))
     return true;
   // llvm::outs() << "Processing Function: " << FD->getNameAsString() << "\n";
   auto FuncName = FD->getNameAsString();
@@ -903,8 +897,8 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   // PulseStmt *Body;
   //  };
 
-  //Is it safe to say that a module == 1 file??
-  //Ret
+  // Is it safe to say that a module == 1 file??
+  // Ret
   std::string ClangModuleName = "Module_";
   inferArrayTypes(FD);
 
@@ -915,83 +909,82 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   FDefn->Name = FuncName;
   FDefn->isRecursive = true;
 
-  if (!checkIsRecursiveFunction(FD)){
+  if (!checkIsRecursiveFunction(FD)) {
     llvm::outs() << "Found Function to be non recursive!!" << "\n";
     llvm::outs() << FD->getNameAsString() << "\n";
     llvm::outs() << "End function name\n";
-    
+
     FDefn->isRecursive = false;
   }
   std::vector<Binder *> PulseArgs;
-  if (FD->hasAttrs()){
-  auto AnnotationsAttachedToFD = FD->getAttrs();
-  for (auto *Attr : AnnotationsAttachedToFD){
+  if (FD->hasAttrs()) {
+    auto AnnotationsAttachedToFD = FD->getAttrs();
+    for (auto *Attr : AnnotationsAttachedToFD) {
 
-    if (auto *AnnAttr = dyn_cast<AnnotateAttr>(Attr)){
+      if (auto *AnnAttr = dyn_cast<AnnotateAttr>(Attr)) {
 
-    if (AnnAttr->getAttrName()->getName() == "pulse"){
-      llvm::outs() << "Attribute Name: ";
-      llvm::outs() << Attr->getAttrName()->getName();
-      llvm::outs() << "\n";
-      llvm::outs() << AnnAttr->getAnnotation() << "\n";
-      auto Ref = AnnAttr->getAnnotation();
-      llvm::outs() << Ref << "\n";
-      if (!Ref.empty()) {
-        //  std::wsmatch Match;
-         std::string Match = "";
-         PulseAnnKind AnnKind = getPulseAnnKindFromString(AnnAttr->getAnnotation().data(), Match);
-         switch(AnnKind){
-         case PulseAnnKind::Requires:{
-          auto *NewRequires = new Requires(); 
-          // std::wstring matched_wstring = Match[1].str();
-          // std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-          // std::string matched_string = converter.to_bytes(matched_wstring);
-          //auto matched_string = Match[1].str();
-          //llvm::outs() << matched_string << "\n";
-          //NewRequires->Ann = matched_string;
-          NewRequires->Ann = Match;
-          FDefn->Annotation.push_back(NewRequires);
-          break;
-         }
-         case PulseAnnKind::Ensures:{
-          auto *NewEnsures = new Ensures();
-          // std::wstring matched_wstring = Match[1].str();
-          // std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-          // std::string matched_string = converter.to_bytes(matched_wstring);
-          //auto matched_string = Match[1].str();
-          //llvm::outs() << matched_string << "\n"; 
-          //NewEnsures->Ann = matched_string;
-          NewEnsures->Ann = Match;
-          FDefn->Annotation.push_back(NewEnsures);
-          break;
-         }
-         case PulseAnnKind::Returns:{
-          Returns * ReturnSpec = new Returns(); 
-          ReturnSpec->Ann = Match;
-          FDefn->Annotation.push_back(ReturnSpec);
-          break;
-         }
-         case PulseAnnKind::ErasedArg:{
-          //Make a binder for the erased argument.
-          auto *NewErasedArgBinder = new Binder(Match);
-          NewErasedArgBinder->useFallBack = true;
-          PulseArgs.push_back(NewErasedArgBinder);
-          break;
-         }
-         case PulseAnnKind::IsArray:
-         case PulseAnnKind::Invariants:
-         case PulseAnnKind::LemmaStatement:
-         default:
-           assert(false && "Did not expect specs other than requires and ensures attached \
-                             to function declaration!\n");
-           break;
-         }
-      }
-         }
+        if (AnnAttr->getAttrName()->getName() == "pulse") {
+          llvm::outs() << "Attribute Name: ";
+          llvm::outs() << Attr->getAttrName()->getName();
+          llvm::outs() << "\n";
+          llvm::outs() << AnnAttr->getAnnotation() << "\n";
+          auto Ref = AnnAttr->getAnnotation();
+          llvm::outs() << Ref << "\n";
+          if (!Ref.empty()) {
+            //  std::wsmatch Match;
+            std::string Match = "";
+            PulseAnnKind AnnKind = getPulseAnnKindFromString(
+                AnnAttr->getAnnotation().data(), Match);
+            switch (AnnKind) {
+            case PulseAnnKind::Requires: {
+              auto *NewRequires = new Requires();
+              NewRequires->Ann = Match;
+              FDefn->Annotation.push_back(NewRequires);
+              break;
+            }
+
+            case PulseAnnKind::Ensures: {
+              auto *NewEnsures = new Ensures();
+              NewEnsures->Ann = Match;
+              FDefn->Annotation.push_back(NewEnsures);
+              break;
+            }
+
+            case PulseAnnKind::Returns: {
+              auto *ReturnSpec = new Returns();
+              ReturnSpec->Ann = Match;
+              FDefn->Annotation.push_back(ReturnSpec);
+              break;
+            }
+
+            case PulseAnnKind::ErasedArg: {
+              auto *NewErasedArgBinder = new Binder(Match);
+              NewErasedArgBinder->useFallBack = true;
+              PulseArgs.push_back(NewErasedArgBinder);
+              break;
+            }
+
+            case PulseAnnKind::IsArray:
+              llvm::report_fatal_error(
+                  "Unhandled PulseAnnKind::IsArray in switch statement");
+              break;
+
+            case PulseAnnKind::Invariants:
+              llvm::report_fatal_error(
+                  "Unhandled PulseAnnKind::Invariants in switch statement");
+              break;
+
+            case PulseAnnKind::LemmaStatement:
+              llvm::report_fatal_error(
+                  "Unhandled PulseAnnKind::LemmaStatement in switch statement");
+              break;
+            }
+          }
+        }
       }
     }
   }
-  
+
   // exit(0);
 
   // for (unsigned i = 0; i < functionDecl->getNumParams(); ++i) {
@@ -1003,144 +996,122 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
     auto *Param = FD->getParamDecl(i);
     auto ParamName = Param->getNameAsString();
 
-    //See if this array parameter has any annotations arrached to it.
+    // See if this array parameter has any annotations arrached to it.
     auto Attrs = Param->attrs();
-    for (auto *Attr : Attrs){
-      if (auto *AnnotAttr = dyn_cast<AnnotateAttr>(Attr)){
-        if (AnnotAttr->getAttrName()->getName() == "pulse"){
+    for (auto *Attr : Attrs) {
+      if (auto *AnnotAttr = dyn_cast<AnnotateAttr>(Attr)) {
+        if (AnnotAttr->getAttrName()->getName() == "pulse") {
           auto AnnotationData = AnnotAttr->getAnnotation();
           std::string Match;
-          auto PulseAnnotKind = getPulseAnnKindFromString(AnnotationData, Match);
-          assert(PulseAnnotKind == PulseAnnKind::IsArray && "Only expect is array annotations for param decl atm.!\n");
-          //Add type to mape.
-          //Make a clang Array Type
-          //Try to get element type
-          if (!Param->getType()->isPointerType() && !Param->getType()->isArrayType()){
+          auto PulseAnnotKind =
+              getPulseAnnKindFromString(AnnotationData, Match);
+          assert(PulseAnnotKind == PulseAnnKind::IsArray &&
+                 "Only expect is array annotations for param decl atm.!\n");
+          // Add type to mape.
+          // Make a clang Array Type
+          // Try to get element type
+          if (!Param->getType()->isPointerType() &&
+              !Param->getType()->isArrayType()) {
             assert(false && "Expected parameter to be a ref or array!\n");
           }
-          
+
           QualType ElementType = Param->getType()->getPointeeType();
 
-          if(!std::regex_match(Match, std::regex("[-+]?[0-9]+"))){
-          
-          // Step 2: Create a VarDecl for the size variable 'n'
-          //We should check here is the length is a constant or of variable array type.
-          IdentifierInfo &Id = Ctx.Idents.get(Match);
-          VarDecl *SizeVar = VarDecl::Create(
-            Ctx,
-            Ctx.getTranslationUnitDecl(),
-            SourceLocation(),
-            SourceLocation(),
-            &Id,
-            Ctx.IntTy,
-            nullptr,
-            SC_Auto
-            );
-            
+          if (!std::regex_match(Match, std::regex("[-+]?[0-9]+"))) {
+
+            // Step 2: Create a VarDecl for the size variable 'n'
+            // We should check here is the length is a constant or of variable
+            // array type.
+            IdentifierInfo &Id = Ctx.Idents.get(Match);
+            VarDecl *SizeVar = VarDecl::Create(
+                Ctx, Ctx.getTranslationUnitDecl(), SourceLocation(),
+                SourceLocation(), &Id, Ctx.IntTy, nullptr, SC_Auto);
+
             // Step 3: Create a DeclRefExpr to refer to 'n'
             DeclRefExpr *SizeExpr = DeclRefExpr::Create(
-              Ctx,
-              NestedNameSpecifierLoc(),
-              SourceLocation(),
-              SizeVar,
-              false,
-              SourceLocation(),
-              Ctx.IntTy,
-              clang::Expr::getValueKindForType(ElementType)
-            );
-            
+                Ctx, NestedNameSpecifierLoc(), SourceLocation(), SizeVar, false,
+                SourceLocation(), Ctx.IntTy,
+                clang::Expr::getValueKindForType(ElementType));
+
             // Step 4: Create the VLA type
             QualType VLAType = Ctx.getVariableArrayType(
-              ElementType,
-              SizeExpr,
-              ArraySizeModifier::Normal,
-              0
-            );
-            // llvm::outs() << "Print the element type here!!!\n"; 
-            // llvm::outs() << QualType(VLAType->getPointeeOrArrayElementType(), 0);
-            // llvm::outs() << "End of element type!" << "\n";
-            // exit(1);
+                ElementType, SizeExpr, ArraySizeModifier::Normal, 0);
+            // llvm::outs() << "Print the element type here!!!\n";
+            // llvm::outs() << QualType(VLAType->getPointeeOrArrayElementType(),
+            // 0); llvm::outs() << "End of element type!" << "\n"; exit(1);
             DeclTyMap.insert(std::make_pair(Param, VLAType));
-          }
-          else {
+          } else {
             clang::QualType ConstArrayTy = Ctx.getConstantArrayType(
-              ElementType,
-              llvm::APInt(32, std::stoi(Match)),
-              nullptr,
-              ArraySizeModifier::Normal,
-              0
-            );
+                ElementType, llvm::APInt(32, std::stoi(Match)), nullptr,
+                ArraySizeModifier::Normal, 0);
             DeclTyMap.insert(std::make_pair(Param, ConstArrayTy));
-
           }
-          
         }
-
       }
     }
-    
+
     FStarType *ParamTy;
     auto It = DeclTyMap.find(Param);
     if (It != DeclTyMap.end()) {
-      //Get the qualification
+      // Get the qualification
       auto Ty = It->second;
-      if (Ty->isArrayType() || Ty->isConstantArrayType() || Ty->isVariableArrayType()){
-        auto *FArrTy = new FStarArrType(); 
-        FArrTy->ElementType = getPulseTyFromCTy(QualType(Ty->getPointeeOrArrayElementType(), 0));
+      if (Ty->isArrayType() || Ty->isConstantArrayType() ||
+          Ty->isVariableArrayType()) {
+        auto *FArrTy = new FStarArrType();
+        FArrTy->ElementType =
+            getPulseTyFromCTy(QualType(Ty->getPointeeOrArrayElementType(), 0));
         auto *CTyKeyStr = lookupSymbol(SymbolTable::Array);
         FArrTy->setName(CTyKeyStr);
         ParamTy = FArrTy;
-      }
-      else {
-        ParamTy = getPulseTyFromCTy(Param->getType()); 
+      } else {
+        ParamTy = getPulseTyFromCTy(Param->getType());
       }
     } else {
-       InferDeclType(Param, FD);
-       auto It = DeclTyMap.find(Param);
-       if (It != DeclTyMap.end()) {
+      InferDeclType(Param, FD);
+      auto It = DeclTyMap.find(Param);
+      if (It != DeclTyMap.end()) {
         auto Ty = It->second;
-        auto *FArrTy = new FStarArrType(); 
-        FArrTy->ElementType = getPulseTyFromCTy(QualType(Ty->getPointeeOrArrayElementType(), 0));
+        auto *FArrTy = new FStarArrType();
+        FArrTy->ElementType =
+            getPulseTyFromCTy(QualType(Ty->getPointeeOrArrayElementType(), 0));
         auto *CTyKeyStr = lookupSymbol(SymbolTable::Array);
         FArrTy->setName(CTyKeyStr);
         ParamTy = FArrTy;
 
-       }
-       else{
+      } else {
         ParamTy = getPulseTyFromCTy(Param->getType());
-       }
+      }
     }
-    
-    //auto CParamType = Param->getType();
-    //FStarType *ParamTy = getPulseTyFromCTy(CParamType);
+
+    // auto CParamType = Param->getType();
+    // FStarType *ParamTy = getPulseTyFromCTy(CParamType);
 
     auto *Binder = new struct Binder(ParamName, ParamTy);
     PulseArgs.push_back(Binder);
   }
   FDefn->Args = PulseArgs;
-  //extractPulseAnnotations(FD, SM, FDefn->Annotation);
+  // extractPulseAnnotations(FD, SM, FDefn->Annotation);
   auto It = Modules.find(ClangModuleName);
   PulseModul *Module = nullptr;
   if (It != Modules.end()) {
     Module = It->second;
-    //Module->Decls.push_back(PulseFn);
+    // Module->Decls.push_back(PulseFn);
   }
   // Create new function defintions.
   else {
     Module = new PulseModul();
     Module->includePulsePrelude = true;
     Module->ModuleName = ClangModuleName;
-    //Module->Decls.push_back(PulseFn);
-    //Modules.insert(std::make_pair(ClangModuleName, Modul));
+    // Module->Decls.push_back(PulseFn);
+    // Modules.insert(std::make_pair(ClangModuleName, Modul));
   }
-
 
   if (Stmt *Body = FD->getBody()) {
     if (auto *CS = dyn_cast<CompoundStmt>(Body)) {
       ExprMutationAnalyzer Analyzer(*CS, Ctx);
       auto *PulseBody = pulseFromCompoundStmt(CS, &Analyzer, Module);
       // PulseBody->printTag();
-      if (PulseBody != nullptr) 
+      if (PulseBody != nullptr)
         PulseBody->dumpPretty();
       FDefn->Body = PulseBody;
     }
@@ -1161,18 +1132,18 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   llvm::outs() << "End printing Module name" << "\n";
 
   // Get a pointer to existing function definitions.
-  //if (It != Modules.end()) {
+  // if (It != Modules.end()) {
   //
   //  auto &Module = It->second;
   //  Module->Decls.push_back(PulseFn);
   //}
   // Create new function defintions.
-  //else {
+  // else {
   //  PulseModul *Modul = new PulseModul();
   //  Modul->includePulsePrelude = true;
   //  Modul->ModuleName = ClangModuleName;
-    Module->Decls.push_back(PulseFn);
-    Modules.insert(std::make_pair(ClangModuleName, Module));
+  Module->Decls.push_back(PulseFn);
+  Modules.insert(std::make_pair(ClangModuleName, Module));
   //}
 
   // FunctionDeclarations.push_back(PulseFn);
@@ -1186,7 +1157,7 @@ FStarType *PulseVisitor::getPulseTyFromCTy(clang::QualType CType) {
   FStarType *PulseTy;
   if (CType->isPointerType()) {
 
-    if (CType->isArrayType()){
+    if (CType->isArrayType()) {
       assert(false && "PulseVisitor: Did not implement array type in clang.\n");
     }
 
@@ -1207,13 +1178,15 @@ FStarType *PulseVisitor::getPulseTyFromCTy(clang::QualType CType) {
     CTyKeyStr = lookupSymbol(CTyKey);
   else
     CTyKeyStr = CType.getAsString();
-  
+
   PulseTy->setName(CTyKeyStr);
   PulseTy->setTag(TermTag::FStarType);
   return PulseTy;
-} 
+}
 
-PulseStmt *PulseVisitor::pulseFromCompoundStmt(Stmt *S, ExprMutationAnalyzer *Analyzer, PulseModul *Modul) {
+PulseStmt *PulseVisitor::pulseFromCompoundStmt(Stmt *S,
+                                               ExprMutationAnalyzer *Analyzer,
+                                               PulseModul *Modul) {
 
   PulseSequence *Stmt = nullptr;
   PulseSequence *Head = nullptr;
@@ -1235,15 +1208,15 @@ PulseStmt *PulseVisitor::pulseFromCompoundStmt(Stmt *S, ExprMutationAnalyzer *An
       if (NextPulseStmt == nullptr)
         continue;
 
-      if (Stmt == nullptr){
-        auto *NewSeq = new PulseSequence(); 
-        NewSeq->assignS1(NextPulseStmt); 
+      if (Stmt == nullptr) {
+        auto *NewSeq = new PulseSequence();
+        NewSeq->assignS1(NextPulseStmt);
         Stmt = NewSeq;
         Head = NewSeq;
-        continue; 
+        continue;
       }
 
-      auto *NewSeq = new PulseSequence(); 
+      auto *NewSeq = new PulseSequence();
       NewSeq->assignS1(NextPulseStmt);
       Stmt->assignS2(NewSeq);
       Stmt = NewSeq;
@@ -1253,10 +1226,11 @@ PulseStmt *PulseVisitor::pulseFromCompoundStmt(Stmt *S, ExprMutationAnalyzer *An
   return Head;
 }
 
-PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer, PulseModul *Module) {
+PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
+                                       PulseModul *Module) {
 
   if (!S)
-      return nullptr;
+    return nullptr;
 
   if (auto *DS = dyn_cast<DeclStmt>(S)) {
 
@@ -1267,104 +1241,108 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer, 
           auto VarName = VD->getNameAsString();
           // Unsure if we really need the type here.
           // Though it may be usefuel checking invalid casting operations.
-          auto VarType = VD->getType();
-          
-          //const Stmt *ConstS = S;
-          //ExprMutationAnalyzer Eval(*ConstS, Ctx);
+          // auto VarType = VD->getType();
+
+          // const Stmt *ConstS = S;
+          // ExprMutationAnalyzer Eval(*ConstS, Ctx);
 
           // This gets converted to the pulse let expression.
           // Vidush : It is probably good to make a setter / pass arguments to
           // the constructor.
           auto *PulseLet = new LetBinding();
           PulseLet->VarName = VarName;
-          
-          //Don't forget to release these exprs.
-          SmallVector<PulseStmt*> NewExprs;
-          
-          PulseLet->LetInit = getTermFromCExpr(Init, Analyzer, NewExprs, VD->getType(), Module);
+
+          // Don't forget to release these exprs.
+          SmallVector<PulseStmt *> NewExprs;
+
+          PulseLet->LetInit =
+              getTermFromCExpr(Init, Analyzer, NewExprs, VD->getType(), Module);
           PulseLet->setTag(PulseStmtTag::LetBinding);
-          if (Analyzer->isMutated(D)){
+          if (Analyzer->isMutated(D)) {
             PulseLet->Qualifier = MutOrRef::MUT;
           }
 
-          //We need to make a sequence of pulse statements.
+          // We need to make a sequence of pulse statements.
           PulseSequence *Start = nullptr;
-          if (!NewExprs.empty()){
-            
-            for (size_t Idx = 0; Idx < NewExprs.size(); Idx++){    
-              if (Start == nullptr){
+          if (!NewExprs.empty()) {
+
+            for (size_t Idx = 0; Idx < NewExprs.size(); Idx++) {
+              if (Start == nullptr) {
                 auto *Seq = new PulseSequence();
                 Seq->assignS1(NewExprs[Idx]);
-                Start = Seq; 
+                Start = Seq;
               }
-              
-              auto *NextSeq = new PulseSequence(); 
+
+              auto *NextSeq = new PulseSequence();
               NextSeq->assignS1(NewExprs[Idx]);
               Start->assignS2(NextSeq);
               Start = NextSeq;
             }
           }
 
-          
           NewExprs.clear();
           assert(NewExprs.empty() && "Expected expressions to be released!");
 
-          if (Start != nullptr){
-              Start->assignS2(PulseLet);
+          if (Start != nullptr) {
+            Start->assignS2(PulseLet);
 
-              //check for any lemmas to be released. 
-              auto Attrs = VD->attrs();
-              for (auto *Att : Attrs){
-                if (AnnotateAttr *AnnonAttr = dyn_cast<AnnotateAttr>(Att)){
-                  if (AnnonAttr->getAttrName()->getName() == "pulse"){
-                    std::string Match; 
-                    auto AnnKind = getPulseAnnKindFromString(AnnonAttr->getAnnotation(), Match);
-                    assert((AnnKind == PulseAnnKind::LemmaStatement) && "Expected a Lemma statement!\n");
-                    auto *LS = new LemmaStatement(); 
-                    LS->Lemma = Match; 
-                    auto *LSE = new PulseExpr();
-                    LSE->E = LS;
-                    llvm::outs() << "Found Lemma: " << "\n";
-                    llvm::outs() << Match << "\n";
-                    llvm::outs() << "End.\n";
-                    auto *NewS = new PulseSequence(); 
-                    NewS->assignS1(LSE);
-                    NewS->assignS2(Start);
-                    Start = NewS;
-                  }
+            // check for any lemmas to be released.
+            auto Attrs = VD->attrs();
+            for (auto *Att : Attrs) {
+              if (AnnotateAttr *AnnonAttr = dyn_cast<AnnotateAttr>(Att)) {
+                if (AnnonAttr->getAttrName()->getName() == "pulse") {
+                  std::string Match;
+                  auto AnnKind = getPulseAnnKindFromString(
+                      AnnonAttr->getAnnotation(), Match);
+                  assert((AnnKind == PulseAnnKind::LemmaStatement) &&
+                         "Expected a Lemma statement!\n");
+                  auto *LS = new LemmaStatement();
+                  LS->Lemma = Match;
+                  auto *LSE = new PulseExpr();
+                  LSE->E = LS;
+                  llvm::outs() << "Found Lemma: " << "\n";
+                  llvm::outs() << Match << "\n";
+                  llvm::outs() << "End.\n";
+                  auto *NewS = new PulseSequence();
+                  NewS->assignS1(LSE);
+                  NewS->assignS2(Start);
+                  Start = NewS;
                 }
               }
-              return Start;
+            }
+            return Start;
           }
 
-          //check for any lemmas to be released. 
-              auto Attrs = VD->attrs();
-              for (auto *Att : Attrs){
-                if (AnnotateAttr *AnnonAttr = dyn_cast<AnnotateAttr>(Att)){
-                  if (AnnonAttr->getAttrName()->getName() == "pulse"){
-                    std::string Match; 
-                    auto AnnKind = getPulseAnnKindFromString(AnnonAttr->getAnnotation(), Match);
-                    assert((AnnKind == PulseAnnKind::LemmaStatement) && "Expected a Lemma statement!\n");
-                    auto *LS = new LemmaStatement(); 
-                    LS->Lemma = Match;
-                    llvm::outs() << "Found Lemma: " << "\n";
-                    llvm::outs() << Match << "\n";
-                    llvm::outs() << "End.\n"; 
-                    auto *LSE = new PulseExpr();
-                    LSE->E = LS;
-                    if (Start == nullptr){
-                      auto *NewS = new PulseSequence(); 
-                      NewS->assignS1(LSE);
-                      Start = NewS;
-                    }
-                    Start->assignS2(LSE);
-                  }
+          // check for any lemmas to be released.
+          auto Attrs = VD->attrs();
+          for (auto *Att : Attrs) {
+            if (AnnotateAttr *AnnonAttr = dyn_cast<AnnotateAttr>(Att)) {
+              if (AnnonAttr->getAttrName()->getName() == "pulse") {
+                std::string Match;
+                auto AnnKind = getPulseAnnKindFromString(
+                    AnnonAttr->getAnnotation(), Match);
+                assert((AnnKind == PulseAnnKind::LemmaStatement) &&
+                       "Expected a Lemma statement!\n");
+                auto *LS = new LemmaStatement();
+                LS->Lemma = Match;
+                llvm::outs() << "Found Lemma: " << "\n";
+                llvm::outs() << Match << "\n";
+                llvm::outs() << "End.\n";
+                auto *LSE = new PulseExpr();
+                LSE->E = LS;
+                if (Start == nullptr) {
+                  auto *NewS = new PulseSequence();
+                  NewS->assignS1(LSE);
+                  Start = NewS;
                 }
+                Start->assignS2(LSE);
               }
+            }
+          }
 
-              auto *AppendLet = new PulseSequence(); 
-              AppendLet->assignS1(Start);
-              AppendLet->assignS2(PulseLet);
+          auto *AppendLet = new PulseSequence();
+          AppendLet->assignS1(Start);
+          AppendLet->assignS2(PulseLet);
 
           return AppendLet;
         }
@@ -1376,7 +1354,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer, 
     if (BO->isAssignmentOp()) {
       auto *Lhs = BO->getLHS();
       auto *Rhs = BO->getRHS();
-      auto BinaryOp = BO->getOpcode();
+      // auto BinaryOp = BO->getOpcode();
 
       // We use := in pulse to update references directly.
       if (UnaryOperator *UO = dyn_cast<UnaryOperator>(Lhs)) {
@@ -1385,12 +1363,14 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer, 
         // UO->dumpPretty(Ctx);
         // UO->getSubExpr()->dumpPretty(Ctx);
         if (UO->getOpcode() == UO_Deref) {
-          
-          //TODO: Make sure to release these expressions
-          SmallVector<PulseStmt*> ExprsBef;
 
-          auto *PulseLhsTerm = getTermFromCExpr(UO->getSubExpr(), Analyzer, ExprsBef, BO->getType(), Module);
-          auto *PulseRhsTerm = getTermFromCExpr(Rhs, Analyzer, ExprsBef, BO->getType(), Module);
+          // TODO: Make sure to release these expressions
+          SmallVector<PulseStmt *> ExprsBef;
+
+          auto *PulseLhsTerm = getTermFromCExpr(
+              UO->getSubExpr(), Analyzer, ExprsBef, BO->getType(), Module);
+          auto *PulseRhsTerm =
+              getTermFromCExpr(Rhs, Analyzer, ExprsBef, BO->getType(), Module);
           PulseAssignment *Assignment = new PulseAssignment();
           Assignment->setTag(PulseStmtTag::Assignment);
           Assignment->Lhs = PulseLhsTerm;
@@ -1401,75 +1381,76 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer, 
           return Assignment;
         }
         // assert(false && "Could not dyn cast to a declaration expression.");
-      }
-      else if (auto *ArrSub = dyn_cast<ArraySubscriptExpr>(Lhs)){
-        
-        //TODO: Make sure to release these expressions
-        SmallVector<PulseStmt*> ExprsBef;
+      } else if (auto *ArrSub = dyn_cast<ArraySubscriptExpr>(Lhs)) {
+
+        // TODO: Make sure to release these expressions
+        SmallVector<PulseStmt *> ExprsBef;
 
         auto *ArrayAssignExpr = new PulseArrayAssignment();
         ArrayAssignExpr->setTag(PulseStmtTag::ArrayAssignment);
-        ArrayAssignExpr->Arr = getTermFromCExpr(ArrSub->getBase(), Analyzer, ExprsBef, BO->getType(), Module);
-        ArrayAssignExpr->Index = getTermFromCExpr(ArrSub->getIdx(), Analyzer, ExprsBef, BO->getType(), Module);
-        ArrayAssignExpr->Value = getTermFromCExpr(Rhs, Analyzer, ExprsBef, BO->getType(), Module);
+        ArrayAssignExpr->Arr = getTermFromCExpr(
+            ArrSub->getBase(), Analyzer, ExprsBef, BO->getType(), Module);
+        ArrayAssignExpr->Index = getTermFromCExpr(
+            ArrSub->getIdx(), Analyzer, ExprsBef, BO->getType(), Module);
+        ArrayAssignExpr->Value =
+            getTermFromCExpr(Rhs, Analyzer, ExprsBef, BO->getType(), Module);
 
-        //We need to make a sequence of pulse statements.
+        // We need to make a sequence of pulse statements.
         PulseSequence *Start = nullptr;
-        if (!ExprsBef.empty()){
-            
-            for (size_t Idx = 0; Idx < ExprsBef.size(); Idx++){    
-              if (Start == nullptr){
-                auto *Seq = new PulseSequence();
-                Seq->assignS1(ExprsBef[Idx]);
-                Start = Seq; 
-              }
-              
-              auto *NextSeq = new PulseSequence(); 
-              NextSeq->assignS1(ExprsBef[Idx]);
-              Start->assignS2(NextSeq);
-              Start = NextSeq;
+        if (!ExprsBef.empty()) {
+
+          for (size_t Idx = 0; Idx < ExprsBef.size(); Idx++) {
+            if (Start == nullptr) {
+              auto *Seq = new PulseSequence();
+              Seq->assignS1(ExprsBef[Idx]);
+              Start = Seq;
             }
 
-            ExprsBef.clear();
+            auto *NextSeq = new PulseSequence();
+            NextSeq->assignS1(ExprsBef[Idx]);
+            Start->assignS2(NextSeq);
+            Start = NextSeq;
+          }
+
+          ExprsBef.clear();
         }
 
-        
         assert(ExprsBef.empty() && "Expected expressions to be released!");
 
-
-        if (Start != nullptr){
+        if (Start != nullptr) {
           Start->assignS2(ArrayAssignExpr);
           return Start;
         }
 
-
         return ArrayAssignExpr;
         S->dumpPretty(Ctx);
         assert(false && "Not implemented when Lhs is array sub expr");
-      }
-      else if (auto *ME = dyn_cast<MemberExpr>(Lhs)){
+      } else if (auto *ME = dyn_cast<MemberExpr>(Lhs)) {
 
         // See if this is decl ref expression.
-        // if (auto *RefExpr = dyn_cast<DeclRefExpr>(Lhs->IgnoreParens()->IgnoreImpCasts())){
+        // if (auto *RefExpr =
+        // dyn_cast<DeclRefExpr>(Lhs->IgnoreParens()->IgnoreImpCasts())){
         //   llvm::outs() << "Found a member expression with a decl ref!\n";
         //   RefExpr->dump();
         //   auto *Decl = RefExpr->getDecl();
         //   auto VarName = Decl->getNameAsString();
-        //   assert(false && "Expected a member expression with a decl ref to be a pointer dereference!\n");
+        //   assert(false && "Expected a member expression with a decl ref to be
+        //   a pointer dereference!\n");
         // }
 
         auto *LhsDecl = ME->getMemberDecl();
-        auto DeclName = LhsDecl->getName();
-        auto MemberType = ME->getType();
+        // auto DeclName = LhsDecl->getName();
+        // auto MemberType = ME->getType();
 
         llvm::outs() << "Found Base expr.\n";
         auto *BaseExpr = ME->getBase()->IgnoreParens()->IgnoreImpCasts();
         BaseExpr->dump();
-        
+
         std::string NameOfDecl;
         QualType TyOfDecl;
         std::string StructName;
-        if (const clang::DeclRefExpr *DRE = llvm::dyn_cast<clang::DeclRefExpr>(BaseExpr)) {
+        if (const clang::DeclRefExpr *DRE =
+                llvm::dyn_cast<clang::DeclRefExpr>(BaseExpr)) {
           const clang::ValueDecl *VD = DRE->getDecl();
           // Now you can safely cast VD to a more specific Decl type if needed
           VD->dump();
@@ -1480,7 +1461,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer, 
           StructName = TyOfDecl->getPointeeType().getAsString();
 
           std::string ModuleName = "Module_" + StructName;
-          //make sure modules are included.
+          // make sure modules are included.
           Module->IncludedModules.insert("open " + ModuleName);
           Module->IncludedModules.insert("module Box = Pulse.Lib.Box");
 
@@ -1488,51 +1469,46 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer, 
 
           auto *PulseCall = new AppE();
           auto *CallName = new VarTerm();
-          CallName->setVarName(ModuleName + "." + "set_" + MemberName.getAsString());
+          CallName->setVarName(ModuleName + "." + "set_" +
+                               MemberName.getAsString());
           PulseCall->setCallName(CallName);
-          
-          if (IsAllocatedOnHeap.count(VD)){
-          auto *Arg1 = new Paren();
 
-          auto *InnerTerm = new AppE(); 
-          auto *InnerTermCallName = new VarTerm();
-          InnerTermCallName->setVarName("Box.box_to_ref");
-          InnerTerm->setCallName(InnerTermCallName);
+          if (IsAllocatedOnHeap.count(VD)) {
+            auto *Arg1 = new Paren();
 
-          auto *InnerTermCallArg = new VarTerm(); 
-          InnerTermCallArg->setVarName(NameOfDecl);
-          InnerTerm->pushArg(InnerTermCallArg);
+            auto *InnerTerm = new AppE();
+            auto *InnerTermCallName = new VarTerm();
+            InnerTermCallName->setVarName("Box.box_to_ref");
+            InnerTerm->setCallName(InnerTermCallName);
 
-          Arg1->setInnerExpr(InnerTerm);
-          PulseCall->pushArg(Arg1);
-          }
-          else {
-            auto *InnerTermCallArg = new VarTerm(); 
-          InnerTermCallArg->setVarName(NameOfDecl);
+            auto *InnerTermCallArg = new VarTerm();
+            InnerTermCallArg->setVarName(NameOfDecl);
+            InnerTerm->pushArg(InnerTermCallArg);
 
-          PulseCall->pushArg(InnerTermCallArg);
+            Arg1->setInnerExpr(InnerTerm);
+            PulseCall->pushArg(Arg1);
+          } else {
+            auto *InnerTermCallArg = new VarTerm();
+            InnerTermCallArg->setVarName(NameOfDecl);
 
+            PulseCall->pushArg(InnerTermCallArg);
           }
 
-          //TODO: Angelica, I don't this releasing expressions before is required. 
-          //This was done because Pulse was not in ANF before. 
-          //However, it is in ANF now.
-          SmallVector<PulseStmt*> ExprsBef;
+          // TODO: Angelica, I don't this releasing expressions before is
+          // required. This was done because Pulse was not in ANF before.
+          // However, it is in ANF now.
+          SmallVector<PulseStmt *> ExprsBef;
           llvm::outs() << "Print Ty of BinaryExpression." << "\n";
           llvm::outs() << BO->getType().getAsString() << "\n";
-          auto *RhsExpr = getTermFromCExpr(Rhs, Analyzer, ExprsBef, BO->getType(), Module);
+          auto *RhsExpr =
+              getTermFromCExpr(Rhs, Analyzer, ExprsBef, BO->getType(), Module);
           PulseCall->pushArg(RhsExpr);
 
-
-          //Perhaps warp this In Pulse Expr
+          // Perhaps warp this In Pulse Expr
           auto *Expr = new PulseExpr();
           Expr->E = PulseCall;
           return Expr;
-
         }
-
-
-
 
         // //Expr->dump();
         // llvm::outs() << "Found End expr.\n";
@@ -1545,21 +1521,21 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer, 
         ME->dump();
         assert(false && "Did not expect to reach here!\n");
 
-      }
-      else if (auto *ME = dyn_cast<MemberExpr>(Rhs)){
+      } else if (auto *ME = dyn_cast<MemberExpr>(Rhs)) {
 
         auto *LhsDecl = ME->getMemberDecl();
-        auto DeclName = LhsDecl->getName();
-        auto MemberType = ME->getType();
+        // auto DeclName = LhsDecl->getName();
+        // auto MemberType = ME->getType();
 
         llvm::outs() << "Found Base expr.\n";
         auto *BaseExpr = ME->getBase()->IgnoreParens()->IgnoreImpCasts();
         BaseExpr->dump();
-        
+
         std::string NameOfDecl;
         QualType TyOfDecl;
         std::string StructName;
-        if (const clang::DeclRefExpr *DRE = llvm::dyn_cast<clang::DeclRefExpr>(BaseExpr)) {
+        if (const clang::DeclRefExpr *DRE =
+                llvm::dyn_cast<clang::DeclRefExpr>(BaseExpr)) {
           const clang::ValueDecl *VD = DRE->getDecl();
           // Now you can safely cast VD to a more specific Decl type if needed
           VD->dump();
@@ -1567,10 +1543,10 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer, 
           NameOfDecl = VD->getDeclName().getAsString();
           TyOfDecl = VD->getType();
           llvm::outs() << TyOfDecl->getPointeeType().getAsString() << "\n";
-          StructName = TyOfDecl->getPointeeType().getAsString(); 
+          StructName = TyOfDecl->getPointeeType().getAsString();
 
           std::string ModuleName = "Module_" + StructName;
-          //make sure modules are included.
+          // make sure modules are included.
           Module->IncludedModules.insert("open " + ModuleName);
           Module->IncludedModules.insert("module Box = Pulse.Lib.Box");
 
@@ -1578,46 +1554,44 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer, 
 
           auto *PulseCall = new AppE();
           auto *CallName = new VarTerm();
-          CallName->setVarName(ModuleName + "." + "get_" + MemberName.getAsString());
+          CallName->setVarName(ModuleName + "." + "get_" +
+                               MemberName.getAsString());
           PulseCall->setCallName(CallName);
-          
-          if (IsAllocatedOnHeap.count(VD)){
-          auto *Arg1 = new Paren();
 
-          auto *InnerTerm = new AppE(); 
-          auto *InnerTermCallName = new VarTerm();
-          InnerTermCallName->setVarName("Box.box_to_ref");
-          InnerTerm->setCallName(InnerTermCallName);
+          if (IsAllocatedOnHeap.count(VD)) {
+            auto *Arg1 = new Paren();
 
-          auto *InnerTermCallArg = new VarTerm(); 
-          InnerTermCallArg->setVarName(NameOfDecl);
-          InnerTerm->pushArg(InnerTermCallArg);
+            auto *InnerTerm = new AppE();
+            auto *InnerTermCallName = new VarTerm();
+            InnerTermCallName->setVarName("Box.box_to_ref");
+            InnerTerm->setCallName(InnerTermCallName);
 
-          Arg1->setInnerExpr(InnerTerm);
-          PulseCall->pushArg(Arg1);
-          }
-          else {
-            auto *InnerTermCallArg = new VarTerm(); 
-          InnerTermCallArg->setVarName(NameOfDecl);
-          PulseCall->pushArg(InnerTermCallArg);
+            auto *InnerTermCallArg = new VarTerm();
+            InnerTermCallArg->setVarName(NameOfDecl);
+            InnerTerm->pushArg(InnerTermCallArg);
 
+            Arg1->setInnerExpr(InnerTerm);
+            PulseCall->pushArg(Arg1);
+          } else {
+            auto *InnerTermCallArg = new VarTerm();
+            InnerTermCallArg->setVarName(NameOfDecl);
+            PulseCall->pushArg(InnerTermCallArg);
           }
 
-          //TODO: Angelica, I don't this releasing expressions before is required. 
-          //This was done because Pulse was not in ANF before. 
-          //However, it is in ANF now.
-          SmallVector<PulseStmt*> ExprsBef;
+          // TODO: Angelica, I don't this releasing expressions before is
+          // required. This was done because Pulse was not in ANF before.
+          // However, it is in ANF now.
+          SmallVector<PulseStmt *> ExprsBef;
           llvm::outs() << "Print Ty of BinaryExpression." << "\n";
           llvm::outs() << BO->getType().getAsString() << "\n";
-          auto *RhsExpr = getTermFromCExpr(Rhs, Analyzer, ExprsBef, BO->getType(), Module);
+          auto *RhsExpr =
+              getTermFromCExpr(Rhs, Analyzer, ExprsBef, BO->getType(), Module);
           PulseCall->pushArg(RhsExpr);
 
-
-          //Perhaps warp this In Pulse Expr
+          // Perhaps warp this In Pulse Expr
           auto *Expr = new PulseExpr();
           Expr->E = PulseCall;
           return Expr;
-
         }
 
       }
@@ -1625,40 +1599,41 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer, 
       // We should generate Lets otherwise
       else {
 
-        //TODO: Make sure to release these expressions
-        SmallVector<PulseStmt*> ExprsBef;
-      
-        auto *PulseLhsTerm = getTermFromCExpr(Lhs, Analyzer, ExprsBef,BO->getType(), Module, true);
-        auto *PulseRhsTerm = getTermFromCExpr(Rhs, Analyzer, ExprsBef, BO->getType(), Module);
+        // TODO: Make sure to release these expressions
+        SmallVector<PulseStmt *> ExprsBef;
+
+        auto *PulseLhsTerm = getTermFromCExpr(Lhs, Analyzer, ExprsBef,
+                                              BO->getType(), Module, true);
+        auto *PulseRhsTerm =
+            getTermFromCExpr(Rhs, Analyzer, ExprsBef, BO->getType(), Module);
         PulseAssignment *Assignment = new PulseAssignment();
         Assignment->Lhs = PulseLhsTerm;
         Assignment->Value = PulseRhsTerm;
         Assignment->setTag(PulseStmtTag::Assignment);
 
-        //We need to make a sequence of pulse statements.
+        // We need to make a sequence of pulse statements.
         PulseSequence *Start = nullptr;
-        if (!ExprsBef.empty()){
-            
-            for (size_t Idx = 0; Idx < ExprsBef.size(); Idx++){    
-              if (Start == nullptr){
-                auto *Seq = new PulseSequence();
-                Seq->assignS1(ExprsBef[Idx]);
-                Start = Seq; 
-              }
-              
-              auto *NextSeq = new PulseSequence(); 
-              NextSeq->assignS1(ExprsBef[Idx]);
-              Start->assignS2(NextSeq);
-              Start = NextSeq;
+        if (!ExprsBef.empty()) {
+
+          for (size_t Idx = 0; Idx < ExprsBef.size(); Idx++) {
+            if (Start == nullptr) {
+              auto *Seq = new PulseSequence();
+              Seq->assignS1(ExprsBef[Idx]);
+              Start = Seq;
             }
 
-            ExprsBef.clear();
+            auto *NextSeq = new PulseSequence();
+            NextSeq->assignS1(ExprsBef[Idx]);
+            Start->assignS2(NextSeq);
+            Start = NextSeq;
+          }
+
+          ExprsBef.clear();
         }
 
         assert(ExprsBef.empty() && "Expected expressions to be released!");
 
-
-        if (Start != nullptr){
+        if (Start != nullptr) {
           Start->assignS2(Assignment);
           return Start;
         }
@@ -1666,39 +1641,40 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer, 
         return Assignment;
       }
     } else {
-      
-      SmallVector<PulseStmt *> ExprsBefore;
-      
-      auto *PExpr = new PulseExpr(); 
-      PExpr->setTag(PulseStmtTag::Expr);
-      auto ExprTerm = getTermFromCExpr(BO, Analyzer, ExprsBefore, BO->getType(), Module);
-      if (!ExprTerm)
-          return nullptr; 
-        
-      PExpr->E = ExprTerm;      
-      
-      //We need to make a sequence of pulse statements.
-      PulseSequence *Start = nullptr;
-      if (!ExprsBefore.empty()){
 
-        for (size_t Idx = 0; Idx < ExprsBefore.size(); Idx++){    
-          if (Start == nullptr){
+      SmallVector<PulseStmt *> ExprsBefore;
+
+      auto *PExpr = new PulseExpr();
+      PExpr->setTag(PulseStmtTag::Expr);
+      auto ExprTerm =
+          getTermFromCExpr(BO, Analyzer, ExprsBefore, BO->getType(), Module);
+      if (!ExprTerm)
+        return nullptr;
+
+      PExpr->E = ExprTerm;
+
+      // We need to make a sequence of pulse statements.
+      PulseSequence *Start = nullptr;
+      if (!ExprsBefore.empty()) {
+
+        for (size_t Idx = 0; Idx < ExprsBefore.size(); Idx++) {
+          if (Start == nullptr) {
             auto *Seq = new PulseSequence();
             Seq->assignS1(ExprsBefore[Idx]);
-            Start = Seq; 
+            Start = Seq;
           }
 
-          auto *NextSeq = new PulseSequence(); 
+          auto *NextSeq = new PulseSequence();
           NextSeq->assignS1(ExprsBefore[Idx]);
           Start->assignS2(NextSeq);
           Start = NextSeq;
         }
 
-        //remove all released expressions.
+        // remove all released expressions.
         ExprsBefore.clear();
       }
-      
-      if (Start != nullptr){
+
+      if (Start != nullptr) {
         Start->assignS2(PExpr);
         return Start;
       }
@@ -1710,17 +1686,18 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer, 
     }
 
   } else if (auto *E = dyn_cast<Expr>(S)) {
-    
+
     SmallVector<PulseStmt *> ExprsBefore;
 
     auto *PulseExpression = new PulseExpr();
     PulseExpression->setTag(PulseStmtTag::Expr);
 
-    auto *PExprTerm = getTermFromCExpr(E, Analyzer, ExprsBefore, E->getType(), Module);
+    auto *PExprTerm =
+        getTermFromCExpr(E, Analyzer, ExprsBefore, E->getType(), Module);
 
     if (PExprTerm == nullptr)
       return nullptr;
-    
+
     PulseExpression->E = PExprTerm;
 
     assert(ExprsBefore.empty() && "Expected expressions to be released!");
@@ -1734,21 +1711,22 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer, 
   } else if (auto *IF = dyn_cast<IfStmt>(S)) {
 
     auto *Cond = IF->getCond();
-    auto *Else = IF->getElse(); 
+    auto *Else = IF->getElse();
     auto *Then = IF->getThen();
-    
+
     SmallVector<PulseStmt *> ExprsBefore;
 
-    auto PulseCond = getTermFromCExpr(Cond, Analyzer, ExprsBefore, Cond->getType(), Module);
+    auto PulseCond =
+        getTermFromCExpr(Cond, Analyzer, ExprsBefore, Cond->getType(), Module);
     auto *PulseElse = pulseFromStmt(Else, Analyzer, Module);
     auto *PulseThen = pulseFromStmt(Then, Analyzer, Module);
 
     auto PulseIfStmt = new PulseIf();
     PulseIfStmt->setTag(PulseStmtTag::If);
     PulseIfStmt->Head = PulseCond;
-    PulseIfStmt->Else = PulseElse; 
+    PulseIfStmt->Else = PulseElse;
     PulseIfStmt->Then = PulseThen;
-    
+
     assert(ExprsBefore.empty() && "Expected expressions to be released!");
 
     return PulseIfStmt;
@@ -1758,19 +1736,20 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer, 
     llvm::outs() << "\nEnd in pulseFromStmt.\n";
     assert(false && "Not implemented Clang expr in pulseFromStmt\n");
   } else if (auto *RS = dyn_cast<ReturnStmt>(S)) {
-    
-    if (auto *RetVal = RS->getRetValue()){
+
+    if (auto *RetVal = RS->getRetValue()) {
       SmallVector<PulseStmt *> ExprsBefore;
       auto NewPulseExpr = new PulseExpr();
       NewPulseExpr->setTag(PulseStmtTag::Expr);
-      auto *RetTerm = getTermFromCExpr(RetVal, Analyzer, ExprsBefore, RetVal->getType(), Module);
+      auto *RetTerm = getTermFromCExpr(RetVal, Analyzer, ExprsBefore,
+                                       RetVal->getType(), Module);
       if (RetTerm == nullptr)
         return nullptr;
-      NewPulseExpr->E = RetTerm; 
+      NewPulseExpr->E = RetTerm;
 
       assert(ExprsBefore.empty() && "Expected expressions to be released!");
 
-      return NewPulseExpr; 
+      return NewPulseExpr;
     }
 
     return nullptr;
@@ -1786,31 +1765,30 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer, 
     assert(false && "Not implemented Clang expr in pulseFromStmt\n");
   } else if (auto *WS = dyn_cast<WhileStmt>(S)) {
 
-    auto *WhileCond = WS->getCond(); 
-    llvm::outs () << "Dump while condition" << "\n";
+    auto *WhileCond = WS->getCond();
+    llvm::outs() << "Dump while condition" << "\n";
     WhileCond->dump();
-    llvm::outs () << "End while condition dump" << "\n";
+    llvm::outs() << "End while condition dump" << "\n";
     auto *WhileBody = WS->getBody();
 
-    llvm::outs () << "Dump while Body" << "\n";
+    llvm::outs() << "Dump while Body" << "\n";
     WhileBody->dump();
-    llvm::outs () << "End while Body dump" << "\n";
+    llvm::outs() << "End while Body dump" << "\n";
 
-
-    if (auto *AttrStmt = dyn_cast<AttributedStmt>(WhileBody)){
+    if (auto *AttrStmt = dyn_cast<AttributedStmt>(WhileBody)) {
       llvm::outs() << "Found while invariant" << "\n";
       AttrStmt->getSubStmt()->dump();
       auto *CompundBody = AttrStmt->getSubStmt();
 
       auto Attributes = AttrStmt->getAttrs();
-      auto *PulseWhile = new PulseWhileStmt(); 
-      for (auto *Attr : Attributes){
+      auto *PulseWhile = new PulseWhileStmt();
+      for (auto *Attr : Attributes) {
 
-        if (auto *AnnAttr = dyn_cast<AnnotateAttr>(Attr)){
-          if (AnnAttr->getAttrName()->getName() == "pulse"){
+        if (auto *AnnAttr = dyn_cast<AnnotateAttr>(Attr)) {
+          if (AnnAttr->getAttrName()->getName() == "pulse") {
 
             auto AnnotationData = AnnAttr->getAnnotation().str();
-            
+
             std::string StartDelimiter = "invariants:";
             size_t pos = AnnotationData.find(StartDelimiter);
             std::string EndDelimiter = "|END";
@@ -1818,15 +1796,18 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer, 
             size_t end = AnnotationData.find(EndDelimiter);
             std::string match;
             if (pos != std::string::npos) {
-            std::string firstPart = AnnotationData.substr(0, pos);
-            match = AnnotationData.substr(pos +  StartDelimiter.length() , end - (pos + StartDelimiter.length()));
-            if (!match.empty() && match.front() == '"' && match.back() == '"') {
-              match = match.substr(1, match.size() - 2);
-            }     
-            // if (pos != std::string::npos) {
-            //   std::string firstPart = AnnotationData.substr(0, pos);
-            //   match = AnnotationData.substr(pos + delimiter.length());
-            //}
+              std::string firstPart = AnnotationData.substr(0, pos);
+              match =
+                  AnnotationData.substr(pos + StartDelimiter.length(),
+                                        end - (pos + StartDelimiter.length()));
+              if (!match.empty() && match.front() == '"' &&
+                  match.back() == '"') {
+                match = match.substr(1, match.size() - 2);
+              }
+              // if (pos != std::string::npos) {
+              //   std::string firstPart = AnnotationData.substr(0, pos);
+              //   match = AnnotationData.substr(pos + delimiter.length());
+              //}
             }
 
             std::vector<std::string> tokens;
@@ -1837,17 +1818,15 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer, 
             }
 
             llvm::outs() << "PRINT OUT the invarinat tokens\n";
-            for (auto token : tokens){
+            for (auto token : tokens) {
               llvm::outs() << token << "\n";
               auto *NewLemmaTerm = new LemmaStatement();
               NewLemmaTerm->Lemma.assign(token.c_str());
               PulseWhile->Invariant.push_back(NewLemmaTerm);
             }
             llvm::outs() << "\n";
-
           }
         }
-
       }
 
       PulseWhile->setTag(PulseStmtTag::WhileStmt);
@@ -1856,32 +1835,32 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer, 
 
       return PulseWhile;
 
-      //exit(1);
-    }
-    else{
-     
-    auto *PulseWhile = new PulseWhileStmt(); 
-    PulseWhile->setTag(PulseStmtTag::WhileStmt);
+      // exit(1);
+    } else {
 
-    // auto It = StmtToLemmas.find(WS);
-    //Remove temporary for now
-    //assert(it != MapExprToAssignedTemporary.end() && "Expression not found in map");
-    // if (It == StmtToLemmas.end()) {
-    //   // If not found, create a new temporary
-    //   assert(false && "Key not found in map!\n");
-    // }
+      auto *PulseWhile = new PulseWhileStmt();
+      PulseWhile->setTag(PulseStmtTag::WhileStmt);
 
-    // PulseWhile->Invariant = It->second;
+      // auto It = StmtToLemmas.find(WS);
+      // Remove temporary for now
+      // assert(it != MapExprToAssignedTemporary.end() && "Expression not found
+      // in map");
+      // if (It == StmtToLemmas.end()) {
+      //   // If not found, create a new temporary
+      //   assert(false && "Key not found in map!\n");
+      // }
 
-    PulseWhile->Guard = pulseFromStmt(WhileCond, Analyzer, Module);
-    PulseWhile->Body = pulseFromCompoundStmt(WhileBody, Analyzer, Module);
+      // PulseWhile->Invariant = It->second;
 
-    return PulseWhile;
+      PulseWhile->Guard = pulseFromStmt(WhileCond, Analyzer, Module);
+      PulseWhile->Body = pulseFromCompoundStmt(WhileBody, Analyzer, Module);
 
-    llvm::outs() << "\n\nPrint in pulseFromStmt WhileStmt\n";
-    S->dumpPretty(Ctx);
-    llvm::outs() << "\nEnd in pulseFromStmt.\n";
-    assert(false && "Not implemented Clang expr in pulseFromStmt\n");
+      return PulseWhile;
+
+      llvm::outs() << "\n\nPrint in pulseFromStmt WhileStmt\n";
+      S->dumpPretty(Ctx);
+      llvm::outs() << "\nEnd in pulseFromStmt.\n";
+      assert(false && "Not implemented Clang expr in pulseFromStmt\n");
     }
   } else if (auto *US = dyn_cast<UnaryOperator>(S)) {
     llvm::outs() << "\n\nPrint in pulseFromStmt UnaryOperator\n";
@@ -1890,36 +1869,36 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer, 
     assert(false && "Not implemented Clang expr in pulseFromStmt\n");
   } else if (auto *NS = dyn_cast<NullStmt>(S)) {
     return nullptr;
-  } 
-  else if (auto *CS = dyn_cast<CompoundStmt>(S)){
+  } else if (auto *CS = dyn_cast<CompoundStmt>(S)) {
     return pulseFromCompoundStmt(CS, Analyzer, Module);
-  }
-  else if (auto *AttrStmt = dyn_cast<AttributedStmt>(S)){
+  } else if (auto *AttrStmt = dyn_cast<AttributedStmt>(S)) {
 
     auto *SubStmt = AttrStmt->getSubStmt();
     PulseSequence *NewSequence = nullptr;
-    
+
     auto Attrs = AttrStmt->getAttrs();
-    for (auto *Attr : Attrs){
-      if (auto *AnnotAttr = dyn_cast<AnnotateAttr>(Attr)){
-        if (AnnotAttr->getAttrName()->getName() == "pulse"){
+    for (auto *Attr : Attrs) {
+      if (auto *AnnotAttr = dyn_cast<AnnotateAttr>(Attr)) {
+        if (AnnotAttr->getAttrName()->getName() == "pulse") {
           std::string Match;
-          auto AttrKind = getPulseAnnKindFromString(AnnotAttr->getAnnotation(), Match);
-          assert(AttrKind == PulseAnnKind::LemmaStatement && "Only Lemmas allowed in the middle of the body!");
-          if (NewSequence == nullptr){
-            auto *LS = new LemmaStatement(); 
+          auto AttrKind =
+              getPulseAnnKindFromString(AnnotAttr->getAnnotation(), Match);
+          assert(AttrKind == PulseAnnKind::LemmaStatement &&
+                 "Only Lemmas allowed in the middle of the body!");
+          if (NewSequence == nullptr) {
+            auto *LS = new LemmaStatement();
             LS->Lemma = Match;
-            auto *PE = new PulseExpr(); 
-            PE->E = LS; 
-            auto *NewSeq = new PulseSequence(); 
+            auto *PE = new PulseExpr();
+            PE->E = LS;
+            auto *NewSeq = new PulseSequence();
             NewSeq->assignS1(PE);
             NewSequence = NewSeq;
             continue;
           }
-          auto *LS = new LemmaStatement(); 
+          auto *LS = new LemmaStatement();
           LS->Lemma = Match;
-          auto *PE = new PulseExpr(); 
-          PE->E = LS; 
+          auto *PE = new PulseExpr();
+          PE->E = LS;
           auto *NewSeq = new PulseSequence();
           NewSequence->assignS2(NewSeq);
           NewSequence = NewSeq;
@@ -1928,8 +1907,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer, 
     }
     NewSequence->assignS2(pulseFromStmt(SubStmt, Analyzer, Module));
     return NewSequence;
-  }
-  else {
+  } else {
     llvm::outs() << "\n\nPrint in pulseFromStmt\n";
     S->dumpPretty(Ctx);
     llvm::outs() << "\nEnd in pulseFromStmt.\n";
@@ -1939,35 +1917,45 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer, 
   return nullptr;
 }
 
-const clang::Stmt *getNextStatement(const clang::Expr *expr, clang::ASTContext &Context) {
-    if (!expr) return nullptr;
+const clang::Stmt *getNextStatement(const clang::Expr *expr,
+                                    clang::ASTContext &Context) {
+  if (!expr)
+    return nullptr;
 
-    const clang::Stmt *parent = Context.getParents(*expr).begin()->get<clang::Stmt>();  // Get parent node
-    if (!parent) return nullptr;
+  const clang::Stmt *parent =
+      Context.getParents(*expr).begin()->get<clang::Stmt>(); // Get parent node
+  if (!parent)
+    return nullptr;
 
-    bool foundExpr = false;
-    for (const clang::Stmt *child : parent->children()) {
-        if (foundExpr) return child;  // Return next statement after expr
-        if (child == expr) foundExpr = true;
-    }
+  bool foundExpr = false;
+  for (const clang::Stmt *child : parent->children()) {
+    if (foundExpr)
+      return child; // Return next statement after expr
+    if (child == expr)
+      foundExpr = true;
+  }
 
-    return nullptr;  // No next statement found
+  return nullptr; // No next statement found
 }
 
-Term *PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer, 
-  llvm::SmallVector<PulseStmt*> &ExprsBefore, QualType ParentType, PulseModul *Module, bool isWrite) {
+Term *
+PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
+                               llvm::SmallVector<PulseStmt *> &ExprsBefore,
+                               QualType ParentType, PulseModul *Module,
+                               bool isWrite) {
 
- if (auto *IL = dyn_cast<IntegerLiteral>(E)) {
+  if (auto *IL = dyn_cast<IntegerLiteral>(E)) {
 
-    auto NewConstTerm = new ConstTerm(); 
+    auto NewConstTerm = new ConstTerm();
     NewConstTerm->setTag(TermTag::Const);
     NewConstTerm->ConstantValue = std::to_string(IL->getValue().getSExtValue());
 
-    llvm::outs() << "Found Integer Literal: " << NewConstTerm->ConstantValue << "\n";
+    llvm::outs() << "Found Integer Literal: " << NewConstTerm->ConstantValue
+                 << "\n";
     llvm::outs() << ParentType.getAsString() << "\n";
-    
+
     NewConstTerm->Symbol = getSymbolKeyForCType(ParentType, Ctx);
-    
+
     // if (NewConstTerm->Symbol == SymbolTable::UInt32){
     //   llvm::outs() << "Symbol for Integer Literal 64 integer." << "\n";
     // }
@@ -1999,25 +1987,27 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     assert(false && "Expression not implemeted in getTermFromCExpr\n");
   } else if (auto *BO = dyn_cast<BinaryOperator>(E)) {
 
-    auto *Lhs = BO->getLHS(); 
-    auto *Rhs = BO->getRHS(); 
+    auto *Lhs = BO->getLHS();
+    auto *Rhs = BO->getRHS();
     auto Op = BO->getOpcode();
 
-    if (Lhs->getType() != Rhs->getType()){
+    if (Lhs->getType() != Rhs->getType()) {
       E->dumpPretty(Ctx);
       LLVM_DEBUG(llvm::dbgs() << "\n");
       assert(false && "Expected types of Lhs and Rhs to be the same. \
               Unsafe type casting now allowed in Pulse\n");
     }
-    
+
     SymbolTable TypeKey = getSymbolKeyForCType(Lhs->getType(), Ctx);
     auto OpKey = getSymbolKeyForOperator(TypeKey, Op);
 
     auto *NewAppENode = new AppE();
     NewAppENode->setTag(TermTag::AppE);
-    auto LhsTerm = getTermFromCExpr(Lhs, MutAnalyzer, ExprsBefore, BO->getType(), Module);
-    auto RhsTerm = getTermFromCExpr(Rhs, MutAnalyzer, ExprsBefore, BO->getType(), Module);
-    
+    auto LhsTerm =
+        getTermFromCExpr(Lhs, MutAnalyzer, ExprsBefore, BO->getType(), Module);
+    auto RhsTerm =
+        getTermFromCExpr(Rhs, MutAnalyzer, ExprsBefore, BO->getType(), Module);
+
     auto *CallNameVar = new VarTerm();
     CallNameVar->setVarName(OpKey);
     CallNameVar->setTag(TermTag::Var);
@@ -2025,7 +2015,7 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     NewAppENode->pushArg(LhsTerm);
     NewAppENode->pushArg(RhsTerm);
 
-    //Wrap Call Expr into a Paren to be safe. 
+    // Wrap Call Expr into a Paren to be safe.
     auto *NewParen = new Paren();
     NewParen->setInnerExpr(NewAppENode);
 
@@ -2044,11 +2034,12 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       FuncName->setTag(TermTag::Var);
       DerefAppE->setTag(TermTag::AppE);
       DerefAppE->setCallName(FuncName);
-      auto *TermForBaseExpr = getTermFromCExpr(UO->getSubExpr(), MutAnalyzer, ExprsBefore, ParentType, Module);
+      auto *TermForBaseExpr = getTermFromCExpr(UO->getSubExpr(), MutAnalyzer,
+                                               ExprsBefore, ParentType, Module);
       DerefAppE->pushArg(TermForBaseExpr);
 
-      //Wrap this deref in a parenthesis. 
-      auto *Parenthesis = new Paren(); 
+      // Wrap this deref in a parenthesis.
+      auto *Parenthesis = new Paren();
       Parenthesis->setInnerExpr(DerefAppE);
       return Parenthesis;
 
@@ -2067,80 +2058,84 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     assert(false && "Expression not implemeted in getTermFromCExpr\n");
   } else if (auto *CE = dyn_cast<CallExpr>(E)) {
 
-      if (CE->getDirectCallee()->getNameAsString() == pulseProofTermFromC){
-              llvm::outs() << "Encountered function: "; 
-              llvm::outs() << CE->getDirectCallee()->getNameAsString() << "\n";
-              llvm::outs() << "End encountered function.\n\n";
+    if (CE->getDirectCallee()->getNameAsString() == pulseProofTermFromC) {
+      llvm::outs() << "Encountered function: ";
+      llvm::outs() << CE->getDirectCallee()->getNameAsString() << "\n";
+      llvm::outs() << "End encountered function.\n\n";
 
-              auto NumArgs = CE->getNumArgs(); 
-              assert(NumArgs == 1 && "Expected number of arguments for Pulse Proof Term to be 1!");
-              auto *UserLemma = new Lemma(); 
-              if (auto *ArgToString = dyn_cast<StringLiteral>(CE->getArg(0)->IgnoreCasts())){
-                auto ArgString = ArgToString->getString();
-                UserLemma->lemmas.push_back(ArgString.str());
-              }
-              else {
-                 assert (false && "Expected pulse while to have arguments as string literals");
-              }
-
-              // Term *LemmaExpr = new PulseExpr(); 
-              // LemmaExpr->E = UserLemma; 
-              return UserLemma;
+      auto NumArgs = CE->getNumArgs();
+      assert(NumArgs == 1 &&
+             "Expected number of arguments for Pulse Proof Term to be 1!");
+      auto *UserLemma = new Lemma();
+      if (auto *ArgToString =
+              dyn_cast<StringLiteral>(CE->getArg(0)->IgnoreCasts())) {
+        auto ArgString = ArgToString->getString();
+        UserLemma->lemmas.push_back(ArgString.str());
+      } else {
+        assert(false &&
+               "Expected pulse while to have arguments as string literals");
       }
-      else if (CE->getDirectCallee()->getNameAsString() == pulseWhileInvariantFromC){
-        
-        llvm::outs() << "Encountered function: "; 
-        llvm::outs() << CE->getDirectCallee()->getNameAsString() << "\n";
-        llvm::outs() << "End encountered function.\n\n";
 
-        auto NumArgs = CE->getNumArgs();
-        
-        std::vector<Slprop*> VectorLemmas;
-        for (size_t Idx = 0; Idx < NumArgs; Idx++){
-          auto *UserLemma = new Lemma(); 
-          auto *Arg = CE->getArg(Idx);
-          //assert that each argument is actually a string literal 
-          if (auto *ArgToString = dyn_cast<StringLiteral>(Arg->IgnoreCasts())){
-            auto ArgString = ArgToString->getString();
-            UserLemma->lemmas.push_back(ArgString.str());
-            Slprop *Prop = UserLemma;
-            VectorLemmas.push_back(Prop);
-            //assert that next statement is a while loop
-          }
-          else {
-            assert (false && "Expected pulse while to have arguments as string literals");
-          }
+      // Term *LemmaExpr = new PulseExpr();
+      // LemmaExpr->E = UserLemma;
+      return UserLemma;
+    } else if (CE->getDirectCallee()->getNameAsString() ==
+               pulseWhileInvariantFromC) {
+
+      llvm::outs() << "Encountered function: ";
+      llvm::outs() << CE->getDirectCallee()->getNameAsString() << "\n";
+      llvm::outs() << "End encountered function.\n\n";
+
+      auto NumArgs = CE->getNumArgs();
+
+      std::vector<Slprop *> VectorLemmas;
+      for (size_t Idx = 0; Idx < NumArgs; Idx++) {
+        auto *UserLemma = new Lemma();
+        auto *Arg = CE->getArg(Idx);
+        // assert that each argument is actually a string literal
+        if (auto *ArgToString = dyn_cast<StringLiteral>(Arg->IgnoreCasts())) {
+          auto ArgString = ArgToString->getString();
+          UserLemma->lemmas.push_back(ArgString.str());
+          Slprop *Prop = UserLemma;
+          VectorLemmas.push_back(Prop);
+          // assert that next statement is a while loop
+        } else {
+          assert(false &&
+                 "Expected pulse while to have arguments as string literals");
         }
-
-        //Slprop *Lemma = UserLemmas;
-        auto *Next = getNextStatement(E, Ctx);
-        if (auto *While = dyn_cast<WhileStmt>(Next)){
-                 //Add corresponding while invariant.
-                 StmtToLemmas.insert(std::make_pair(While, VectorLemmas));
-                 return nullptr;
-        }
-        assert(false && "Expected next statement after pulse invariant to be a while!\n");
       }
 
-      auto *CallAppE = new AppE();
-      auto *FuncName = new VarTerm();
-      FuncName->setVarName(CE->getDirectCallee()->getNameAsString());
-      FuncName->setTag(TermTag::Var);
-      CallAppE->setTag(TermTag::AppE);
-      CallAppE->setCallName(FuncName);
-
-      for (size_t i = 0; i < CE->getNumArgs(); i++){
-        auto *Arg = CE->getArg(i);
-        auto *ArgTerm = getTermFromCExpr(Arg, MutAnalyzer, ExprsBefore, ParentType, Module);
-        CallAppE->pushArg(ArgTerm);
+      // Slprop *Lemma = UserLemmas;
+      auto *Next = getNextStatement(E, Ctx);
+      if (auto *While = dyn_cast<WhileStmt>(Next)) {
+        // Add corresponding while invariant.
+        StmtToLemmas.insert(std::make_pair(While, VectorLemmas));
+        return nullptr;
       }
+      assert(false &&
+             "Expected next statement after pulse invariant to be a while!\n");
+    }
 
-      //Wrap Call expr in Paren Node
+    auto *CallAppE = new AppE();
+    auto *FuncName = new VarTerm();
+    FuncName->setVarName(CE->getDirectCallee()->getNameAsString());
+    FuncName->setTag(TermTag::Var);
+    CallAppE->setTag(TermTag::AppE);
+    CallAppE->setCallName(FuncName);
 
-      auto *NewParen = new Paren(); 
-      NewParen->setInnerExpr(CallAppE);
-      
-      return NewParen;
+    for (size_t i = 0; i < CE->getNumArgs(); i++) {
+      auto *Arg = CE->getArg(i);
+      auto *ArgTerm =
+          getTermFromCExpr(Arg, MutAnalyzer, ExprsBefore, ParentType, Module);
+      CallAppE->pushArg(ArgTerm);
+    }
+
+    // Wrap Call expr in Paren Node
+
+    auto *NewParen = new Paren();
+    NewParen->setInnerExpr(CallAppE);
+
+    return NewParen;
 
     llvm::outs()
         << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr CallExpr\n";
@@ -2150,7 +2145,8 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
   } else if (auto *IC = dyn_cast<ImplicitCastExpr>(E)) {
 
     auto *SubExpr = IC->getSubExpr();
-    return getTermFromCExpr(SubExpr, MutAnalyzer, ExprsBefore, ParentType, Module);
+    return getTermFromCExpr(SubExpr, MutAnalyzer, ExprsBefore, ParentType,
+                            Module);
 
     llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "
                     "ImplicitCastExpr\n";
@@ -2158,46 +2154,45 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     llvm::outs() << "\nEnd printing term.\n\n";
     assert(false && "Expression not implemeted in getTermFromCExpr\n");
   } else if (auto *DRE = dyn_cast<DeclRefExpr>(E)) {
-    
+
     auto *DreDecl = DRE->getDecl();
 
-    if (MutAnalyzer->isMutated(DreDecl) && !isWrite){
+    if (MutAnalyzer->isMutated(DreDecl) && !isWrite) {
 
-      //Create a new variable to be returned.
-      //TODO: Vidush create a gensym for to get variable name.
+      // Create a new variable to be returned.
+      // TODO: Vidush create a gensym for to get variable name.
 
-      //std::string LetVar = DRE->getDecl()->getNameAsString(); //gensym("new");
-      //VarTerm *VTermRet = new VarTerm();
-      //VTermRet->setVarName(LetVar);
+      // std::string LetVar = DRE->getDecl()->getNameAsString();
+      // //gensym("new"); VarTerm *VTermRet = new VarTerm();
+      // VTermRet->setVarName(LetVar);
 
-      //Need a let to extract its value
-      //auto *LetForVariable = new LetBinding();
-      //LetForVariable->VarName = LetVar;
-      
-      //Generate an AppE for the left hand side. 
+      // Need a let to extract its value
+      // auto *LetForVariable = new LetBinding();
+      // LetForVariable->VarName = LetVar;
+
+      // Generate an AppE for the left hand side.
       auto *InitAppE = new AppE();
-      auto *CallName = new VarTerm(); 
+      auto *CallName = new VarTerm();
       CallName->setVarName("!");
       InitAppE->setCallName(CallName);
-      
-      //The actual variable whose value we want 
+
+      // The actual variable whose value we want
       VarTerm *VTerm = new VarTerm();
       VTerm->setVarName(DRE->getDecl()->getNameAsString());
 
       InitAppE->pushArg(VTerm);
 
-      //Wrap this AppE in a Parenthesis. 
+      // Wrap this AppE in a Parenthesis.
 
-      auto *PulseParenthesis = new Paren(); 
+      auto *PulseParenthesis = new Paren();
       PulseParenthesis->setInnerExpr(InitAppE);
 
-      //LetForVariable->LetInit = LetInitAppE;
+      // LetForVariable->LetInit = LetInitAppE;
 
-      //ExprsBefore.push_back(LetForVariable);
+      // ExprsBefore.push_back(LetForVariable);
 
-      //return VTermRet;
+      // return VTermRet;
       return PulseParenthesis;
-  
     }
 
     VarTerm *VTerm = new VarTerm();
@@ -2210,34 +2205,35 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     llvm::outs() << "\nEnd printing term.\n\n";
     // assert(false && "Expression not implemeted in getTermFromCExpr\n");
     return VTerm;
-  }
-  else if (auto *ArrSubExpr = dyn_cast<ArraySubscriptExpr>(E)){
+  } else if (auto *ArrSubExpr = dyn_cast<ArraySubscriptExpr>(E)) {
     auto *ArrBase = ArrSubExpr->getBase();
     auto ArrIdx = ArrSubExpr->getIdx();
 
-    auto *PulseCall = new AppE(); 
+    auto *PulseCall = new AppE();
     PulseCall->setTag(TermTag::AppE);
-    auto *Call = new VarTerm(); 
+    auto *Call = new VarTerm();
     Call->setTag(TermTag::Var);
     Call->setVarName("op_Array_Access");
     PulseCall->setCallName(Call);
-     
-    PulseCall->pushArg(getTermFromCExpr(ArrBase, MutAnalyzer, ExprsBefore, ParentType, Module));
-    PulseCall->pushArg(getTermFromCExpr(ArrIdx, MutAnalyzer, ExprsBefore, ParentType, Module));
 
-    //wrap PulseCall in Paren
-    auto *NewParen = new Paren(); 
+    PulseCall->pushArg(getTermFromCExpr(ArrBase, MutAnalyzer, ExprsBefore,
+                                        ParentType, Module));
+    PulseCall->pushArg(
+        getTermFromCExpr(ArrIdx, MutAnalyzer, ExprsBefore, ParentType, Module));
+
+    // wrap PulseCall in Paren
+    auto *NewParen = new Paren();
     NewParen->setInnerExpr(PulseCall);
 
     return NewParen;
-  }
-  else if (auto *ParenExpr = dyn_cast<clang::ParenExpr>(E)){
+  } else if (auto *ParenExpr = dyn_cast<clang::ParenExpr>(E)) {
 
     auto *ClangSubExpr = ParenExpr->getSubExpr();
     auto *PulseParenExpr = new Paren();
 
-    auto *PulseSubExpr = getTermFromCExpr(ClangSubExpr, MutAnalyzer, ExprsBefore, ParentType, Module);
-    
+    auto *PulseSubExpr = getTermFromCExpr(ClangSubExpr, MutAnalyzer,
+                                          ExprsBefore, ParentType, Module);
+
     PulseParenExpr->setInnerExpr(PulseSubExpr);
     return PulseParenExpr;
   } else if (auto *CCastExpr = dyn_cast<CStyleCastExpr>(E)) {
@@ -2251,7 +2247,7 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
           auto *DesugaredElemTy = ElementTy->getUnqualifiedDesugaredType();
           if (const TypedefType *TT = ElementTy->getAs<TypedefType>()) {
             if (auto *RT = dyn_cast<RecordType>(DesugaredElemTy)) {
-              const RecordDecl *RD = RT->getDecl();
+              // const RecordDecl *RD = RT->getDecl();
               auto RecordName = TT->getDecl()->getDeclName();
               // Make a new call node for the allocation of the record.
               std::string ModuleName = "Module_" + RecordName.getAsString();
@@ -2289,104 +2285,103 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
   //   }
   // }
   else if (auto *RE = dyn_cast<clang::RecoveryExpr>(E)) {
-      if (Expr *SubExpr = RE->getExprStmt()) {
-          llvm::outs() << "RecoveryExpr contains sub-expression, processing it instead.\n";
-          
+    if (Expr *SubExpr = RE->getExprStmt()) {
+      llvm::outs()
+          << "RecoveryExpr contains sub-expression, processing it instead.\n";
+
       RE->dump();
 
       SubExpr->dump();
       assert(false && "Should not reach here!");
-          return getTermFromCExpr(SubExpr, MutAnalyzer, ExprsBefore, ParentType, Module);
-      }
-      RE->dump();
-      llvm::errs() << "RecoveryExpr without sub-expression, returning nullptr.\n";
-      assert(false && "Should not reach here!");
-      return nullptr;
+      return getTermFromCExpr(SubExpr, MutAnalyzer, ExprsBefore, ParentType,
+                              Module);
     }
-  else if (auto *ME = dyn_cast<MemberExpr>(E)) {
+    RE->dump();
+    llvm::errs() << "RecoveryExpr without sub-expression, returning nullptr.\n";
+    assert(false && "Should not reach here!");
+    return nullptr;
+  } else if (auto *ME = dyn_cast<MemberExpr>(E)) {
 
-        auto *LhsDecl = ME->getMemberDecl();
-        auto DeclName = LhsDecl->getName();
-        auto MemberType = ME->getType();
+    auto *LhsDecl = ME->getMemberDecl();
+    // auto DeclName = LhsDecl->getName();
+    // auto MemberType = ME->getType();
 
-        llvm::outs() << "Found Base expr.\n";
-        auto *BaseExpr = ME->getBase()->IgnoreParens()->IgnoreImpCasts();
-        BaseExpr->dump();
-        
-        std::string NameOfDecl;
-        QualType TyOfDecl;
-        std::string StructName;
-        if (const clang::DeclRefExpr *DRE = llvm::dyn_cast<clang::DeclRefExpr>(BaseExpr)) {
-          const ValueDecl *VD = DRE->getDecl();
-          // Now you can safely cast VD to a more specific Decl type if needed
-          VD->dump();
-          llvm::outs() << VD->getDeclName() << "End\n";
-          NameOfDecl = VD->getDeclName().getAsString();
-          TyOfDecl = VD->getType();
-          llvm::outs() << TyOfDecl->getPointeeType().getAsString() << "\n";
-          StructName = TyOfDecl->getPointeeType().getAsString();
+    llvm::outs() << "Found Base expr.\n";
+    auto *BaseExpr = ME->getBase()->IgnoreParens()->IgnoreImpCasts();
+    BaseExpr->dump();
 
-          std::string ModuleName = "Module_" + StructName;
-          //make sure modules are included.
-          Module->IncludedModules.insert("open " + ModuleName);
-          Module->IncludedModules.insert("module Box = Pulse.Lib.Box");
+    std::string NameOfDecl;
+    QualType TyOfDecl;
+    std::string StructName;
+    if (const clang::DeclRefExpr *DRE =
+            llvm::dyn_cast<clang::DeclRefExpr>(BaseExpr)) {
+      const ValueDecl *VD = DRE->getDecl();
+      // Now you can safely cast VD to a more specific Decl type if needed
+      VD->dump();
+      llvm::outs() << VD->getDeclName() << "End\n";
+      NameOfDecl = VD->getDeclName().getAsString();
+      TyOfDecl = VD->getType();
+      llvm::outs() << TyOfDecl->getPointeeType().getAsString() << "\n";
+      StructName = TyOfDecl->getPointeeType().getAsString();
 
-          auto MemberName = LhsDecl->getDeclName();
+      std::string ModuleName = "Module_" + StructName;
+      // make sure modules are included.
+      Module->IncludedModules.insert("open " + ModuleName);
+      Module->IncludedModules.insert("module Box = Pulse.Lib.Box");
 
-          auto *PulseCall = new AppE();
-          auto *CallName = new VarTerm();
-          std::string MethodName = isWrite ? "set_" : "get_";
-          CallName->setVarName(ModuleName + "." + MethodName + MemberName.getAsString());
-          PulseCall->setCallName(CallName);
-          
-          //Declaration is allocated on Heap.
-          if (IsAllocatedOnHeap.count(VD)){
-            auto *Arg1 = new Paren();
+      auto MemberName = LhsDecl->getDeclName();
 
-          auto *InnerTerm = new AppE(); 
-          auto *InnerTermCallName = new VarTerm();
-          InnerTermCallName->setVarName("Box.box_to_ref");
-          InnerTerm->setCallName(InnerTermCallName);
+      auto *PulseCall = new AppE();
+      auto *CallName = new VarTerm();
+      std::string MethodName = isWrite ? "set_" : "get_";
+      CallName->setVarName(ModuleName + "." + MethodName +
+                           MemberName.getAsString());
+      PulseCall->setCallName(CallName);
 
-          auto *InnerTermCallArg = new VarTerm(); 
-          InnerTermCallArg->setVarName(NameOfDecl);
-          InnerTerm->pushArg(InnerTermCallArg);
+      // Declaration is allocated on Heap.
+      if (IsAllocatedOnHeap.count(VD)) {
+        auto *Arg1 = new Paren();
 
-          Arg1->setInnerExpr(InnerTerm);
-          PulseCall->pushArg(Arg1);
-          }
-          else {
+        auto *InnerTerm = new AppE();
+        auto *InnerTermCallName = new VarTerm();
+        InnerTermCallName->setVarName("Box.box_to_ref");
+        InnerTerm->setCallName(InnerTermCallName);
 
-          auto *InnerTermCallArg = new VarTerm(); 
-          InnerTermCallArg->setVarName(NameOfDecl);
-          PulseCall->pushArg(InnerTermCallArg);
-          }
+        auto *InnerTermCallArg = new VarTerm();
+        InnerTermCallArg->setVarName(NameOfDecl);
+        InnerTerm->pushArg(InnerTermCallArg);
 
-          //TODO: Angelica, I don't this releasing expressions before is required. 
-          //This was done because Pulse was not in ANF before. 
-          //However, it is in ANF now.
-          // SmallVector<PulseStmt*> ExprsBef;
-          // llvm::outs() << "Print Ty of BinaryExpression." << "\n";
-          // llvm::outs() << BO->getType().getAsString() << "\n";
-          // auto *RhsExpr = getTermFromCExpr(Rhs, Analyzer, ExprsBef, BO->getType(), Module);
-          // PulseCall->pushArg(RhsExpr);
+        Arg1->setInnerExpr(InnerTerm);
+        PulseCall->pushArg(Arg1);
+      } else {
 
+        auto *InnerTermCallArg = new VarTerm();
+        InnerTermCallArg->setVarName(NameOfDecl);
+        PulseCall->pushArg(InnerTermCallArg);
+      }
 
-          // //Perhaps warp this In Pulse Expr
-          // auto *Expr = new PulseExpr();
-          // Expr->E = PulseCall;
-          // return Expr;
+      // TODO: Angelica, I don't this releasing expressions before is required.
+      // This was done because Pulse was not in ANF before.
+      // However, it is in ANF now.
+      //  SmallVector<PulseStmt*> ExprsBef;
+      //  llvm::outs() << "Print Ty of BinaryExpression." << "\n";
+      //  llvm::outs() << BO->getType().getAsString() << "\n";
+      //  auto *RhsExpr = getTermFromCExpr(Rhs, Analyzer, ExprsBef,
+      //  BO->getType(), Module); PulseCall->pushArg(RhsExpr);
 
-          //Wrap in Paren expression. 
-          auto *PulseParen = new Paren(); 
-          PulseParen->InnerExpr = PulseCall;
-          return PulseParen;
+      // //Perhaps warp this In Pulse Expr
+      // auto *Expr = new PulseExpr();
+      // Expr->E = PulseCall;
+      // return Expr;
 
-        }
+      // Wrap in Paren expression.
+      auto *PulseParen = new Paren();
+      PulseParen->InnerExpr = PulseCall;
+      return PulseParen;
+    }
 
     return nullptr;
-  }
-  else {
+  } else {
     llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr\n";
     E->dump();
     llvm::outs() << "\nEnd printing term.\n\n";
@@ -2397,25 +2392,23 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
   return nullptr;
 }
 
-//std::vector<std::unique_ptr<ASTUnit>> &ASTList
-//InternalAstList(ASTList)
-PulseTransformer::PulseTransformer(ASTContext &Ctx) 
-    : AstCtx(Ctx)  {
-      
+// std::vector<std::unique_ptr<ASTUnit>> &ASTList
+// InternalAstList(ASTList)
+PulseTransformer::PulseTransformer(ASTContext &Ctx) : AstCtx(Ctx) {
+
   // Initialize the rewriter with the first AST unit's context
-  //if (!ASTList.empty()) {
+  // if (!ASTList.empty()) {
   //  RewriterForPlugin.setSourceMgr(ASTList[0]->getSourceManager(),
   //                                 ASTList[0]->getLangOpts());
-      RewriterForPlugin.setSourceMgr(Ctx.getSourceManager(),
-                                   Ctx.getLangOpts());                                 
+  RewriterForPlugin.setSourceMgr(Ctx.getSourceManager(), Ctx.getLangOpts());
   //} else {
   //  llvm::errs() << "Error: No AST units provided for transformation.\n";
   //  exit(1);
   //}
 }
 
-//TODO: Make this return a bool instead of a string. 
-// Bool says if the function passed or failed. instead of exiting.
+// TODO: Make this return a bool instead of a string.
+//  Bool says if the function passed or failed. instead of exiting.
 std::string PulseTransformer::writeToFile() {
 
   clang::SourceManager &SM = RewriterForPlugin.getSourceMgr();
@@ -2443,7 +2436,7 @@ std::string PulseTransformer::writeToFile() {
 
   auto NewPath = TempFilePathWithoutExtension.parent_path();
   // NewPath += "/";
-  //NewPath += "/SRC/";
+  // NewPath += "/SRC/";
   NewPath += "/" + FileNameStr + "/";
 
   if (!std::filesystem::exists(NewPath)) {
@@ -2471,7 +2464,7 @@ std::string PulseTransformer::writeToFile() {
   // OutFile.close();
   // return TempFilePath;
 
-  auto &ModulesToBeOutputted = CodeGen.returnOutPutModules();
+  auto &ModulesToBeOutputted = CodeGen.getOutPutModules();
 
   for (auto &M : ModulesToBeOutputted) {
 
@@ -2501,22 +2494,22 @@ std::string PulseTransformer::writeToFile() {
 }
 
 void PulseTransformer::transform() {
-  //for (auto &AstCtx : InternalAstList) {
-    PulseConsumer Consumer(AstCtx, RewriterForPlugin);
-    Consumer.HandleTranslationUnit(AstCtx);
+  // for (auto &AstCtx : InternalAstList) {
+  PulseConsumer Consumer(AstCtx, RewriterForPlugin);
+  Consumer.HandleTranslationUnit(AstCtx);
 
-    auto &Modules = Consumer.getNewModules();
-    for (auto &Pair : Modules) {
-      llvm::outs() << "Generating code for Module: ";
-      llvm::outs() << Pair.first;
-      llvm::outs() << "End generating code for Module.\n";
-      auto ModuleName = Pair.first;
-      auto *Module = Pair.second;
-      std::string Extension = ".fst";
-      if (Module->isHeader)
-        Extension = ".fsti";
-      CodeGen.generateCodeFromModule(ModuleName + Extension, Module);
-    }
+  auto &Modules = Consumer.getNewModules();
+  for (auto &Pair : Modules) {
+    llvm::outs() << "Generating code for Module: ";
+    llvm::outs() << Pair.first;
+    llvm::outs() << "End generating code for Module.\n";
+    auto ModuleName = Pair.first;
+    auto *Module = Pair.second;
+    std::string Extension = ".fst";
+    if (Module->isHeader)
+      Extension = ".fsti";
+    CodeGen.generateCodeFromModule(ModuleName + Extension, Module);
+  }
   //}
 
   // clang::SourceManager &SM = RewriterForPlugin.getSourceMgr();
@@ -2543,6 +2536,6 @@ void PulseTransformer::transform() {
 }
 
 // std::string PulseTransformer::getTransformedCode() {
-//   auto &CodeForModules = CodeGen.returnOutPutModules();
+//   auto &CodeForModules = CodeGen.getOutPutModules();
 
 // }

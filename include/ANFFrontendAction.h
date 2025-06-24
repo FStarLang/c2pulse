@@ -4,7 +4,8 @@
 
 #include "clang/Frontend/ASTConsumers.h"
 #include "clang/Frontend/CompilerInstance.h"
-#include "clang/Frontend/FrontendPluginRegistry.h"
+// Needed for PluginASTAction
+#include "clang/Frontend/FrontendPluginRegistry.h" // NOLINT
 #include "clang/Rewrite/Core/Rewriter.h"
 
 #include "llvm/Support/CommandLine.h"

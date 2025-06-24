@@ -14,7 +14,7 @@ public:
   std::string getGeneratedCodeForModule(std::string &ModuleName);
 
   std::map<const std::string, std::unique_ptr<llvm::raw_string_ostream>> &
-  returnOutPutModules();
+  getOutPutModules();
 
   void generateCodeFromModule(const std::string ModuleName, PulseModul *Modul);
   void generateCodeFromPulseAst(llvm::raw_string_ostream &S, PulseDecl *FD);
@@ -25,38 +25,37 @@ public:
 
 private:
   std::map<const std::string, std::unique_ptr<llvm::raw_string_ostream>>
-      OutputModules;
+      outputModules;
 };
 
-static class PulseSyntax {
-public:
-  CodegenStrTy PulseAssignmentOpRef = ":=";
-  CodegenStrTy PulseLetAssignmentOpRef = "=";
-  CodegenStrTy PulseFunctionDeclaration = "fn";
-  CodegenStrTy PulseRecursiveFunctionDeclaration = "fn rec";
-  CodegenStrTy OpeningParenthesis = "(";
-  CodegenStrTy ClosingParenthesis = ")";
-  CodegenStrTy Colon = ":";
-  CodegenStrTy Semicolon = ";";
-  CodegenStrTy Reference = "ref";
-  CodegenStrTy Array = "array";
-  CodegenStrTy OpeningCurlyBrace = "{";
-  CodegenStrTy ClosingCurlyBrace = "}";
-  CodegenStrTy NewLine = "\n";
-  CodegenStrTy LetBind = "let";
-  CodegenStrTy LetMut = "let mut";
-  CodegenStrTy Space = " ";
-  CodegenStrTy LangPulse = "#lang-pulse";
-  CodegenStrTy ModuleSyntax = "module";
-  CodegenStrTy PulseInclude = "open Pulse";
-  CodegenStrTy PulseIf = "if";
-  CodegenStrTy PulseElse = "else";
-  CodegenStrTy PulseWhile = "while";
-  CodegenStrTy Dot = ".";
-  CodegenStrTy ArrAssignment = "<-";
-  CodegenStrTy Requires = "requires";
-  CodegenStrTy Ensures = "ensures";
-  CodegenStrTy Returns = "returns";
-  CodegenStrTy Val = "val";
-  CodegenStrTy Typ = "type";
-} PulseSyntax;
+namespace PulseSyntax {
+  inline constexpr CodegenStrTy PulseAssignmentOpRef = ":=";
+  inline constexpr CodegenStrTy PulseLetAssignmentOpRef = "=";
+  inline constexpr CodegenStrTy PulseFunctionDeclaration = "fn";
+  inline constexpr CodegenStrTy PulseRecursiveFunctionDeclaration = "fn rec";
+  inline constexpr CodegenStrTy OpeningParenthesis = "(";
+  inline constexpr CodegenStrTy ClosingParenthesis = ")";
+  inline constexpr CodegenStrTy Colon = ":";
+  inline constexpr CodegenStrTy Semicolon = ";";
+  inline constexpr CodegenStrTy Reference = "ref";
+  inline constexpr CodegenStrTy Array = "array";
+  inline constexpr CodegenStrTy OpeningCurlyBrace = "{";
+  inline constexpr CodegenStrTy ClosingCurlyBrace = "}";
+  inline constexpr CodegenStrTy NewLine = "\n";
+  inline constexpr CodegenStrTy LetBind = "let";
+  inline constexpr CodegenStrTy LetMut = "let mut";
+  inline constexpr CodegenStrTy Space = " ";
+  inline constexpr CodegenStrTy LangPulse = "#lang-pulse";
+  inline constexpr CodegenStrTy ModuleSyntax = "module";
+  inline constexpr CodegenStrTy PulseInclude = "open Pulse";
+  inline constexpr CodegenStrTy PulseIf = "if";
+  inline constexpr CodegenStrTy PulseElse = "else";
+  inline constexpr CodegenStrTy PulseWhile = "while";
+  inline constexpr CodegenStrTy Dot = ".";
+  inline constexpr CodegenStrTy ArrAssignment = "<-";
+  inline constexpr CodegenStrTy Requires = "requires";
+  inline constexpr CodegenStrTy Ensures = "ensures";
+  inline constexpr CodegenStrTy Returns = "returns";
+  inline constexpr CodegenStrTy Val = "val";
+  inline constexpr CodegenStrTy Typ = "type";
+} // namespace PulseSyntax
