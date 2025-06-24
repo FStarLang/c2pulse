@@ -325,6 +325,7 @@ public:
 class PulseExpr : public PulseStmt {
 public:
   Term *E;
+  PulseExpr();
   virtual void dumpPretty() override;
   static bool classof(const PulseStmt *S) {
     return S->Tag == PulseStmtTag::Expr;
@@ -522,7 +523,7 @@ public:
   std::vector<std::string> IncludedModules;
   std::string ModuleName;
   std::vector<PulseDecl *> Decls;
-  //set to true for .fsti files
+  // set to true for .fsti files
   bool isHeader = false;
 };
 

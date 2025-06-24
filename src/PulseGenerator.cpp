@@ -417,9 +417,11 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec){
     // llvm::outs() << "Print TypedefDecl" << "\n";
     // llvm::outs() << TypeDefDec->getNameAsString() << "\n";
     // llvm::outs() << "End typedef declaration!" << "\n";
-    
+
+    // TODO: Angelica: This might fail for analyzing programs that use
+    //  struct definitions from system libraries or C standard libraries.
     auto SourceLoc = TypeDefDec->getLocation();
-    if (!SM.isInMainFile(SourceLoc))
+    if (SM.isInSystemHeader(SourceLoc))
       return true;
 
     auto *Def = TypeDefDec->getUnderlyingDecl();
@@ -432,50 +434,58 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec){
     if (const auto *RT = TypeDefDec->getUnderlyingType()->getAs<RecordType>()) {
     const RecordDecl *RD = RT->getDecl();
     // Now you can inspect RD, cast to CXXRecordDecl if needed
-      
-      PulseModul *NewModul = new PulseModul(); 
-      NewModul->isHeader = true;
-      NewModul->includePulsePrelude = true;
-      auto StructName = Def->getNameAsString();
-      NewModul->ModuleName = "Module_" + Def->getNameAsString();
 
-      NewModul->IncludedModules.push_back("module Box = Pulse.Lib.Box");
+    PulseModul *NewModul = new PulseModul();
+    NewModul->isHeader = true;
+    NewModul->includePulsePrelude = true;
+    auto StructName = Def->getNameAsString();
 
-      llvm::outs() << "Encountered a Record Declaration!!" << "\n";
-      llvm::outs() << Def->getNameAsString() << "\n";
-      llvm::outs() << "End record definition!" << "\n";
+    // One way to make this unique is to append the global variable at
+    // the end of the module name.
+    //  This will make it unique for each record type definition.
+    //  However, this then we will need a table to map the record type
+    //  to the library defintions for the things where the definitions etc.
+    //  reside.
+    // TODO: Angelica.
+    NewModul->ModuleName = "Module_" + Def->getNameAsString();
 
-      //Make a Value Declaraion for the record type. 
-      auto *Val = new ValDecl();
-      Val->Ident = Def->getNameAsString();
+    NewModul->IncludedModules.push_back("module Box = Pulse.Lib.Box");
 
-      auto *NewType0 = new Name();
-      NewType0->NamedValue = "Type0";
-      Val->ValTerm = NewType0;
+    llvm::outs() << "Encountered a Record Declaration!!" << "\n";
+    llvm::outs() << Def->getNameAsString() << "\n";
+    llvm::outs() << "End record definition!" << "\n";
 
-      NewModul->Decls.push_back(Val);
-      
-      //A purely function specification type for the struct.
-      auto Tycon = new TyConDecl();
-      auto *TyconRec = new TyConRecord();
+    // Make a Value Declaraion for the record type.
+    auto *Val = new ValDecl();
+    Val->Ident = Def->getNameAsString();
 
-      auto ErasableAttr = new Name();
-      ErasableAttr->NamedValue = "[@@erasable]";
-      auto NoEqTerm = new Name(); 
-      NoEqTerm->NamedValue = "noeq";
+    auto *NewType0 = new Name();
+    NewType0->NamedValue = "Type0";
+    Val->ValTerm = NewType0;
 
-      TyconRec->Ident = Def->getNameAsString() + "_spec";
+    NewModul->Decls.push_back(Val);
 
-      TyconRec->Attrs.push_back(ErasableAttr);
-      TyconRec->Attrs.push_back(NoEqTerm);
-      
-      std::vector<RecordElement*> Fields;
-      for (const FieldDecl *FD : RD->fields()) {
-        auto *Element = new RecordElement();
-        Element->ElementTerm = getPulseTyFromCTy(FD->getType());
-        Element->Ident = FD->getNameAsString();
-        Fields.push_back(Element);
-      }
+    // A purely function specification type for the struct.
+    auto Tycon = new TyConDecl();
+    auto *TyconRec = new TyConRecord();
+
+    auto ErasableAttr = new Name();
+    ErasableAttr->NamedValue = "[@@erasable]";
+    auto NoEqTerm = new Name();
+    NoEqTerm->NamedValue = "noeq";
+
+    TyconRec->Ident = Def->getNameAsString() + "_spec";
+
+    TyconRec->Attrs.push_back(ErasableAttr);
+    TyconRec->Attrs.push_back(NoEqTerm);
+
+    std::vector<RecordElement *> Fields;
+    for (const FieldDecl *FD : RD->fields()) {
+      auto *Element = new RecordElement();
+      Element->ElementTerm = getPulseTyFromCTy(FD->getType());
+      Element->Ident = FD->getNameAsString();
+      Fields.push_back(Element);
+    }
 
       auto NumRecordFields = Fields.size();
 
@@ -1080,6 +1090,21 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   }
   FDefn->Args = PulseArgs;
   //extractPulseAnnotations(FD, SM, FDefn->Annotation);
+  auto It = Modules.find(ClangModuleName);
+  PulseModul *Module = nullptr;
+  if (It != Modules.end()) {
+    Module = It->second;
+    //Module->Decls.push_back(PulseFn);
+  }
+  // Create new function defintions.
+  else {
+    Module = new PulseModul();
+    Module->includePulsePrelude = true;
+    Module->ModuleName = ClangModuleName;
+    //Module->Decls.push_back(PulseFn);
+    //Modules.insert(std::make_pair(ClangModuleName, Modul));
+  }
+
 
   if (Stmt *Body = FD->getBody()) {
     if (auto *CS = dyn_cast<CompoundStmt>(Body)) {
@@ -1102,26 +1127,24 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   llvm::outs() << "=================================================\n";
   PulseFn->Kind = PulseDeclKind::FnDefn;
 
-  auto It = Modules.find(ClangModuleName);
-
   llvm::outs() << "Found a Module with ModuleName: " << "\n";
   llvm::outs() << ClangModuleName << "\n";
   llvm::outs() << "End printing Module name" << "\n";
 
   // Get a pointer to existing function definitions.
-  if (It != Modules.end()) {
-
-    auto &Module = It->second;
-    Module->Decls.push_back(PulseFn);
-  }
+  //if (It != Modules.end()) {
+  //
+  //  auto &Module = It->second;
+  //  Module->Decls.push_back(PulseFn);
+  //}
   // Create new function defintions.
-  else {
-    PulseModul *Modul = new PulseModul();
-    Modul->includePulsePrelude = true;
-    Modul->ModuleName = ClangModuleName;
-    Modul->Decls.push_back(PulseFn);
-    Modules.insert(std::make_pair(ClangModuleName, Modul));
-  }
+  //else {
+  //  PulseModul *Modul = new PulseModul();
+  //  Modul->includePulsePrelude = true;
+  //  Modul->ModuleName = ClangModuleName;
+    Module->Decls.push_back(PulseFn);
+    Modules.insert(std::make_pair(ClangModuleName, Module));
+  //}
 
   // FunctionDeclarations.push_back(PulseFn);
 
@@ -1389,6 +1412,94 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer) 
         return ArrayAssignExpr;
         S->dumpPretty(Ctx);
         assert(false && "Not implemented when Lhs is array sub expr");
+      }
+      else if (auto *ME = dyn_cast<MemberExpr>(Lhs)){
+
+        // See if this is decl ref expression.
+        // if (auto *RefExpr = dyn_cast<DeclRefExpr>(Lhs->IgnoreParens()->IgnoreImpCasts())){
+        //   llvm::outs() << "Found a member expression with a decl ref!\n";
+        //   RefExpr->dump();
+        //   auto *Decl = RefExpr->getDecl();
+        //   auto VarName = Decl->getNameAsString();
+        //   assert(false && "Expected a member expression with a decl ref to be a pointer dereference!\n");
+        // }
+
+        auto *LhsDecl = ME->getMemberDecl();
+        auto DeclName = LhsDecl->getName();
+        auto MemberType = ME->getType();
+
+        llvm::outs() << "Found Base expr.\n";
+        auto *BaseExpr = ME->getBase()->IgnoreParens()->IgnoreImpCasts();
+        BaseExpr->dump();
+        
+        std::string NameOfDecl;
+        QualType TyOfDecl;
+        std::string StructName;
+        if (const clang::DeclRefExpr *DRE = llvm::dyn_cast<clang::DeclRefExpr>(BaseExpr)) {
+          const clang::ValueDecl *VD = DRE->getDecl();
+          // Now you can safely cast VD to a more specific Decl type if needed
+          VD->dump();
+          llvm::outs() << VD->getDeclName() << "End\n";
+          NameOfDecl = VD->getDeclName().getAsString();
+          TyOfDecl = VD->getType();
+          llvm::outs() << TyOfDecl->getPointeeType().getAsString() << "\n";
+          StructName = TyOfDecl->getPointeeType().getAsString();
+
+          std::string ModuleName = "Module_" + StructName;
+
+          auto MemberName = LhsDecl->getDeclName();
+
+          auto *PulseCall = new AppE();
+          auto *CallName = new VarTerm();
+          CallName->setVarName(ModuleName + "." + "set_" + MemberName.getAsString());
+          PulseCall->setCallName(CallName);
+          
+          //()
+          auto *Arg1 = new Paren();
+
+          auto *InnerTerm = new AppE(); 
+          auto *InnerTermCallName = new VarTerm();
+          InnerTermCallName->setVarName("Box.box_to_ref");
+          InnerTerm->setCallName(InnerTermCallName);
+
+          auto *InnerTermCallArg = new VarTerm(); 
+          InnerTermCallArg->setVarName(NameOfDecl);
+          InnerTerm->pushArg(InnerTermCallArg);
+
+          Arg1->setInnerExpr(InnerTerm);
+          PulseCall->pushArg(Arg1);
+
+          //TODO: Angelica, I don't this releasing expressions before is required. 
+          //This was done because Pulse was not in ANF before. 
+          //However, it is in ANF now.
+          SmallVector<PulseStmt*> ExprsBef;
+          llvm::outs() << "Print Ty of BinaryExpression." << "\n";
+          llvm::outs() << BO->getType().getAsString() << "\n";
+          auto *RhsExpr = getTermFromCExpr(Rhs, Analyzer, ExprsBef, BO->getType());
+          PulseCall->pushArg(RhsExpr);
+
+
+          //Perhaps warp this In Pulse Expr
+          auto *Expr = new PulseExpr();
+          Expr->E = PulseCall;
+          return Expr;
+
+        }
+
+
+
+
+        // //Expr->dump();
+        // llvm::outs() << "Found End expr.\n";
+
+        // auto StructName = LhsDecl->getDeclName();
+        // llvm::outs() << "Name of member type: \n";
+        // llvm::outs() << StructName << "\n";
+        // llvm::outs() << "End of member type name.\n";
+
+        ME->dump();
+        assert(false && "Did not expect to reach here!\n");
+
       }
       // TODO:
       // We should generate Lets otherwise
@@ -1728,7 +1839,16 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     auto NewConstTerm = new ConstTerm(); 
     NewConstTerm->setTag(TermTag::Const);
     NewConstTerm->ConstantValue = std::to_string(IL->getValue().getSExtValue());
+
+    llvm::outs() << "Found Integer Literal: " << NewConstTerm->ConstantValue << "\n";
+    llvm::outs() << ParentType.getAsString() << "\n";
+    
     NewConstTerm->Symbol = getSymbolKeyForCType(ParentType, Ctx);
+    
+    // if (NewConstTerm->Symbol == SymbolTable::UInt32){
+    //   llvm::outs() << "Symbol for Integer Literal 64 integer." << "\n";
+    // }
+
     return NewConstTerm;
 
     llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "
@@ -1997,10 +2117,55 @@ Term *PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     
     PulseParenExpr->setInnerExpr(PulseSubExpr);
     return PulseParenExpr;
+  } else if (auto *CCastExpr = dyn_cast<CStyleCastExpr>(E)) {
+    if (const CallExpr *Call =
+            dyn_cast<CallExpr>(E->IgnoreParenImpCasts()->IgnoreCasts())) {
+      if (const FunctionDecl *FD = Call->getDirectCallee()) {
+        if (FD->getName() == "malloc") {
+          llvm::outs() << "Found a malloc call inside CStyleCastExpr!\n";
+          auto *ElementTy =
+              CCastExpr->getType()->getPointeeOrArrayElementType();
+          auto *DesugaredElemTy = ElementTy->getUnqualifiedDesugaredType();
+          if (const TypedefType *TT = ElementTy->getAs<TypedefType>()) {
+            if (auto *RT = dyn_cast<RecordType>(DesugaredElemTy)) {
+              const RecordDecl *RD = RT->getDecl();
+              auto RecordName = TT->getDecl()->getDeclName();
+              // Make a new call node for the allocation of the record.
+              std::string ModuleName = "Module_" + RecordName.getAsString();
+              auto *NewCall = new AppE();
+              auto *NewCallName = new VarTerm();
+              NewCallName->setVarName(ModuleName + ".alloc()");
+              NewCall->setCallName(NewCallName);
+              return NewCall;
+            }
+            auto *CastType = CCastExpr->getType()
+                                 ->getPointeeOrArrayElementType()
+                                 ->getUnqualifiedDesugaredType();
+            CastType->dump();
+            assert(false &&
+                   "Not implemented a non record type in malloc call!\n");
+          }
+          auto *CastType = CCastExpr->getType()->getPointeeOrArrayElementType();
+          CastType->dump();
+        }
+      }
+    } else {
+      CCastExpr->dumpPretty(Ctx);
+      assert(false && "Did not implement CStyle Cast Expression!\n");
+    }
   }
+  // // Assuming that these are always access to Record types in C.
+  // else if (auto *ME = dyn_cast<MemberExpr>(E)){
+  //   if (auto *RefExpr = dyn_cast<DeclRefExpr>(ME->IgnoreParenImpCasts())){
+  //     llvm::outs() << "Found a member expression with a decl ref!\n";
+  //     RefExpr->dump();
+  //     auto *Decl = RefExpr->getDecl();
+  //     auto VarName = Decl->getNameAsString();
+  //   }
+  // }
   else {
     llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr\n";
-    E->dumpPretty(Ctx);
+    E->dump();
     llvm::outs() << "\nEnd printing term.\n\n";
     assert(false && "Expression not implemeted in getTermFromCExpr\n");
   }

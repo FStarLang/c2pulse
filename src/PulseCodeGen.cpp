@@ -258,7 +258,10 @@ std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
     case SymbolTable::Int16:
     case SymbolTable::UInt8:
     case SymbolTable::UInt16:
-    case SymbolTable::UInt32:
+    case SymbolTable::UInt32:{
+      TermString += CT->ConstantValue + "ul";
+      break;
+    }
     case SymbolTable::UInt64:{
          TermString += CT->ConstantValue + "UL";
          break;

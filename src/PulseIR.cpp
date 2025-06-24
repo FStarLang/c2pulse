@@ -480,7 +480,7 @@ void Paren::setInnerExpr(Term *Inner){
   InnerExpr = Inner;
 }
 
-void Paren :: dumpPretty() {
+void Paren::dumpPretty() {
   llvm::outs() << "("; 
   InnerExpr->dumpPretty(); 
   llvm::outs() << ")";
@@ -580,6 +580,7 @@ FStarPointerType::FStarPointerType(){
 
 AppE::AppE(){
   Tag = TermTag::AppE;
+  Args.clear();
 }
 
 void AppE::dumpPretty() {
@@ -607,6 +608,10 @@ void PulseStmt::dumpPretty() { PulseStmt::printTag(); }
 void PulseExpr::dumpPretty() { 
   if (E)
     E->dumpPretty(); 
+}
+
+PulseExpr::PulseExpr(){
+  Tag = PulseStmtTag::Expr; 
 }
 
 void PulseAssignment::dumpPretty() {
