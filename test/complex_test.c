@@ -1,5 +1,5 @@
 // RUN: %c2pulse %s 2>&1 | %{FILECHECK} %s --check-prefix=C2PULSE
-// RUN: %run_fstar.sh %p/Complex_test.fst 2>&1 | %{FILECHECK} %s --check-prefix=PULSE
+// RUN: %run_fstar.sh %p/Complex_test/Module_0.fst 2>&1 | %{FILECHECK} %s --check-prefix=PULSE
 
 #include "../../test-transpiler/c/pulse_macros.h"
 
