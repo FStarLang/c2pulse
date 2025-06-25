@@ -1204,7 +1204,7 @@ PulseStmt *PulseVisitor::pulseFromCompoundStmt(Stmt *S,
       //   Stmt = NewSequence;
       // }
 
-      auto *NextPulseStmt = pulseFromStmt(InnerStmt, Analyzer, Modul);
+      auto *NextPulseStmt = pulseFromStmt(InnerStmt, Analyzer, nullptr, Modul);
       if (NextPulseStmt == nullptr)
         continue;
 
@@ -1227,7 +1227,7 @@ PulseStmt *PulseVisitor::pulseFromCompoundStmt(Stmt *S,
 }
 
 PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
-                                       PulseModul *Module) {
+                                       Stmt *Parent, PulseModul *Module) {
 
   if (!S)
     return nullptr;
@@ -1256,7 +1256,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           SmallVector<PulseStmt *> NewExprs;
 
           PulseLet->LetInit =
-              getTermFromCExpr(Init, Analyzer, NewExprs, VD->getType(), Module);
+              getTermFromCExpr(Init, Analyzer, NewExprs, S, VD->getType(), Module);
           PulseLet->setTag(PulseStmtTag::LetBinding);
           if (Analyzer->isMutated(D)) {
             PulseLet->Qualifier = MutOrRef::MUT;
@@ -1374,9 +1374,9 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           SmallVector<PulseStmt *> ExprsBef;
 
           auto *PulseLhsTerm = getTermFromCExpr(
-              UO->getSubExpr(), Analyzer, ExprsBef, BO->getType(), Module);
+              UO->getSubExpr(), Analyzer, ExprsBef, BO, BO->getType(), Module);
           auto *PulseRhsTerm =
-              getTermFromCExpr(Rhs, Analyzer, ExprsBef, BO->getType(), Module);
+              getTermFromCExpr(Rhs, Analyzer, ExprsBef, BO,BO->getType(), Module);
           PulseAssignment *Assignment = new PulseAssignment();
           Assignment->setTag(PulseStmtTag::Assignment);
           Assignment->Lhs = PulseLhsTerm;
@@ -1395,11 +1395,11 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
         auto *ArrayAssignExpr = new PulseArrayAssignment();
         ArrayAssignExpr->setTag(PulseStmtTag::ArrayAssignment);
         ArrayAssignExpr->Arr = getTermFromCExpr(
-            ArrSub->getBase(), Analyzer, ExprsBef, BO->getType(), Module);
+            ArrSub->getBase(), Analyzer, ExprsBef, BO, BO->getType(), Module);
         ArrayAssignExpr->Index = getTermFromCExpr(
-            ArrSub->getIdx(), Analyzer, ExprsBef, BO->getType(), Module);
+            ArrSub->getIdx(), Analyzer, ExprsBef, BO, BO->getType(), Module);
         ArrayAssignExpr->Value =
-            getTermFromCExpr(Rhs, Analyzer, ExprsBef, BO->getType(), Module);
+            getTermFromCExpr(Rhs, Analyzer, ExprsBef, BO, BO->getType(), Module);
 
         // We need to make a sequence of pulse statements.
         PulseSequence *Start = nullptr;
@@ -1507,7 +1507,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           llvm::outs() << "Print Ty of BinaryExpression." << "\n";
           llvm::outs() << BO->getType().getAsString() << "\n";
           auto *RhsExpr =
-              getTermFromCExpr(Rhs, Analyzer, ExprsBef, BO->getType(), Module);
+              getTermFromCExpr(Rhs, Analyzer, ExprsBef, BO, BO->getType(), Module);
           PulseCall->pushArg(RhsExpr);
 
           // Perhaps warp this In Pulse Expr
@@ -1591,7 +1591,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           llvm::outs() << "Print Ty of BinaryExpression." << "\n";
           llvm::outs() << BO->getType().getAsString() << "\n";
           auto *RhsExpr =
-              getTermFromCExpr(Rhs, Analyzer, ExprsBef, BO->getType(), Module);
+              getTermFromCExpr(Rhs, Analyzer, ExprsBef, BO, BO->getType(), Module);
           PulseCall->pushArg(RhsExpr);
 
           // Perhaps warp this In Pulse Expr
@@ -1609,9 +1609,9 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
         SmallVector<PulseStmt *> ExprsBef;
 
         auto *PulseLhsTerm = getTermFromCExpr(Lhs, Analyzer, ExprsBef,
-                                              BO->getType(), Module, true);
+                                              BO, BO->getType(), Module, true);
         auto *PulseRhsTerm =
-            getTermFromCExpr(Rhs, Analyzer, ExprsBef, BO->getType(), Module);
+            getTermFromCExpr(Rhs, Analyzer, ExprsBef, BO, BO->getType(), Module);
         PulseAssignment *Assignment = new PulseAssignment();
         Assignment->Lhs = PulseLhsTerm;
         Assignment->Value = PulseRhsTerm;
@@ -1653,7 +1653,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
       auto *PExpr = new PulseExpr();
       PExpr->setTag(PulseStmtTag::Expr);
       auto ExprTerm =
-          getTermFromCExpr(BO, Analyzer, ExprsBefore, BO->getType(), Module);
+          getTermFromCExpr(BO, Analyzer, ExprsBefore, BO, BO->getType(), Module);
       if (!ExprTerm)
         return nullptr;
 
@@ -1699,7 +1699,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
     PulseExpression->setTag(PulseStmtTag::Expr);
 
     auto *PExprTerm =
-        getTermFromCExpr(E, Analyzer, ExprsBefore, E->getType(), Module);
+        getTermFromCExpr(E, Analyzer, ExprsBefore, S, E->getType(), Module);
 
     if (PExprTerm == nullptr)
       return nullptr;
@@ -1723,9 +1723,9 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
     SmallVector<PulseStmt *> ExprsBefore;
 
     auto PulseCond =
-        getTermFromCExpr(Cond, Analyzer, ExprsBefore, Cond->getType(), Module);
-    auto *PulseElse = pulseFromStmt(Else, Analyzer, Module);
-    auto *PulseThen = pulseFromStmt(Then, Analyzer, Module);
+        getTermFromCExpr(Cond, Analyzer, ExprsBefore, S, Cond->getType(), Module);
+    auto *PulseElse = pulseFromStmt(Else, Analyzer, S, Module);
+    auto *PulseThen = pulseFromStmt(Then, Analyzer, S, Module);
 
     auto PulseIfStmt = new PulseIf();
     PulseIfStmt->setTag(PulseStmtTag::If);
@@ -1748,7 +1748,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
       auto NewPulseExpr = new PulseExpr();
       NewPulseExpr->setTag(PulseStmtTag::Expr);
       auto *RetTerm = getTermFromCExpr(RetVal, Analyzer, ExprsBefore,
-                                       RetVal->getType(), Module);
+                                       S, RetVal->getType(), Module);
       if (RetTerm == nullptr)
         return nullptr;
       NewPulseExpr->E = RetTerm;
@@ -1836,7 +1836,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
       }
 
       PulseWhile->setTag(PulseStmtTag::WhileStmt);
-      PulseWhile->Guard = pulseFromStmt(WhileCond, Analyzer, Module);
+      PulseWhile->Guard = pulseFromStmt(WhileCond, Analyzer, S, Module);
       PulseWhile->Body = pulseFromCompoundStmt(CompundBody, Analyzer, Module);
 
       return PulseWhile;
@@ -1858,7 +1858,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
       // PulseWhile->Invariant = It->second;
 
-      PulseWhile->Guard = pulseFromStmt(WhileCond, Analyzer, Module);
+      PulseWhile->Guard = pulseFromStmt(WhileCond, Analyzer, WS, Module);
       PulseWhile->Body = pulseFromCompoundStmt(WhileBody, Analyzer, Module);
 
       return PulseWhile;
@@ -1911,7 +1911,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
         }
       }
     }
-    NewSequence->assignS2(pulseFromStmt(SubStmt, Analyzer, Module));
+    NewSequence->assignS2(pulseFromStmt(SubStmt, Analyzer, AttrStmt, Module));
     return NewSequence;
   } else {
     llvm::outs() << "\n\nPrint in pulseFromStmt\n";
@@ -1947,6 +1947,7 @@ const clang::Stmt *getNextStatement(const clang::Expr *expr,
 Term *
 PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
                                llvm::SmallVector<PulseStmt *> &ExprsBefore,
+                               Stmt *Parent, 
                                QualType ParentType, PulseModul *Module,
                                bool isWrite) {
 
@@ -2010,9 +2011,9 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     auto *NewAppENode = new AppE();
     NewAppENode->setTag(TermTag::AppE);
     auto LhsTerm =
-        getTermFromCExpr(Lhs, MutAnalyzer, ExprsBefore, BO->getType(), Module);
+        getTermFromCExpr(Lhs, MutAnalyzer, ExprsBefore, BO, BO->getType(), Module);
     auto RhsTerm =
-        getTermFromCExpr(Rhs, MutAnalyzer, ExprsBefore, BO->getType(), Module);
+        getTermFromCExpr(Rhs, MutAnalyzer, ExprsBefore, BO, BO->getType(), Module);
 
     auto *CallNameVar = new VarTerm();
     CallNameVar->setVarName(OpKey);
@@ -2041,7 +2042,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       DerefAppE->setTag(TermTag::AppE);
       DerefAppE->setCallName(FuncName);
       auto *TermForBaseExpr = getTermFromCExpr(UO->getSubExpr(), MutAnalyzer,
-                                               ExprsBefore, ParentType, Module);
+                                               ExprsBefore, E, ParentType, Module);
       DerefAppE->pushArg(TermForBaseExpr);
 
       // Wrap this deref in a parenthesis.
@@ -2132,7 +2133,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     for (size_t i = 0; i < CE->getNumArgs(); i++) {
       auto *Arg = CE->getArg(i);
       auto *ArgTerm =
-          getTermFromCExpr(Arg, MutAnalyzer, ExprsBefore, ParentType, Module);
+          getTermFromCExpr(Arg, MutAnalyzer, ExprsBefore, BO, ParentType, Module);
       CallAppE->pushArg(ArgTerm);
     }
 
@@ -2151,7 +2152,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
   } else if (auto *IC = dyn_cast<ImplicitCastExpr>(E)) {
 
     auto *SubExpr = IC->getSubExpr();
-    return getTermFromCExpr(SubExpr, MutAnalyzer, ExprsBefore, ParentType,
+    return getTermFromCExpr(SubExpr, MutAnalyzer, ExprsBefore, CE, ParentType,
                             Module);
 
     llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "
@@ -2239,10 +2240,10 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     Call->setVarName("op_Array_Access");
     PulseCall->setCallName(Call);
 
-    PulseCall->pushArg(getTermFromCExpr(ArrBase, MutAnalyzer, ExprsBefore,
+    PulseCall->pushArg(getTermFromCExpr(ArrBase, MutAnalyzer, ExprsBefore, E,
                                         ParentType, Module));
     PulseCall->pushArg(
-        getTermFromCExpr(ArrIdx, MutAnalyzer, ExprsBefore, ParentType, Module));
+        getTermFromCExpr(ArrIdx, MutAnalyzer, ExprsBefore, E, ParentType, Module));
 
     // wrap PulseCall in Paren
     auto *NewParen = new Paren();
@@ -2255,7 +2256,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     auto *PulseParenExpr = new Paren();
 
     auto *PulseSubExpr = getTermFromCExpr(ClangSubExpr, MutAnalyzer,
-                                          ExprsBefore, ParentType, Module);
+                                          ExprsBefore, E, ParentType, Module);
 
     PulseParenExpr->setInnerExpr(PulseSubExpr);
     return PulseParenExpr;
@@ -2316,7 +2317,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
 
       SubExpr->dump();
       assert(false && "Should not reach here!");
-      return getTermFromCExpr(SubExpr, MutAnalyzer, ExprsBefore, ParentType,
+      return getTermFromCExpr(SubExpr, MutAnalyzer, ExprsBefore, E, ParentType,
                               Module);
     }
     RE->dump();

@@ -32,10 +32,10 @@ public:
   bool VisitTypedefDecl(clang::TypedefDecl *TypeDefDec);
 
   PulseStmt *pulseFromCompoundStmt(clang::Stmt *S, clang::ExprMutationAnalyzer *A, PulseModul *Module);
-  PulseStmt *pulseFromStmt(clang::Stmt *S, clang::ExprMutationAnalyzer *A, PulseModul *Module);
+  PulseStmt *pulseFromStmt(clang::Stmt *S, clang::ExprMutationAnalyzer *A, clang::Stmt *Parent, PulseModul *Module);
   FStarType *getPulseTyFromCTy(clang::QualType CType);
   Term *getTermFromCExpr(clang::Expr *E, clang::ExprMutationAnalyzer *A, llvm::SmallVector<PulseStmt*> &ExprsBef,
-                           clang::QualType ParentType, PulseModul *Module, bool isWrite = false);
+                           clang::Stmt *Parent, clang::QualType ParentType, PulseModul *Module, bool isWrite = false);
   std::vector<PulseDecl *> &getFunctionDeclarations();
   std::map<std::string, PulseModul *> &getPulseModules();
   void extractPulseAnnotations(const clang::FunctionDecl *FD,
@@ -62,6 +62,7 @@ private:
   std::map<clang::Decl*, clang::QualType> DeclTyMap;
   std::map<const clang::Stmt*, std::vector<Slprop*>> StmtToLemmas;
   std::set<const clang::Decl*> IsAllocatedOnHeap;
+  std::map<clang::FunctionDecl, PulseDecl*> DeclarationsMap;
 };
 
 } // end of anonymous namespace
