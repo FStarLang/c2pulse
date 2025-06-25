@@ -3,8 +3,6 @@ set -euo pipefail
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
-# Usage: ./run-lit.sh /path/to/test
-
 # Check if the user provided a path
 if [ $# -lt 1 ]; then
   echo "Usage: $0 /path/to/test"
