@@ -1,7 +1,7 @@
 // RUN: %c2pulse %s 
-// RUN: cat %p/Swap_struct/Module_0.fst | %{FILECHECK} %s --check-prefix=C2PULSE
-// RUN: cat %p/Swap_struct/Module_u32_pair_struct.fsti | %{FILECHECK} %s --check-prefix=C2PULSE_INCLUDE
-// RUN: %run_fstar.sh %p/Swap_struct/Module_0.fst %p/Swap_struct/Module_u32_pair_struct.fsti 2>&1 | %{FILECHECK} %s --check-prefix=PULSE
+// RUN: cat %p/Swap_struct_test/Module_0.fst | %{FILECHECK} %s --check-prefix=C2PULSE
+// RUN: cat %p/Swap_struct_test/Module_u32_pair_struct.fsti | %{FILECHECK} %s --check-prefix=C2PULSE_INCLUDE
+// RUN: %run_fstar.sh %p/Swap_struct_test/Module_0.fst %p/Swap_struct_test/Module_u32_pair_struct.fsti 2>&1 | %{FILECHECK} %s --check-prefix=PULSE
 
 #include <stdint.h>
 #include <stdlib.h>
