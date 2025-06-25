@@ -560,9 +560,12 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
     //  requires u32_pair_struct_pred x s
     //  ensures exists* s'. u32_pair_struct_pred x s' ** pure (s' == {s with
     //  first=f})
-
-    for (size_t i = 0; i < NumRecordFields; i++) {
-
+    
+    int i = 0;
+    for (auto Fld : RD->fields()) {
+      
+      auto Ty = Fld->getType(); 
+      auto PulseTy = getPulseTyFromCTy(Ty);
       auto FieldName = Fields[i]->Ident;
 
       auto *SetterFirstFnDefn = new _PulseFnDefn();
@@ -575,7 +578,7 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
 
       auto *FirstBinder = new struct Binder("x", FirstBinderTy);
 
-      auto *SecondBinderTy = new FStarType("UInt32.t");
+      auto *SecondBinderTy = new FStarType(PulseTy->NamedValue);
       auto *SecondBinder = new struct Binder("f", SecondBinderTy);
 
       auto *ThirdBinderTy = new FStarType(Def->getNameAsString() + "_spec");
@@ -628,7 +631,7 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
       GetterFirstFnDefn->Annotation.push_back(ReqFirstGetter);
 
       auto *RetFirstGetter = new Returns();
-      RetFirstGetter->Ann = "f:UInt32.t";
+      RetFirstGetter->Ann = "f:" + PulseTy->NamedValue;
       GetterFirstFnDefn->Annotation.push_back(RetFirstGetter);
 
       auto *EnsuresFirstGetter = new Ensures();
@@ -638,6 +641,7 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
 
       auto *GetterFirstFunction = new PulseFnDefn(GetterFirstFnDefn);
       NewModul->Decls.push_back(GetterFirstFunction);
+      i++;
     }
 
     // noeq
@@ -840,13 +844,15 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
     GhostFoldFnDefnBinders.push_back(GhostFoldFirstBinder);
 
     //std::string SecondBinderTerms = "";
-    for (size_t i = 0; i < NumRecordFields; i++) {
-      std::string BinderTerm = "#" + FieldPrefix + std::to_string(i);
-      //SecondBinderTerms += " ";
-      //auto Ty = Fields[i]->
-      auto *GhostFoldSecondBinderTy = new FStarType("erased ");
+    int Counter = 0;
+    for (auto *Fld : RD->fields()) {
+      auto Ty = Fld->getType(); 
+      auto PulseTy = getPulseTyFromCTy(Ty);
+      std::string BinderTerm = "#" + FieldPrefix + std::to_string(Counter);
+      auto *GhostFoldSecondBinderTy = new FStarType("erased " + PulseTy->NamedValue);
       auto *GhostFoldSecondBinder = new struct Binder(BinderTerm, GhostFoldSecondBinderTy);
       GhostFoldFnDefnBinders.push_back(GhostFoldSecondBinder);
+      Counter++;
     }
 
     GhostFoldFnDefn->Args = GhostFoldFnDefnBinders;
