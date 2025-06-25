@@ -35,17 +35,17 @@ void reverse(ISARRAY(len) uint32_t *arr, size_t len) {
 // C2PULSE: ensures exists* s.arr |-> s
 // C2PULSE: {
 // C2PULSE: let mut i = 0sz;
-// C2PULSE: while((SizeT.lt i (SizeT.div len 2sz));
+// C2PULSE: while((SizeT.lt (! i) (SizeT.div len 2sz));
 // C2PULSE: )
 // C2PULSE: invariant c. 
 // C2PULSE:  exists* vi. (i |->vi) ** (exists* s.arr |->s) ** pure (c == (vi `SizeT.lt` SizeT.div len 2sz))
 // C2PULSE: {
-// C2PULSE: let j = (SizeT.sub (SizeT.sub len 1sz) i);
+// C2PULSE: let j = (SizeT.sub (SizeT.sub len 1sz) (! i));
 // C2PULSE: pts_to_len arr;
-// C2PULSE: let tmp = (op_Array_Access arr i);
-// C2PULSE: arr.(i) <- (op_Array_Access arr j);
+// C2PULSE: let tmp = (op_Array_Access arr (! i));
+// C2PULSE: arr.((! i)) <- (op_Array_Access arr j);
 // C2PULSE: arr.(j) <- tmp;
-// C2PULSE: i := (SizeT.add i 1sz);
+// C2PULSE: i := (SizeT.add (! i) 1sz);
 // C2PULSE: }}
 
 // PULSE: All verification conditions discharged successfully
