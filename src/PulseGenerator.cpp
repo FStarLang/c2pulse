@@ -2231,6 +2231,10 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       // The actual variable whose value we want
       VarTerm *VTerm = new VarTerm();
       VTerm->setVarName(DRE->getDecl()->getNameAsString());
+
+
+      if (!Call)
+        return VTerm;
       
       // need to check if this is a boxed value
       // That is, it is allocated on the heap.
@@ -2256,7 +2260,10 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
             } 
          }
          
-         if (IsCallArgBoxed){
+         //Call parameter is boxed or is not a function call.
+         //TODO: Fix: 
+         // Assumes returns etc. are fine. 
+         if (IsCallArgBoxed || !Call){
           return VTerm;
          }
          auto *NewParen = new Paren();
@@ -2292,6 +2299,13 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     VTerm->setVarName(DRE->getDecl()->getNameAsString());
 
     //
+    
+    //TODO: Fixme: For anything other than a call we need to ensure it 
+    // returns correct type. A box or a ref. 
+    // For instance, return x
+    // If function's return type is ref, we should change box to ref.
+    if (!Call)
+        return VTerm;
 
     if (IsAllocatedOnHeap.count(DreDecl)){
       
@@ -2310,7 +2324,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
             } 
          }
          
-         if (IsCallArgBoxed){
+         if (IsCallArgBoxed || !Call){
           return VTerm;
          }
         }

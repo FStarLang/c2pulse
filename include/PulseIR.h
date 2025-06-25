@@ -258,6 +258,9 @@ class FStarArrType : public FStarType {
 class FStarPointerType : public FStarType {
 public:
   FStarPointerType();
+  //Boxed == Heap Allocated. 
+  //Otherwise Stack Allocated.
+  //If not box, it is ref.
   bool isBoxed = false;
   FStarType *PointerTo;
   virtual void setName(std::string Name) override;
