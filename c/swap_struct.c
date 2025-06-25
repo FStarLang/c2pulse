@@ -40,13 +40,13 @@ void swap_refs (uint32_t* x, uint32_t* y)
   *y = tmp;
 }
 
-// ERASED_ARG(#s:u32_pair_struct_spec)
-// REQUIRES(u32_pair_struct_pred x s)
-// ENSURES("exists* (s':u32_pair_struct_spec). u32_pair_struct_pred x s' ** pure (s' == {first = s.second; second = s.first}))")
-// void swap_fields_alt (u32_pair_struct* x)
-// {
-//   swap_refs(&x->first, &x->second);
-// }
+ERASED_ARG(#s:u32_pair_struct_spec)
+REQUIRES(u32_pair_struct_pred x s)
+ENSURES("exists* (s':u32_pair_struct_spec). u32_pair_struct_pred x s' ** pure (s' == {first = s.second; second = s.first}))")
+void swap_fields_alt (u32_pair_struct* x)
+{
+  swap_refs(&x->first, &x->second);
+}
 
 REQUIRES(emp)
 ENSURES(emp)
