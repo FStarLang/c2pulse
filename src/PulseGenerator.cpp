@@ -812,6 +812,7 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
 
     // Generate ensures for fields
     for (size_t i = 0; i < NumRecordFields; i++) {
+      
       auto FieldString = Fields[i]->Ident;
       auto *EnsuresField = new Ensures();
       EnsuresField->Ann = "x." + FieldString + " |-> s." + FieldString;
@@ -835,20 +836,21 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
     auto *GhostFoldFirstBinderTy =
         new FStarType(Def->getNameAsString() + "_refs");
     auto *GhostFoldFirstBinder = new struct Binder("x", GhostFoldFirstBinderTy);
-    auto *GhostFoldSecondBinderTy = new FStarType("erased UInt32.t");
 
-    std::string SecondBinderTerms = "";
+    GhostFoldFnDefnBinders.push_back(GhostFoldFirstBinder);
+
+    //std::string SecondBinderTerms = "";
     for (size_t i = 0; i < NumRecordFields; i++) {
-      SecondBinderTerms += "#" + FieldPrefix + std::to_string(i);
-      SecondBinderTerms += " ";
+      std::string BinderTerm = "#" + FieldPrefix + std::to_string(i);
+      //SecondBinderTerms += " ";
+      //auto Ty = Fields[i]->
+      auto *GhostFoldSecondBinderTy = new FStarType("erased ");
+      auto *GhostFoldSecondBinder = new struct Binder(BinderTerm, GhostFoldSecondBinderTy);
+      GhostFoldFnDefnBinders.push_back(GhostFoldSecondBinder);
     }
 
-    auto *GhostFoldSecondBinder =
-        new struct Binder(SecondBinderTerms, GhostFoldSecondBinderTy);
-    GhostFoldFnDefnBinders.push_back(GhostFoldFirstBinder);
-    GhostFoldFnDefnBinders.push_back(GhostFoldSecondBinder);
     GhostFoldFnDefn->Args = GhostFoldFnDefnBinders;
-
+    
     // Generate requires for fields
     for (size_t i = 0; i < NumRecordFields; i++) {
       auto FieldString = Fields[i]->Ident;
@@ -2069,10 +2071,25 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       Parenthesis->setInnerExpr(DerefAppE);
       return Parenthesis;
 
-    } else {
+    } 
+    else if (UO->getOpcode() == UO_AddrOf){
+
+      if (Parent){
+        if (auto *Call = dyn_cast<CallExpr>(E)){
+          auto *Callee = Call->getDirectCallee(); 
+
+        }
+      }
+      llvm::outs() << "Print in Addr of" << "\n";
+      E->dump();
+      assert(false && "Not implemented Member Expression!\n");
+    }
+    else {
       llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "
                       "UnaryOperator\n";
       E->dumpPretty(Ctx);
+      E->dump();
+      llvm::outs() << E->getStmtClassName() << "\n";
       llvm::outs() << "\nEnd printing term.\n\n";
       assert(false && "Expression not implemeted in getTermFromCExpr\n");
     }
@@ -2232,53 +2249,6 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       VarTerm *VTerm = new VarTerm();
       VTerm->setVarName(DRE->getDecl()->getNameAsString());
 
-
-      if (!Call)
-        return VTerm;
-      
-      // need to check if this is a boxed value
-      // That is, it is allocated on the heap.
-      // Vidush: It is not a good idea to do this for every leaf node.
-       if (IsAllocatedOnHeap.count(DreDecl)){
-         int ArgIdx; 
-
-         for (size_t I = 0; I < Call->getNumArgs(); I++){
-          if (Call->getArg(I) == E){
-            ArgIdx = I;
-            break;
-          }
-         }
-
-         auto PulseBinders = PFDef->Defn->Args;
-         bool IsCallArgBoxed = false;
-         for (auto Binder : PulseBinders){
-          
-            if (Binder->Ident == DreDecl->getNameAsString()){
-              if (auto *CastPointer = dyn_cast<FStarPointerType>(Binder->Type)){
-                IsCallArgBoxed = CastPointer->isBoxed;
-              }
-            } 
-         }
-         
-         //Call parameter is boxed or is not a function call.
-         //TODO: Fix: 
-         // Assumes returns etc. are fine. 
-         if (IsCallArgBoxed || !Call){
-          return VTerm;
-         }
-         auto *NewParen = new Paren();
-         auto *BoxCall = new AppE();
-         auto *CallName = new VarTerm();
-         NewParen->setInnerExpr(BoxCall);
-         CallName->setVarName("Box.box_to_ref");
-         //Make sure module is included Add commentMore actions
-         //TODO: Angelica, maybe there is better way to handle this?
-         Module->IncludedModules.insert("module Box = Pulse.Lib.Box");
-         BoxCall->setCallName(CallName);
-         BoxCall->pushArg(VTerm);
-         return NewParen;
-       }
-
       InitAppE->pushArg(VTerm);
 
       // Wrap this AppE in a Parenthesis.
@@ -2292,6 +2262,49 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
 
       // return VTermRet;
       return PulseParenthesis;
+      
+      // need to check if this is a boxed value
+      // That is, it is allocated on the heap.
+      // Vidush: It is not a good idea to do this for every leaf node.
+      //  if (IsAllocatedOnHeap.count(DreDecl)){
+      //    int ArgIdx; 
+
+      //    for (size_t I = 0; I < Call->getNumArgs(); I++){
+      //     if (Call->getArg(I) == E){
+      //       ArgIdx = I;
+      //       break;
+      //     }
+      //    }
+
+      //    auto PulseBinders = PFDef->Defn->Args;
+      //    bool IsCallArgBoxed = false;
+      //    for (auto Binder : PulseBinders){
+          
+      //       if (Binder->Ident == DreDecl->getNameAsString()){
+      //         if (auto *CastPointer = dyn_cast<FStarPointerType>(Binder->Type)){
+      //           IsCallArgBoxed = CastPointer->isBoxed;
+      //         }
+      //       } 
+      //    }
+         
+      //    //Call parameter is boxed or is not a function call.
+      //    //TODO: Fix: 
+      //    // Assumes returns etc. are fine. 
+      //    if (IsCallArgBoxed || !Call){
+      //     return VTerm;
+      //    }
+      //    auto *NewParen = new Paren();
+      //    auto *BoxCall = new AppE();
+      //    auto *CallName = new VarTerm();
+      //    NewParen->setInnerExpr(BoxCall);
+      //    CallName->setVarName("Box.box_to_ref");
+      //    //Make sure module is included Add commentMore actions
+      //    //TODO: Angelica, maybe there is better way to handle this?
+      //    Module->IncludedModules.insert("module Box = Pulse.Lib.Box");
+      //    BoxCall->setCallName(CallName);
+      //    BoxCall->pushArg(VTerm);
+      //    return NewParen;
+      //  }
     }
 
     VarTerm *VTerm = new VarTerm();
