@@ -2464,7 +2464,7 @@ std::string PulseTransformer::writeToFile() {
   // OutFile.close();
   // return TempFilePath;
 
-  auto &ModulesToBeOutputted = CodeGen.getOutPutModules();
+  auto &ModulesToBeOutputted = CodeGen.getEmittedModules();
 
   for (auto &M : ModulesToBeOutputted) {
 
@@ -2536,6 +2536,6 @@ void PulseTransformer::transform() {
 }
 
 // std::string PulseTransformer::getTransformedCode() {
-//   auto &CodeForModules = CodeGen.getOutPutModules();
+//   auto &CodeForModules = CodeGen.getOutputModules();
 
 // }
