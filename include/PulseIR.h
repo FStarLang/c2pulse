@@ -258,6 +258,7 @@ class FStarArrType : public FStarType {
 class FStarPointerType : public FStarType {
 public:
   FStarPointerType();
+  bool isBoxed = false;
   FStarType *PointerTo;
   virtual void setName(std::string Name) override;
   virtual ~FStarPointerType() = default;

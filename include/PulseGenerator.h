@@ -62,7 +62,7 @@ private:
   std::map<clang::Decl*, clang::QualType> DeclTyMap;
   std::map<const clang::Stmt*, std::vector<Slprop*>> StmtToLemmas;
   std::set<const clang::Decl*> IsAllocatedOnHeap;
-  std::map<clang::FunctionDecl, PulseDecl*> DeclarationsMap;
+  std::map<clang::FunctionDecl*, PulseDecl*> DeclarationsMap;
 };
 
 } // end of anonymous namespace

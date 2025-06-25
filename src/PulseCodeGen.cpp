@@ -11,24 +11,25 @@ using namespace llvm;
 
 void PulseCodeGen::writeHeaders(PulseModul *pulseModule,
                                 llvm::raw_string_ostream &Stream) {
-
+  
+  //TODO: Angelica, this does not seem to work.                                  
   // If the module is already outputted, we do not need to write it again.
-  for (const auto &ModuleName : pulseModule->IncludedModules) {
-    if (alreadyEmittedModules.count(ModuleName) == 0) {
-      auto It = allModulesByName.find(ModuleName);
-      if (It != allModulesByName.end()) {
-        PulseModul *DepModul = It->second;
-        // Recursively write header for included module
-        writeHeaders(DepModul, Stream);
-      } else {
-        llvm::errs()
-            << "Warning: Included module '" << ModuleName
-            << "' not found in module map. "
-            << "Ensure all dependencies are passed to the codegen pipeline.\n";
-      }
-      alreadyEmittedModules.insert(ModuleName);
-    }
-  }
+  // for (const auto &ModuleName : pulseModule->IncludedModules) {
+  //   if (alreadyEmittedModules.count(ModuleName) == 0) {
+  //     auto It = allModulesByName.find(ModuleName);
+  //     if (It != allModulesByName.end()) {
+  //       PulseModul *DepModul = It->second;
+  //       // Recursively write header for included module
+  //       writeHeaders(DepModul, Stream);
+  //     } else {
+  //       llvm::errs()
+  //           << "Warning: Included module '" << ModuleName
+  //           << "' not found in module map. "
+  //           << "Ensure all dependencies are passed to the codegen pipeline.\n";
+  //     }
+  //     alreadyEmittedModules.insert(ModuleName);
+  //   }
+  // }
 
   // Now emit the header for the current module
   if (alreadyEmittedModules.count(pulseModule->ModuleName) == 0) {
@@ -44,6 +45,12 @@ void PulseCodeGen::writeHeaders(PulseModul *pulseModule,
     }
 
     alreadyEmittedModules.insert(pulseModule->ModuleName);
+  }
+   
+    //TODO: HACK: REMOVE LATER
+    for (auto Module : pulseModule->IncludedModules){
+    Stream << Module << "\n";
+    Stream << PulseSyntax::NewLine;
   }
 }
 
