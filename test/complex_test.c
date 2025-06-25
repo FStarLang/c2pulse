@@ -60,6 +60,10 @@ int conditionalProcessing(int x, int y) {
     }
 }
 
+// C2PULSE: module Module_0
+// C2PULSE: #lang-pulse
+// C2PULSE: open Pulse
+
 // C2PULSE: fn triple
 // C2PULSE: (x : Int32.t)
 // C2PULSE: requires pure (Int32.fits (Int32.v x * 3))

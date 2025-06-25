@@ -13,6 +13,10 @@ void ref_swap(int* r1, int* r2)
   *r2 = tmp;
 }
 
+// C2PULSE: module Module_0
+// C2PULSE: #lang-pulse
+// C2PULSE: open Pulse
+
 // C2PULSE: fn ref_swap
 // C2PULSE: (r1 : ref Int32.t)
 // C2PULSE: (r2 : ref Int32.t)

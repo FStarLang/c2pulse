@@ -27,6 +27,10 @@ void reverse(ISARRAY(len) uint32_t *arr, size_t len) {
         }
 }
 
+// C2PULSE: module Module_0
+// C2PULSE: #lang-pulse
+// C2PULSE: open Pulse
+
 // C2PULSE: fn reverse
 // C2PULSE: (arr : array UInt32.t)
 // C2PULSE: (len : SizeT.t)
