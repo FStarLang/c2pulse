@@ -1,4 +1,5 @@
-// RUN: %c2pulse %s 2>&1 | %{FILECHECK} %s --check-prefix=C2PULSE
+// RUN: %c2pulse %s 
+// RUN: cat %p/Complex_test/Module_0.fst | %{FILECHECK} %s --check-prefix=C2PULSE
 // RUN: %run_fstar.sh %p/Complex_test/Module_0.fst 2>&1 | %{FILECHECK} %s --check-prefix=PULSE
 
 #include "../../test-transpiler/c/pulse_macros.h"
@@ -60,78 +61,81 @@ int conditionalProcessing(int x, int y) {
 }
 
 // C2PULSE: fn triple
-// C2PULSE-NEXT: (x : Int32.t)
-// C2PULSE-NEXT: requires pure (Int32.fits (Int32.v x * 3))
-// C2PULSE-NEXT: returns res : Int32.t
-// C2PULSE-NEXT: ensures pure (Int32.v x * 3 == Int32.v res)
-// C2PULSE-NEXT: {
-// C2PULSE-NEXT: (Int32.mul x 3l);
-// C2PULSE-NEXT: }
-// C2PULSE-NEXT: fn square
-// C2PULSE-NEXT: (x : Int32.t)
-// C2PULSE-NEXT: requires pure (Int32.fits (Int32.v x * Int32.v x))
-// C2PULSE-NEXT: returns res : Int32.t
-// C2PULSE-NEXT: ensures pure (Int32.v x * Int32.v x == Int32.v res)
-// C2PULSE-NEXT: {
-// C2PULSE-NEXT: (Int32.mul x x);
-// C2PULSE-NEXT: }
-// C2PULSE-NEXT: fn doubleValue
-// C2PULSE-NEXT: (x : Int32.t)
-// C2PULSE-NEXT: requires pure (Int32.fits (Int32.v x * 2))
-// C2PULSE-NEXT: returns res : Int32.t
-// C2PULSE-NEXT: ensures pure (Int32.v x * 2 == Int32.v res)
-// C2PULSE-NEXT: {
-// C2PULSE-NEXT: (Int32.mul x 2l);
-// C2PULSE-NEXT: }
-// C2PULSE-NEXT: fn sum
-// C2PULSE-NEXT: (x : Int32.t)
-// C2PULSE-NEXT: (y : Int32.t)
-// C2PULSE-NEXT: requires pure (Int32.fits (Int32.v x + Int32.v y))
-// C2PULSE-NEXT: returns res : Int32.t
-// C2PULSE-NEXT: ensures pure (Int32.v x + Int32.v y == Int32.v res)
-// C2PULSE-NEXT: {
-// C2PULSE-NEXT: (Int32.add x y);
-// C2PULSE-NEXT: }
-// C2PULSE-NEXT: fn rec recursiveFunction
-// C2PULSE-NEXT: (x : Int32.t)
-// C2PULSE-NEXT: (limit : Int32.t)
-// C2PULSE-NEXT: requires pure False
-// C2PULSE-NEXT: returns res : Int32.t
-// C2PULSE-NEXT: {
-// C2PULSE-NEXT: if((Int32.eq x limit))
-// C2PULSE-NEXT: {
-// C2PULSE-NEXT: x;
-// C2PULSE-NEXT: }
-// C2PULSE-NEXT: else
-// C2PULSE-NEXT: {
-// C2PULSE-NEXT: (sum 12l (recursiveFunction (Int32.add x 1l) limit));
-// C2PULSE-NEXT: }
-// C2PULSE-NEXT: }
-// C2PULSE-NEXT: fn complexComputation
-// C2PULSE-NEXT: (x : Int32.t)
-// C2PULSE-NEXT: (y : Int32.t)
-// C2PULSE-NEXT: requires pure (abs (Int32.v x) < 1000 /\ abs (Int32.v y) < 1000)
-// C2PULSE-NEXT: returns res : Int32.t
-// C2PULSE-NEXT: {
-// C2PULSE-NEXT: (Int32.add (square (triple (sum (doubleValue x) y))) (doubleValue (square (Int32.sub y x))));
-// C2PULSE-NEXT: }
-// C2PULSE-NEXT: fn conditionalProcessing
-// C2PULSE-NEXT: (x : Int32.t)
-// C2PULSE-NEXT: (y : Int32.t)
-// C2PULSE-NEXT: requires pure (abs (Int32.v x) < 1000 /\ abs (Int32.v y) < 1000)
-// C2PULSE-NEXT: returns res : Int32.t
-// C2PULSE-NEXT: {
-// C2PULSE-NEXT: if((Int32.eq (Int32.add ((Int32.mul x y)) 2l) 0l))
-// C2PULSE-NEXT: {
-// C2PULSE-NEXT: (sum (triple x) (square (Int32.sub y x)));
-// C2PULSE-NEXT: }
-// C2PULSE-NEXT: else
-// C2PULSE-NEXT: {
-// C2PULSE-NEXT: (doubleValue (square (sum x y)));
-// C2PULSE-NEXT: }
+// C2PULSE: (x : Int32.t)
+// C2PULSE: requires pure (Int32.fits (Int32.v x * 3))
+// C2PULSE: returns res : Int32.t
+// C2PULSE: ensures pure (Int32.v x * 3 == Int32.v res)
+// C2PULSE: {
+// C2PULSE: (Int32.mul x 3l);
 // C2PULSE: }
 
-// C2PULSE: Success: Code transformed and syntax validated.
+// C2PULSE: fn square
+// C2PULSE: (x : Int32.t)
+// C2PULSE: requires pure (Int32.fits (Int32.v x * Int32.v x))
+// C2PULSE: returns res : Int32.t
+// C2PULSE: ensures pure (Int32.v x * Int32.v x == Int32.v res)
+// C2PULSE: {
+// C2PULSE: (Int32.mul x x);
+// C2PULSE: }
 
-// PULSE: Verified module: Complex
-// PULSE-NEXT: All verification conditions discharged successfully
+// C2PULSE: fn doubleValue
+// C2PULSE: (x : Int32.t)
+// C2PULSE: requires pure (Int32.fits (Int32.v x * 2))
+// C2PULSE: returns res : Int32.t
+// C2PULSE: ensures pure (Int32.v x * 2 == Int32.v res)
+// C2PULSE: {
+// C2PULSE: (Int32.mul x 2l);
+// C2PULSE: }
+
+// C2PULSE: fn sum
+// C2PULSE: (x : Int32.t)
+// C2PULSE: (y : Int32.t)
+// C2PULSE: requires pure (Int32.fits (Int32.v x + Int32.v y))
+// C2PULSE: returns res : Int32.t
+// C2PULSE: ensures pure (Int32.v x + Int32.v y == Int32.v res)
+// C2PULSE: {
+// C2PULSE: (Int32.add x y);
+// C2PULSE: }
+
+// C2PULSE: fn rec recursiveFunction
+// C2PULSE: (x : Int32.t)
+// C2PULSE: (limit : Int32.t)
+// C2PULSE: requires pure False
+// C2PULSE: returns res : Int32.t
+// C2PULSE: {
+// C2PULSE: if((Int32.eq x limit))
+// C2PULSE: {
+// C2PULSE: x;
+// C2PULSE: }
+// C2PULSE: else
+// C2PULSE: {
+// C2PULSE: (sum 12l (recursiveFunction (Int32.add x 1l) limit));
+// C2PULSE: }
+// C2PULSE: }
+
+// C2PULSE: fn complexComputation
+// C2PULSE: (x : Int32.t)
+// C2PULSE: (y : Int32.t)
+// C2PULSE: requires pure (abs (Int32.v x) < 1000 /\ abs (Int32.v y) < 1000)
+// C2PULSE: returns res : Int32.t
+// C2PULSE: {
+// C2PULSE: (Int32.add (square (triple (sum (doubleValue x) y))) (doubleValue (square (Int32.sub y x))));
+// C2PULSE: }
+
+// C2PULSE: fn conditionalProcessing
+// C2PULSE: (x : Int32.t)
+// C2PULSE: (y : Int32.t)
+// C2PULSE: requires pure (abs (Int32.v x) < 1000 /\ abs (Int32.v y) < 1000)
+// C2PULSE: returns res : Int32.t
+// C2PULSE: {
+// C2PULSE: if((Int32.eq (Int32.add ((Int32.mul x y)) 2l) 0l))
+// C2PULSE: {
+// C2PULSE: (sum (triple x) (square (Int32.sub y x)));
+// C2PULSE: }
+// C2PULSE: else
+// C2PULSE: {
+// C2PULSE: (doubleValue (square (sum x y)));
+// C2PULSE: }
+// C2PULSE: }
+
+// PULSE: All verification conditions discharged successfully

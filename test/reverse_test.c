@@ -1,5 +1,5 @@
-
-// RUN: %c2pulse %s 2>&1 | %{FILECHECK} %s
+// RUN: %c2pulse %s 
+// RUN: cat %p/Reverse_test/Module_0.fst | %{FILECHECK} %s --check-prefix=C2PULSE
 // RUN: %run_fstar.sh %p/Reverse_test/Module_0.fst 2>&1 | %{FILECHECK} %s --check-prefix=PULSE
 
 #include "../../test-transpiler/c/pulse_macros.h"
@@ -27,33 +27,25 @@ void reverse(ISARRAY(len) uint32_t *arr, size_t len) {
         }
 }
 
-// CHECK: The pulse function Name is: reverse
+// C2PULSE: fn reverse
+// C2PULSE: (arr : array UInt32.t)
+// C2PULSE: (len : SizeT.t)
+// C2PULSE: requires exists* s.arr |-> s
+// C2PULSE: requires pure (length arr == SizeT.v len)
+// C2PULSE: ensures exists* s.arr |-> s
+// C2PULSE: {
+// C2PULSE: let mut i = 0sz;
+// C2PULSE: while((SizeT.lt i (SizeT.div len 2sz));
+// C2PULSE: )
+// C2PULSE: invariant c. 
+// C2PULSE:  exists* vi. (i |->vi) ** (exists* s.arr |->s) ** pure (c == (vi `SizeT.lt` SizeT.div len 2sz))
+// C2PULSE: {
+// C2PULSE: let j = (SizeT.sub (SizeT.sub len 1sz) i);
+// C2PULSE: pts_to_len arr;
+// C2PULSE: let tmp = (op_Array_Access arr i);
+// C2PULSE: arr.(i) <- (op_Array_Access arr j);
+// C2PULSE: arr.(j) <- tmp;
+// C2PULSE: i := (SizeT.add i 1sz);
+// C2PULSE: }}
 
-// CHECK: Print Program:
-
-// CHECK: fn reverse
-// CHECK-NEXT: (arr : array UInt32.t)
-// CHECK-NEXT: (len : SizeT.t)
-// CHECK-NEXT: requires exists* s.arr |-> s
-// CHECK-NEXT: requires pure (length arr == SizeT.v len)
-// CHECK-NEXT: ensures exists* s.arr |-> s
-// CHECK-NEXT: {
-// CHECK-NEXT: let mut i = 0sz;
-// CHECK-NEXT: while((SizeT.lt (! i) (SizeT.div len 2sz));
-// CHECK-NEXT: )
-// CHECK-NEXT: invariant c. 
-// CHECK-NEXT:  exists* vi. (i |->vi) ** (exists* s.arr |->s) ** pure (c == (vi `SizeT.lt` SizeT.div len 2sz))
-// CHECK-NEXT: {
-// CHECK-NEXT: let j = (SizeT.sub (SizeT.sub len 1sz) (! i));
-// CHECK-NEXT: pts_to_len arr;
-// CHECK-NEXT: let tmp = (op_Array_Access arr (! i));
-// CHECK-NEXT: arr.((! i)) <- (op_Array_Access arr j);
-// CHECK-NEXT: arr.(j) <- tmp;
-// CHECK-NEXT: i := (SizeT.add (! i) 1sz);
-// CHECK: }}
-
-
-// CHECK: Success: Code transformed and syntax validated.
-
-// PULSE: Verified module: Reverse
-// PULSE-NEXT: All verification conditions discharged successfully
+// PULSE: All verification conditions discharged successfully

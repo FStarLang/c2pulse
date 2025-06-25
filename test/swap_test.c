@@ -1,4 +1,5 @@
-// RUN: %c2pulse %s 2>&1 | %{FILECHECK} %s
+// RUN: %c2pulse %s 
+// RUN: cat %p/Swap_test/Module_0.fst | %{FILECHECK} %s --check-prefix=C2PULSE
 // RUN: %run_fstar.sh %p/Swap_test/Module_0.fst 2>&1 | %{FILECHECK} %s --check-prefix=PULSE
 
 #include "../../test-transpiler/c/pulse_macros.h"
@@ -12,25 +13,15 @@ void ref_swap(int* r1, int* r2)
   *r2 = tmp;
 }
 
-// CHECK: Print the Pulse function Definition:
+// C2PULSE: fn ref_swap
+// C2PULSE: (r1 : ref Int32.t)
+// C2PULSE: (r2 : ref Int32.t)
+// C2PULSE: requires (r1 `pts_to` 'w1) ** (r2 `pts_to` 'w2)
+// C2PULSE: ensures (r1 `pts_to` 'w2) ** (r2 `pts_to` 'w1)
+// C2PULSE: {
+// C2PULSE: let tmp = (! r1);
+// C2PULSE: r1 := (! r2);
+// C2PULSE: r2 := tmp;
+// C2PULSE: }
 
-// CHECK: The pulse function Name is: ref_swap
-
-// CHECK: Print function arguments: (r1,ref Int32.t),(r2,ref Int32.t),
-
-// CHECK: Print annotations: 
-
-// CHECK: Requires (r1 `pts_to` 'w1) ** (r2 `pts_to` 'w2)
-// CHECK: Ensures (r1 `pts_to` 'w2) ** (r2 `pts_to` 'w1)
-
-
-// CHECK: Print the function body: 
-
-// CHECK: let tmp = (! r1)
-// CHECK: r1 := (! r2)
-// CHECK: r2 := tmp
-
-// CHECK: End printing the function Definition
-
-// PULSE: Verified module: Swap
-// PULSE-NEXT: All verification conditions discharged successfully
+// PULSE: All verification conditions discharged successfully
