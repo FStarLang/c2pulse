@@ -9,49 +9,42 @@
 using namespace clang;
 using namespace llvm;
 
-void PulseCodeGen::writeHeaders(PulseModul *pulseModule,
-                                llvm::raw_string_ostream &Stream) {
-  
-  //TODO: Angelica, this does not seem to work.                                  
-  // If the module is already outputted, we do not need to write it again.
-  // for (const auto &ModuleName : pulseModule->IncludedModules) {
-  //   if (alreadyEmittedModules.count(ModuleName) == 0) {
-  //     auto It = allModulesByName.find(ModuleName);
-  //     if (It != allModulesByName.end()) {
-  //       PulseModul *DepModul = It->second;
-  //       // Recursively write header for included module
-  //       writeHeaders(DepModul, Stream);
-  //     } else {
-  //       llvm::errs()
-  //           << "Warning: Included module '" << ModuleName
-  //           << "' not found in module map. "
-  //           << "Ensure all dependencies are passed to the codegen pipeline.\n";
-  //     }
-  //     alreadyEmittedModules.insert(ModuleName);
-  //   }
-  // }
+void PulseCodeGen::writeHeaders(PulseModul *M, llvm::raw_string_ostream &OS) {
+  // If the module is already emitted, skip it.
+  if (!M || alreadyEmittedModules.count(M->ModuleName))
+    return;
 
-  // Now emit the header for the current module
-  if (alreadyEmittedModules.count(pulseModule->ModuleName) == 0) {
-    Stream << PulseSyntax::ModuleSyntax << PulseSyntax::Space
-           << pulseModule->ModuleName << PulseSyntax::NewLine;
-    Stream << PulseSyntax::NewLine;
-    Stream << PulseSyntax::LangPulse << PulseSyntax::NewLine;
-    Stream << PulseSyntax::NewLine;
-
-    if (pulseModule->includePulsePrelude) {
-      Stream << PulseSyntax::PulseInclude << PulseSyntax::NewLine;
-      Stream << PulseSyntax::NewLine;
+  // First, recursively emit all dependencies.
+  for (auto &depName : M->IncludedModules) {
+    auto it = allModulesByName.find(depName);
+    if (it != allModulesByName.end()) {
+      writeHeaders(it->second, OS);
+    } else {
+      llvm::errs()
+        << "Warning: Included module '" << depName
+        << "' not found; check your codegen pipeline.\n";
     }
+  }
 
-    alreadyEmittedModules.insert(pulseModule->ModuleName);
+  // Now emit this module’s own header.
+  OS << PulseSyntax::ModuleSyntax << PulseSyntax::Space
+     << M->ModuleName << PulseSyntax::NewLine << PulseSyntax::NewLine
+     << PulseSyntax::LangPulse  << PulseSyntax::NewLine << PulseSyntax::NewLine;
+
+  // Now add the Pulse Prelude if specified.
+  // Prelude is a common header that includes basic definitions and utilities.
+  if (M->includePulsePrelude) {
+    OS << PulseSyntax::PulseInclude << PulseSyntax::NewLine
+       << PulseSyntax::NewLine;
   }
-   
-    //TODO: HACK: REMOVE LATER
-    for (auto Module : pulseModule->IncludedModules){
-    Stream << Module << "\n";
-    Stream << PulseSyntax::NewLine;
+
+  // And finally, emit the textual “include” lines for its direct deps.
+  for (auto &depName : M->IncludedModules) {
+    OS << depName << PulseSyntax::NewLine;
   }
+  OS << PulseSyntax::NewLine;
+
+  alreadyEmittedModules.insert(M->ModuleName);
 }
 
 std::map<std::string, CodegenPyTy> &PulseCodeGen::getEmittedModules() {
