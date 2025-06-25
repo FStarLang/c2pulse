@@ -2225,7 +2225,9 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     //TODO : Vidush check if this declaration has a attribute attached to it that says something 
     // about if this is head or stack allocated?
 
-
+    //TODO: FIXME: 
+    //If the Variable is mutated and If the variable is a boxed. 
+    //We cannot just use ! to retrieve its value.
     if (MutAnalyzer->isMutated(DreDecl) && !isWrite) {
 
       // Create a new variable to be returned.
