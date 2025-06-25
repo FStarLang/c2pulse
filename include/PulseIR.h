@@ -15,7 +15,16 @@
 
 // // Define What all kinds of Annotations are there in Pulse.
 // //TODO: These can be term type in IR, we shoudl refactor these
-enum class PulseAnnKind { ErasedArg, Requires, Ensures, Returns, IsArray, Invariants, LemmaStatement};
+enum class PulseAnnKind {
+  HeapAllocated,
+  ErasedArg,
+  Requires,
+  Ensures,
+  Returns,
+  IsArray,
+  Invariants,
+  LemmaStatement
+};
 
 // Struct for Pulse annotations,
 struct PulseAnnotation {

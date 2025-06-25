@@ -6,10 +6,10 @@
 // #include "llvm/ADT/DenseSet.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include <string>
 #include <map>
 #include <memory>
 #include <set>
+#include <string>
 
 using CodegenStrTy = const char *;
 using CodegenPyTy = std::unique_ptr<llvm::raw_string_ostream>;
@@ -37,13 +37,12 @@ public:
   std::string generateCodeFromTerm(llvm::raw_string_ostream &OS, Term *T);
   void generateCodeFromPulseStmt(llvm::raw_string_ostream &S, PulseStmt *T);
   std::string formatAsComments(PulseDecl *Decl);
-  void writeHeaders(PulseModul *pulseModule, 
-                    llvm::raw_string_ostream &Stream);
+  void writeHeaders(PulseModul *pulseModule, llvm::raw_string_ostream &Stream);
 
 private:
   std::map<std::string, CodegenPyTy> emittedModules;
   std::set<std::string> alreadyEmittedModules;
-  std::map<std::string, PulseModul*> allModulesByName;
+  std::map<std::string, PulseModul *> allModulesByName;
 };
 
 namespace PulseSyntax {

@@ -192,6 +192,25 @@ PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data, std::string &match)
         //}
       return PulseAnnKind::ErasedArg;
     }
+
+    // else if (std::regex_search(cleanedString, match2, returns_pattern)){
+    delimiter = "heap_allocated:";
+    // std::string EndDelimiter = "|END";
+    // size_t end = cleanedString.find(EndDelimiter);
+    pos = cleanedString.find(delimiter);
+    if (pos != std::string::npos) {
+      std::string firstPart =
+          cleanedString.substr(0, pos); // Before "requires:"
+      match = cleanedString.substr(pos + delimiter.length(),
+                                   end - (pos + delimiter.length()));
+      if (!match.empty() && match.front() == '"' && match.back() == '"') {
+        match = match.substr(1, match.size() - 2);
+      }
+      // std::cout << "First Part: " << firstPart << std::endl;Add commentMore
+      // actions std::cout << "Second Part: " << secondPart << std::endl;
+      //}
+      return PulseAnnKind::HeapAllocated;
+    }
     //else{
           llvm::outs() << cleanedString.data() << "\n";
           assert(false && "Unhandeled pulse annotation kind!\n");

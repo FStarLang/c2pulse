@@ -4,7 +4,6 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 
-
 #include <cstdio>
 
 using namespace clang;
@@ -22,9 +21,10 @@ void PulseCodeGen::writeHeaders(PulseModul *pulseModule,
         // Recursively write header for included module
         writeHeaders(DepModul, Stream);
       } else {
-        llvm::errs() << "Warning: Included module '" << ModuleName
-             << "' not found in module map. "
-             << "Ensure all dependencies are passed to the codegen pipeline.\n";
+        llvm::errs()
+            << "Warning: Included module '" << ModuleName
+            << "' not found in module map. "
+            << "Ensure all dependencies are passed to the codegen pipeline.\n";
       }
       alreadyEmittedModules.insert(ModuleName);
     }
@@ -32,8 +32,8 @@ void PulseCodeGen::writeHeaders(PulseModul *pulseModule,
 
   // Now emit the header for the current module
   if (alreadyEmittedModules.count(pulseModule->ModuleName) == 0) {
-    Stream << PulseSyntax::ModuleSyntax << PulseSyntax::Space << pulseModule->ModuleName
-           << PulseSyntax::NewLine;
+    Stream << PulseSyntax::ModuleSyntax << PulseSyntax::Space
+           << pulseModule->ModuleName << PulseSyntax::NewLine;
     Stream << PulseSyntax::NewLine;
     Stream << PulseSyntax::LangPulse << PulseSyntax::NewLine;
     Stream << PulseSyntax::NewLine;
@@ -285,6 +285,12 @@ std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
         TermString += " ";
       }
     }
+
+    if (App->Args.empty()) {
+      TermString += PulseSyntax::OpeningParenthesis;
+      TermString += PulseSyntax::ClosingParenthesis;
+    }
+
   } else if (Ensures *Ensure = dyn_cast<Ensures>(T)) {
     OS << PulseSyntax::Ensures;
     OS << PulseSyntax::Space;

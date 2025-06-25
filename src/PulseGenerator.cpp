@@ -1321,21 +1321,27 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
                 std::string Match;
                 auto AnnKind = getPulseAnnKindFromString(
                     AnnonAttr->getAnnotation(), Match);
-                assert((AnnKind == PulseAnnKind::LemmaStatement) &&
-                       "Expected a Lemma statement!\n");
-                auto *LS = new LemmaStatement();
-                LS->Lemma = Match;
-                llvm::outs() << "Found Lemma: " << "\n";
-                llvm::outs() << Match << "\n";
-                llvm::outs() << "End.\n";
-                auto *LSE = new PulseExpr();
-                LSE->E = LS;
-                if (Start == nullptr) {
-                  auto *NewS = new PulseSequence();
-                  NewS->assignS1(LSE);
-                  Start = NewS;
+                // assert((AnnKind == PulseAnnKind::LemmaStatement) && "Expected
+                // a Lemma statement!\n");
+                if (AnnKind == PulseAnnKind::LemmaStatement) {
+                  auto *LS = new LemmaStatement();
+                  LS->Lemma = Match;
+                  llvm::outs() << "Found Lemma: " << "\n";
+                  llvm::outs() << Match << "\n";
+                  llvm::outs() << "End.\n";
+                  auto *LSE = new PulseExpr();
+                  LSE->E = LS;
+                  if (Start == nullptr) {
+                    auto *NewS = new PulseSequence();
+                    NewS->assignS1(LSE);
+                    Start = NewS;
+                  }
+                  Start->assignS2(LSE);
+                } else if (AnnKind == PulseAnnKind::HeapAllocated) {
+                  IsAllocatedOnHeap.insert(VD);
+                } else {
+                  assert(false && "Did not expect pulse annotation kind!\n");
                 }
-                Start->assignS2(LSE);
               }
             }
           }
@@ -2180,6 +2186,23 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       VarTerm *VTerm = new VarTerm();
       VTerm->setVarName(DRE->getDecl()->getNameAsString());
 
+      // need to check if this is a boxed value
+      // That is, it is allocated on the heap.
+      // Vidush: It is not a good idea to do this for every leaf node.
+      //  if (IsAllocatedOnHeap.count(DreDecl)){
+      //    auto *NewParen = new Paren();
+      //    auto *BoxCall = new AppE();
+      //    auto *CallName = new VarTerm();
+      //    NewParen->setInnerExpr(BoxCall);
+      //    CallName->setVarName("Box.box_to_ref");
+      //    //Make sure module is included Add commentMore actions
+      //    //TODO: Angelica, maybe there is better way to handle this?
+      //    Module->IncludedModules.insert("module Box = Pulse.Lib.Box");
+      //    BoxCall->setCallName(CallName);
+      //    BoxCall->pushArg(VTerm);
+      //    return NewParen;
+      //  }
+
       InitAppE->pushArg(VTerm);
 
       // Wrap this AppE in a Parenthesis.
@@ -2255,7 +2278,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
               Module->IncludedModules.insert("module Box = Pulse.Lib.Box");
               auto *NewCall = new AppE();
               auto *NewCallName = new VarTerm();
-              NewCallName->setVarName(ModuleName + ".alloc()");
+              NewCallName->setVarName(ModuleName + ".alloc");
               NewCall->setCallName(NewCallName);
               return NewCall;
             }
