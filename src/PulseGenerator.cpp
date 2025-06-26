@@ -680,124 +680,23 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
     // ensures second' |-> 'y
     // ensures pure (second == second')
     // { let vx' = !x; rewrite each second as vx'.second; vx'.second }
-    
 
-    // 5. Setters and getters for each field
-    //  fn set_first (x:ref u32_pair_struct) (f:U32.t) (#s:u32_pair_struct_spec)
-    //  requires u32_pair_struct_pred x s
-    //  ensures exists* s'. u32_pair_struct_pred x s' ** pure (s' == {s with
-    //  first=f})
-    
-    int i = 0;
-    for (auto Fld : RD->fields()) {
-      
-      auto Ty = Fld->getType(); 
-      auto PulseTy = getPulseTyFromCTy(Ty);
-      auto FieldName = Fields[i]->Ident;
+    std::string ErasedBinder = "(";
+    for (auto *Fld : RD->fields()){
+      ErasedBinder += "#" + Fld->getNameAsString() + " ";
+    }
+    ErasedBinder += ":erased _)";
 
-      auto *SetterFirstFnDefn = new _PulseFnDefn();
-      SetterFirstFnDefn->Name = "set_" + FieldName;
-      std::vector<struct Binder *> SetterFirstBinders;
+    for (auto *Fld : RD->fields()){
 
-      auto *FirstBinderTy = new FStarPointerType();
-      auto *FirstBinderSubTy = new FStarType(Def->getNameAsString());
-      FirstBinderTy->setPointerToTy(FirstBinderSubTy);
+      auto * StructToFieldRef = new GenericDecl();
+      StructToFieldRef->Ident = "fn " + StructName + "_to_" + Fld->getNameAsString() + " ";
+      StructToFieldRef->Ident += "(x: ref " + StructName + ")" + " "
+      StructToFieldRef->Ident += ErasedBinder; 
 
-      auto *FirstBinder = new struct Binder("x", FirstBinderTy);
 
-      auto *SecondBinderTy = new FStarType(PulseTy->NamedValue);
-      auto *SecondBinder = new struct Binder("f", SecondBinderTy);
-
-      auto *ThirdBinderTy = new FStarType(Def->getNameAsString() + "_spec");
-      auto *ThirdBinder = new struct Binder("#s", ThirdBinderTy);
-
-      SetterFirstBinders.push_back(FirstBinder);
-      SetterFirstBinders.push_back(SecondBinder);
-      SetterFirstBinders.push_back(ThirdBinder);
-
-      SetterFirstFnDefn->Args = SetterFirstBinders;
-
-      auto *ReqFirstSetter = new Requires();
-      ReqFirstSetter->Ann = Def->getNameAsString() + "_pred x s";
-      SetterFirstFnDefn->Annotation.push_back(ReqFirstSetter);
-
-      auto *EnsuresFirstSetter = new Ensures();
-      EnsuresFirstSetter->Ann = "exists* s'. " + Def->getNameAsString() +
-                                "_pred x s' ** pure (s' == {s with " +
-                                FieldName + "=f})";
-      SetterFirstFnDefn->Annotation.push_back(EnsuresFirstSetter);
-
-      auto *SetterFirstFunction = new PulseFnDefn(SetterFirstFnDefn);
-      NewModul->Decls.push_back(SetterFirstFunction);
-
-      // fn get_first (x:ref u32_pair_struct) (#s:u32_pair_struct_spec)
-      // requires u32_pair_struct_pred x s
-      // returns f:U32.t
-      // ensures u32_pair_struct_pred x s ** pure (f == s.first)
-
-      auto *GetterFirstFnDefn = new _PulseFnDefn();
-      GetterFirstFnDefn->Name = "get_" + FieldName;
-      std::vector<struct Binder *> GetterFirstBinders;
-
-      auto *GetFirstBinderTy = new FStarPointerType();
-      auto *GetFirstBinderSubTy = new FStarType(Def->getNameAsString());
-      GetFirstBinderTy->setPointerToTy(GetFirstBinderSubTy);
-
-      auto *GetFirstBinder = new struct Binder("x", GetFirstBinderTy);
-
-      auto *GetThirdBinderTy = new FStarType(Def->getNameAsString() + "_spec");
-      auto *GetThirdBinder = new struct Binder("#s", GetThirdBinderTy);
-
-      GetterFirstBinders.push_back(GetFirstBinder);
-      GetterFirstBinders.push_back(GetThirdBinder);
-
-      GetterFirstFnDefn->Args = GetterFirstBinders;
-
-      auto *ReqFirstGetter = new Requires();
-      ReqFirstGetter->Ann = Def->getNameAsString() + "_pred x s";
-      GetterFirstFnDefn->Annotation.push_back(ReqFirstGetter);
-
-      auto *RetFirstGetter = new Returns();
-      RetFirstGetter->Ann = "f:" + PulseTy->NamedValue;
-      GetterFirstFnDefn->Annotation.push_back(RetFirstGetter);
-
-      auto *EnsuresFirstGetter = new Ensures();
-      EnsuresFirstGetter->Ann = Def->getNameAsString() +
-                                "_pred x s ** pure (f == s." + FieldName + ")";
-      GetterFirstFnDefn->Annotation.push_back(EnsuresFirstGetter);
-
-      auto *GetterFirstFunction = new PulseFnDefn(GetterFirstFnDefn);
-      NewModul->Decls.push_back(GetterFirstFunction);
-      i++;
     }
 
-    // noeq
-    // type u32_pair_struct_refs = {
-    //   first: ref FStar.UInt32.t;
-    //   second: ref FStar.UInt32.t;
-    // }
-
-    // A purely function specification type for the struct.
-    auto TyconRef = new TyConDecl();
-    auto *TyconRefRec = new TyConRecord();
-
-    TyconRefRec->Ident = Def->getNameAsString() + "_refs";
-
-    TyconRefRec->Attrs.push_back(NoEqTerm);
-
-    std::vector<RecordElement *> RefFields;
-    for (const FieldDecl *FD : RD->fields()) {
-      auto *Element = new RecordElement();
-      auto *ElementPointerTy = new FStarPointerType();
-      ElementPointerTy->setPointerToTy(getPulseTyFromCTy(FD->getType()));
-      Element->ElementTerm = ElementPointerTy;
-      Element->Ident = FD->getNameAsString();
-      RefFields.push_back(Element);
-    }
-
-    TyconRefRec->RecordFields = RefFields;
-    TyconRef->TyCons.push_back(TyconRefRec);
-    NewModul->Decls.push_back(TyconRef);
 
     // let u32_pair_struct_refs_pred (x:u32_pair_struct_refs)
     // (s:u32_pair_struct_spec) : slprop = (x.first |-> s.first) ** (x.second
