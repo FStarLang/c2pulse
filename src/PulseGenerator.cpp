@@ -443,6 +443,7 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
     NewModul->isHeader = true;
     NewModul->includePulsePrelude = true;
     auto StructName = Def->getNameAsString();
+    llvm::outs() <<"================================= " <<StructName<<"\n";
 
     // One way to make this unique is to append the global variable at
     // the end of the module name.
@@ -451,6 +452,7 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
     //  to the library defintions for the things where the definitions etc.
     //  reside.
     // TODO: Angelica.
+    
     NewModul->ModuleName = "Module_" + Def->getNameAsString();
 
     NewModul->IncludedModules.insert("module Box = Pulse.Lib.Box");
@@ -485,6 +487,16 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
       AbstractType->Ident += FD->getNameAsString() + ": ref ";
       AbstractType->Ident += PulseTy->NamedValue + ";";
       AbstractType->Ident += "\n";
+
+      // TODO: Vidush: Handle this in a better way.
+      // If the type is a pointer type, we add it to the included modules.
+      if (PulseTy->Tag == TermTag::FStarPointerType) {
+        // If the type is a pointer type, we add it to the included modules.
+        // This is needed for the ref type.
+        std::string prefix = "ref ";
+        std::string result = PulseTy->NamedValue.substr(prefix.length());
+        NewModul->IncludedModules.insert("open Module_"+ result);
+      }
     }
     AbstractType->Ident += "}\n";
     NewModul->Decls.push_back(AbstractType);
