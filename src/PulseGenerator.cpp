@@ -439,9 +439,9 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
     const RecordDecl *RD = RT->getDecl();
     // Now you can inspect RD, cast to CXXRecordDecl if needed
 
-    PulseModul *NewModul = new PulseModul();
-    NewModul->isHeader = true;
-    NewModul->includePulsePrelude = true;
+    //PulseModul *NewModul = new PulseModul();
+    //NewModul->isHeader = true;
+    //NewModul->includePulsePrelude = true;
     auto StructName = Def->getNameAsString();
     llvm::outs() <<"================================= " <<StructName<<"\n";
 
@@ -452,8 +452,25 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
     //  to the library defintions for the things where the definitions etc.
     //  reside.
     // TODO: Angelica.
-    
-    NewModul->ModuleName = "Module_" + Def->getNameAsString();
+    //NewModul->ModuleName = "Module_" + Def->getNameAsString();
+    std::string GetModule = "Module_" + std::to_string(TypeDefDec->getOwningModuleID());
+
+    // extractPulseAnnotations(FD, SM, FDefn->Annotation);
+    auto It = Modules.find(GetModule);
+    PulseModul *NewModul = nullptr;
+    if (It != Modules.end()) {
+      NewModul = It->second;
+      // Module->Decls.push_back(PulseFn);
+    }
+    // Create new function defintions.
+    else {
+      NewModul = new PulseModul();
+      NewModul->includePulsePrelude = true;
+      NewModul->ModuleName = GetModule;
+      Modules.insert(std::make_pair(NewModul->ModuleName, NewModul));
+      // Module->Decls.push_back(PulseFn);
+      // Modules.insert(std::make_pair(ClangModuleName, Modul));
+    }
 
     NewModul->IncludedModules.insert("module Box = Pulse.Lib.Box");
 
@@ -692,338 +709,410 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
     // ensures second' |-> 'y
     // ensures pure (second == second')
     // { let vx' = !x; rewrite each second as vx'.second; vx'.second }
-    
 
-    // 5. Setters and getters for each field
-    //  fn set_first (x:ref u32_pair_struct) (f:U32.t) (#s:u32_pair_struct_spec)
-    //  requires u32_pair_struct_pred x s
-    //  ensures exists* s'. u32_pair_struct_pred x s' ** pure (s' == {s with
-    //  first=f})
-    
-    int i = 0;
-    for (auto Fld : RD->fields()) {
-      
+    std::string ErasedBinder = "(";
+    for (auto *Fld : RD->fields()){
+      ErasedBinder += "#" + Fld->getNameAsString() + " ";
+    }
+    ErasedBinder += ":erased _)";
+
+    std::string EnsuresHelper = "({ "; 
+    Counter = 0;
+    for (auto *Fld : RD->fields()){
+      EnsuresHelper += Fld->getNameAsString();
+      if (Counter < NumRecordFields - 1){
+        EnsuresHelper += ";";
+      }
+      Counter++;
+    }
+    EnsuresHelper += " }";
+
+    for (auto *Fld : RD->fields()){
+
       auto Ty = Fld->getType(); 
-      auto PulseTy = getPulseTyFromCTy(Ty);
-      auto FieldName = Fields[i]->Ident;
-
-      auto *SetterFirstFnDefn = new _PulseFnDefn();
-      SetterFirstFnDefn->Name = "set_" + FieldName;
-      std::vector<struct Binder *> SetterFirstBinders;
-
-      auto *FirstBinderTy = new FStarPointerType();
-      auto *FirstBinderSubTy = new FStarType(Def->getNameAsString());
-      FirstBinderTy->setPointerToTy(FirstBinderSubTy);
-
-      auto *FirstBinder = new struct Binder("x", FirstBinderTy);
-
-      auto *SecondBinderTy = new FStarType(PulseTy->NamedValue);
-      auto *SecondBinder = new struct Binder("f", SecondBinderTy);
-
-      auto *ThirdBinderTy = new FStarType(Def->getNameAsString() + "_spec");
-      auto *ThirdBinder = new struct Binder("#s", ThirdBinderTy);
-
-      SetterFirstBinders.push_back(FirstBinder);
-      SetterFirstBinders.push_back(SecondBinder);
-      SetterFirstBinders.push_back(ThirdBinder);
-
-      SetterFirstFnDefn->Args = SetterFirstBinders;
-
-      auto *ReqFirstSetter = new Requires();
-      ReqFirstSetter->Ann = Def->getNameAsString() + "_pred x s";
-      SetterFirstFnDefn->Annotation.push_back(ReqFirstSetter);
-
-      auto *EnsuresFirstSetter = new Ensures();
-      EnsuresFirstSetter->Ann = "exists* s'. " + Def->getNameAsString() +
-                                "_pred x s' ** pure (s' == {s with " +
-                                FieldName + "=f})";
-      SetterFirstFnDefn->Annotation.push_back(EnsuresFirstSetter);
-
-      auto *SetterFirstFunction = new PulseFnDefn(SetterFirstFnDefn);
-      NewModul->Decls.push_back(SetterFirstFunction);
-
-      // fn get_first (x:ref u32_pair_struct) (#s:u32_pair_struct_spec)
-      // requires u32_pair_struct_pred x s
-      // returns f:U32.t
-      // ensures u32_pair_struct_pred x s ** pure (f == s.first)
-
-      auto *GetterFirstFnDefn = new _PulseFnDefn();
-      GetterFirstFnDefn->Name = "get_" + FieldName;
-      std::vector<struct Binder *> GetterFirstBinders;
-
-      auto *GetFirstBinderTy = new FStarPointerType();
-      auto *GetFirstBinderSubTy = new FStarType(Def->getNameAsString());
-      GetFirstBinderTy->setPointerToTy(GetFirstBinderSubTy);
-
-      auto *GetFirstBinder = new struct Binder("x", GetFirstBinderTy);
-
-      auto *GetThirdBinderTy = new FStarType(Def->getNameAsString() + "_spec");
-      auto *GetThirdBinder = new struct Binder("#s", GetThirdBinderTy);
-
-      GetterFirstBinders.push_back(GetFirstBinder);
-      GetterFirstBinders.push_back(GetThirdBinder);
-
-      GetterFirstFnDefn->Args = GetterFirstBinders;
-
-      auto *ReqFirstGetter = new Requires();
-      ReqFirstGetter->Ann = Def->getNameAsString() + "_pred x s";
-      GetterFirstFnDefn->Annotation.push_back(ReqFirstGetter);
-
-      auto *RetFirstGetter = new Returns();
-      RetFirstGetter->Ann = "f:" + PulseTy->NamedValue;
-      GetterFirstFnDefn->Annotation.push_back(RetFirstGetter);
-
-      auto *EnsuresFirstGetter = new Ensures();
-      EnsuresFirstGetter->Ann = Def->getNameAsString() +
-                                "_pred x s ** pure (f == s." + FieldName + ")";
-      GetterFirstFnDefn->Annotation.push_back(EnsuresFirstGetter);
-
-      auto *GetterFirstFunction = new PulseFnDefn(GetterFirstFnDefn);
-      NewModul->Decls.push_back(GetterFirstFunction);
-      i++;
+      auto *PulseTy = getPulseTyFromCTy(Ty);
+      
+      auto * StructToFieldRef = new GenericDecl();
+      StructToFieldRef->Ident = "fn " + StructName + "_to_" + Fld->getNameAsString() + " ";
+      StructToFieldRef->Ident += "(x: ref " + StructName + ")" + " ";
+      StructToFieldRef->Ident += ErasedBinder + "\n"; 
+      StructToFieldRef->Ident += "requires x |-> " + EnsuresHelper + " <: " + StructName + ")\n";
+      StructToFieldRef->Ident += "requires reveal " + Fld->getNameAsString() + " |-> 'y\n";
+      StructToFieldRef->Ident +=  "returns " + Fld->getNameAsString() + "': ref " + PulseTy->print() + "\n";
+      StructToFieldRef->Ident += "ensures (x |-> ({";
+      Counter = 0;
+      for (auto *FldPr : RD->fields()){
+            StructToFieldRef->Ident += FldPr->getNameAsString();
+            if (FldPr == Fld){
+              StructToFieldRef->Ident += "=" + FldPr->getNameAsString() + "'";
+            }
+            if (Counter < NumRecordFields - 1){
+              StructToFieldRef->Ident += "; ";
+            }
+            Counter++;
+      } 
+      StructToFieldRef->Ident += " } <: " + StructName + "))\n";
+      StructToFieldRef->Ident += "ensures " + Fld->getNameAsString() + "' |-> 'y\n";
+      StructToFieldRef->Ident += "ensures pure (" + Fld->getNameAsString() + " == " + Fld->getNameAsString() + "'" + ")\n";
+      StructToFieldRef->Ident += "{ let vx' = !x; rewrite each " + Fld->getNameAsString() + " as vx'." + Fld->getNameAsString() + "; vx'." + Fld->getNameAsString() + " }\n";
+      NewModul->Decls.push_back(StructToFieldRef);
     }
 
-    // noeq
-    // type u32_pair_struct_refs = {
-    //   first: ref FStar.UInt32.t;
-    //   second: ref FStar.UInt32.t;
-    // }
+    //7. Setters/getters
 
-    // A purely function specification type for the struct.
-    auto TyconRef = new TyConDecl();
-    auto *TyconRefRec = new TyConRecord();
+    // // x->first
+    // fn u32_pair_struct_get_first (x: ref u32_pair_struct) (#first #second: erased _)
+    // requires x |-> ({ first; second } <: u32_pair_struct)
+    // requires reveal first |-> 'y
+    // returns first': UInt32.t
+    // ensures (x |-> ({ first; second } <: u32_pair_struct))
+    // ensures reveal first |-> 'y
+    // ensures pure ('y == first')
+    // { let vfirst = u32_pair_struct_to_first x; let ret = !vfirst; rewrite each vfirst as first; ret }
 
-    TyconRefRec->Ident = Def->getNameAsString() + "_refs";
+    // // x->second
+    // fn u32_pair_struct_get_second (x: ref u32_pair_struct) (#first #second: erased _)
+    // requires x |-> ({ first; second } <: u32_pair_struct)
+    // requires reveal second |-> 'y
+    // returns second': UInt32.t
+    // ensures (x |-> ({ first; second } <: u32_pair_struct))
+    // ensures reveal second |-> 'y
+    // ensures pure ('y == second')
+    // { let vsecond = u32_pair_struct_to_second x; let ret = !vsecond; rewrite each vsecond as second; ret }
 
-    TyconRefRec->Attrs.push_back(NoEqTerm);
+    for (auto *Fld : RD->fields()){
 
-    std::vector<RecordElement *> RefFields;
-    for (const FieldDecl *FD : RD->fields()) {
-      auto *Element = new RecordElement();
-      auto *ElementPointerTy = new FStarPointerType();
-      ElementPointerTy->setPointerToTy(getPulseTyFromCTy(FD->getType()));
-      Element->ElementTerm = ElementPointerTy;
-      Element->Ident = FD->getNameAsString();
-      RefFields.push_back(Element);
+      auto Ty = Fld->getType(); 
+      auto *PulseTy = getPulseTyFromCTy(Ty);
+      
+      auto * StructToFieldRef = new GenericDecl();
+      StructToFieldRef->Ident = "fn " + StructName + "_get_" + Fld->getNameAsString() + " ";
+      StructToFieldRef->Ident += "(x: ref " + StructName + ")" + " ";
+      StructToFieldRef->Ident += ErasedBinder + "\n"; 
+      StructToFieldRef->Ident += "requires x |-> " + EnsuresHelper + " <: " + StructName + ")\n";
+      StructToFieldRef->Ident += "requires reveal " + Fld->getNameAsString() + " |-> 'y\n";
+      StructToFieldRef->Ident +=  "returns " + Fld->getNameAsString() + "': " + PulseTy->print() + "\n";
+      StructToFieldRef->Ident += "ensures (x |-> ";
+      StructToFieldRef->Ident += EnsuresHelper;
+      StructToFieldRef->Ident += " <: " + StructName + "))\n";
+      StructToFieldRef->Ident += "ensures reveal " + Fld->getNameAsString() + " |-> 'y\n";
+      StructToFieldRef->Ident += "ensures pure ('y == " + Fld->getNameAsString() + "'" + ")\n";
+      StructToFieldRef->Ident += "{ let v" + Fld->getNameAsString() + " = " + StructName + "_to_" + Fld->getNameAsString() + " x; let ret = !v" + Fld->getNameAsString() + "; " + "rewrite each " + "v" + Fld->getNameAsString() + " as " + Fld->getNameAsString() + "; ret " + "}\n";
+      NewModul->Decls.push_back(StructToFieldRef);
     }
 
-    TyconRefRec->RecordFields = RefFields;
-    TyconRef->TyCons.push_back(TyconRefRec);
-    NewModul->Decls.push_back(TyconRef);
+    // // x->first = first'
+    // fn u32_pair_struct_set_first (x: ref u32_pair_struct) (#first #second: erased _) (first': UInt32.t)
+    // requires x |-> ({ first; second } <: u32_pair_struct)
+    // requires reveal first |-> 'y
+    // ensures (x |-> ({ first; second } <: u32_pair_struct))
+    // ensures reveal first |-> first'
+    // { let vfirst = u32_pair_struct_to_first x; vfirst := first'; rewrite each vfirst as first }
+
+    // // x->second = second'
+    // fn u32_pair_struct_set_second (x: ref u32_pair_struct) (#first #second: erased _) (second': UInt32.t)
+    // requires x |-> ({ first; second } <: u32_pair_struct)
+    // requires reveal second |-> 'y
+    // ensures (x |-> ({ first; second } <: u32_pair_struct))
+    // ensures reveal second |-> second'
+    // { let vsecond = u32_pair_struct_to_second x; vsecond := second'; rewrite each vsecond as second }
+
+    for (auto *Fld : RD->fields()){
+
+      auto Ty = Fld->getType(); 
+      auto *PulseTy = getPulseTyFromCTy(Ty);
+      
+      auto * StructToFieldRef = new GenericDecl();
+      StructToFieldRef->Ident = "fn " + StructName + "_set_" + Fld->getNameAsString() + " ";
+      StructToFieldRef->Ident += "(x: ref " + StructName + ")" + " ";
+      StructToFieldRef->Ident += ErasedBinder + " ";
+      StructToFieldRef->Ident += "(" + Fld->getNameAsString() + "': "; 
+      StructToFieldRef->Ident += PulseTy->print() + ")" + "\n"; 
+      StructToFieldRef->Ident += "requires x |-> " + EnsuresHelper + " <: " + StructName + ")\n";
+      StructToFieldRef->Ident += "requires reveal " + Fld->getNameAsString() + " |-> 'y\n";
+      StructToFieldRef->Ident += "ensures (x |-> ";
+      StructToFieldRef->Ident += EnsuresHelper;
+      StructToFieldRef->Ident += " <: " + StructName + "))\n";
+      StructToFieldRef->Ident += "ensures reveal " + Fld->getNameAsString() + " |-> " + Fld->getNameAsString() + "'" + "\n";
+      StructToFieldRef->Ident += "{ let v" + Fld->getNameAsString() + " = " + StructName + "_to_" + Fld->getNameAsString() + " x;" + "v" + Fld->getNameAsString() + ":=" + Fld->getNameAsString() + "'" + "; " + "rewrite each " + "v" + Fld->getNameAsString() + " as " + Fld->getNameAsString() + " }\n";
+      NewModul->Decls.push_back(StructToFieldRef);
+    }
+
+
+    //8. A ghost function that folds the predicate for u32_pair_struct_refs
+    // ghost
+    // fn u32_pair_struct_recover (x:ref u32_pair_struct) (#a0 #a1 :erased U32.t)
+    // requires exists* (y: u32_pair_struct). (x |-> y) ** (y.first |-> a0) ** (y.second |-> a1)
+    // ensures u32_pair_struct_pred x ({first = a0; second = a1})
+    // { fold u32_pair_struct_pred x ({first = a0; second = a1}) }
+
+    std::string FieldPrefix = "a";
+    auto *NewGhostFunction = new GenericDecl();
+    NewGhostFunction->Ident = "ghost\n";
+    NewGhostFunction->Ident += "fn " + StructName + "_recover ";
+    NewGhostFunction->Ident += "(x:ref " + StructName + ") ";
+    
+    for (auto *Fld : RD->fields()) {
+      auto Ty = Fld->getType(); 
+      auto *PulseTy = getPulseTyFromCTy(Ty);
+      NewGhostFunction->Ident += "(";
+      NewGhostFunction->Ident += "#" + FieldPrefix + std::to_string(Counter) + " : ";
+      NewGhostFunction->Ident += PulseTy->print(); 
+      NewGhostFunction->Ident += ") ";
+    }
+    NewGhostFunction->Ident += "\n";
+
+    NewGhostFunction->Ident += "requires exists* (y: " + StructName + "). (x |-> y) ** ";
+    Counter = 0;
+    for (auto *Fld : RD->fields()){
+      NewGhostFunction->Ident += "(";
+      NewGhostFunction->Ident += "y.";
+      NewGhostFunction->Ident += Fld->getNameAsString() + " ";
+      NewGhostFunction->Ident += "|-> ";
+      NewGhostFunction->Ident += FieldPrefix + std::to_string(Counter);
+      NewGhostFunction->Ident += ")";
+
+      if (Counter < NumRecordFields - 1){
+        NewGhostFunction->Ident += " ** ";
+      }
+      Counter++;
+    }
+    NewGhostFunction->Ident += "\n";
+
+    NewGhostFunction->Ident += "ensures " + StructName + "_pred x ({";
+    Counter = 0;
+    std::string TempStr = "";
+    for (auto *Fld : RD->fields()){
+      TempStr += Fld->getNameAsString();
+      TempStr += " = ";
+      TempStr += FieldPrefix;
+      TempStr += std::to_string(Counter);
+
+      if (Counter < NumRecordFields - 1){
+        TempStr += "; ";
+      }
+      Counter++;
+    }
+    NewGhostFunction->Ident += TempStr;
+    NewGhostFunction->Ident += "})\n";
+
+    NewGhostFunction->Ident += "{fold " + StructName + "_pred x ({";
+    NewGhostFunction->Ident += TempStr + "}) }\n";
+
+    NewModul->Decls.push_back(NewGhostFunction);
 
     // let u32_pair_struct_refs_pred (x:u32_pair_struct_refs)
     // (s:u32_pair_struct_spec) : slprop = (x.first |-> s.first) ** (x.second
     //|-> s.second)
 
-    auto *TopLevelLetIns = new TopLevelLet();
+    // auto *TopLevelLetIns = new TopLevelLet();
 
-    TopLevelLetIns->Ident = StructName + "_refs_pred" + " (x:" + StructName +
-                            "_refs)" + " (s:" + StructName + "_spec)" +
-                            " : slprop";
-    for (size_t i = 0; i < NumRecordFields; i++) {
-      auto FieldString = Fields[i]->Ident;
-      TopLevelLetIns->Lhs +=
-          "(x." + FieldString + " |-> s." + FieldString + ")";
-      if (i < NumRecordFields - 1) {
-        TopLevelLetIns->Lhs += " ** ";
-      }
-    }
+    // TopLevelLetIns->Ident = StructName + "_refs_pred" + " (x:" + StructName +
+    //                         "_refs)" + " (s:" + StructName + "_spec)" +
+    //                         " : slprop";
+    // for (size_t i = 0; i < NumRecordFields; i++) {
+    //   auto FieldString = Fields[i]->Ident;
+    //   TopLevelLetIns->Lhs +=
+    //       "(x." + FieldString + " |-> s." + FieldString + ")";
+    //   if (i < NumRecordFields - 1) {
+    //     TopLevelLetIns->Lhs += " ** ";
+    //   }
+    // }
 
-    NewModul->Decls.push_back(TopLevelLetIns);
+    // NewModul->Decls.push_back(TopLevelLetIns);
 
-    // val recover (x:ref u32_pair_struct) (y:u32_pair_struct_refs) : slprop
+    // // val recover (x:ref u32_pair_struct) (y:u32_pair_struct_refs) : slprop
 
-    auto *RecoverVal = new ValDecl();
-    RecoverVal->Ident =
-        "recover (x:ref " + StructName + ") " + "(y:" + StructName + "_refs)";
+    // auto *RecoverVal = new ValDecl();
+    // RecoverVal->Ident =
+    //     "recover (x:ref " + StructName + ") " + "(y:" + StructName + "_refs)";
 
-    auto *RecSlpropTyp = new Name();
-    RecSlpropTyp->NamedValue = "slprop";
-    RecoverVal->ValTerm = RecSlpropTyp;
+    // auto *RecSlpropTyp = new Name();
+    // RecSlpropTyp->NamedValue = "slprop";
+    // RecoverVal->ValTerm = RecSlpropTyp;
 
-    NewModul->Decls.push_back(RecoverVal);
+    // NewModul->Decls.push_back(RecoverVal);
 
-    // //8. A function that converts a u32_pair_struct to u32_pair_struct_refs
-    // //   i.e., borrowing pointrs to the fields of a struct
-    // fn explode (x:ref u32_pair_struct) (#s:u32_pair_struct_spec)
-    // requires u32_pair_struct_pred x s
-    // returns y:u32_pair_struct_refs
-    // ensures u32_pair_struct_refs_pred y s
-    // ensures recover x y
+    // // //8. A function that converts a u32_pair_struct to u32_pair_struct_refs
+    // // //   i.e., borrowing pointrs to the fields of a struct
+    // // fn explode (x:ref u32_pair_struct) (#s:u32_pair_struct_spec)
+    // // requires u32_pair_struct_pred x s
+    // // returns y:u32_pair_struct_refs
+    // // ensures u32_pair_struct_refs_pred y s
+    // // ensures recover x y
 
-    auto *ExplodeFnDefn = new _PulseFnDefn();
-    ExplodeFnDefn->Name = "explode";
-    std::vector<struct Binder *> ExplodeBinders;
-    auto *ExplodeFirstBinderTy = new FStarPointerType();
-    auto *ExplodeFirstBinderSubTy = new FStarType(Def->getNameAsString());
-    ExplodeFirstBinderTy->setPointerToTy(ExplodeFirstBinderSubTy);
-    auto *ExplodeFirstBinder = new struct Binder("x", ExplodeFirstBinderTy);
-    auto *ExplodeSecondBinderTy =
-        new FStarType(Def->getNameAsString() + "_spec");
-    auto *ExplodeSecondBinder = new struct Binder("#s", ExplodeSecondBinderTy);
-    ExplodeBinders.push_back(ExplodeFirstBinder);
-    ExplodeBinders.push_back(ExplodeSecondBinder);
-    ExplodeFnDefn->Args = ExplodeBinders;
+    // auto *ExplodeFnDefn = new _PulseFnDefn();
+    // ExplodeFnDefn->Name = "explode";
+    // std::vector<struct Binder *> ExplodeBinders;
+    // auto *ExplodeFirstBinderTy = new FStarPointerType();
+    // auto *ExplodeFirstBinderSubTy = new FStarType(Def->getNameAsString());
+    // ExplodeFirstBinderTy->setPointerToTy(ExplodeFirstBinderSubTy);
+    // auto *ExplodeFirstBinder = new struct Binder("x", ExplodeFirstBinderTy);
+    // auto *ExplodeSecondBinderTy =
+    //     new FStarType(Def->getNameAsString() + "_spec");
+    // auto *ExplodeSecondBinder = new struct Binder("#s", ExplodeSecondBinderTy);
+    // ExplodeBinders.push_back(ExplodeFirstBinder);
+    // ExplodeBinders.push_back(ExplodeSecondBinder);
+    // ExplodeFnDefn->Args = ExplodeBinders;
 
-    auto *ExplodeReqOne = new Requires();
-    auto *ExplodeRetTwo = new Returns();
-    auto *ExplodeEnsuresOne = new Ensures();
-    auto *ExplodeEnsuresTwo = new Ensures();
+    // auto *ExplodeReqOne = new Requires();
+    // auto *ExplodeRetTwo = new Returns();
+    // auto *ExplodeEnsuresOne = new Ensures();
+    // auto *ExplodeEnsuresTwo = new Ensures();
 
-    ExplodeReqOne->Ann = StructName + "_pred x s";
-    ExplodeRetTwo->Ann = "y:" + StructName + "_refs";
-    ExplodeEnsuresOne->Ann = StructName + "_refs_pred y s";
-    ExplodeEnsuresTwo->Ann = "recover x y";
+    // ExplodeReqOne->Ann = StructName + "_pred x s";
+    // ExplodeRetTwo->Ann = "y:" + StructName + "_refs";
+    // ExplodeEnsuresOne->Ann = StructName + "_refs_pred y s";
+    // ExplodeEnsuresTwo->Ann = "recover x y";
 
-    ExplodeFnDefn->Annotation.push_back(ExplodeReqOne);
-    ExplodeFnDefn->Annotation.push_back(ExplodeRetTwo);
-    ExplodeFnDefn->Annotation.push_back(ExplodeEnsuresOne);
-    ExplodeFnDefn->Annotation.push_back(ExplodeEnsuresTwo);
+    // ExplodeFnDefn->Annotation.push_back(ExplodeReqOne);
+    // ExplodeFnDefn->Annotation.push_back(ExplodeRetTwo);
+    // ExplodeFnDefn->Annotation.push_back(ExplodeEnsuresOne);
+    // ExplodeFnDefn->Annotation.push_back(ExplodeEnsuresTwo);
 
-    auto *PulseExplodeFunction = new PulseFnDefn(ExplodeFnDefn);
-    NewModul->Decls.push_back(PulseExplodeFunction);
+    // auto *PulseExplodeFunction = new PulseFnDefn(ExplodeFnDefn);
+    // NewModul->Decls.push_back(PulseExplodeFunction);
 
-    // //9. A function that converts u32_pair_struct_refs back to
-    // u32_pair_struct
-    // //   i.e., restoring the struct from its field pointers
-    // ghost
-    // fn restore (x:ref u32_pair_struct) (y:u32_pair_struct_refs)
-    // (#s:u32_pair_struct_spec) requires u32_pair_struct_refs_pred y s requires
-    // recover x y ensures u32_pair_struct_pred x s
+    // // //9. A function that converts u32_pair_struct_refs back to
+    // // u32_pair_struct
+    // // //   i.e., restoring the struct from its field pointers
+    // // ghost
+    // // fn restore (x:ref u32_pair_struct) (y:u32_pair_struct_refs)
+    // // (#s:u32_pair_struct_spec) requires u32_pair_struct_refs_pred y s requires
+    // // recover x y ensures u32_pair_struct_pred x s
 
-    auto *RestoreFnDefn = new _PulseFnDefn();
-    RestoreFnDefn->Attr.push_back(new Name("ghost"));
-    RestoreFnDefn->Name = "restore";
-    std::vector<struct Binder *> RestoreBinders;
-    auto *RestoreFirstBinderTy = new FStarPointerType();
-    auto *RestoreFirstBinderSubTy = new FStarType(Def->getNameAsString());
-    RestoreFirstBinderTy->setPointerToTy(RestoreFirstBinderSubTy);
-    auto *RestoreFirstBinder = new struct Binder("x", RestoreFirstBinderTy);
-    auto *RestoreSecondBinderTy =
-        new FStarType(Def->getNameAsString() + "_refs");
-    auto *RestoreSecondBinder = new struct Binder("y", RestoreSecondBinderTy);
-    auto *RestoreThirdBinderTy =
-        new FStarType(Def->getNameAsString() + "_spec");
-    auto *RestoreThirdBinder = new struct Binder("#s", RestoreThirdBinderTy);
-    RestoreBinders.push_back(RestoreFirstBinder);
-    RestoreBinders.push_back(RestoreSecondBinder);
-    RestoreBinders.push_back(RestoreThirdBinder);
-    RestoreFnDefn->Args = RestoreBinders;
+    // auto *RestoreFnDefn = new _PulseFnDefn();
+    // RestoreFnDefn->Attr.push_back(new Name("ghost"));
+    // RestoreFnDefn->Name = "restore";
+    // std::vector<struct Binder *> RestoreBinders;
+    // auto *RestoreFirstBinderTy = new FStarPointerType();
+    // auto *RestoreFirstBinderSubTy = new FStarType(Def->getNameAsString());
+    // RestoreFirstBinderTy->setPointerToTy(RestoreFirstBinderSubTy);
+    // auto *RestoreFirstBinder = new struct Binder("x", RestoreFirstBinderTy);
+    // auto *RestoreSecondBinderTy =
+    //     new FStarType(Def->getNameAsString() + "_refs");
+    // auto *RestoreSecondBinder = new struct Binder("y", RestoreSecondBinderTy);
+    // auto *RestoreThirdBinderTy =
+    //     new FStarType(Def->getNameAsString() + "_spec");
+    // auto *RestoreThirdBinder = new struct Binder("#s", RestoreThirdBinderTy);
+    // RestoreBinders.push_back(RestoreFirstBinder);
+    // RestoreBinders.push_back(RestoreSecondBinder);
+    // RestoreBinders.push_back(RestoreThirdBinder);
+    // RestoreFnDefn->Args = RestoreBinders;
 
-    auto *RestoreReqOne = new Requires();
-    auto *RestoreReqTwo = new Requires();
-    auto *RestoreEnsuresOne = new Ensures();
+    // auto *RestoreReqOne = new Requires();
+    // auto *RestoreReqTwo = new Requires();
+    // auto *RestoreEnsuresOne = new Ensures();
 
-    RestoreReqOne->Ann = StructName + "_refs_pred y s";
-    RestoreReqTwo->Ann = "recover x y";
-    RestoreEnsuresOne->Ann = StructName + "_pred x s";
+    // RestoreReqOne->Ann = StructName + "_refs_pred y s";
+    // RestoreReqTwo->Ann = "recover x y";
+    // RestoreEnsuresOne->Ann = StructName + "_pred x s";
 
-    RestoreFnDefn->Annotation.push_back(RestoreReqOne);
-    RestoreFnDefn->Annotation.push_back(RestoreReqTwo);
-    RestoreFnDefn->Annotation.push_back(RestoreEnsuresOne);
+    // RestoreFnDefn->Annotation.push_back(RestoreReqOne);
+    // RestoreFnDefn->Annotation.push_back(RestoreReqTwo);
+    // RestoreFnDefn->Annotation.push_back(RestoreEnsuresOne);
 
-    auto *PulseRestoreFunction = new PulseFnDefn(RestoreFnDefn);
-    NewModul->Decls.push_back(PulseRestoreFunction);
+    // auto *PulseRestoreFunction = new PulseFnDefn(RestoreFnDefn);
+    // NewModul->Decls.push_back(PulseRestoreFunction);
 
-    // //10. A ghost function that unfolds the predicate for
-    // u32_pair_struct_refs ghost fn u32_pair_struct_refs_pred_unfold
-    // (x:u32_pair_struct_refs) (#s:u32_pair_struct_spec) requires
-    // u32_pair_struct_refs_pred x s ensures x.first |-> s.first ensures
-    // x.second |-> s.second
+    // // //10. A ghost function that unfolds the predicate for
+    // // u32_pair_struct_refs ghost fn u32_pair_struct_refs_pred_unfold
+    // // (x:u32_pair_struct_refs) (#s:u32_pair_struct_spec) requires
+    // // u32_pair_struct_refs_pred x s ensures x.first |-> s.first ensures
+    // // x.second |-> s.second
 
-    auto *GhostUnFoldFnDefn = new _PulseFnDefn();
-    GhostUnFoldFnDefn->Attr.push_back(new Name("ghost"));
-    GhostUnFoldFnDefn->Name = StructName + "_refs_pred_unfold";
-    std::vector<struct Binder *> GhostUnFoldFnDefnBinders;
-    auto *GhostUnFoldFirstBinderTy =
-        new FStarType(Def->getNameAsString() + "_refs");
-    auto *GhostUnFoldFirstBinder =
-        new struct Binder("x", GhostUnFoldFirstBinderTy);
-    auto *GhostUnFoldSecondBinderTy =
-        new FStarType(Def->getNameAsString() + "_spec");
-    auto *GhostUnFoldSecondBinder =
-        new struct Binder("#s", GhostUnFoldSecondBinderTy);
-    GhostUnFoldFnDefnBinders.push_back(GhostUnFoldFirstBinder);
-    GhostUnFoldFnDefnBinders.push_back(GhostUnFoldSecondBinder);
-    GhostUnFoldFnDefn->Args = GhostUnFoldFnDefnBinders;
+    // auto *GhostUnFoldFnDefn = new _PulseFnDefn();
+    // GhostUnFoldFnDefn->Attr.push_back(new Name("ghost"));
+    // GhostUnFoldFnDefn->Name = StructName + "_refs_pred_unfold";
+    // std::vector<struct Binder *> GhostUnFoldFnDefnBinders;
+    // auto *GhostUnFoldFirstBinderTy =
+    //     new FStarType(Def->getNameAsString() + "_refs");
+    // auto *GhostUnFoldFirstBinder =
+    //     new struct Binder("x", GhostUnFoldFirstBinderTy);
+    // auto *GhostUnFoldSecondBinderTy =
+    //     new FStarType(Def->getNameAsString() + "_spec");
+    // auto *GhostUnFoldSecondBinder =
+    //     new struct Binder("#s", GhostUnFoldSecondBinderTy);
+    // GhostUnFoldFnDefnBinders.push_back(GhostUnFoldFirstBinder);
+    // GhostUnFoldFnDefnBinders.push_back(GhostUnFoldSecondBinder);
+    // GhostUnFoldFnDefn->Args = GhostUnFoldFnDefnBinders;
 
-    auto *GhostUnFoldReqOne = new Requires();
+    // auto *GhostUnFoldReqOne = new Requires();
 
-    GhostUnFoldReqOne->Ann = StructName + "_refs_pred x s";
+    // GhostUnFoldReqOne->Ann = StructName + "_refs_pred x s";
 
-    GhostUnFoldFnDefn->Annotation.push_back(GhostUnFoldReqOne);
+    // GhostUnFoldFnDefn->Annotation.push_back(GhostUnFoldReqOne);
 
-    // Generate ensures for fields
-    for (size_t i = 0; i < NumRecordFields; i++) {
+    // // Generate ensures for fields
+    // for (size_t i = 0; i < NumRecordFields; i++) {
       
-      auto FieldString = Fields[i]->Ident;
-      auto *EnsuresField = new Ensures();
-      EnsuresField->Ann = "x." + FieldString + " |-> s." + FieldString;
-      GhostUnFoldFnDefn->Annotation.push_back(EnsuresField);
-    }
+    //   auto FieldString = Fields[i]->Ident;
+    //   auto *EnsuresField = new Ensures();
+    //   EnsuresField->Ann = "x." + FieldString + " |-> s." + FieldString;
+    //   GhostUnFoldFnDefn->Annotation.push_back(EnsuresField);
+    // }
 
-    auto *PulseGhostUnFoldFunction = new PulseFnDefn(GhostUnFoldFnDefn);
-    NewModul->Decls.push_back(PulseGhostUnFoldFunction);
+    // auto *PulseGhostUnFoldFunction = new PulseFnDefn(GhostUnFoldFnDefn);
+    // NewModul->Decls.push_back(PulseGhostUnFoldFunction);
 
-    // //11. A ghost function that folds the predicate for u32_pair_struct_refs
-    // ghost
-    // fn u32_pair_struct_refs_pred_fold (x:u32_pair_struct_refs) (#f #s:erased
-    // U32.t) requires x.first |-> f requires x.second |-> s ensures
-    // u32_pair_struct_refs_pred x ({first = f; second = s})
+    // // //11. A ghost function that folds the predicate for u32_pair_struct_refs
+    // // ghost
+    // // fn u32_pair_struct_refs_pred_fold (x:u32_pair_struct_refs) (#f #s:erased
+    // // U32.t) requires x.first |-> f requires x.second |-> s ensures
+    // // u32_pair_struct_refs_pred x ({first = f; second = s})
 
-    std::string FieldPrefix = "a";
-    auto *GhostFoldFnDefn = new _PulseFnDefn();
-    GhostFoldFnDefn->Attr.push_back(new Name("ghost"));
-    GhostFoldFnDefn->Name = StructName + "_refs_pred_fold";
-    std::vector<struct Binder *> GhostFoldFnDefnBinders;
-    auto *GhostFoldFirstBinderTy =
-        new FStarType(Def->getNameAsString() + "_refs");
-    auto *GhostFoldFirstBinder = new struct Binder("x", GhostFoldFirstBinderTy);
+    // std::string FieldPrefix = "a";
+    // auto *GhostFoldFnDefn = new _PulseFnDefn();
+    // GhostFoldFnDefn->Attr.push_back(new Name("ghost"));
+    // GhostFoldFnDefn->Name = StructName + "_refs_pred_fold";
+    // std::vector<struct Binder *> GhostFoldFnDefnBinders;
+    // auto *GhostFoldFirstBinderTy =
+    //     new FStarType(Def->getNameAsString() + "_refs");
+    // auto *GhostFoldFirstBinder = new struct Binder("x", GhostFoldFirstBinderTy);
 
-    GhostFoldFnDefnBinders.push_back(GhostFoldFirstBinder);
+    // GhostFoldFnDefnBinders.push_back(GhostFoldFirstBinder);
 
-    //std::string SecondBinderTerms = "";
-    Counter = 0;
-    for (auto *Fld : RD->fields()) {
-      auto Ty = Fld->getType(); 
-      auto PulseTy = getPulseTyFromCTy(Ty);
-      std::string BinderTerm = "#" + FieldPrefix + std::to_string(Counter);
-      auto *GhostFoldSecondBinderTy = new FStarType("erased " + PulseTy->NamedValue);
-      auto *GhostFoldSecondBinder = new struct Binder(BinderTerm, GhostFoldSecondBinderTy);
-      GhostFoldFnDefnBinders.push_back(GhostFoldSecondBinder);
-      Counter++;
-    }
+    // //std::string SecondBinderTerms = "";
+    // Counter = 0;
+    // for (auto *Fld : RD->fields()) {
+    //   auto Ty = Fld->getType(); 
+    //   auto PulseTy = getPulseTyFromCTy(Ty);
+    //   std::string BinderTerm = "#" + FieldPrefix + std::to_string(Counter);
+    //   auto *GhostFoldSecondBinderTy = new FStarType("erased " + PulseTy->NamedValue);
+    //   auto *GhostFoldSecondBinder = new struct Binder(BinderTerm, GhostFoldSecondBinderTy);
+    //   GhostFoldFnDefnBinders.push_back(GhostFoldSecondBinder);
+    //   Counter++;
+    // }
 
-    GhostFoldFnDefn->Args = GhostFoldFnDefnBinders;
+    // GhostFoldFnDefn->Args = GhostFoldFnDefnBinders;
     
-    // Generate requires for fields
-    for (size_t i = 0; i < NumRecordFields; i++) {
-      auto FieldString = Fields[i]->Ident;
-      auto *RequiresField = new Requires();
-      RequiresField->Ann =
-          "x." + FieldString + " |-> " + FieldPrefix + std::to_string(i);
-      GhostFoldFnDefn->Annotation.push_back(RequiresField);
-    }
+    // // Generate requires for fields
+    // for (size_t i = 0; i < NumRecordFields; i++) {
+    //   auto FieldString = Fields[i]->Ident;
+    //   auto *RequiresField = new Requires();
+    //   RequiresField->Ann =
+    //       "x." + FieldString + " |-> " + FieldPrefix + std::to_string(i);
+    //   GhostFoldFnDefn->Annotation.push_back(RequiresField);
+    // }
 
-    auto *GhostFoldEnsureOne = new Ensures();
+    // auto *GhostFoldEnsureOne = new Ensures();
 
-    GhostFoldEnsureOne->Ann = StructName + "_refs_pred x";
-    GhostFoldEnsureOne->Ann += " ({";
+    // GhostFoldEnsureOne->Ann = StructName + "_refs_pred x";
+    // GhostFoldEnsureOne->Ann += " ({";
 
-    for (size_t i = 0; i < NumRecordFields; i++) {
-      auto FieldString = Fields[i]->Ident;
-      GhostFoldEnsureOne->Ann += FieldString + " = ";
-      GhostFoldEnsureOne->Ann += FieldPrefix + std::to_string(i);
-      GhostFoldEnsureOne->Ann += ";";
-    }
-    GhostFoldEnsureOne->Ann += "})";
-    GhostFoldFnDefn->Annotation.push_back(GhostFoldEnsureOne);
+    // for (size_t i = 0; i < NumRecordFields; i++) {
+    //   auto FieldString = Fields[i]->Ident;
+    //   GhostFoldEnsureOne->Ann += FieldString + " = ";
+    //   GhostFoldEnsureOne->Ann += FieldPrefix + std::to_string(i);
+    //   GhostFoldEnsureOne->Ann += ";";
+    // }
+    // GhostFoldEnsureOne->Ann += "})";
+    // GhostFoldFnDefn->Annotation.push_back(GhostFoldEnsureOne);
 
-    auto *PulseGhostFoldFunction = new PulseFnDefn(GhostFoldFnDefn);
-    NewModul->Decls.push_back(PulseGhostFoldFunction);
+    // auto *PulseGhostFoldFunction = new PulseFnDefn(GhostFoldFnDefn);
+    // NewModul->Decls.push_back(PulseGhostFoldFunction);
 
     // add Modules to Modules
-    Modules.insert(std::make_pair(NewModul->ModuleName, NewModul));
   }
 
   return true;
