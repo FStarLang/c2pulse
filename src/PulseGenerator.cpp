@@ -502,7 +502,7 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
     // 3. A predicate that relates a u32_pair_struct to its specification
     auto RecPredicate = new ValDecl();
     RecPredicate->Ident =
-        "u32_pair_struct_pred (_:ref u32_pair_struct) (_:u32_pair_struct_spec)";
+        StructName + "_pred (_:ref " +  StructName + ") (_:" + StructName + "_spec)";
 
     auto *PredTy = new Name();
     PredTy->NamedValue = "slprop";
@@ -535,7 +535,7 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
     NewFunctionDefFree->Name = "free";
 
     auto ParamTy = new Name();
-    ParamTy->NamedValue = "Box.box u32_pair_struct";
+    ParamTy->NamedValue = "Box.box " + StructName;
     auto ParamName = "x";
     auto *Binder = new struct Binder(ParamName, ParamTy);
 
@@ -1190,7 +1190,8 @@ FStarType *PulseVisitor::getPulseTyFromCTy(clang::QualType CType) {
 
     PulseTy = new FStarPointerType();
     auto *PulsePointerTy = static_cast<FStarPointerType *>(PulseTy);
-    PulsePointerTy->setName(CType.getAsString());
+    auto BaseTy = CType->getPointeeType();
+    PulsePointerTy->setName("ref " + BaseTy.getAsString());
     PulsePointerTy->setTag(TermTag::FStarPointerType);
     auto UnderLyingType = CType->getPointeeType();
     auto *FStartUnderLyingType = getPulseTyFromCTy(UnderLyingType);
@@ -1203,12 +1204,30 @@ FStarType *PulseVisitor::getPulseTyFromCTy(clang::QualType CType) {
   std::string CTyKeyStr;
   if (CTyKey != SymbolTable::UNKNOWN)
     CTyKeyStr = lookupSymbol(CTyKey);
-  else
-    CTyKeyStr = CType.getAsString();
-
+  else{
+    if (CType->isStructureType()){
+      if (auto *TD = dyn_cast<TypedefType>(CType.getTypePtr())) {
+        TypedefNameDecl *TyD = TD->getDecl();
+        std::string TypedefName = TyD->getNameAsString();
+        CTyKeyStr = "ref " + TypedefName;
+      }
+      else {
+        CTyKeyStr = CType.getAsString();
+      }
+    }
+    else{
+      CTyKeyStr = CType.getAsString();
+    }
+  }
   PulseTy->setName(CTyKeyStr);
   PulseTy->setTag(TermTag::FStarType);
+
+  llvm::outs() << "Inside getPulseTyFromCTy: " << "\n";
+  llvm::outs() << CType.getAsString() << ",";
+  llvm::outs() << CTyKeyStr << "\n";
+  llvm::outs() << "End printing inside getPulseTyFromCTy." << "\n";
   return PulseTy;
+
 }
 
 PulseStmt *PulseVisitor::pulseFromCompoundStmt(Stmt *S,
