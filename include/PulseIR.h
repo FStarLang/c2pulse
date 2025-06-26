@@ -413,6 +413,8 @@ struct _PulseFnDefn {
   std::vector<Term*> Annotation;
   bool isRecursive;
   PulseStmt *Body;
+  bool useFallback = false;
+  std::string FallBackBody;
 };
 
 struct RecordElement {

@@ -477,7 +477,7 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
     // }
 
     auto AbstractType = new GenericDecl();
-    AbstractType->Ident += "noeq\n";
+    AbstractType->Ident = "noeq\n";
     AbstractType->Ident += "type ";
     AbstractType->Ident += StructName + " = {\n";
     for (const FieldDecl *FD : RD->fields()) {
@@ -489,19 +489,21 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
     AbstractType->Ident += "}\n";
     NewModul->Decls.push_back(AbstractType);
 
+    //2. A purely functional specification type for the struct
+    // [@@erasable]
+    // noeq
+    // type u32_pair_struct_spec = {
+    //   first: FStar.UInt32.t;
+    //   second: FStar.UInt32.t;
+    // }
 
-
-    // A purely function specification type for the struct.
     auto Tycon = new TyConDecl();
     auto *TyconRec = new TyConRecord();
-
     auto ErasableAttr = new Name();
     ErasableAttr->NamedValue = "[@@erasable]";
     auto NoEqTerm = new Name();
     NoEqTerm->NamedValue = "noeq";
-
     TyconRec->Ident = Def->getNameAsString() + "_spec";
-
     TyconRec->Attrs.push_back(ErasableAttr);
     TyconRec->Attrs.push_back(NoEqTerm);
 
@@ -512,70 +514,173 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
       Element->Ident = FD->getNameAsString();
       Fields.push_back(Element);
     }
-
     auto NumRecordFields = Fields.size();
-
     TyconRec->RecordFields = Fields;
     Tycon->TyCons.push_back(TyconRec);
-
     NewModul->Decls.push_back(Tycon);
 
     // Generate predicate
     // 3. A predicate that relates a u32_pair_struct to its specification
-    auto RecPredicate = new ValDecl();
-    RecPredicate->Ident =
-        StructName + "_pred (_:ref " +  StructName + ") (_:" + StructName + "_spec)";
+    // let u32_pair_struct_pred (x:ref u32_pair_struct) (s:u32_pair_struct_spec) : slprop =
+    //     exists* (y: u32_pair_struct). (x |-> y) **
+    //     (y.first |-> s.first) **
+    //     (y.second |-> s.second)
 
-    auto *PredTy = new Name();
-    PredTy->NamedValue = "slprop";
-    RecPredicate->ValTerm = PredTy;
+    auto *GenericPredicate = new GenericDecl(); 
+    GenericPredicate->Ident = "let ";
+    GenericPredicate->Ident += StructName + "_pred (x:ref " +  StructName + ") (s:" + StructName + "_spec) : slprop =\n";
+    GenericPredicate->Ident += "exists* (y: " + StructName + "). (x |-> y) **\n";
+    size_t Counter = 0;
+    for (auto *Fld : RD->fields()){
+        GenericPredicate->Ident += "(y.";
+        GenericPredicate->Ident += Fld->getNameAsString(); 
+        GenericPredicate->Ident += " |-> ";
+        GenericPredicate->Ident += "s." + Fld->getNameAsString() + ")";
+        if (Counter < NumRecordFields - 1){
+          GenericPredicate->Ident += " **";
+        }
+        Counter++;
+        GenericPredicate->Ident += "\n";
+    }
+    NewModul->Decls.push_back(GenericPredicate);
 
-    NewModul->Decls.push_back(RecPredicate);
+    //4. A utility function to heap u32_pair_struct_allocate and u32_pair_struct_free a u32_pair_struct
+    //assume val u32_pair_struct_allocated (x: ref u32_pair_struct) : slprop
+    
+    auto *UtilityFunctionHeap = new GenericDecl();
+    UtilityFunctionHeap->Ident = "assume ";
+    UtilityFunctionHeap->Ident += "val "; 
+    UtilityFunctionHeap->Ident += StructName + "_allocated ";
+    UtilityFunctionHeap->Ident += "(x: ref ";
+    UtilityFunctionHeap->Ident += StructName + ") : slprop";
+    UtilityFunctionHeap->Ident += "\n\n";
 
-    // 4. A utility function to heap allocate and free a u32_pair_struct
-    auto NewFunctionDefAlloc = new _PulseFnDefn();
-    NewFunctionDefAlloc->Name = "alloc";
+    // fn u32_pair_struct_alloc ()
+    // returns x:ref u32_pair_struct
+    // ensures u32_pair_struct_allocated x
+    // ensures exists* v. u32_pair_struct_pred x v
+    // { admit () }
+    
+    //auto *AllocFunction = new _PulseFnDefn();
+    UtilityFunctionHeap->Ident += "fn " + StructName + "_alloc ()\n";
+    UtilityFunctionHeap->Ident += "returns x:ref " + StructName + "\n";
+    UtilityFunctionHeap->Ident += "ensures " + StructName + "_allocated x\n";
+    UtilityFunctionHeap->Ident += "ensures exists* v. " + StructName + "_pred x v\n";
+    UtilityFunctionHeap->Ident += "{ admit () }\n\n";
 
-    auto ReqAlloc = new Requires();
-    ReqAlloc->Ann = "emp";
-    NewFunctionDefAlloc->Annotation.push_back(ReqAlloc);
+    // fn u32_pair_struct_free (x:ref u32_pair_struct)
+    // requires u32_pair_struct_allocated x
+    // requires exists* v. u32_pair_struct_pred x v
+    // { admit () }
 
-    auto RetAlloc = new Returns();
-    RetAlloc->Ann = "x:Box.box " + Def->getNameAsString();
-    NewFunctionDefAlloc->Annotation.push_back(RetAlloc);
+    UtilityFunctionHeap->Ident += "fn " + StructName + "_free " + "(x:ref " + StructName + ")\n";
+    UtilityFunctionHeap->Ident += "requires " + StructName + "_allocated x\n";
+    UtilityFunctionHeap->Ident += "requires exists* v. " + StructName + "_pred x v\n";
+    UtilityFunctionHeap->Ident += "{ admit() }\n\n";
 
-    auto EnsuresAlloc = new Ensures();
-    EnsuresAlloc->Ann = "exists* v. " + Def->getNameAsString() + "_pred " +
-                        "(Box.box_to_ref x) v";
-    NewFunctionDefAlloc->Annotation.push_back(EnsuresAlloc);
+    NewModul->Decls.push_back(UtilityFunctionHeap);
 
-    auto AllocFunction = new PulseFnDefn(NewFunctionDefAlloc);
-    NewModul->Decls.push_back(AllocFunction);
+    // // 4. A utility function to heap allocate and free a u32_pair_struct
+    // auto NewFunctionDefAlloc = new _PulseFnDefn();
+    // NewFunctionDefAlloc->Name = "alloc";
 
-    // Make the free function
-    auto NewFunctionDefFree = new _PulseFnDefn();
-    NewFunctionDefFree->Name = "free";
+    // auto ReqAlloc = new Requires();
+    // ReqAlloc->Ann = "emp";
+    // NewFunctionDefAlloc->Annotation.push_back(ReqAlloc);
 
-    auto ParamTy = new Name();
-    ParamTy->NamedValue = "Box.box " + StructName;
-    auto ParamName = "x";
-    auto *Binder = new struct Binder(ParamName, ParamTy);
+    // auto RetAlloc = new Returns();
+    // RetAlloc->Ann = "x:Box.box " + Def->getNameAsString();
+    // NewFunctionDefAlloc->Annotation.push_back(RetAlloc);
 
-    std::vector<struct Binder *> Binders;
-    Binders.push_back(Binder);
-    NewFunctionDefFree->Args = Binders;
+    // auto EnsuresAlloc = new Ensures();
+    // EnsuresAlloc->Ann = "exists* v. " + Def->getNameAsString() + "_pred " +
+    //                     "(Box.box_to_ref x) v";
+    // NewFunctionDefAlloc->Annotation.push_back(EnsuresAlloc);
 
-    auto ReqFree = new Requires();
-    ReqFree->Ann = "exists* v. " + Def->getNameAsString() + "_pred " +
-                   "(Box.box_to_ref x) v";
-    NewFunctionDefFree->Annotation.push_back(ReqFree);
+    // auto AllocFunction = new PulseFnDefn(NewFunctionDefAlloc);
+    // NewModul->Decls.push_back(AllocFunction);
 
-    auto EnsuresFree = new Ensures();
-    EnsuresFree->Ann = "emp";
-    NewFunctionDefFree->Annotation.push_back(EnsuresFree);
+    // // Make the free function
+    // auto NewFunctionDefFree = new _PulseFnDefn();
+    // NewFunctionDefFree->Name = "free";
 
-    auto FreeFunction = new PulseFnDefn(NewFunctionDefFree);
-    NewModul->Decls.push_back(FreeFunction);
+    // auto ParamTy = new Name();
+    // ParamTy->NamedValue = "Box.box " + StructName;
+    // auto ParamName = "x";
+    // auto *Binder = new struct Binder(ParamName, ParamTy);
+
+    // std::vector<struct Binder *> Binders;
+    // Binders.push_back(Binder);
+    // NewFunctionDefFree->Args = Binders;
+
+    // auto ReqFree = new Requires();
+    // ReqFree->Ann = "exists* v. " + Def->getNameAsString() + "_pred " +
+    //                "(Box.box_to_ref x) v";
+    // NewFunctionDefFree->Annotation.push_back(ReqFree);
+
+    // auto EnsuresFree = new Ensures();
+    // EnsuresFree->Ann = "emp";
+    // NewFunctionDefFree->Annotation.push_back(EnsuresFree);
+
+    // auto FreeFunction = new PulseFnDefn(NewFunctionDefFree);
+    // NewModul->Decls.push_back(FreeFunction);
+
+    //5. A ghost function that unfolds the predicate for u32_pair_struct_refs
+    // ghost fn u32_pair_struct_explode (x:ref u32_pair_struct) (#s:u32_pair_struct_spec)
+    // requires u32_pair_struct_pred x s
+    // ensures exists* (v: u32_pair_struct). (x |-> ({first=v.first; second=v.second} <: u32_pair_struct))
+    //   ** (v.first |-> s.first) ** (v.second |-> s.second)
+    // { unfold u32_pair_struct_pred }
+
+    auto *GhostExplode = new GenericDecl(); 
+    GhostExplode->Ident = "ghost fn " + StructName + "_explode (x:ref " + StructName + ") " + "(#s:" + StructName + "_spec)\n";
+    GhostExplode->Ident += "requires " + StructName + "_pred x s\n";
+    GhostExplode->Ident += "ensures exists* (v: " + StructName + "). " + "(x |-> ({";
+    Counter = 0;
+    for (auto *Fld : RD->fields()){
+      GhostExplode->Ident += Fld->getNameAsString();
+      GhostExplode->Ident += "=v." + Fld->getNameAsString();
+      if (Counter < NumRecordFields - 1){
+        GhostExplode->Ident += "; ";
+      }
+      Counter++;
+    }
+    GhostExplode->Ident += "} <: " + StructName + "))\n";
+    GhostExplode->Ident += " ** ";
+    Counter = 0;
+    for (auto *Fld : RD->fields()){
+      GhostExplode->Ident += "(v." + Fld->getNameAsString() + " |-> " + "s." + Fld->getNameAsString() + ")";
+      if (Counter < NumRecordFields - 1){
+        GhostExplode->Ident += " ** ";
+      }
+      Counter++;
+    }
+    GhostExplode->Ident += "\n";
+    GhostExplode->Ident += "{unfold " + StructName + "_pred" + "}\n\n";
+    NewModul->Decls.push_back(GhostExplode);
+
+    //6. Utility functions that convert a reference to the struct to a reference to its fields
+
+    // // &(x->first)
+    // fn u32_pair_struct_to_first (x: ref u32_pair_struct) (#first #second: erased _)
+    // requires x |-> ({ first; second } <: u32_pair_struct)
+    // requires reveal first |-> 'y
+    // returns first': ref UInt32.t
+    // ensures (x |-> ({ first=first'; second } <: u32_pair_struct))
+    // ensures first' |-> 'y
+    // ensures pure (first == first')
+    // { let vx' = !x; rewrite each first as vx'.first; vx'.first }
+
+    // // &(x->second)
+    // fn u32_pair_struct_to_second (x: ref u32_pair_struct) (#first #second: erased _)
+    // requires x |-> ({ first; second } <: u32_pair_struct)
+    // requires reveal second |-> 'y
+    // returns second': ref UInt32.t
+    // ensures (x |-> ({ first; second=second' } <: u32_pair_struct))
+    // ensures second' |-> 'y
+    // ensures pure (second == second')
+    // { let vx' = !x; rewrite each second as vx'.second; vx'.second }
+    
 
     // 5. Setters and getters for each field
     //  fn set_first (x:ref u32_pair_struct) (f:U32.t) (#s:u32_pair_struct_spec)
@@ -866,7 +971,7 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
     GhostFoldFnDefnBinders.push_back(GhostFoldFirstBinder);
 
     //std::string SecondBinderTerms = "";
-    int Counter = 0;
+    Counter = 0;
     for (auto *Fld : RD->fields()) {
       auto Ty = Fld->getType(); 
       auto PulseTy = getPulseTyFromCTy(Ty);
@@ -2369,35 +2474,35 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     if (!Call)
         return VTerm;
 
-    if (IsAllocatedOnHeap.count(DreDecl)){
+    if (!IsAllocatedOnHeap.count(DreDecl)){
       
-      if (PFDef){
-        llvm::outs() << "Found function definition in DeclRefExpr for Heap allocated decl.\n"; 
-        llvm::outs() << PFDef->Defn->Name; 
-        llvm::outs() << "End fun definition.\n";
-        auto PulseBinders = PFDef->Defn->Args;
-         bool IsCallArgBoxed = false;
-         for (auto Binder : PulseBinders){
+      // if (PFDef){
+      //   llvm::outs() << "Found function definition in DeclRefExpr for Heap allocated decl.\n"; 
+      //   llvm::outs() << PFDef->Defn->Name; 
+      //   llvm::outs() << "End fun definition.\n";
+      //   auto PulseBinders = PFDef->Defn->Args;
+      //    bool IsCallArgBoxed = false;
+      //    for (auto Binder : PulseBinders){
           
-            if (Binder->Ident == DreDecl->getNameAsString()){
-              if (auto *CastPointer = dyn_cast<FStarPointerType>(Binder->Type)){
-                IsCallArgBoxed = CastPointer->isBoxed;
-              }
-            } 
-         }
+      //       if (Binder->Ident == DreDecl->getNameAsString()){
+      //         if (auto *CastPointer = dyn_cast<FStarPointerType>(Binder->Type)){
+      //           IsCallArgBoxed = CastPointer->isBoxed;
+      //         }
+      //       } 
+      //    }
          
-         if (IsCallArgBoxed || !Call){
-          return VTerm;
-         }
-        }
-        else {
-          llvm::outs() << "Could Not file Pulse Function definition for: ";
-          llvm::outs() << DreDecl->getNameAsString(); 
-          llvm::outs() << " \n";
-          if (Call){
-            return VTerm;
-          }
-        }
+      //    if (IsCallArgBoxed || !Call){
+      //     return VTerm;
+      //    }
+      //   }
+      //   else {
+      //     llvm::outs() << "Could Not file Pulse Function definition for: ";
+      //     llvm::outs() << DreDecl->getNameAsString(); 
+      //     llvm::outs() << " \n";
+      //     if (Call){
+      //       return VTerm;
+      //     }
+      //   }
 
          auto *NewParen = new Paren();
          auto *BoxCall = new AppE();
