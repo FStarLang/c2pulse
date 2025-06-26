@@ -225,6 +225,7 @@ public:
   Name(std::string Name);
   std::string NamedValue;
   virtual void setName(std::string Name);
+  virtual std::string print();
   virtual ~Name() = default;
   virtual void dumpPretty() override;
   static bool classof(const Term *T) { return T->Tag == TermTag::Name; }
@@ -235,6 +236,7 @@ public:
   FStarType();
   FStarType(std::string Name);
   virtual void setName(std::string Name) override;
+  virtual std::string print() override;
   virtual ~FStarType() = default;
   virtual void dumpPretty() override;
   static bool classof(const Term *T) { return T->Tag == TermTag::FStarType; }
@@ -264,6 +266,7 @@ public:
   bool isBoxed = false;
   FStarType *PointerTo;
   virtual void setName(std::string Name) override;
+  virtual std::string print() override;
   virtual ~FStarPointerType() = default;
   virtual void dumpPretty() override;
   void setPointerToTy(FStarType *Ty);

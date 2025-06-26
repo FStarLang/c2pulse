@@ -602,6 +602,10 @@ Name::Name(std::string Name){
   NamedValue = Name;
 }
 
+std::string Name::print() {
+  return NamedValue;
+}
+
 void VarTerm::setVarName(std::string Name) { VarName = Name; }
 
 void VarTerm::dumpPretty() { llvm::outs() << VarName; }
@@ -616,6 +620,10 @@ void FStarType::dumpPretty() { llvm::outs() << NamedValue; }
 
 FStarType::FStarType() {
   Tag = TermTag::FStarType;
+}
+
+std::string FStarType::print(){
+  return NamedValue;
 }
 
 FStarType::FStarType(std::string Name) {
@@ -634,6 +642,14 @@ void FStarArrType::dumpPretty() {
 void FStarPointerType::dumpPretty() {
   llvm::outs() << "ref ";
   PointerTo->dumpPretty();
+}
+
+std::string FStarPointerType::print() {
+  std::string Out = "";
+  Out += "(ref ";
+  Out += PointerTo->print();
+  Out += ")";
+  return Out;
 }
 
 FStarArrType::FStarArrType(){
