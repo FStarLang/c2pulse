@@ -817,6 +817,10 @@ TopLevelLet::TopLevelLet() {
   Kind = PulseDeclKind::TopLevelLet;
 }
 
+GenericDecl::GenericDecl() {
+  Kind = PulseDeclKind::GenericDecl;
+}
+
 // FstarValDecl::FstarValDecl(){
 //   Tag = FStarDeclTag::ValDecl;
 // }

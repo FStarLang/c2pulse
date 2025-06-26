@@ -447,13 +447,24 @@ enum class PulseDeclKind {
   FnDecl,  // Function declaration
   ValDecl,  // Value declaration
   TyconDecl, //TyCon declaration
-  TopLevelLet // Top level let binding
+  TopLevelLet, // Top level let binding
+  GenericDecl, //A Super Generic declaration. A fallback AST Node in the compiler.
 };
 
 class PulseDecl {
 public:
   PulseDeclKind Kind;
   PulseDeclKind getKind();
+};
+
+class GenericDecl : public PulseDecl {
+  public:
+    GenericDecl(); 
+    std::string Ident;
+    static bool classof(const PulseDecl *D) {
+      return D->Kind == PulseDeclKind::GenericDecl;
+    }
+
 };
 
 class TopLevelLet : public PulseDecl {

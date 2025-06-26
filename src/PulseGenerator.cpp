@@ -459,15 +459,37 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
     llvm::outs() << Def->getNameAsString() << "\n";
     llvm::outs() << "End record definition!" << "\n";
 
-    // Make a Value Declaraion for the record type.
-    auto *Val = new ValDecl();
-    Val->Ident = Def->getNameAsString();
+    // // Make a Value Declaraion for the record type.
+    // auto *Val = new ValDecl();
+    // Val->Ident = Def->getNameAsString();
 
-    auto *NewType0 = new Name();
-    NewType0->NamedValue = "Type0";
-    Val->ValTerm = NewType0;
+    // auto *NewType0 = new Name();
+    // NewType0->NamedValue = "Type0";
+    // Val->ValTerm = NewType0;
 
-    NewModul->Decls.push_back(Val);
+    // NewModul->Decls.push_back(Val);
+
+    //1. An abstract type representing a u32_pair_struct
+    // noeq
+    // type u32_pair_struct = {
+    //   first: ref FStar.UInt32.t;
+    //   second: ref FStar.UInt32.t;
+    // }
+
+    auto AbstractType = new GenericDecl();
+    AbstractType->Ident += "noeq\n";
+    AbstractType->Ident += "type ";
+    AbstractType->Ident += StructName + " = {\n";
+    for (const FieldDecl *FD : RD->fields()) {
+      auto *PulseTy = getPulseTyFromCTy(FD->getType());
+      AbstractType->Ident += FD->getNameAsString() + ": ref ";
+      AbstractType->Ident += PulseTy->NamedValue + ";";
+      AbstractType->Ident += "\n";
+    }
+    AbstractType->Ident += "}\n";
+    NewModul->Decls.push_back(AbstractType);
+
+
 
     // A purely function specification type for the struct.
     auto Tycon = new TyConDecl();

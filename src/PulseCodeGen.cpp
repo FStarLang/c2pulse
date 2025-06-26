@@ -212,7 +212,10 @@ void PulseCodeGen::generateCodeFromPulseAST(llvm::raw_string_ostream &OS,
     OS << PulseSyntax::Space;
     OS << PulseTopLevelLet->Lhs;
     OS << PulseSyntax::NewLine;
-  } else if (auto PulseFunDecl = dyn_cast<PulseFnDecl>(FD)) {
+  } else if (auto *FallBackDeclaration = dyn_cast<GenericDecl>(FD)){
+    OS << FallBackDeclaration->Ident;
+  } 
+  else if (auto PulseFunDecl = dyn_cast<PulseFnDecl>(FD)) {
     assert(false && "Not implemented Pulse Fun Decl\n");
   } else {
     assert(false && "Not implemented function kind");
