@@ -271,7 +271,13 @@ std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
   } else if (FStarPointerType *FPT = dyn_cast<FStarPointerType>(T)) {
     auto StrBase = generateCodeFromTerm(OS, FPT->PointerTo);
     TermString += PulseSyntax::Reference;
-    TermString += " " + StrBase;
+    // TODO: Angelica to be revisited: this is a hack to add space after the reference
+    std::string refWithSpace = std::string(PulseSyntax::Reference) + " ";
+    if (StrBase.compare(0, refWithSpace.size(), refWithSpace) == 0) {
+      TermString += " (" + StrBase + ")";
+    } else {
+      TermString += " " + StrBase;
+    }
   } else if (FStarArrType *FAT = dyn_cast<FStarArrType>(T)) {
     auto StrBase = generateCodeFromTerm(OS, FAT->ElementType);
     TermString += PulseSyntax::Array;
