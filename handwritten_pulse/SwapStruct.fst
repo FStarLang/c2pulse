@@ -1,6 +1,5 @@
 module SwapStruct
 #lang-pulse
-open SwapStruct.Types
 open Pulse
 module U32 = FStar.UInt32
 module Box = Pulse.Lib.Box
