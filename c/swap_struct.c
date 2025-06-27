@@ -48,6 +48,6 @@ void main() {
   u32_pair_struct *x = new_u32_pair_struct();
   swap_fields(x);
   swap_fields_alt(x);
-  // ASSERT (u32_pair_struct_pred x {first = 0ul; second = 1ul});
+  ASSERT(u32_pair_struct_pred x {first = 0ul; second = 1ul});
   free(x);
 }
