@@ -437,7 +437,13 @@ void PulseCodeGen::generateCodeFromPulseStmt(llvm::raw_string_ostream &OS,
     auto *S2 = Seq->S2;
     generateCodeFromPulseStmt(OS, S1);
     generateCodeFromPulseStmt(OS, S2);
-  } else {
+  } 
+  else if (auto *FallBack = dyn_cast<FallBackStmt>(T)){
+    OS << FallBack->body;
+    OS << PulseSyntax::NewLine;
+  }
+  
+  else {
     assert(false && "Did not expect pulse statement type");
   }
 }

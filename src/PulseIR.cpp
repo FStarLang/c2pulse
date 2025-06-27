@@ -527,6 +527,15 @@ void Lemma::dumpPretty() {
   }
 }
 
+
+FallBackStmt::FallBackStmt(){
+  Tag = PulseStmtTag::FallBackStmt;
+}
+
+void FallBackStmt::dumpPretty() {
+  llvm::outs() << body << "\n";
+}
+
 void LemmaStatement::dumpPretty() {
   llvm::outs() << Lemma << "\n";
 }

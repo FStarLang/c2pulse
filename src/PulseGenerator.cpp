@@ -852,6 +852,7 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
     NewGhostFunction->Ident += "fn " + StructName + "_recover ";
     NewGhostFunction->Ident += "(x:ref " + StructName + ") ";
     
+    Counter = 0;
     for (auto *Fld : RD->fields()) {
       auto Ty = Fld->getType(); 
       auto *PulseTy = getPulseTyFromCTy(Ty);
@@ -859,6 +860,7 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
       NewGhostFunction->Ident += "#" + FieldPrefix + std::to_string(Counter) + " : ";
       NewGhostFunction->Ident += PulseTy->print(); 
       NewGhostFunction->Ident += ") ";
+      Counter++;
     }
     NewGhostFunction->Ident += "\n";
 
@@ -1740,39 +1742,39 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           llvm::outs() << TyOfDecl->getPointeeType().getAsString() << "\n";
           StructName = TyOfDecl->getPointeeType().getAsString();
 
-          std::string ModuleName = "Module_" + StructName;
+          //std::string ModuleName = "Module_" + StructName;
           // make sure modules are included.
-          Module->IncludedModules.insert("open " + ModuleName);
+          //Module->IncludedModules.insert("open " + ModuleName);
           Module->IncludedModules.insert("module Box = Pulse.Lib.Box");
 
           auto MemberName = LhsDecl->getDeclName();
 
           auto *PulseCall = new AppE();
           auto *CallName = new VarTerm();
-          CallName->setVarName(ModuleName + "." + "set_" +
-                               MemberName.getAsString());
+          //ModuleName + "." + "set_" + MemberName.getAsString()
+          CallName->setVarName( StructName + "_set_" + MemberName.getAsString());
           PulseCall->setCallName(CallName);
 
-          if (IsAllocatedOnHeap.count(VD)) {
-            auto *Arg1 = new Paren();
+          //if (IsAllocatedOnHeap.count(VD)) {
+          //  auto *Arg1 = new Paren();
 
-            auto *InnerTerm = new AppE();
-            auto *InnerTermCallName = new VarTerm();
-            InnerTermCallName->setVarName("Box.box_to_ref");
-            InnerTerm->setCallName(InnerTermCallName);
+            //auto *InnerTerm = new AppE();
+            //auto *InnerTermCallName = new VarTerm();
+            //InnerTermCallName->setVarName("Box.box_to_ref");
+            //InnerTerm->setCallName(InnerTermCallName);
 
-            auto *InnerTermCallArg = new VarTerm();
-            InnerTermCallArg->setVarName(NameOfDecl);
-            InnerTerm->pushArg(InnerTermCallArg);
+          //  auto *InnerTermCallArg = new VarTerm();
+          //  InnerTermCallArg->setVarName(NameOfDecl);
+            //InnerTerm->pushArg(InnerTermCallArg);
 
-            Arg1->setInnerExpr(InnerTerm);
-            PulseCall->pushArg(Arg1);
-          } else {
+          //  Arg1->setInnerExpr(InnerTermCallArg);
+          //  PulseCall->pushArg(Arg1);
+          //} else {
             auto *InnerTermCallArg = new VarTerm();
             InnerTermCallArg->setVarName(NameOfDecl);
 
             PulseCall->pushArg(InnerTermCallArg);
-          }
+          //}
 
           // TODO: Angelica, I don't this releasing expressions before is
           // required. This was done because Pulse was not in ANF before.
@@ -1787,6 +1789,20 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           // Perhaps warp this In Pulse Expr
           auto *Expr = new PulseExpr();
           Expr->E = PulseCall;
+          assert(ExprsBef.empty() && "Expected ExprsBefore to be empty!\n");
+
+          auto It = TrackStructExplodeAndRecover.find(VD);
+          if (It == TrackStructExplodeAndRecover.end()){
+            auto *NewSeq = new PulseSequence();
+            NewSeq->assignS2(Expr);
+            auto *ExplodeStmt = new FallBackStmt();
+            ExplodeStmt->body = StructName + "_explode " + VD->getNameAsString() + ";";
+            NewSeq->assignS1(ExplodeStmt);
+            TrackStructExplodeAndRecover.insert(std::make_pair(VD, std::make_pair(true, false)));
+            return NewSeq;
+          }
+
+
           return Expr;
         }
 
@@ -1827,7 +1843,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
           std::string ModuleName = "Module_" + StructName;
           // make sure modules are included.
-          Module->IncludedModules.insert("open " + ModuleName);
+          //Module->IncludedModules.insert("open " + ModuleName);
           Module->IncludedModules.insert("module Box = Pulse.Lib.Box");
 
           auto MemberName = LhsDecl->getDeclName();
@@ -1871,6 +1887,19 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           // Perhaps warp this In Pulse Expr
           auto *Expr = new PulseExpr();
           Expr->E = PulseCall;
+          assert(ExprsBef.empty() && "Expected Exprs before to be empty!\n");
+          
+          auto It = TrackStructExplodeAndRecover.find(VD);
+          if (It != TrackStructExplodeAndRecover.end()){
+            auto *NewSeq = new PulseSequence();
+            NewSeq->assignS2(Expr);
+            auto *ExplodeStmt = new FallBackStmt();
+            ExplodeStmt->body = StructName + "_explode " + VD->getNameAsString();
+            NewSeq->assignS2(ExplodeStmt);
+            TrackStructExplodeAndRecover.insert(std::make_pair(VD, std::make_pair(true, false)));
+            return NewSeq;
+          }
+
           return Expr;
         }
 
@@ -2023,6 +2052,39 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
       NewPulseExpr->setTag(PulseStmtTag::Expr);
       auto *RetTerm = getTermFromCExpr(RetVal, Analyzer, ExprsBefore,
                                        Parent, RetVal->getType(), Module);
+
+      if (auto *DeclRef = dyn_cast<DeclRefExpr>(RetVal->IgnoreParenImpCasts()->IgnoreImpCasts())){
+        auto It = TrackStructExplodeAndRecover.find(DeclRef->getDecl());
+        if (It != TrackStructExplodeAndRecover.end()){
+          auto Info = It->second; 
+          if (!Info.second){
+
+            //Get struct name from declration. 
+            //if (auto *TypedefTy = dyn_cast<TypedefDecl>(DeclRef->getType())){
+              const auto *VD = DeclRef->getDecl();
+              auto *PSeq = new PulseSequence();
+              auto StructName = VD->getType()->getPointeeType().getAsString(); 
+              if (RetTerm){
+                 NewPulseExpr->E = RetTerm;
+                 PSeq->assignS2(NewPulseExpr);
+                 auto *FallBack  = new FallBackStmt(); 
+                 FallBack->body += StructName + "_recover " +  DeclRef->getDecl()->getNameAsString() + ";";
+                 PSeq->assignS1(FallBack);
+                 return PSeq;
+             }
+
+            //
+            auto *FallBack  = new FallBackStmt(); 
+            FallBack->body += StructName + "_recover " +  DeclRef->getDecl()->getNameAsString() + ";";
+            return FallBack;
+          //}
+          
+        }
+
+
+      }
+    }
+
       if (RetTerm == nullptr)
         return nullptr;
       NewPulseExpr->E = RetTerm;
@@ -2300,6 +2362,8 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     auto *NewParen = new Paren();
     NewParen->setInnerExpr(NewAppENode);
 
+    assert(ExprsBefore.empty() && "Unreleased expressions!\n");
+
     return NewParen;
 
     llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "
@@ -2430,6 +2494,8 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
 
     auto *NewParen = new Paren();
     NewParen->setInnerExpr(CallAppE);
+
+    assert(ExprsBefore.empty() && "Unreleased expressions!\n");
 
     return NewParen;
 
@@ -2575,48 +2641,48 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     if (!Call)
         return VTerm;
 
-    if (!IsAllocatedOnHeap.count(DreDecl)){
+    // if (!IsAllocatedOnHeap.count(DreDecl)){
       
-      // if (PFDef){
-      //   llvm::outs() << "Found function definition in DeclRefExpr for Heap allocated decl.\n"; 
-      //   llvm::outs() << PFDef->Defn->Name; 
-      //   llvm::outs() << "End fun definition.\n";
-      //   auto PulseBinders = PFDef->Defn->Args;
-      //    bool IsCallArgBoxed = false;
-      //    for (auto Binder : PulseBinders){
+    //   // if (PFDef){
+    //   //   llvm::outs() << "Found function definition in DeclRefExpr for Heap allocated decl.\n"; 
+    //   //   llvm::outs() << PFDef->Defn->Name; 
+    //   //   llvm::outs() << "End fun definition.\n";
+    //   //   auto PulseBinders = PFDef->Defn->Args;
+    //   //    bool IsCallArgBoxed = false;
+    //   //    for (auto Binder : PulseBinders){
           
-      //       if (Binder->Ident == DreDecl->getNameAsString()){
-      //         if (auto *CastPointer = dyn_cast<FStarPointerType>(Binder->Type)){
-      //           IsCallArgBoxed = CastPointer->isBoxed;
-      //         }
-      //       } 
-      //    }
+    //   //       if (Binder->Ident == DreDecl->getNameAsString()){
+    //   //         if (auto *CastPointer = dyn_cast<FStarPointerType>(Binder->Type)){
+    //   //           IsCallArgBoxed = CastPointer->isBoxed;
+    //   //         }
+    //   //       } 
+    //   //    }
          
-      //    if (IsCallArgBoxed || !Call){
-      //     return VTerm;
-      //    }
-      //   }
-      //   else {
-      //     llvm::outs() << "Could Not file Pulse Function definition for: ";
-      //     llvm::outs() << DreDecl->getNameAsString(); 
-      //     llvm::outs() << " \n";
-      //     if (Call){
-      //       return VTerm;
-      //     }
-      //   }
+    //   //    if (IsCallArgBoxed || !Call){
+    //   //     return VTerm;
+    //   //    }
+    //   //   }
+    //   //   else {
+    //   //     llvm::outs() << "Could Not file Pulse Function definition for: ";
+    //   //     llvm::outs() << DreDecl->getNameAsString(); 
+    //   //     llvm::outs() << " \n";
+    //   //     if (Call){
+    //   //       return VTerm;
+    //   //     }
+    //   //   }
 
-         auto *NewParen = new Paren();
-         auto *BoxCall = new AppE();
-         auto *CallName = new VarTerm();
-         NewParen->setInnerExpr(BoxCall);
-         CallName->setVarName("Box.box_to_ref");
-         //Make sure module is included Add commentMore actions
-         //TODO: Angelica, maybe there is better way to handle this?
-         Module->IncludedModules.insert("module Box = Pulse.Lib.Box");
-         BoxCall->setCallName(CallName);
-         BoxCall->pushArg(VTerm);
-         return NewParen;
-    }
+    //      auto *NewParen = new Paren();
+    //      auto *BoxCall = new AppE();
+    //      auto *CallName = new VarTerm();
+    //      NewParen->setInnerExpr(BoxCall);
+    //      CallName->setVarName("Box.box_to_ref");
+    //      //Make sure module is included Add commentMore actions
+    //      //TODO: Angelica, maybe there is better way to handle this?
+    //      Module->IncludedModules.insert("module Box = Pulse.Lib.Box");
+    //      BoxCall->setCallName(CallName);
+    //      BoxCall->pushArg(VTerm);
+    //      return NewParen;
+    // }
 
     llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "
                     "DeclRefExpr\n";
@@ -2669,12 +2735,12 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
               // const RecordDecl *RD = RT->getDecl();
               auto RecordName = TT->getDecl()->getDeclName();
               // Make a new call node for the allocation of the record.
-              std::string ModuleName = "Module_" + RecordName.getAsString();
-              Module->IncludedModules.insert("open " + ModuleName);
+              //std::string ModuleName = "Module_" + RecordName.getAsString();
+              //Module->IncludedModules.insert("open " + ModuleName);
               Module->IncludedModules.insert("module Box = Pulse.Lib.Box");
               auto *NewCall = new AppE();
               auto *NewCallName = new VarTerm();
-              NewCallName->setVarName(ModuleName + ".alloc");
+              NewCallName->setVarName(RecordName.getAsString() + "_alloc");
               NewCall->setCallName(NewCallName);
               return NewCall;
             }
@@ -2720,7 +2786,8 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     assert(false && "Should not reach here!");
     return nullptr;
   } else if (auto *ME = dyn_cast<MemberExpr>(E)) {
-
+   
+    
     auto *LhsDecl = ME->getMemberDecl();
     // auto DeclName = LhsDecl->getName();
     // auto MemberType = ME->getType();
@@ -2745,7 +2812,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
 
       std::string ModuleName = "Module_" + StructName;
       // make sure modules are included.
-      Module->IncludedModules.insert("open " + ModuleName);
+      //Module->IncludedModules.insert("open " + ModuleName);
       Module->IncludedModules.insert("module Box = Pulse.Lib.Box");
 
       auto MemberName = LhsDecl->getDeclName();
@@ -2796,7 +2863,22 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       // Wrap in Paren expression.
       auto *PulseParen = new Paren();
       PulseParen->InnerExpr = PulseCall;
+      
+      //TODO: Vidush, ensure heuristic is correct.
+      //check if we already added an explode for the struct here. 
+      auto It = TrackStructExplodeAndRecover.find(VD);
+      
+      //We did not add a explode expression. 
+      if (It == TrackStructExplodeAndRecover.end()){
+        auto *ExplodeStmt = new FallBackStmt();
+        ExplodeStmt->body = StructName + "_explode " + VD->getNameAsString() + ";";
+        ExprsBefore.push_back(ExplodeStmt);
+        TrackStructExplodeAndRecover.insert(std::make_pair(VD, std::make_pair(true, false)));
+      }
+      
       return PulseParen;
+
+
     }
 
     return nullptr;

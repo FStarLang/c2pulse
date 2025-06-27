@@ -296,7 +296,8 @@ enum class PulseStmtTag {
   LetBinding,
   If,
   WhileStmt,
-  Sequence
+  Sequence, 
+  FallBackStmt,
 };
 
 
@@ -313,6 +314,16 @@ public:
   void printTag();
   virtual void dumpPretty() = 0;
   virtual ~PulseStmt() = default;
+};
+
+class FallBackStmt : public PulseStmt {
+  public:
+    FallBackStmt(); 
+    std::string body;
+    virtual void dumpPretty() override;
+    static bool classof(const PulseStmt *S) {
+    return S->Tag == PulseStmtTag::FallBackStmt;
+  }
 };
 
 class PulseExpr : public PulseStmt {
