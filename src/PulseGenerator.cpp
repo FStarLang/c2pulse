@@ -1396,9 +1396,10 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
       // Release declarations that are function parameters.
       PulseSequence *NewSeq = nullptr;
       PulseSequence *Head = nullptr;
-      for (auto &It : TrackStructExplodeAndRecover) {
-        auto &Decl = It.first;
-        auto &Info = It.second;
+      for (auto It = TrackStructExplodeAndRecover.begin(); It != TrackStructExplodeAndRecover.end();) {
+        auto ItElem = *It;
+        auto &Decl = ItElem.first;
+        auto &Info = ItElem.second;
         // recover not released.
         if (!Info.second) {
           if (auto *ParamD = dyn_cast<ParmVarDecl>(Decl)) {
@@ -1417,6 +1418,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
               NextSequence->assignS1(RecoverStatememt);
               NewSeq->assignS2(NextSequence);
               NewSeq = NextSequence;
+               TrackStructExplodeAndRecover.erase(It++);
               continue;
             }
 
@@ -1424,9 +1426,16 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
             NextSequence->assignS1(RecoverStatememt);
             NewSeq->assignS2(NextSequence);
             NewSeq = NextSequence;
+            
+
+            TrackStructExplodeAndRecover.erase(It++);
+            continue;
           }
         }
+        It++;
       }
+
+      assert(TrackStructExplodeAndRecover.empty() && "Failed to recover all structure types in the function!\n");
 
       // PulseBody->printTag();
       if (Head != nullptr) {
