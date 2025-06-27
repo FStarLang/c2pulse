@@ -22,8 +22,7 @@ u32_pair_struct* new_u32_pair_struct ()
 
 ERASED_ARG(#s : u32_pair_struct_spec)
 REQUIRES(u32_pair_struct_pred x s)
-ENSURES("exists* (s':u32_pair_struct_spec). u32_pair_struct_pred x s' ** pure "
-        "(s' == ({first = s.second; second = s.first}))")
+ENSURES("exists* (s':u32_pair_struct_spec). u32_pair_struct_pred x s' ** pure (s' == ({first = s.second; second = s.first}))")
 void swap_fields(u32_pair_struct *x) {
   uint32_t f1 = x->first;
   x->first = x->second;
@@ -42,14 +41,13 @@ void swap_refs(uint32_t *x, uint32_t *y) {
 
 ERASED_ARG(#s : u32_pair_struct_spec)
 REQUIRES(u32_pair_struct_pred x s)
-ENSURES("exists* (s':u32_pair_struct_spec). u32_pair_struct_pred x s' ** pure "
-        "(s' == {first = s.second; second = s.first})")
+ENSURES("exists* (s':u32_pair_struct_spec). u32_pair_struct_pred x s' ** pure (s' == {first = s.second; second = s.first})")
 void swap_fields_alt(u32_pair_struct *x) { swap_refs(&x->first, &x->second); }
 
 void main() {
   u32_pair_struct *x = new_u32_pair_struct();
   swap_fields(x);
   swap_fields_alt(x);
-  // ASSERT (u32_pair_struct_pred x {first = 0ul; second = 1ul});
+  ASSERT(u32_pair_struct_pred x {first = 0ul; second = 1ul});
   free(x);
 }
