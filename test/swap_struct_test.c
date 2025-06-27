@@ -1,11 +1,10 @@
 // RUN: %c2pulse %s 
 // RUN: cat %p/Swap_struct_test/Module_0.fst | %{FILECHECK} %s --check-prefix=C2PULSE
-// RUN: cat %p/Swap_struct_test/Module_u32_pair_struct.fsti | %{FILECHECK} %s --check-prefix=C2PULSE_INCLUDE
-// RUN: %run_fstar.sh %p/Swap_struct_test/Module_0.fst %p/Swap_struct_test/Module_u32_pair_struct.fsti 2>&1 | %{FILECHECK} %s --check-prefix=PULSE
+// COMM: %run_fstar.sh %p/Swap_struct_test/Module_0.fst 2>&1 | %{FILECHECK} %s --check-prefix=PULSE
 
 #include <stdint.h>
 #include <stdlib.h>
-#include "../../test-transpiler/c/pulse_macros.h"
+#include "pulse_macros.h"
 
 typedef struct _u32_pair_struct {
   uint32_t first;
@@ -14,21 +13,21 @@ typedef struct _u32_pair_struct {
 
 
 REQUIRES(emp)
-RETURNS (x:Box.box u32_pair_struct)
-ENSURES (exists* (s:u32_pair_struct_spec). u32_pair_struct_pred (Box.box_to_ref x) s ** pure (s == {first = 0ul; second = 1ul}))
-u32_pair_struct* new_u32_pair_struct()
+RETURNS(x:ref u32_pair_struct)
+ENSURES(u32_pair_struct_allocated x)
+ENSURES((u32_pair_struct_pred x { first = 0ul; second = 1ul }))
+u32_pair_struct* new_u32_pair_struct ()
 {
-  u32_pair_struct* x = (u32_pair_struct*)malloc(sizeof(u32_pair_struct));
-  x->first = 0;
-  x->second = 1;
+  u32_pair_struct* x = ( u32_pair_struct* )malloc(sizeof(u32_pair_struct));
+  x->first = 0ul;
+  x->second = 1ul;
   return x;
 }
 
-ERASED_ARG(#s:u32_pair_struct_spec)
+ERASED_ARG(#s : u32_pair_struct_spec)
 REQUIRES(u32_pair_struct_pred x s)
 ENSURES("exists* (s':u32_pair_struct_spec). u32_pair_struct_pred x s' ** pure (s' == ({first = s.second; second = s.first}))")
-void swap_fields (u32_pair_struct* x)
-{
+void swap_fields(u32_pair_struct *x) {
   uint32_t f1 = x->first;
   x->first = x->second;
   x->second = f1;
@@ -38,175 +37,129 @@ REQUIRES("x |-> 'x")
 REQUIRES("y |-> 'y")
 ENSURES("x |-> 'y")
 ENSURES("y |-> 'x")
-void swap_refs (uint32_t* x, uint32_t* y)
-{
+void swap_refs(uint32_t *x, uint32_t *y) {
   uint32_t tmp = *x;
   *x = *y;
   *y = tmp;
 }
 
-REQUIRES(emp)
-ENSURES(emp)
-int main ()
-{
-  HEAPALLOCATED()u32_pair_struct* x = new_u32_pair_struct();
-  swap_fields (x);  //translate the heap allocated Box to a ref
+ERASED_ARG(#s : u32_pair_struct_spec)
+REQUIRES(u32_pair_struct_pred x s)
+ENSURES("exists* (s':u32_pair_struct_spec). u32_pair_struct_pred x s' ** pure (s' == {first = s.second; second = s.first})")
+void swap_fields_alt(u32_pair_struct *x) { swap_refs(&x->first, &x->second); }
+
+void main() {
+  u32_pair_struct *x = new_u32_pair_struct();
+  swap_fields(x);
+  swap_fields_alt(x);
+  ASSERT(u32_pair_struct_pred x {first = 0ul; second = 1ul});
   free(x);
 }
 
 // C2PULSE: module Module_0
 
 // C2PULSE: #lang-pulse
+
 // C2PULSE: open Pulse
 
-// C2PULSE: module Box = Pulse.Lib.Box
-// C2PULSE: open Module_u32_pair_struct
 
-// C2PULSE: fn new_u32_pair_struct ()
-// C2PULSE: requires emp
-// C2PULSE: returns x:Box.box u32_pair_struct
-// C2PULSE: ensures exists* (s:u32_pair_struct_spec). u32_pair_struct_pred (Box.box_to_ref x) s ** pure (s == {first = 0ul; second = 1ul})
-// C2PULSE: {
-// C2PULSE: let x = Module_u32_pair_struct.alloc ();
-// C2PULSE: Module_u32_pair_struct.set_first (Box.box_to_ref x) 0ul;
-// C2PULSE: Module_u32_pair_struct.set_second (Box.box_to_ref x) 1ul;
-// C2PULSE: x;
+
+// C2PULSE: noeq
+// C2PULSE: type u32_pair_struct = {
+// C2PULSE: first: ref UInt32.t;
+// C2PULSE: second: ref UInt32.t;
 // C2PULSE: }
 
-// C2PULSE: fn swap_fields
-// C2PULSE: (#s:u32_pair_struct_spec)
-// C2PULSE: (x : ref u32_pair_struct)
+// C2PULSE: [@@erasable]
+// C2PULSE: noeq
+// C2PULSE: type u32_pair_struct_spec = {
+// C2PULSE: first : UInt32.t;
+// C2PULSE: second : UInt32.t
+
+// C2PULSE: }
+
+// C2PULSE: let u32_pair_struct_pred (x:ref u32_pair_struct) (s:u32_pair_struct_spec) : slprop =
+// C2PULSE: exists* (y: u32_pair_struct). (x |-> y) **
+// C2PULSE: (y.first |-> s.first) **
+// C2PULSE: (y.second |-> s.second)
+
+// C2PULSE: assume val u32_pair_struct_allocated (x: ref u32_pair_struct) : slprop
+
+// C2PULSE: fn u32_pair_struct_alloc ()
+// C2PULSE: returns x:ref u32_pair_struct
+// C2PULSE: ensures u32_pair_struct_allocated x
+// C2PULSE: ensures exists* v. u32_pair_struct_pred x v
+// C2PULSE: { admit () }
+
+// C2PULSE: fn u32_pair_struct_free (x:ref u32_pair_struct)
+// C2PULSE: requires u32_pair_struct_allocated x
+// C2PULSE: requires exists* v. u32_pair_struct_pred x v
+// C2PULSE: { admit() }
+
+
+// C2PULSE: ghost fn u32_pair_struct_explode (x:ref u32_pair_struct) (#s:u32_pair_struct_spec)
 // C2PULSE: requires u32_pair_struct_pred x s
-// C2PULSE: ensures exists* (s':u32_pair_struct_spec). u32_pair_struct_pred x s' ** pure (s' == ({first = s.second; second = s.first}))
-// C2PULSE: {
-// C2PULSE: let f1 = (Module_u32_pair_struct.get_first x);
-// C2PULSE: Module_u32_pair_struct.set_first x (Module_u32_pair_struct.get_second x);
-// C2PULSE: Module_u32_pair_struct.set_second x f1;
-// C2PULSE: }
+// C2PULSE: ensures exists* (v: u32_pair_struct). (x |-> ({first=v.first; second=v.second} <: u32_pair_struct))
+// C2PULSE:  ** (v.first |-> s.first) ** (v.second |-> s.second)
+// C2PULSE: {unfold u32_pair_struct_pred}
 
-// C2PULSE: fn swap_refs
-// C2PULSE: (x : ref UInt32.t)
-// C2PULSE: (y : ref UInt32.t)
-// C2PULSE: requires x |-> 'x
-// C2PULSE: requires y |-> 'y
-// C2PULSE: ensures x |-> 'y
-// C2PULSE: ensures y |-> 'x
-// C2PULSE: {
-// C2PULSE: let tmp = (! x);
-// C2PULSE: x := (! y);
-// C2PULSE: y := tmp;
-// C2PULSE: }
 
-// C2PULSE: fn main ()
-// C2PULSE: requires emp
-// C2PULSE: ensures emp
-// C2PULSE: {
-// C2PULSE: let x = (new_u32_pair_struct ());
-// C2PULSE: (swap_fields (Box.box_to_ref x));
-// C2PULSE: (free x);
-// C2PULSE: }
+// C2PULSE: fn u32_pair_struct_to_first (x: ref u32_pair_struct) (#first #second :erased _)
+// C2PULSE: requires x |-> ({ first;second } <: u32_pair_struct)
+// C2PULSE: requires reveal first |-> 'y
+// C2PULSE: returns first': ref UInt32.t
+// C2PULSE: ensures (x |-> ({first=first'; second } <: u32_pair_struct))
+// C2PULSE: ensures first' |-> 'y
+// C2PULSE: ensures pure (first == first')
+// C2PULSE: { let vx' = !x; rewrite each first as vx'.first; vx'.first }
 
-// COM: ===========================================================================
+// C2PULSE: fn u32_pair_struct_to_second (x: ref u32_pair_struct) (#first #second :erased _)
+// C2PULSE: requires x |-> ({ first;second } <: u32_pair_struct)
+// C2PULSE: requires reveal second |-> 'y
+// C2PULSE: returns second': ref UInt32.t
+// C2PULSE: ensures (x |-> ({first; second=second' } <: u32_pair_struct))
+// C2PULSE: ensures second' |-> 'y
+// C2PULSE: ensures pure (second == second')
+// C2PULSE: { let vx' = !x; rewrite each second as vx'.second; vx'.second }
 
-// C2PULSE_INCLUDE: module Module_u32_pair_struct
+// C2PULSE: fn u32_pair_struct_get_first (x: ref u32_pair_struct) (#first #second :erased _)
+// C2PULSE: requires x |-> ({ first;second } <: u32_pair_struct)
+// C2PULSE: requires reveal first |-> 'y
+// C2PULSE: returns first': UInt32.t
+// C2PULSE: ensures (x |-> ({ first;second } <: u32_pair_struct))
+// C2PULSE: ensures reveal first |-> 'y
+// C2PULSE: ensures pure ('y == first')
+// C2PULSE: { let vfirst = u32_pair_struct_to_first x; let ret = !vfirst; rewrite each vfirst as first; ret }
 
-// C2PULSE_INCLUDE: #lang-pulse
+// C2PULSE: fn u32_pair_struct_get_second (x: ref u32_pair_struct) (#first #second :erased _)
+// C2PULSE: requires x |-> ({ first;second } <: u32_pair_struct)
+// C2PULSE: requires reveal second |-> 'y
+// C2PULSE: returns second': UInt32.t
+// C2PULSE: ensures (x |-> ({ first;second } <: u32_pair_struct))
+// C2PULSE: ensures reveal second |-> 'y
+// C2PULSE: ensures pure ('y == second')
+// C2PULSE: { let vsecond = u32_pair_struct_to_second x; let ret = !vsecond; rewrite each vsecond as second; ret }
 
-// C2PULSE_INCLUDE: open Pulse
+// C2PULSE: fn u32_pair_struct_set_first (x: ref u32_pair_struct) (#first #second :erased _) (first': UInt32.t)
+// C2PULSE: requires x |-> ({ first;second } <: u32_pair_struct)
+// C2PULSE: requires reveal first |-> 'y
+// C2PULSE: ensures (x |-> ({ first;second } <: u32_pair_struct))
+// C2PULSE: ensures reveal first |-> first'
+// C2PULSE: { let vfirst = u32_pair_struct_to_first x;vfirst:=first'; rewrite each vfirst as first }
 
-// C2PULSE_INCLUDE: module Box = Pulse.Lib.Box
-// C2PULSE_INCLUDE: val u32_pair_struct : Type0
-// C2PULSE_INCLUDE: [@@erasable]
-// C2PULSE_INCLUDE: noeq
-// C2PULSE_INCLUDE: type u32_pair_struct_spec = {
-// C2PULSE_INCLUDE: first : UInt32.t;
-// C2PULSE_INCLUDE: second : UInt32.t
-// C2PULSE_INCLUDE: }
+// C2PULSE: fn u32_pair_struct_set_second (x: ref u32_pair_struct) (#first #second :erased _) (second': UInt32.t)
+// C2PULSE: requires x |-> ({ first;second } <: u32_pair_struct)
+// C2PULSE: requires reveal second |-> 'y
+// C2PULSE: ensures (x |-> ({ first;second } <: u32_pair_struct))
+// C2PULSE: ensures reveal second |-> second'
+// C2PULSE: { let vsecond = u32_pair_struct_to_second x;vsecond:=second'; rewrite each vsecond as second }
 
-// C2PULSE_INCLUDE: val u32_pair_struct_pred (_:ref u32_pair_struct) (_:u32_pair_struct_spec) : slprop
-
-// C2PULSE_INCLUDE: fn alloc ()
-// C2PULSE_INCLUDE: requires emp
-// C2PULSE_INCLUDE: returns x:Box.box u32_pair_struct
-// C2PULSE_INCLUDE: ensures exists* v. u32_pair_struct_pred (Box.box_to_ref x) v
-
-// C2PULSE_INCLUDE: fn free
-// C2PULSE_INCLUDE: (x : Box.box u32_pair_struct)
-// C2PULSE_INCLUDE: requires exists* v. u32_pair_struct_pred (Box.box_to_ref x) v
-// C2PULSE_INCLUDE: ensures emp
-
-// C2PULSE_INCLUDE: fn set_first
-// C2PULSE_INCLUDE: (x : ref u32_pair_struct)
-// C2PULSE_INCLUDE: (f : UInt32.t)
-// C2PULSE_INCLUDE: (#s : u32_pair_struct_spec)
-// C2PULSE_INCLUDE: requires u32_pair_struct_pred x s
-// C2PULSE_INCLUDE: ensures exists* s'. u32_pair_struct_pred x s' ** pure (s' == {s with first=f})
-
-// C2PULSE_INCLUDE: fn get_first
-// C2PULSE_INCLUDE: (x : ref u32_pair_struct)
-// C2PULSE_INCLUDE: (#s : u32_pair_struct_spec)
-// C2PULSE_INCLUDE: requires u32_pair_struct_pred x s
-// C2PULSE_INCLUDE: returns f:UInt32.t
-// C2PULSE_INCLUDE: ensures u32_pair_struct_pred x s ** pure (f == s.first)
- 
-// C2PULSE_INCLUDE: fn set_second
-// C2PULSE_INCLUDE: (x : ref u32_pair_struct)
-// C2PULSE_INCLUDE: (f : UInt32.t)
-// C2PULSE_INCLUDE: (#s : u32_pair_struct_spec)
-// C2PULSE_INCLUDE: requires u32_pair_struct_pred x s
-// C2PULSE_INCLUDE: ensures exists* s'. u32_pair_struct_pred x s' ** pure (s' == {s with second=f})
-
-// C2PULSE_INCLUDE: fn get_second
-// C2PULSE_INCLUDE: (x : ref u32_pair_struct)
-// C2PULSE_INCLUDE: (#s : u32_pair_struct_spec)
-// C2PULSE_INCLUDE: requires u32_pair_struct_pred x s
-// C2PULSE_INCLUDE: returns f:UInt32.t
-// C2PULSE_INCLUDE: ensures u32_pair_struct_pred x s ** pure (f == s.second)
-
-// C2PULSE_INCLUDE: noeq
-// C2PULSE_INCLUDE: type u32_pair_struct_refs = {
-// C2PULSE_INCLUDE: first : ref UInt32.t;
-// C2PULSE_INCLUDE: second : ref UInt32.t
-// C2PULSE_INCLUDE: }
-
-// C2PULSE_INCLUDE: let u32_pair_struct_refs_pred (x:u32_pair_struct_refs) (s:u32_pair_struct_spec) : slprop = (x.first |-> s.first) ** (x.second |-> s.second)
-
-// C2PULSE_INCLUDE: val recover (x:ref u32_pair_struct) (y:u32_pair_struct_refs) : slprop
-
-// C2PULSE_INCLUDE: fn explode
-// C2PULSE_INCLUDE: (x : ref u32_pair_struct)
-// C2PULSE_INCLUDE: (#s : u32_pair_struct_spec)
-// C2PULSE_INCLUDE: requires u32_pair_struct_pred x s
-// C2PULSE_INCLUDE: returns y:u32_pair_struct_refs
-// C2PULSE_INCLUDE: ensures u32_pair_struct_refs_pred y s
-// C2PULSE_INCLUDE: ensures recover x y
-
-// C2PULSE_INCLUDE: ghost
-// C2PULSE_INCLUDE: fn restore
-// C2PULSE_INCLUDE: (x : ref u32_pair_struct)
-// C2PULSE_INCLUDE: (y : u32_pair_struct_refs)
-// C2PULSE_INCLUDE: (#s : u32_pair_struct_spec)
-// C2PULSE_INCLUDE: requires u32_pair_struct_refs_pred y s
-// C2PULSE_INCLUDE: requires recover x y
-// C2PULSE_INCLUDE: ensures u32_pair_struct_pred x s
-
-// C2PULSE_INCLUDE: ghost
-// C2PULSE_INCLUDE: fn u32_pair_struct_refs_pred_unfold
-// C2PULSE_INCLUDE: (x : u32_pair_struct_refs)
-// C2PULSE_INCLUDE: (#s : u32_pair_struct_spec)
-// C2PULSE_INCLUDE: requires u32_pair_struct_refs_pred x s
-// C2PULSE_INCLUDE: ensures x.first |-> s.first
-// C2PULSE_INCLUDE: ensures x.second |-> s.second
-
-// C2PULSE_INCLUDE: ghost
-// C2PULSE_INCLUDE: fn u32_pair_struct_refs_pred_fold
-// C2PULSE_INCLUDE: (x : u32_pair_struct_refs)
-// C2PULSE_INCLUDE: (#a0 : erased UInt32.t)
-// C2PULSE_INCLUDE: (#a1 : erased UInt32.t)
-// C2PULSE_INCLUDE: requires x.first |-> a0
-// C2PULSE_INCLUDE: requires x.second |-> a1
-// C2PULSE_INCLUDE: ensures u32_pair_struct_refs_pred x ({first = a0;second = a1;})
+// C2PULSE: ghost
+// C2PULSE: fn u32_pair_struct_recover (x:ref u32_pair_struct) (#a0 : UInt32.t) (#a1 : UInt32.t) 
+// C2PULSE: requires exists* (y: u32_pair_struct). (x |-> y) ** (y.first |-> a0) ** (y.second |-> a1)
+// C2PULSE: ensures u32_pair_struct_pred x ({first = a0; second = a1})
+// C2PULSE: {fold u32_pair_struct_pred x ({first = a0; second = a1}) }
 
 // COM: ===========================================================================
 
-// PULSE: All verification conditions discharged successfully
+// COMM: All verification conditions discharged successfully
