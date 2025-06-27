@@ -4,7 +4,7 @@ C2Pulse is a Clang-based source-to-source transformation plugin that rewrites C 
 
 ## Project Structure
 ```
-CtoPulse/
+c2pulse/
 ├── CMakeLists.txt                      # Build configuration for the transpiler
 ├── README.md
 ├── build.sh                            # Build c2pulse and create a symlink in llvm-project
@@ -58,7 +58,6 @@ ninja -j $(nproc)
 
 ## Build C2Pulse from build script
 ```bash
-cd CodeShield/CtoPulse
 ./build.sh
 ```
 
@@ -79,7 +78,7 @@ The binary will be called `c2pulse`. You can run the tool as follows:
   -mode="anf"
 ```
 
-Alternatively, please find a `run_c2pulse.sh` scipt in the CtoPulse directory.
+Alternatively, please find a `run_c2pulse.sh` scipt in the root directory.
 Please make sure you add correct environment variable in `run_c2pulse.sh` script. You will need to add some system include files. You may also want to add 
 The include path of the compiler you used to build LLVM in `SYSTEM_CC_INCLUDE`.
 
@@ -89,10 +88,10 @@ The include path of the compiler you used to build LLVM in `SYSTEM_CC_INCLUDE`.
 To verify the correctness of the tool, you can run the included semantic test cases using LLVM's lit infrastructure. From the root of the project, run:
 
 ```bash
-./CtoPulse/run-lit.sh ./CtoPulse/test/
+./run-lit.sh ./test/
 ```
 
-This will run all test cases located in the `CtoPulse/test/` directory using the LLVM testing infrastructure and check expected outputs and diagnostics.
+This will run all test cases located in the `test/` directory using the LLVM testing infrastructure and check expected outputs and diagnostics.
 
 ---
 
@@ -100,7 +99,7 @@ This will run all test cases located in the `CtoPulse/test/` directory using the
 
 Given a simple C function annotated with correct Pulse specifications in filename swap.c.
 For available user defined specfications, kindly look at the file `pulse_macros.h` in 
-the directory `CodeShield/test-transpiler/c/`.
+the directory `include/`.
 
 ```c
 REQUIRES((r1 `pts_to` 'w1) ** (r2 `pts_to` 'w2))
