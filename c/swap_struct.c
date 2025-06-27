@@ -8,12 +8,14 @@ typedef struct _u32_pair_struct {
 } u32_pair_struct;
 
 
-RETURNS(x)
-ENSURES (exists* (s:u32_pair_struct_spec). Box.box u32_pair_struct_pred x s ** pure (s == {first = 0ul; second = 0ul}))
+REQUIRES(emp)
+RETURNS(x:ref u32_pair_struct)
+ENSURES(u32_pair_struct_allocated x)
+ENSURES((u32_pair_struct_pred x { first = 0ul; second = 1ul }))
 u32_pair_struct* new_u32_pair_struct ()
 {
   u32_pair_struct* x = ( u32_pair_struct* )malloc(sizeof(u32_pair_struct));
   x->first = 0ul;
-  x->second = 0ul;
+  x->second = 1ul;
   return x;
 }
