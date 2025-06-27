@@ -23,7 +23,8 @@ enum class PulseAnnKind {
   Returns,
   IsArray,
   Invariants,
-  LemmaStatement
+  LemmaStatement,
+  Assert
 };
 
 // Struct for Pulse annotations,

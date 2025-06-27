@@ -2312,31 +2312,30 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
     PulseSequence *NewSequence = nullptr;
 
     auto Attrs = AttrStmt->getAttrs();
+    assert(Attrs.size() == 1 && "Did not handle multiple attrs in an attributed stmt.\n");
     for (auto *Attr : Attrs) {
       if (auto *AnnotAttr = dyn_cast<AnnotateAttr>(Attr)) {
         if (AnnotAttr->getAttrName()->getName() == "pulse") {
           std::string Match;
           auto AttrKind =
               getPulseAnnKindFromString(AnnotAttr->getAnnotation(), Match);
-          assert(AttrKind == PulseAnnKind::LemmaStatement &&
-                 "Only Lemmas allowed in the middle of the body!");
-          if (NewSequence == nullptr) {
-            auto *LS = new LemmaStatement();
-            LS->Lemma = Match;
-            auto *PE = new PulseExpr();
-            PE->E = LS;
-            auto *NewSeq = new PulseSequence();
-            NewSeq->assignS1(PE);
-            NewSequence = NewSeq;
-            continue;
-          }
-          auto *LS = new LemmaStatement();
-          LS->Lemma = Match;
-          auto *PE = new PulseExpr();
-          PE->E = LS;
-          auto *NewSeq = new PulseSequence();
-          NewSequence->assignS2(NewSeq);
-          NewSequence = NewSeq;
+          // assert(AttrKind == PulseAnnKind::LemmaStatement &&
+          //        "Only Lemmas allowed in the middle of the body!");
+            if (AttrKind == PulseAnnKind::LemmaStatement){
+              auto *LS = new LemmaStatement();
+              LS->Lemma = Match;
+              auto *PE = new PulseExpr();
+              PE->E = LS;
+              return PE;
+            }
+            else if (AttrKind == PulseAnnKind::Assert){
+              auto *GenericStmt = new FallBackStmt(); 
+              GenericStmt->body = "assert(" + Match + ");";
+              return GenericStmt;
+            }
+            else {
+              assert(false && "Unhandled Attr in Attributed Stmt!\n");
+            }
         }
       }
     }
