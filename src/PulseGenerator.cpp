@@ -472,7 +472,7 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
       // Modules.insert(std::make_pair(ClangModuleName, Modul));
     }
 
-    NewModul->IncludedModules.insert("module Box = Pulse.Lib.Box");
+    //NewModul->IncludedModules.insert("module Box = Pulse.Lib.Box");
 
     llvm::outs() << "Encountered a Record Declaration!!" << "\n";
     llvm::outs() << Def->getNameAsString() << "\n";
@@ -502,18 +502,18 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
     for (const FieldDecl *FD : RD->fields()) {
       auto *PulseTy = getPulseTyFromCTy(FD->getType());
       AbstractType->Ident += FD->getNameAsString() + ": ref ";
-      AbstractType->Ident += PulseTy->NamedValue + ";";
+      AbstractType->Ident += PulseTy->print() + ";";
       AbstractType->Ident += "\n";
 
-      // TODO: Vidush: Handle this in a better way.
-      // If the type is a pointer type, we add it to the included modules.
-      if (PulseTy->Tag == TermTag::FStarPointerType) {
-        // If the type is a pointer type, we add it to the included modules.
-        // This is needed for the ref type.
-        std::string prefix = "ref ";
-        std::string result = PulseTy->NamedValue.substr(prefix.length());
-        NewModul->IncludedModules.insert("open Module_"+ result);
-      }
+      // // TODO: Vidush: Handle this in a better way.
+      // // If the type is a pointer type, we add it to the included modules.
+      // if (PulseTy->Tag == TermTag::FStarPointerType) {
+      //   // If the type is a pointer type, we add it to the included modules.
+      //   // This is needed for the ref type.
+      //   std::string prefix = "ref ";
+      //   std::string result = PulseTy->NamedValue.substr(prefix.length());
+      //   NewModul->IncludedModules.insert("open Module_"+ result);
+      // }
     }
     AbstractType->Ident += "}\n";
     NewModul->Decls.push_back(AbstractType);
