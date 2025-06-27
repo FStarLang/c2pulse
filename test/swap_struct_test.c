@@ -1,6 +1,6 @@
 // RUN: %c2pulse %s 
 // RUN: cat %p/Swap_struct_test/Module_0.fst | %{FILECHECK} %s --check-prefix=C2PULSE
-// COMM: %run_fstar.sh %p/Swap_struct_test/Module_0.fst 2>&1 | %{FILECHECK} %s --check-prefix=PULSE
+// RUN: %run_fstar.sh %p/Swap_struct_test/Module_0.fst 2>&1 | %{FILECHECK} %s --check-prefix=PULSE
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -162,4 +162,4 @@ void main() {
 
 // COM: ===========================================================================
 
-// COMM: All verification conditions discharged successfully
+// PULSE: All verification conditions discharged successfully
