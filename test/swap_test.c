@@ -2,7 +2,7 @@
 // RUN: cat %p/Swap_test/Module_0.fst | %{FILECHECK} %s --check-prefix=C2PULSE
 // RUN: %run_fstar.sh %p/Swap_test/Module_0.fst 2>&1 | %{FILECHECK} %s --check-prefix=PULSE
 
-#include "../../test-transpiler/c/pulse_macros.h"
+#include "../include/pulse_macros.h"
 
 REQUIRES((r1 `pts_to` 'w1) ** (r2 `pts_to` 'w2))
 ENSURES((r1 `pts_to` 'w2) ** (r2 `pts_to` 'w1))

@@ -4,7 +4,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
-#include "../../test-transpiler/c/pulse_macros.h"
+#include "../include/pulse_macros.h"
 
 typedef struct _u32_pair_struct {
   uint32_t first;
