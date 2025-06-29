@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include <stdlib.h>
-#include "pulse_macros.h"
+#include "../pulse_macros.h"
 
 RETURNS(i:ref int)
 ENSURES(r |-> v)

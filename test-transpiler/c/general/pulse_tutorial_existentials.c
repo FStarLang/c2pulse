@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include <stdlib.h>
-#include "pulse_macros.h"
+#include "../pulse_macros.h"
 
 REQUIRES(exists* s. r |-> s)
 ENSURES(r |-> v)
