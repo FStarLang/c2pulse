@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  main:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: cda-tum/setup-z3@main
+      with:
+        version: 4.13.3
+    - name: Get submodules
+      run: |
+        git submodule init
+        git submodule update --depth 1
+ 
+    - name: Install some dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y lld
+
+    - name: Build
+      run: |
+        ./build_clang.sh
+        ./build.sh
+
+    - name: Run tests
+      run: |
+        ./run-lit.sh test/*.c
