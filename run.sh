@@ -1,19 +1,21 @@
 #!/bin/bash
 set -euo pipefail
 
+HERE=$(dirname "$0")
 # System headers
 SYSTEM_CC_INCLUDE="/usr/lib/clang/18.1.3/include"
 SYSTEM_INCLUDE="/usr/include"
 SYSTEM_ARCH_INCLUDE="/usr/include/x86_64-linux-gnu"
 C_STD="-std=c23"
+C2PULSE="$(realpath $HERE/external/llvm-project/build/bin/c2pulse)"
+FSTAR_BIN="$(realpath $HERE/external/FStar/bin/fstar.exe)"
+PULSE_DIR="$(realpath $HERE/external/pulse/out/lib/pulse)"
 
 # Check input
 if [ "$#" -lt 1 ]; then
   echo "Usage: $0 <source1.c> [source2.c ...]"
   exit 1
 fi
-
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 echo "Processing input files: $@"
 
@@ -46,10 +48,10 @@ set -- "${POSITIONAL_ARGS[@]}"
 
 
 # Prepare the command invocation as a variable for reuse
-CMD=( "$SCRIPT_DIR/../external_tools/llvm-project/build/bin/c2pulse" "$@" \
-  -p ../external_tools/llvm-project/build/ \
+CMD=( $C2PULSE "$@" \
+  -p $HERE/external/llvm-project/build/ \
   --extra-arg-before="-resource-dir" \
-  --extra-arg-before="../external_tools/llvm-project/build/lib/clang/21" \
+  --extra-arg-before="$HERE/external/llvm-project/build/lib/clang/21" \
   --extra-arg-before="-isystem" \
   --extra-arg-before="$SYSTEM_CC_INCLUDE" \
   --extra-arg-before="-isystem" \
@@ -57,7 +59,7 @@ CMD=( "$SCRIPT_DIR/../external_tools/llvm-project/build/bin/c2pulse" "$@" \
   --extra-arg-before="-isystem" \
   --extra-arg-before="$SYSTEM_INCLUDE" \
   --extra-arg-before="-isystem" \
-  --extra-arg-before="../external_tools/llvm-project/build/lib/clang/21/include" \
+  --extra-arg-before="$HERE/external/llvm-project/build/lib/clang/21/include" \
   --extra-arg-before="-x" \
   --extra-arg-before="c" \
   --extra-arg-before="$C_STD" \
@@ -91,11 +93,8 @@ for file in "${SRC_FILES[@]}"; do
   echo "  $file"
 done
 
-# Path to F* binary
-FSTAR_BIN="$SCRIPT_DIR/../external_tools/FStarLang/bin/fstar.exe"
-
 # Run fstar on all files at once
 exec "$FSTAR_BIN" \
-  --include "$SCRIPT_DIR/../external_tools/pulse/out/lib/pulse" \
+  --include "$PULSE_DIR" \
   --query_stats --z3version 4.13.3 \
   "${SRC_FILES[@]}" 
