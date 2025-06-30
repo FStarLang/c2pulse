@@ -1,6 +1,6 @@
 // RUN: %c2pulse %s 
-// RUN: cat %p/Reverse_test/Module_0.fst | %{FILECHECK} %s --check-prefix=C2PULSE
-// RUN: %run_fstar.sh %p/Reverse_test/Module_0.fst 2>&1 | %{FILECHECK} %s --check-prefix=PULSE
+// RUN: cat %p/Reverse_test.fst | %{FILECHECK} %s --check-prefix=C2PULSE
+// RUN: %run_fstar.sh %p/Reverse_test.fst 2>&1 | %{FILECHECK} %s --check-prefix=PULSE
 
 #include "../include/PulseMacros.h"
 
@@ -27,7 +27,7 @@ void reverse(ISARRAY(len) uint32_t *arr, size_t len) {
         }
 }
 
-// C2PULSE: module Module_0
+// C2PULSE: module Reverse_test
 // C2PULSE: #lang-pulse
 // C2PULSE: open Pulse
 
