@@ -453,10 +453,30 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
     //  reside.
     // TODO: Angelica.
     //NewModul->ModuleName = "Module_" + Def->getNameAsString();
-    std::string GetModule = "Module_" + std::to_string(TypeDefDec->getOwningModuleID());
+    //std::string GetModule = "Module_" + std::to_string(TypeDefDec->getOwningModuleID());
+    auto *FileEnt = SM.getFileEntryForID(SM.getMainFileID());
+    if (!FileEnt) {
+      llvm::errs() << "Error: Main file entry not found in source manager.\n";
+      exit(1);
+    }
+    
+    auto FilePath = FileEnt->tryGetRealPathName();
+    
+    std::filesystem::path FilePathSys = FilePath.str();
+    auto Extension = FilePathSys.extension().string();
+    auto TempFilePathWithoutExtension = FilePathSys.replace_extension("");
+    auto FileName = TempFilePathWithoutExtension.filename();
+    auto FileNameStr = FileName.string();
+    if (!FileNameStr.empty()) {
+      FileNameStr[0] = std::toupper(FileNameStr[0]);
+    }
+    
+    // change dots to _ since . is reserved for nested modules.
+    std::replace(FileNameStr.begin(), FileNameStr.end(), '.', '_');
 
     // extractPulseAnnotations(FD, SM, FDefn->Annotation);
-    auto It = Modules.find(GetModule);
+    // Assume that the module name if the FileName at the moment.
+    auto It = Modules.find(FileNameStr);
     PulseModul *NewModul = nullptr;
     if (It != Modules.end()) {
       NewModul = It->second;
@@ -466,7 +486,7 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
     else {
       NewModul = new PulseModul();
       NewModul->includePulsePrelude = true;
-      NewModul->ModuleName = GetModule;
+      NewModul->ModuleName = FileNameStr;
       Modules.insert(std::make_pair(NewModul->ModuleName, NewModul));
       // Module->Decls.push_back(PulseFn);
       // Modules.insert(std::make_pair(ClangModuleName, Modul));
@@ -1162,11 +1182,37 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
 
   // Is it safe to say that a module == 1 file??
   // Ret
-  std::string ClangModuleName = "Module_";
+
+  //clang::SourceManager &SM = RewriterForPlugin.getSourceMgr();
+  auto *FileEnt = SM.getFileEntryForID(SM.getMainFileID());
+  if (!FileEnt) {
+    llvm::errs() << "Error: Main file entry not found in source manager.\n";
+    exit(1);
+  }
+
+  auto FilePath = FileEnt->tryGetRealPathName();
+
+  std::filesystem::path FilePathSys = FilePath.str();
+
+  auto Extension = FilePathSys.extension().string();
+  auto TempFilePathWithoutExtension = FilePathSys.replace_extension("");
+
+  auto FileName = TempFilePathWithoutExtension.filename();
+  auto FileNameStr = FileName.string();
+  if (!FileNameStr.empty()) {
+    FileNameStr[0] = std::toupper(FileNameStr[0]);
+  }
+
+  // change dots to _ since . is reserved for nested modules.
+  std::replace(FileNameStr.begin(), FileNameStr.end(), '.', '_');
+
+
+
+  std::string ClangModuleName = FileNameStr;//"Module_";
   inferArrayTypes(FD);
 
-  auto ModuleId = FD->getOwningModuleID();
-  ClangModuleName += std::to_string(ModuleId);
+  //auto ModuleId = FD->getOwningModuleID();
+  //ClangModuleName += std::to_string(ModuleId);
 
   auto *FDefn = new _PulseFnDefn();
   FDefn->Name = FuncName;
@@ -1180,6 +1226,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
     FDefn->isRecursive = false;
   }
   std::vector<Binder *> PulseArgs;
+  std::vector<Binder *> ErasedArgs;
   if (FD->hasAttrs()) {
     auto AnnotationsAttachedToFD = FD->getAttrs();
     for (auto *Attr : AnnotationsAttachedToFD) {
@@ -1223,7 +1270,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
             case PulseAnnKind::ErasedArg: {
               auto *NewErasedArgBinder = new Binder(Match);
               NewErasedArgBinder->useFallBack = true;
-              PulseArgs.push_back(NewErasedArgBinder);
+              ErasedArgs.push_back(NewErasedArgBinder);
               break;
             }
 
@@ -1368,6 +1415,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
     auto *Binder = new struct Binder(ParamName, ParamTy);
     PulseArgs.push_back(Binder);
   }
+  std::copy(ErasedArgs.begin(), ErasedArgs.end(), std::back_inserter(PulseArgs));
   FDefn->Args = PulseArgs;
   // extractPulseAnnotations(FD, SM, FDefn->Annotation);
   auto It = Modules.find(ClangModuleName);
@@ -3093,20 +3141,20 @@ std::string PulseTransformer::writeToFile() {
   std::replace(FileNameStr.begin(), FileNameStr.end(), '.', '_');
 
   auto NewPath = TempFilePathWithoutExtension.parent_path();
-  // NewPath += "/";
+  NewPath += "/";
   // NewPath += "/SRC/";
-  NewPath += "/" + FileNameStr + "/";
+  //NewPath += "/" + FileNameStr + "/";
 
-  if (!std::filesystem::exists(NewPath)) {
-    std::error_code create_ec;
-    if (std::filesystem::create_directories(NewPath, create_ec)) {
-      llvm::outs() << "Created directory: " << NewPath << "\n";
-    } else {
-      llvm::outs() << "Failed to create directory: " << NewPath << " ("
-                   << create_ec.message() << ")\n";
-      exit(1);
-    }
-  }
+  // if (!std::filesystem::exists(NewPath)) {
+  //   std::error_code create_ec;
+  //   if (std::filesystem::create_directories(NewPath, create_ec)) {
+  //     llvm::outs() << "Created directory: " << NewPath << "\n";
+  //   } else {
+  //     llvm::outs() << "Failed to create directory: " << NewPath << " ("
+  //                  << create_ec.message() << ")\n";
+  //     exit(1);
+  //   }
+  // }
 
   // Vidush: Maybe add an assertion here that the extension is supposed to be .c
 
@@ -3125,14 +3173,16 @@ std::string PulseTransformer::writeToFile() {
   auto &ModulesToBeOutputted = CodeGen.getEmittedModules();
 
   for (auto &M : ModulesToBeOutputted) {
-
+    
+    //ASSUME: The module name if the file name atm.
     auto ModuleName = M.first; // FileNameStr + "_" +
     auto &OutputString = M.second;
 
     llvm::outs() << "What is the Module Name?\n";
     llvm::outs() << ModuleName << "\n";
     llvm::outs() << "End printing the module name!\n";
-
+    
+    //Calculate path and then add NewFileName
     auto FilePath = NewPath.string() + ModuleName;
     std::ofstream OutFile(FilePath);
     if (!OutFile.is_open()) {
