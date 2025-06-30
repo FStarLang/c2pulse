@@ -1,8 +1,8 @@
 // RUN: %c2pulse %s 
-// RUN: cat %p/Complex_test/Module_0.fst | %{FILECHECK} %s --check-prefix=C2PULSE
-// RUN: %run_fstar.sh %p/Complex_test/Module_0.fst 2>&1 | %{FILECHECK} %s --check-prefix=PULSE
+// RUN: cat %p/Complex_test.fst | %{FILECHECK} %s --check-prefix=C2PULSE
+// RUN: %run_fstar.sh %p/Complex_test.fst 2>&1 | %{FILECHECK} %s --check-prefix=PULSE
 
-#include "../include/pulse_macros.h"
+#include "../include/PulseMacros.h"
 
 
 REQUIRES(pure (Int32.fits (Int32.v x * 3)))
@@ -60,8 +60,10 @@ int conditionalProcessing(int x, int y) {
     }
 }
 
-// C2PULSE: module Module_0
+// C2PULSE: module Complex_test
+
 // C2PULSE: #lang-pulse
+
 // C2PULSE: open Pulse
 
 // C2PULSE: fn triple

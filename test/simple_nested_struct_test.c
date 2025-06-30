@@ -1,6 +1,6 @@
 // RUN: %c2pulse %s 
-// RUN: cat %p/Simple_nested_struct_test/Module_0.fst | %{FILECHECK} %s --check-prefix=C2PULSE
-// RUN: %run_fstar.sh %p/Simple_nested_struct_test/Module_0.fst 2>&1 | %{FILECHECK} %s --check-prefix=PULSE
+// RUN: cat %p/Simple_nested_struct_test.fst | %{FILECHECK} %s --check-prefix=C2PULSE
+// RUN: %run_fstar.sh %p/Simple_nested_struct_test.fst 2>&1 | %{FILECHECK} %s --check-prefix=PULSE
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -16,7 +16,7 @@ typedef struct _u64_pair_struct {
   u32_pair_struct *second;
 } u64_pair_struct;
 
-// C2PULSE: module Module_0
+// C2PULSE: module Simple_nested_struct_test
 
 // C2PULSE: #lang-pulse
 
