@@ -1,6 +1,6 @@
 // RUN: %c2pulse %s 
-// RUN: cat %p/Swap_test/Module_0.fst | %{FILECHECK} %s --check-prefix=C2PULSE
-// RUN: %run_fstar.sh %p/Swap_test/Module_0.fst 2>&1 | %{FILECHECK} %s --check-prefix=PULSE
+// RUN: cat %p/Swap_test.fst | %{FILECHECK} %s --check-prefix=C2PULSE
+// RUN: %run_fstar.sh %p/Swap_test.fst 2>&1 | %{FILECHECK} %s --check-prefix=PULSE
 
 #include "../include/PulseMacros.h"
 
@@ -13,7 +13,7 @@ void ref_swap(int* r1, int* r2)
   *r2 = tmp;
 }
 
-// C2PULSE: module Module_0
+// C2PULSE: module Swap_test
 // C2PULSE: #lang-pulse
 // C2PULSE: open Pulse
 

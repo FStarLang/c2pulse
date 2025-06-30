@@ -1,7 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+HERE=$(dirname "$0")
+LLVM_DIR="$(realpath $HERE/external/llvm-project/)"
+LLVM_BUILD_DIR="$LLVM_DIR/build"
+LIT_BIN="$LLVM_BUILD_DIR/bin/llvm-lit"
 
 # Check if the user provided a path
 if [ $# -lt 1 ]; then
@@ -11,8 +14,6 @@ fi
 
 TEST_PATH="$1"
 shift
-
-LIT_BIN="$SCRIPT_DIR/../external_tools/llvm-project/build/bin/llvm-lit"
 
 # Run llvm-lit with verbose output
 "$LIT_BIN" -v "$TEST_PATH" "$@"
