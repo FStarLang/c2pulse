@@ -26,6 +26,25 @@ jobs:
         sudo apt update
         sudo apt install -y lld
 
+    - name: Obtain cached ccache
+      uses: actions/cache/restore@v4
+      with:
+        path: ccache
+        key: ccache-${{ runner.os }}-${{ runner.arch }}
+
+    - name: Set up ccache compiler
+      run: |
+        echo "CCACHE_DIR=$(pwd)/ccache" | sudo tee -a $GITHUB_ENV
+        sudo apt-get install -y ccache
+        mkdir -p $HOME/bin
+        echo "PATH=${HOME}/bin:$PATH" | sudo tee -a $GITHUB_ENV
+        sudo ln -s $(which ccache) $HOME/bin/gcc
+        sudo ln -s $(which ccache) $HOME/bin/g++
+        sudo ln -s $(which ccache) $HOME/bin/cc
+        sudo ln -s $(which ccache) $HOME/bin/cc1
+        sudo ln -s $(which ccache) $HOME/bin/cc1plus
+        sudo ln -s $(which ccache) $HOME/bin/c++
+
     - name: Build
       run: |
         ./build_clang.sh
@@ -34,3 +53,10 @@ jobs:
     - name: Run tests
       run: |
         ./run-lit.sh test/*.c
+
+    - name: Save ccache
+      if: always()
+      uses: actions/cache/save@v4
+      with:
+        path: ccache
+        key: ccache-${{ runner.os }}-${{ runner.arch }}
