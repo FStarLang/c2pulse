@@ -14,7 +14,10 @@ pushd $LLVM_BUILD_DIR
 #   -DCMAKE_LINKER=lld -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld"
 # making clang build with the system compiler, whatever that is,
 # so we transparently use ccache.
-cmake -G Ninja  -DCMAKE_BUILD_TYPE=Debug -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DLLVM_PARALLEL_LINK_JOBS=2 -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_LINK_LLVM_DYLIB=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_ENABLE_LLD=ON  -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra" -DLLVM_TARGETS_TO_BUILD="X86" ../llvm
+# Also disabling:
+#   -DCMAKE_BUILD_TYPE=Debug
+# to save on disk space. Changing to MinSizeRel
+cmake -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DLLVM_PARALLEL_LINK_JOBS=2 -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_LINK_LLVM_DYLIB=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_ENABLE_LLD=ON  -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra" -DLLVM_TARGETS_TO_BUILD="X86" ../llvm
 popd
 
 ninja -C $LLVM_BUILD_DIR
