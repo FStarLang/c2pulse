@@ -292,6 +292,9 @@ bool PulseVisitor::checkIsRecursiveStmt(Stmt *InnerStmt,
 bool PulseVisitor::checkIsRecursiveExpr(Expr *ExprPtr,
                                         FunctionDecl *CurrFunction) {
 
+  if (!ExprPtr)
+        return false;
+
   if (auto *BinOp = dyn_cast<clang::BinaryOperator>(ExprPtr)) {
     /// TODO: Vidush:
     /// If this BinOp is of the shape: *Arr + 8 etc, we may conclude it is of an
