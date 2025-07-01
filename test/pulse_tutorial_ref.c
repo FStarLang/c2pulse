@@ -52,9 +52,9 @@ void add_alt(int *r, int n)
     *r = *r + n;
 }
 
-ERASED_ARG(#w : erased _ { (fits op_Multiply 4 (as_int w)) })
+ERASED_ARG(#w : erased _ { (fits ( * ) 4 (as_int w)) })
 REQUIRES(r |-> w)
-ENSURES(exists* ww. (r |-> ww) ** pure (as_int ww == 4 `op_Multiply` as_int w))
+ENSURES(exists* ww. (r |-> ww) ** pure (as_int ww == 4 * as_int w))
 void quadruple(int *r)
 {
     add(r, *r);
