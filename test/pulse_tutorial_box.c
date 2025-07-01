@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "../include/PulseMacros.h"
 
+
 RETURNS(i:ref int)
 ENSURES(r |-> v)
 ENSURES(freeable r)
@@ -12,9 +13,10 @@ int* new_heap_ref(int v)
     return r;
 }
 
-ERASED_ARG(w)
-REQUIRES(r |-> w ** freeable r)
-RETURNS(i:int)
+
+ERASED_ARG(#w:_)
+REQUIRES((r |-> w) ** freeable r)
+RETURNS(i:int32)
 ENSURES(pure (i == w))
 int last_value_of(int* r)
 {
@@ -22,7 +24,7 @@ int last_value_of(int* r)
    free(r);
    return v;   
 }
-
+/*
 ERASED_ARG(w)
 REQUIRES(r |-> w ** freeable r)
 RETURNS(s)
@@ -46,4 +48,4 @@ int* copy_box(int* r)
     int *s = (int*)malloc(sizeof(int));
     *s = v;
     return s;
-}
+}*/

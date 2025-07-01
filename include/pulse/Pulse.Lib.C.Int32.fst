@@ -9,3 +9,7 @@ let fits (op : int -> int -> int) (vx vy : int) : prop =
 let min_int32 = FStar.Int.min_int I32.n
 let max_int32 = FStar.Int.max_int I32.n
 let (+^) = FStar.Int32.add
+
+instance inhabited_int32 : Pulse.Lib.C.Inhabited.inhabited int32 = {
+  witness = I32.zero
+}
