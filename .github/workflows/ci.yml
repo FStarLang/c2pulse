@@ -71,7 +71,7 @@ jobs:
     - name: Build LLVM/Clang
       if: steps.cache-llvm.outputs.cache-hit != 'true'
       run: |
-        ./build_clang.sh
+        C2PULSE_BUILD_TYPE=MinSizeRel ./build_clang.sh
 
     - name: Save built LLVM/Clang
       if: steps.cache-llvm.outputs.cache-hit != 'true'
