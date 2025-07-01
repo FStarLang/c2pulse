@@ -10,6 +10,7 @@ C_STD="-std=c23"
 C2PULSE="$(realpath $HERE/external/llvm-project/build/bin/c2pulse)"
 FSTAR_BIN="$(realpath $HERE/external/FStar/bin/fstar.exe)"
 PULSE_DIR="$(realpath $HERE/external/pulse/out/lib/pulse)"
+PULSE_LIB_C_DIR="$(realpath $HERE/include/pulse)"
 
 # Check input
 if [ "$#" -lt 1 ]; then
@@ -96,5 +97,6 @@ done
 # Run fstar on all files at once
 exec "$FSTAR_BIN" \
   --include "$PULSE_DIR" \
+  --include "$PULSE_LIB_C_DIR" \
   --query_stats --z3version 4.13.3 \
   "${SRC_FILES[@]}" 

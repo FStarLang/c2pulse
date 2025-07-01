@@ -24,6 +24,12 @@ if ! [[ -x "$HERE/external/pulse/out/lib/pulse/pulse.cmxs" ]]; then
   make -C $HERE/external/pulse -j$(nproc) ADMIT=1 FSTAR_EXE=$(realpath $HERE/external/FStar/bin/fstar.exe)
 fi
 
+
+if ! [[ -x "./include/pulse/_cache/Pulse.Lib.C.Int32.fst.checked" ]]; then
+  echo "Building Pulse.Lib.C libraries"
+  make -C $HERE/include/pulse -j$(nproc)
+fi
+
 if [[ -x "$CLANG_BIN/c2pulse" ]]; then
   echo "C2Pulse exists in $CLANG_BIN!"
   echo "Rebuilding existing project!"

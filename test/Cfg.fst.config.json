@@ -7,6 +7,7 @@
     "--z3version", "4.13.3"
   ],
   "include_dirs": [
-    "../external/pulse/out/lib/pulse"
+    "../external/pulse/out/lib/pulse",
+    "../include/pulse"
   ]
 }
