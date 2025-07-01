@@ -1,0 +1,10 @@
+[submodule "external/FStar"]
+	path = external/FStar
+	url = https://github.com/FStarLang/FStar
+[submodule "external/pulse"]
+	path = external/pulse
+	url = https://github.com/FStarLang/pulse
+[submodule "external/llvm-project"]
+	path = external/llvm-project
+	url = https://github.com/angelica-moreira/llvm-project
+	branch = c-to-pulse

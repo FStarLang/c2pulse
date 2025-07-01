@@ -1,6 +1,6 @@
 // RUN: %c2pulse %s 
-// RUN: cat %p/Swap_struct_test/Module_0.fst | %{FILECHECK} %s --check-prefix=C2PULSE
-// RUN: %run_fstar.sh %p/Swap_struct_test/Module_0.fst 2>&1 | %{FILECHECK} %s --check-prefix=PULSE
+// RUN: cat %p/Swap_struct_test.fst | %{FILECHECK} %s --check-prefix=C2PULSE
+// RUN: %run_fstar.sh %p/Swap_struct_test.fst 2>&1 | %{FILECHECK} %s --check-prefix=PULSE
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -56,7 +56,7 @@ void main() {
   free(x);
 }
 
-// C2PULSE: module Module_0
+// C2PULSE: module Swap_struct_test
 
 // C2PULSE: #lang-pulse
 
