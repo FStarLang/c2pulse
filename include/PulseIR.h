@@ -22,7 +22,8 @@ enum class PulseAnnKind {
   Invariants,
   LemmaStatement,
   Assert,
-  Unknown
+  Unknown,
+  Includes
 };
 
 /// Struct for Pulse annotations.
@@ -585,11 +586,12 @@ public:
 class PulseModul {
 public:
   bool includePulsePrelude;
-  std::set<std::string> IncludedModules;
+  std::vector<std::string> IncludedModules;
   std::string ModuleName;
   std::vector<PulseDecl *> Decls;
   /// set to true for .fsti files
   bool isHeader = false;
+  void insertModule(std::string IncModule);
 };
 
 /// Class File:

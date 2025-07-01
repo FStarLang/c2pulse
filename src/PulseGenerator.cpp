@@ -13,6 +13,7 @@
 #include "clang/Analysis/Analyses/ExprMutationAnalyzer.h"
 #include "clang/Basic/Module.h"
 #include "clang/Basic/SourceLocation.h"
+#include "llvm/ADT/StringRef.h"
 #include "llvm/CodeGen/TargetOpcodes.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/Debug.h"
@@ -795,6 +796,19 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
     FDefn->isRecursive = false;
   }
 
+  auto It = Modules.find(ClangModuleName);
+  PulseModul *Module = nullptr;
+  if (It != Modules.end()) {
+    Module = It->second;
+  }
+  // Create new function defintions.
+  else {
+    Module = new PulseModul();
+    Module->includePulsePrelude = true;
+    Module->ModuleName = ClangModuleName;
+  }
+  Modules.insert(std::make_pair(ClangModuleName, Module));
+
   std::vector<Binder *> PulseArgs;
   std::vector<Binder *> ErasedArgs;
   if (FD->hasAttrs()) {
@@ -831,6 +845,23 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
               auto *NewErasedArgBinder = new Binder(Match);
               NewErasedArgBinder->useFallBack = true;
               ErasedArgs.push_back(NewErasedArgBinder);
+              break;
+            }
+            case PulseAnnKind::Includes: {
+              //Assume modules will be comma seperated.
+              StringRef MatchRef(Match);
+              llvm::SmallVector<StringRef, 4> IncModules;
+              MatchRef.split(IncModules, ",");
+              for (auto &IncModule : IncModules){
+                auto RTrimmed = IncModule.rtrim();
+                auto LTrimmed = RTrimmed.ltrim();
+                Module->insertModule(LTrimmed.str());
+              }
+              //If function name is the anchor dummy function. 
+              //Skip generating code for it entirely.
+              if (FuncName == "__pulse_include_anchor"){
+                return true;
+              }
               break;
             }
             case PulseAnnKind::IsArray:
@@ -966,17 +997,6 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
             std::back_inserter(PulseArgs));
   
   FDefn->Args = PulseArgs;
-  auto It = Modules.find(ClangModuleName);
-  PulseModul *Module = nullptr;
-  if (It != Modules.end()) {
-    Module = It->second;
-  }
-  // Create new function defintions.
-  else {
-    Module = new PulseModul();
-    Module->includePulsePrelude = true;
-    Module->ModuleName = ClangModuleName;
-  }
 
   if (Stmt *Body = FD->getBody()) {
     if (auto *CS = dyn_cast<CompoundStmt>(Body)) {
@@ -1048,7 +1068,6 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   llvm::outs() << "=================================================\n";
   PulseFn->Kind = PulseDeclKind::FnDefn;
   Module->Decls.push_back(PulseFn);
-  Modules.insert(std::make_pair(ClangModuleName, Module));
   DeclarationsMap.insert(std::make_pair(FD, PulseFn));
   return true;
 }
@@ -2150,7 +2169,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
             if (auto *RT = dyn_cast<RecordType>(DesugaredElemTy)) {
               // const RecordDecl *RD = RT->getDecl();
               auto RecordName = TT->getDecl()->getDeclName();
-              Module->IncludedModules.insert("module Box = Pulse.Lib.Box");
+              Module->insertModule("module Box = Pulse.Lib.Box");
               auto *NewCall = new AppE();
               auto *NewCallName = new VarTerm();
               NewCallName->setVarName(RecordName.getAsString() + "_alloc");
