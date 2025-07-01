@@ -129,6 +129,7 @@ jobs:
       run: |
         eval $(opam env)
         ./run-lit.sh test/*.c
+        ./run.sh test/*.c
 
     - name: Save ccache
       if: always()
