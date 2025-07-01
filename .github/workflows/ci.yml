@@ -53,6 +53,7 @@ jobs:
     - name: Run tests
       run: |
         ./run-lit.sh test/*.c
+        ./run.sh test/*.c
 
     - name: Save ccache
       if: always()

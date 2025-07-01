@@ -126,12 +126,14 @@ ERASED_ARG(#vr:erased _)
 REQUIRES(r |-> vr)
 REQUIRES(pure (fits (+) (as_int vr) 1))
 ENSURES(exists* w. (r |-> w) ** pure (as_int w == as_int vr + 1))
-int incr (int *r)
+void incr (int *r)
 {
     *r = *r + 1;
 }
 
-/**
+
+
+/*
 REQUIRES(emp)
 RETURNS(i:int32)
 ENSURES(pure (as_int i == 1))
@@ -142,7 +144,6 @@ int one()
     return i;
 }
 
-/*
 EXPECT_FAILURE(19)
 RETURNS(s)
 ENSURES(s |-> 0l)
