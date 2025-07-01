@@ -3,7 +3,7 @@
 #include "../include/PulseMacros.h"
 
 REQUIRES("r |-> 'v")
-RETURNS(v:Pulse.Lib.C.Int32.int32)
+RETURNS(v:int32)
 ENSURES("r |-> 'v")
 ENSURES("pure (v == 'v)")
 int value_of(int *r)
@@ -13,7 +13,7 @@ int value_of(int *r)
 
 ERASED_ARG(#w:erased _)
 REQUIRES(r |-> w)
-RETURNS(v:Pulse.Lib.C.Int32.int32)
+RETURNS(v:int32)
 ENSURES(r |-> w)
 ENSURES(pure (v == w))
 int value_of_explicit(int *r)
@@ -37,24 +37,24 @@ void assign_alt(int *r, int v)
 
 ERASED_ARG(#w:erased _)
 REQUIRES(r |-> w)
-REQUIRES(pure Pulse.Lib.C.Int32.(fits (+) (as_int w) (as_int n)))
-ENSURES(exists* ww. (r |-> ww) ** pure Pulse.Lib.C.Int32.(as_int ww == as_int w + as_int n))
+REQUIRES(pure (fits (+) (as_int w) (as_int n)))
+ENSURES(exists* ww. (r |-> ww) ** pure (as_int ww == as_int w + as_int n))
 void add(int *r, int n)
 {
     *r = *r + n;
 }
 
-ERASED_ARG(#w : erased _ { Pulse.Lib.C.Int32.(fits (+) (as_int w) (as_int n)) })
+ERASED_ARG(#w : erased _ { (fits (+) (as_int w) (as_int n)) })
 REQUIRES(r |-> w)
-ENSURES(r |-> Pulse.Lib.C.Int32.(w +^ n))
+ENSURES(r |-> (w +^ n))
 void add_alt(int *r, int n)
 {
     *r = *r + n;
 }
 
-ERASED_ARG(#w : erased _ { Pulse.Lib.C.Int32.(fits op_Multiply 4 (as_int w)) })
+ERASED_ARG(#w : erased _ { (fits op_Multiply 4 (as_int w)) })
 REQUIRES(r |-> w)
-ENSURES(exists* ww. (r |-> ww) ** pure Pulse.Lib.C.Int32.(as_int ww == 4 `op_Multiply` as_int w))
+ENSURES(exists* ww. (r |-> ww) ** pure (as_int ww == 4 `op_Multiply` as_int w))
 void quadruple(int *r)
 {
     add(r, *r);
@@ -65,7 +65,7 @@ void quadruple(int *r)
 ERASED_ARG(#w:erased _)
 ERASED_ARG(p:perm)
 REQUIRES(x |-> Frac p w)
-RETURNS(i:Pulse.Lib.C.Int32.int32)
+RETURNS(i:int32)
 ENSURES(x |-> Frac p w)
 ENSURES(pure (i == w))
 int value_of_perm(int *x)
@@ -111,7 +111,7 @@ void max_perm (int *x)
 ERASED_ARG(#v:erased _)
 ERASED_ARG(p:perm)
 REQUIRES(r |-> Frac p v)
-RETURNS(s: ref Pulse.Lib.C.Int32.int32)
+RETURNS(s: ref int32)
 ENSURES(s |-> Frac (p /. 2.0R) v)
 ENSURES(s |-> Frac (p /. 2.0R) v)
 ENSURES(pure (s == r))
@@ -124,8 +124,8 @@ int* alias_ref(int *r)
 
 ERASED_ARG(#vr:erased _)
 REQUIRES(r |-> vr)
-REQUIRES(pure Pulse.Lib.C.Int32.(fits (+) (as_int vr) 1))
-ENSURES(exists* w. (r |-> w) ** pure Pulse.Lib.C.Int32.(as_int w == as_int vr + 1))
+REQUIRES(pure (fits (+) (as_int vr) 1))
+ENSURES(exists* w. (r |-> w) ** pure (as_int w == as_int vr + 1))
 int incr (int *r)
 {
     *r = *r + 1;
@@ -133,8 +133,8 @@ int incr (int *r)
 
 /**
 REQUIRES(emp)
-RETURNS(i:Pulse.Lib.C.Int32.int32)
-ENSURES(pure Pulse.Lib.C.Int32.(as_int i == 1))
+RETURNS(i:int32)
+ENSURES(pure (as_int i == 1))
 int one()
 {
     int i = 0;
