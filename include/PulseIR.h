@@ -24,7 +24,8 @@ enum class PulseAnnKind {
   IsArray,
   Invariants,
   LemmaStatement,
-  Assert
+  Assert,
+  Unknown
 };
 
 // Struct for Pulse annotations,

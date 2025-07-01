@@ -452,16 +452,17 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
     //  to the library defintions for the things where the definitions etc.
     //  reside.
     // TODO: Angelica.
-    //NewModul->ModuleName = "Module_" + Def->getNameAsString();
-    //std::string GetModule = "Module_" + std::to_string(TypeDefDec->getOwningModuleID());
+    // NewModul->ModuleName = "Module_" + Def->getNameAsString();
+    // std::string GetModule = "Module_" +
+    // std::to_string(TypeDefDec->getOwningModuleID());
     auto *FileEnt = SM.getFileEntryForID(SM.getMainFileID());
     if (!FileEnt) {
       llvm::errs() << "Error: Main file entry not found in source manager.\n";
       exit(1);
     }
-    
+
     auto FilePath = FileEnt->tryGetRealPathName();
-    
+
     std::filesystem::path FilePathSys = FilePath.str();
     auto Extension = FilePathSys.extension().string();
     auto TempFilePathWithoutExtension = FilePathSys.replace_extension("");
@@ -470,7 +471,7 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
     if (!FileNameStr.empty()) {
       FileNameStr[0] = std::toupper(FileNameStr[0]);
     }
-    
+
     // change dots to _ since . is reserved for nested modules.
     std::replace(FileNameStr.begin(), FileNameStr.end(), '.', '_');
 
@@ -1183,7 +1184,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   // Is it safe to say that a module == 1 file??
   // Ret
 
-  //clang::SourceManager &SM = RewriterForPlugin.getSourceMgr();
+  // clang::SourceManager &SM = RewriterForPlugin.getSourceMgr();
   auto *FileEnt = SM.getFileEntryForID(SM.getMainFileID());
   if (!FileEnt) {
     llvm::errs() << "Error: Main file entry not found in source manager.\n";
@@ -1206,13 +1207,11 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   // change dots to _ since . is reserved for nested modules.
   std::replace(FileNameStr.begin(), FileNameStr.end(), '.', '_');
 
-
-
-  std::string ClangModuleName = FileNameStr;//"Module_";
+  std::string ClangModuleName = FileNameStr; //"Module_";
   inferArrayTypes(FD);
 
-  //auto ModuleId = FD->getOwningModuleID();
-  //ClangModuleName += std::to_string(ModuleId);
+  // auto ModuleId = FD->getOwningModuleID();
+  // ClangModuleName += std::to_string(ModuleId);
 
   auto *FDefn = new _PulseFnDefn();
   FDefn->Name = FuncName;
@@ -1415,7 +1414,8 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
     auto *Binder = new struct Binder(ParamName, ParamTy);
     PulseArgs.push_back(Binder);
   }
-  std::copy(ErasedArgs.begin(), ErasedArgs.end(), std::back_inserter(PulseArgs));
+  std::copy(ErasedArgs.begin(), ErasedArgs.end(),
+            std::back_inserter(PulseArgs));
   FDefn->Args = PulseArgs;
   // extractPulseAnnotations(FD, SM, FDefn->Annotation);
   auto It = Modules.find(ClangModuleName);
@@ -3143,7 +3143,7 @@ std::string PulseTransformer::writeToFile() {
   auto NewPath = TempFilePathWithoutExtension.parent_path();
   NewPath += "/";
   // NewPath += "/SRC/";
-  //NewPath += "/" + FileNameStr + "/";
+  // NewPath += "/" + FileNameStr + "/";
 
   // if (!std::filesystem::exists(NewPath)) {
   //   std::error_code create_ec;
@@ -3173,16 +3173,16 @@ std::string PulseTransformer::writeToFile() {
   auto &ModulesToBeOutputted = CodeGen.getEmittedModules();
 
   for (auto &M : ModulesToBeOutputted) {
-    
-    //ASSUME: The module name if the file name atm.
+
+    // ASSUME: The module name if the file name atm.
     auto ModuleName = M.first; // FileNameStr + "_" +
     auto &OutputString = M.second;
 
     llvm::outs() << "What is the Module Name?\n";
     llvm::outs() << ModuleName << "\n";
     llvm::outs() << "End printing the module name!\n";
-    
-    //Calculate path and then add NewFileName
+
+    // Calculate path and then add NewFileName
     auto FilePath = NewPath.string() + ModuleName;
     std::ofstream OutFile(FilePath);
     if (!OutFile.is_open()) {
