@@ -852,14 +852,17 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
             }
             case PulseAnnKind::Includes: {
               //Assume modules will be comma seperated.
-              StringRef MatchRef(Match);
-              llvm::SmallVector<StringRef, 4> IncModules;
-              MatchRef.split(IncModules, ",");
-              for (auto &IncModule : IncModules){
-                auto RTrimmed = IncModule.rtrim();
-                auto LTrimmed = RTrimmed.ltrim();
-                Module->insertModule(LTrimmed.str());
-              }
+              //StringRef MatchRef(Match);
+              //llvm::SmallVector<StringRef, 4> IncModules;
+              //MatchRef.split(IncModules, ",");
+              //for (auto &IncModule : IncModules){
+              //  auto RTrimmed = IncModule.rtrim();
+              //  auto LTrimmed = RTrimmed.ltrim();
+              //  Module->insertModule(LTrimmed.str());
+              //}
+              auto *Inc = new GenericDecl();
+              Inc->Ident = Match;
+              Module->Decls.push_back(Inc);
               //If function name is the anchor dummy function. 
               //Skip generating code for it entirely.
               if (FuncName == "__pulse_include_anchor"){
