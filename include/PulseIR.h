@@ -314,7 +314,7 @@ enum class PulseStmtTag {
   If,
   WhileStmt,
   Sequence, 
-  FallBackStmt,
+  GenericStmt,
 };
 
 /// An enum class for specifying if something is mutable or not.
@@ -338,13 +338,13 @@ public:
 /// The pulse code can be accumulated as strings in the body. 
 /// Use this if you don't want to create an in-memory AST but just need
 /// Some fallback node.
-class FallBackStmt : public PulseStmt {
+class GenericStmt : public PulseStmt {
   public:
-    FallBackStmt(); 
+    GenericStmt(); 
     std::string body;
     virtual void dumpPretty() override;
     static bool classof(const PulseStmt *S) {
-    return S->Tag == PulseStmtTag::FallBackStmt;
+    return S->Tag == PulseStmtTag::GenericStmt;
   }
 };
 

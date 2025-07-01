@@ -999,7 +999,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
 
             auto StructName = ParamD->getType()->getPointeeType().getAsString();
 
-            auto *RecoverStatememt = new FallBackStmt();
+            auto *RecoverStatememt = new GenericStmt();
             RecoverStatememt->body =
                 StructName + "_recover " + ParamD->getNameAsString() + ";";
             if (Head == nullptr) {
@@ -1377,7 +1377,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           if (It == TrackStructExplodeAndRecover.end()){
             auto *NewSeq = new PulseSequence();
             NewSeq->assignS2(Expr);
-            auto *ExplodeStmt = new FallBackStmt();
+            auto *ExplodeStmt = new GenericStmt();
             ExplodeStmt->body = StructName + "_explode " + VD->getNameAsString() + ";";
             NewSeq->assignS1(ExplodeStmt);
             TrackStructExplodeAndRecover.insert(std::make_pair(VD, std::make_pair(true, false)));
@@ -1433,7 +1433,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           if (It == TrackStructExplodeAndRecover.end()) {
             auto *NewSeq = new PulseSequence();
             NewSeq->assignS2(Expr);
-            auto *ExplodeStmt = new FallBackStmt();
+            auto *ExplodeStmt = new GenericStmt();
             ExplodeStmt->body = StructName + "_explode " + VD->getNameAsString();
             NewSeq->assignS2(ExplodeStmt);
             TrackStructExplodeAndRecover.insert(std::make_pair(VD, std::make_pair(true, false)));
@@ -1602,7 +1602,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
               if (RetTerm){
                  NewPulseExpr->E = RetTerm;
                  PSeq->assignS2(NewPulseExpr);
-                 auto *FallBack  = new FallBackStmt(); 
+                 auto *FallBack  = new GenericStmt(); 
                  FallBack->body += StructName + "_recover " +  DeclRef->getDecl()->getNameAsString() + ";";
                  PSeq->assignS1(FallBack);
                  // update element in map.
@@ -1610,7 +1610,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
                  return PSeq;
              }
 
-            auto *FallBack  = new FallBackStmt(); 
+            auto *FallBack  = new GenericStmt(); 
             FallBack->body += StructName + "_recover " +  DeclRef->getDecl()->getNameAsString() + ";";
 
             // update element in map.
@@ -1731,9 +1731,9 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
               return PE;
             }
             else if (AttrKind == PulseAnnKind::Assert){
-              auto *GenericStmt = new FallBackStmt(); 
-              GenericStmt->body = "assert(" + Match + ");";
-              return GenericStmt;
+              auto *GenStmt = new GenericStmt(); 
+              GenStmt->body = "assert(" + Match + ");";
+              return GenStmt;
             }
             else {
               assert(false && "Unhandled Attr in Attributed Stmt!\n");
@@ -1891,15 +1891,15 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
           auto VDTy = VD->getType();
           auto StructName = VDTy->getPointeeType().getAsString();
 
-          auto *GenericStmt = new Name();
-          GenericStmt->NamedValue =
+          auto *GenStmt = new Name();
+          GenStmt->NamedValue =
               "(" + StructName + "_to_" +
               Mem->getMemberDecl()->getDeclName().getAsString() + " " +
               Dec->getDecl()->getNameAsString() + ")";
 
           auto It = TrackStructExplodeAndRecover.find(VD);
           if (It == TrackStructExplodeAndRecover.end()) {
-            auto *ExplodeStmt = new FallBackStmt();
+            auto *ExplodeStmt = new GenericStmt();
             ExplodeStmt->body =
                 StructName + "_explode " + VD->getNameAsString() + ";";
             ExprsBefore.push_back(ExplodeStmt);
@@ -1907,7 +1907,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
                 std::make_pair(VD, std::make_pair(true, false)));
           }
 
-          return GenericStmt;
+          return GenStmt;
         }
       }
 
@@ -2227,7 +2227,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       
       //We did not add a explode expression. 
       if (It == TrackStructExplodeAndRecover.end()){
-        auto *ExplodeStmt = new FallBackStmt();
+        auto *ExplodeStmt = new GenericStmt();
         ExplodeStmt->body = StructName + "_explode " + VD->getNameAsString() + ";";
         ExprsBefore.push_back(ExplodeStmt);
         TrackStructExplodeAndRecover.insert(std::make_pair(VD, std::make_pair(true, false)));
@@ -2283,7 +2283,7 @@ std::string PulseTransformer::writeToFile() {
 
   auto &ModulesToBeOutputted = CodeGen.getEmittedModules();
   for (auto &M : ModulesToBeOutputted) {
-    
+
     // ASSUME: The module name if the file name atm.
     auto ModuleName = M.first;
     auto &OutputString = M.second;

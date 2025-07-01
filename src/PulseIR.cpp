@@ -368,9 +368,9 @@ void Lemma::dumpPretty() {
   }
 }
 
-FallBackStmt::FallBackStmt() { Tag = PulseStmtTag::FallBackStmt; }
+GenericStmt::GenericStmt() { Tag = PulseStmtTag::GenericStmt; }
 
-void FallBackStmt::dumpPretty() { llvm::outs() << body << "\n"; }
+void GenericStmt::dumpPretty() { llvm::outs() << body << "\n"; }
 
 void LemmaStatement::dumpPretty() { llvm::outs() << Lemma << "\n"; }
 
