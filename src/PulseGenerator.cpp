@@ -29,19 +29,10 @@
 
 using namespace clang;
 
-// void PulseConsumer::setNewFunctionDeclarations(std::vector<PulseDecl *>
-// &FVec) {
-//   FunctionDeclarations = FVec;
-// }
-
 void PulseConsumer::setNewModules(
     std::map<std::string, PulseModul *> &PulseModules) {
   Modules = PulseModules;
 }
-
-// std::vector<PulseDecl *> &PulseConsumer::getNewFunctionDeclarations() {
-//   return FunctionDeclarations;
-// }
 
 std::map<std::string, PulseModul *> &PulseConsumer::getNewModules() {
   return Modules;
