@@ -151,7 +151,10 @@ void PulseCodeGen::generateCodeFromPulseAST(llvm::raw_string_ostream &OS,
     }
     else {
       OS << PulseSyntax::OpeningCurlyBrace << PulseSyntax::NewLine;
-      OS << "();";
+      OS << PulseSyntax::OpeningParenthesis;
+      OS << PulseSyntax::ClosingParenthesis;
+      OS << PulseSyntax::Semicolon;
+      OS << PulseSyntax::NewLine;
       OS << PulseSyntax::ClosingCurlyBrace << PulseSyntax::NewLine;
     }
 
