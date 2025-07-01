@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "../pulse_macros.h"
+#include "../../../include/PulseMacros.h"
 
 
 REQUIRES(exists* s.arr |-> s)

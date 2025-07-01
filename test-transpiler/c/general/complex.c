@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include "../pulse_macros.h"
+#include "../../../include/PulseMacros.h"
 
 REQUIRES(pure (Int32.fits (Int32.v x * 3)))
 RETURNS(res : Int32.t)
