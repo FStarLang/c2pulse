@@ -1675,12 +1675,12 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
               tokens.push_back(token.c_str());
             }
             // llvm::outs() << "PRINT OUT the invarinat tokens\n";
-            // for (auto token : tokens) {
-            //   llvm::outs() << token << "\n";
-            //   auto *NewLemmaTerm = new LemmaStatement();
-            //   NewLemmaTerm->Lemma.assign(token.c_str());
-            //   PulseWhile->Invariant.push_back(NewLemmaTerm);
-            // }
+            for (auto token : tokens) {
+              //llvm::outs() << token << "\n";
+              auto *NewLemmaTerm = new LemmaStatement();
+              NewLemmaTerm->Lemma.assign(token.c_str());
+              PulseWhile->Invariant.push_back(NewLemmaTerm);
+            }
             // llvm::outs() << "\n";
           }
         }
@@ -2290,6 +2290,11 @@ std::string PulseTransformer::writeToFile() {
 
     // Calculate path and then add NewFileName
     auto FilePath = NewPath.string() + ModuleName;
+    //Vidush: Don't remove these since the run.sh script
+    //depends on printing the output path of the filename.
+    llvm::outs() << "Print the filename!\n";
+    llvm::outs() << FilePath << "\n";
+    llvm::outs() << "End printing the filename!\n";
     std::ofstream OutFile(FilePath);
     if (!OutFile.is_open()) {
       llvm::errs()
