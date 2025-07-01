@@ -76,7 +76,7 @@ if [[ -n "$LOG_FILE" ]]; then
 else
   # Just capture the output without logging
   mapfile -t SRC_FILES < <(
-    "${CMD[@]}" 2>&1 | awk '/Print the filename!/ {getline; if ($0 ~ /\.fst[i]?$/) print}'
+    "${CMD[@]}" 2>&1 | tee /dev/stderr | awk '/Print the filename!/ {getline; if ($0 ~ /\.fst[i]?$/) print}'
   )
 fi
 
