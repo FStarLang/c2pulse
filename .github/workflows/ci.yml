@@ -73,6 +73,7 @@ jobs:
     - name: Build F*
       if: steps.cache-fstar.outputs.cache-hit != 'true'
       run: |
+        eval $(opam env)
         make -C external/FStar -skj$(nproc) ADMIT=1
 
     - name: Save built F*
@@ -92,6 +93,7 @@ jobs:
     - name: Build Pulse
       if: steps.cache-pulse.outputs.cache-hit != 'true'
       run: |
+        eval $(opam env)
         make -C external/pulse -skj$(nproc) ADMIT=1 FSTAR_EXE=$(pwd)/external/FStar/bin/fstar.exe
 
     - name: Save built Pulse
@@ -103,10 +105,12 @@ jobs:
 
     - name: Build c2pulse
       run: |
+        eval $(opam env)
         ./build.sh
 
     - name: Run tests
       run: |
+        eval $(opam env)
         ./run-lit.sh test/*.c
 
     - name: Save ccache
