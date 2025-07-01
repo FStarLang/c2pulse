@@ -40,392 +40,220 @@ const char* lookupSymbol(SymbolTable Key){
   return SymbolToStringTable.lookup(Key);
 }
 
-PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data, std::string &match){
+static bool matchAnnotation(std::string Start, std::string End,
+                            std::string CleanedString, std::string &Match) {
 
-    // std::wregex requires_pattern(L"(requires:(.*))");
-    // std::wregex ensures_pattern(L"(ensures:(.*))");
-    // std::wregex isarray_pattern(L"(array:(.*):(.*))");
-    // std::wregex invariants_pattern(L"(invariants:(.*))");
-    // std::wregex lemma_pattern(L"(lemma:(.*))");
-
-  //  std::regex requires_pattern(R"(requires:([\w\*\.\|\-]+)|END(.*))");
-  //   std::regex ensures_pattern(R"(ensures:(.*)|END(.*))");
-  //   std::regex returns_pattern(R"(returns:(.*)|END(.*))");
-  //   std::regex isarray_pattern(R"(array:(.*)|END(.*))");
-  //   std::regex invariants_pattern(R"(invariants:(.*)|END(.*))");
-  //   std::regex lemma_pattern(R"(lemma:(.*)|END(.*))"); 
-
-    llvm::outs() << "Print StringRef!!!!!!\n";
-    llvm::outs() << Data.str() << "\n";
-    llvm::outs() << "End of StringRef.\n";
-    // std::smatch match2;
-    if (!Data.empty()){
-          
-          std::string cleanedString;
-          llvm::outs() << "Print the raw bytes: " << "\n";
-          llvm::outs() << Data.data() << "\n";
-          llvm::outs() << "End\n";
-          for (auto c : Data.trim().bytes()){
-            if (c != '\r') {  // Keep only printable ASCII characters
-                    cleanedString += c;
-                }
-          }
-          // std::wstring DataStr = std::wstring(cleanedString.begin(), cleanedString.end());
-           
-          //std::string DataStr = Data.trim().str();
-
-   // if (std::regex_search(cleanedString, match2, requires_pattern)) {
-        // auto NewRequires = new Requires(); 
-        // NewRequires->Ann = match[1];
-        // Anns.push_back(NewRequires);
-        std::string delimiter = "requires:";
-        std::string EndDelimiter = "|END";
-        size_t pos = cleanedString.find(delimiter);
-        size_t end = cleanedString.find(EndDelimiter);
-        if (pos != std::string::npos) {
-          std::string firstPart = cleanedString.substr(0, pos);// Before "requires:"
-          match = cleanedString.substr(pos +  delimiter.length() , end - (pos + delimiter.length()));
-          if (!match.empty() && match.front() == '"' && match.back() == '"') {
-            match = match.substr(1, match.size() - 2);
-          }
-          //std::cout << "First Part: " << firstPart << std::endl;
-          //std::cout << "Second Part: " << secondPart << std::endl;
-          llvm::outs() << "First Part: " << firstPart << "\n";
-          llvm::outs() << "Second Part: " << match << "\n";
-     //   }
-
-
-        return PulseAnnKind::Requires;
-        
+  size_t StartPos = CleanedString.find(Start);
+  size_t EndPos = CleanedString.find(End);
+  if (StartPos != std::string::npos) {
+    std::string FirstPart = CleanedString.substr(0, StartPos);
+    Match = CleanedString.substr(StartPos + Start.length(),
+                                 EndPos - (StartPos + Start.length()));
+    if (!Match.empty() && Match.front() == '"' && Match.back() == '"') {
+      Match = Match.substr(1, Match.size() - 2);
+      return true;
     }
-    //else if (std::regex_search(cleanedString, match2, ensures_pattern)) {
-        // auto NewEnsures = new Ensures(); 
-        // NewEnsures->Ann = match[1];
-        // Anns.push_back(NewEnsures);
-
-         delimiter = "ensures:";
-        //std::string EndDelimiter = "|END";
-         pos = cleanedString.find(delimiter);
-        //size_t end = cleanedString.find(EndDelimiter);
-        if (pos != std::string::npos) {
-          std::string firstPart = cleanedString.substr(0, pos);
-          match = cleanedString.substr(pos +  delimiter.length() , end - (pos + delimiter.length()));
-          if (!match.empty() && match.front() == '"' && match.back() == '"') {
-            match = match.substr(1, match.size() - 2);
-          }
-
-        llvm::outs() << "First Part: " << firstPart << "\n";
-        llvm::outs() << "Second Part: " << match << "\n";
-        //}
-        return PulseAnnKind::Ensures;
-    }
-    //else if (std::regex_search(cleanedString, match2, isarray_pattern)) {
-      // llvm::outs() << cleanedString.data() << "\n";
-      // assert(false && "Unhandeled pulse annotation kind!\n");
-       delimiter = "array:";
-      //std::string EndDelimiter = "|END";
-         pos = cleanedString.find(delimiter);
-        //size_t end = cleanedString.find(EndDelimiter);
-        if (pos != std::string::npos) {
-          std::string firstPart = cleanedString.substr(0, pos);// Before "requires:"
-          match = cleanedString.substr(pos +  delimiter.length() , end - (pos + delimiter.length()));
-          if (!match.empty() && match.front() == '"' && match.back() == '"') {
-            match = match.substr(1, match.size() - 2);
-          }
-          //std::cout << "First Part: " << firstPart << std::endl;
-          //std::cout << "Second Part: " << secondPart << std::endl;
-        //}
-      return PulseAnnKind::IsArray;
-    }
-    // else if (std::regex_search(cleanedString, match2, invariants_pattern)) {
-    //     llvm::outs() << cleanedString.data() << "\n";
-    //     assert(false && "Unhandeled pulse annotation kind!\n");
-    //     return PulseAnnKind::Invariants;
-    // }
-    //else if (std::regex_search(cleanedString, match2, lemma_pattern)) {
-
-        delimiter = "lemma:";
-       //std::string EndDelimiter = "|END";
-         pos = cleanedString.find(delimiter);
-        //size_t end = cleanedString.find(EndDelimiter);
-        if (pos != std::string::npos) {
-          std::string firstPart = cleanedString.substr(0, pos);// Before "requires:"
-          match = cleanedString.substr(pos +  delimiter.length() , end - (pos + delimiter.length()));
-          if (!match.empty() && match.front() == '"' && match.back() == '"') {
-            match = match.substr(1, match.size() - 2);
-          }
-          //std::cout << "First Part: " << firstPart << std::endl;
-          //std::cout << "Second Part: " << secondPart << std::endl;
-        //}
-
-        return PulseAnnKind::LemmaStatement;
-    }
-    //else if (std::regex_search(cleanedString, match2, returns_pattern)){
-       delimiter = "returns:";
-      //std::string EndDelimiter = "|END";
-      //size_t end = cleanedString.find(EndDelimiter);
-       pos = cleanedString.find(delimiter);
-        if (pos != std::string::npos) {
-          std::string firstPart = cleanedString.substr(0, pos);// Before "requires:"
-          match = cleanedString.substr(pos +  delimiter.length() , end - (pos + delimiter.length()));
-          if (!match.empty() && match.front() == '"' && match.back() == '"') {
-            match = match.substr(1, match.size() - 2);
-          }
-          //std::cout << "First Part: " << firstPart << std::endl;
-          //std::cout << "Second Part: " << secondPart << std::endl;
-        //}
-      return PulseAnnKind::Returns;
-    }
-     //else if (std::regex_search(cleanedString, match2, returns_pattern)){
-       delimiter = "erased_arg:";
-      //std::string EndDelimiter = "|END";
-      //size_t end = cleanedString.find(EndDelimiter);
-       pos = cleanedString.find(delimiter);
-        if (pos != std::string::npos) {
-          std::string firstPart = cleanedString.substr(0, pos);// Before "requires:"
-          match = cleanedString.substr(pos +  delimiter.length() , end - (pos + delimiter.length()));
-          if (!match.empty() && match.front() == '"' && match.back() == '"') {
-            match = match.substr(1, match.size() - 2);
-          }
-          //std::cout << "First Part: " << firstPart << std::endl;
-          //std::cout << "Second Part: " << secondPart << std::endl;
-        //}
-      return PulseAnnKind::ErasedArg;
-    }
-
-    // else if (std::regex_search(cleanedString, match2, returns_pattern)){
-    delimiter = "heap_allocated:";
-    // std::string EndDelimiter = "|END";
-    // size_t end = cleanedString.find(EndDelimiter);
-    pos = cleanedString.find(delimiter);
-    if (pos != std::string::npos) {
-      std::string firstPart =
-          cleanedString.substr(0, pos); // Before "requires:"
-      match = cleanedString.substr(pos + delimiter.length(),
-                                   end - (pos + delimiter.length()));
-      if (!match.empty() && match.front() == '"' && match.back() == '"') {
-        match = match.substr(1, match.size() - 2);
-      }
-      // std::cout << "First Part: " << firstPart << std::endl;Add commentMore
-      // actions std::cout << "Second Part: " << secondPart << std::endl;
-      //}
-      return PulseAnnKind::HeapAllocated;
-    }
-
-    // else if (std::regex_search(cleanedString, match2, returns_pattern)){
-    delimiter = "assert:";
-    // std::string EndDelimiter = "|END";
-    // size_t end = cleanedString.find(EndDelimiter);
-    pos = cleanedString.find(delimiter);
-    if (pos != std::string::npos) {
-      std::string firstPart =
-          cleanedString.substr(0, pos); // Before "requires:"
-      match = cleanedString.substr(pos + delimiter.length(),
-                                   end - (pos + delimiter.length()));
-      if (!match.empty() && match.front() == '"' && match.back() == '"') {
-        match = match.substr(1, match.size() - 2);
-      }
-      // std::cout << "First Part: " << firstPart << std::endl;Add commentMore
-      // actions std::cout << "Second Part: " << secondPart << std::endl;
-      //}
-      return PulseAnnKind::Assert;
-    }
-    //else{
-          llvm::outs() << cleanedString.data() << "\n";
-          assert(false && "Unhandeled pulse annotation kind!\n");
-    //}
+    return true;
   }
+
+  return false;
 }
 
-SymbolTable getSymbolKeyForCType(clang::QualType Ty, clang::ASTContext &Ctx){
+PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data,
+                                       std::string &Match) {
 
-  if(Ty->isSignedIntegerType()){
-
-    if (Ctx.getTypeSize(Ty) == 8){
-      return SymbolTable::Int8;
-    }
-    else if (Ctx.getTypeSize(Ty) == 16){
-      return SymbolTable::Int16;
-    }
-    else if (Ctx.getTypeSize(Ty) == 32){
-      return SymbolTable::Int32;
-    }
-    else if (Ctx.getTypeSize(Ty) == 64){
-      return SymbolTable::Int64;
-    }
-    else {
-      assert(false && "getSymbolKeyForType: did not expect signed integer size");
-    }
-
+  if (Data.empty()) {
+    assert(false && "Expected Data to be non empty!\n");
   }
-  else if (Ty->isUnsignedIntegerType()){
-    
-    //check explicitly if it is size_t
-    if (Ty.getAsString() == "size_t"){
+
+  std::string CleanedString;
+  for (auto c : Data.trim().bytes()) {
+    if (c != '\r') {
+      CleanedString += c;
+    }
+  }
+
+  std::array<std::string, 8> StartOfAnnotations = {
+      "requires:", "ensures:",    "array:",          "lemma:",
+      "returns:",  "erased_arg:", "heap_allocated:", "assert:"};
+
+  std::array<PulseAnnKind, 8> ArrayAnnotationKinds = {
+      PulseAnnKind::Requires,      PulseAnnKind::Ensures,
+      PulseAnnKind::IsArray,       PulseAnnKind::LemmaStatement,
+      PulseAnnKind::Returns,       PulseAnnKind::ErasedArg,
+      PulseAnnKind::HeapAllocated, PulseAnnKind::Assert};
+
+  std::string EndDelimiter = "|END";
+  size_t NumAnnotations = StartOfAnnotations.size();
+
+  for (size_t I = 0; I < NumAnnotations; I++) {
+
+    auto AnnonKind = StartOfAnnotations[I];
+    auto ArrKind = ArrayAnnotationKinds[I];
+
+    if (matchAnnotation(AnnonKind, EndDelimiter, CleanedString, Match)) {
+      return ArrKind;
+    }
+  }
+
+  llvm::errs() << "Found an unknown pulse annotation: \n";
+  llvm::errs() << Match << "\n";
+  return PulseAnnKind::Unknown;
+}
+
+SymbolTable getSymbolKeyForCType(clang::QualType Ty, clang::ASTContext &Ctx) {
+
+  if (Ty->isSignedIntegerType()) {
+
+    if (Ctx.getTypeSize(Ty) == 8) {
+      return SymbolTable::Int8;
+    } else if (Ctx.getTypeSize(Ty) == 16) {
+      return SymbolTable::Int16;
+    } else if (Ctx.getTypeSize(Ty) == 32) {
+      return SymbolTable::Int32;
+    } else if (Ctx.getTypeSize(Ty) == 64) {
+      return SymbolTable::Int64;
+    } else {
+      assert(false &&
+             "getSymbolKeyForType: did not expect signed integer size");
+    }
+
+  } else if (Ty->isUnsignedIntegerType()) {
+
+    // check explicitly if it is size_t
+    if (Ty.getAsString() == "size_t") {
       return SymbolTable::SizeT;
     }
-    
-    if (Ctx.getTypeSize(Ty) == 8){
+
+    if (Ctx.getTypeSize(Ty) == 8) {
       return SymbolTable::UInt8;
-    }
-    else if (Ctx.getTypeSize(Ty) == 16){
+    } else if (Ctx.getTypeSize(Ty) == 16) {
       return SymbolTable::UInt16;
-    }
-    else if (Ctx.getTypeSize(Ty) == 32){
+    } else if (Ctx.getTypeSize(Ty) == 32) {
       return SymbolTable::UInt32;
-    }
-    else if (Ctx.getTypeSize(Ty) == 64){
+    } else if (Ctx.getTypeSize(Ty) == 64) {
       return SymbolTable::UInt64;
-    }
-    else if (Ctx.getTypeSize(Ty) == 128){
+    } else if (Ctx.getTypeSize(Ty) == 128) {
       return SymbolTable::UInt128;
-    }
-    else {
-      assert(false && "getSymbolKeyForType: did not expect signed integer size");
+    } else {
+      assert(false &&
+             "getSymbolKeyForType: did not expect signed integer size");
     }
 
-  }
-  else if (Ty.getAsString() == "size_t"){
+  } else if (Ty.getAsString() == "size_t") {
     return SymbolTable::SizeT;
-  }
-  else if (Ty->isArrayType()){
+  } else if (Ty->isArrayType()) {
     return SymbolTable::Array;
   }
-  //What about structs
+  // What about structs
   else if (Ty->isStructureType() || Ty->isUnionType()) {
     // We do not handle structs and unions in this function.
     // This is a placeholder for future implementation.
-    // Return a reference type for now. 
+    // Return a reference type for now.
     return SymbolTable::UNKNOWN;
     llvm::outs() << "getSymbolKeyForType: Struct or Union type encountered.\n";
     Ty->dump();
-    assert(false && "getSymbolKeyForType: Struct or Union type not implemented.");
-  }
-  else if (Ty->isPointerType()){
+    assert(false &&
+           "getSymbolKeyForType: Struct or Union type not implemented.");
+  } else if (Ty->isPointerType()) {
     return SymbolTable::Ref;
   }
-  
+
   Ty->dump();
   assert(false && "getSymbolKeyForType: did not expect type.");
-
 }
 
-const char* getSymbolKeyForOperator(SymbolTable Val, clang::BinaryOperatorKind &Op){
-  
-  switch(Op){
+const char *getSymbolKeyForOperator(SymbolTable Val,
+                                    clang::BinaryOperatorKind &Op) {
+
+  switch (Op) {
   case clang::BO_PtrMemD:
   case clang::BO_PtrMemI:
-  case clang::BO_Mul:{
-    if (Val == SymbolTable::Int8){
+  case clang::BO_Mul: {
+    if (Val == SymbolTable::Int8) {
       return lookupSymbol(SymbolTable::Int8_Mul);
-    }
-    else if (Val == SymbolTable::Int16){
+    } else if (Val == SymbolTable::Int16) {
       return lookupSymbol(SymbolTable::Int16_Mul);
-    }
-    else if (Val == SymbolTable::Int32){
+    } else if (Val == SymbolTable::Int32) {
       return lookupSymbol(SymbolTable::Int32_Mul);
-    }
-    else if (Val == SymbolTable::Int64){
+    } else if (Val == SymbolTable::Int64) {
       return lookupSymbol(SymbolTable::Int64_Mul);
     }
-    
+
     break;
   }
-  case clang::BO_Div:{
-     if (Val == SymbolTable::Int8){
+  case clang::BO_Div: {
+    if (Val == SymbolTable::Int8) {
       return lookupSymbol(SymbolTable::Int8_Div);
-    }
-    else if (Val == SymbolTable::Int16){
+    } else if (Val == SymbolTable::Int16) {
       return lookupSymbol(SymbolTable::Int16_Div);
-    }
-    else if (Val == SymbolTable::Int32){
+    } else if (Val == SymbolTable::Int32) {
       return lookupSymbol(SymbolTable::Int32_Div);
-    }
-    else if (Val == SymbolTable::Int64){
+    } else if (Val == SymbolTable::Int64) {
       return lookupSymbol(SymbolTable::Int64_Div);
-    }
-    else if (Val == SymbolTable::SizeT){
+    } else if (Val == SymbolTable::SizeT) {
       return lookupSymbol(SymbolTable::SizeT_Div);
-    }
-    else if (Val == SymbolTable::UInt64){
+    } else if (Val == SymbolTable::UInt64) {
       return lookupSymbol(SymbolTable::UInt64_Div);
-    }
-    else{
+    } else {
       assert(false && "unimplemented case.\n");
     }
     break;
   }
   case clang::BO_Rem:
-  case clang::BO_Add:{
-    if (Val == SymbolTable::Int8){
+  case clang::BO_Add: {
+    if (Val == SymbolTable::Int8) {
       return lookupSymbol(SymbolTable::Int8_Add);
-    }
-    else if (Val == SymbolTable::Int16){
+    } else if (Val == SymbolTable::Int16) {
       return lookupSymbol(SymbolTable::Int16_Add);
-    }
-    else if (Val == SymbolTable::Int32){
+    } else if (Val == SymbolTable::Int32) {
       return lookupSymbol(SymbolTable::Int32_Add);
-    }
-    else if (Val == SymbolTable::Int64){
+    } else if (Val == SymbolTable::Int64) {
       return lookupSymbol(SymbolTable::Int64_Add);
-    }
-    else if (Val == SymbolTable::UInt64){
+    } else if (Val == SymbolTable::UInt64) {
       return lookupSymbol(SymbolTable::UInt64_Add);
-    }
-    else if (Val == SymbolTable::SizeT){
+    } else if (Val == SymbolTable::SizeT) {
       return lookupSymbol(SymbolTable::SizeT_Add);
-    }
-    else{
+    } else {
       assert(false && "Did not expect case.");
     }
-    
+
     break;
   }
-  case clang::BO_Sub:{
-    if (Val == SymbolTable::Int8){
+  case clang::BO_Sub: {
+    if (Val == SymbolTable::Int8) {
       return lookupSymbol(SymbolTable::Int8_Sub);
-    }
-    else if (Val == SymbolTable::Int16){
+    } else if (Val == SymbolTable::Int16) {
       return lookupSymbol(SymbolTable::Int16_Sub);
-    }
-    else if (Val == SymbolTable::Int32){
+    } else if (Val == SymbolTable::Int32) {
       return lookupSymbol(SymbolTable::Int32_Sub);
-    }
-    else if (Val == SymbolTable::Int64){
+    } else if (Val == SymbolTable::Int64) {
       return lookupSymbol(SymbolTable::Int64_Sub);
-    }
-    else if (Val == SymbolTable::UInt64){
+    } else if (Val == SymbolTable::UInt64) {
       return lookupSymbol(SymbolTable::UInt64_Sub);
-    }
-    else if (Val == SymbolTable::SizeT){
+    } else if (Val == SymbolTable::SizeT) {
       return lookupSymbol(SymbolTable::SizeT_Sub);
     }
-    
+
     break;
   }
   case clang::BO_Shl:
   case clang::BO_Shr:
   case clang::BO_Cmp:
-  case clang::BO_LT:{
-     if (Val == SymbolTable::Int8){
+  case clang::BO_LT: {
+    if (Val == SymbolTable::Int8) {
       return lookupSymbol(SymbolTable::Int8_Lt);
-    }
-    else if (Val == SymbolTable::Int16){
+    } else if (Val == SymbolTable::Int16) {
       return lookupSymbol(SymbolTable::Int16_Lt);
-    }
-    else if (Val == SymbolTable::Int32){
+    } else if (Val == SymbolTable::Int32) {
       return lookupSymbol(SymbolTable::Int32_Lt);
-    }
-    else if (Val == SymbolTable::Int64){
+    } else if (Val == SymbolTable::Int64) {
       return lookupSymbol(SymbolTable::Int64_Lt);
-    }
-    else if (Val == SymbolTable::SizeT){
+    } else if (Val == SymbolTable::SizeT) {
       return lookupSymbol(SymbolTable::SizeT_Lt);
-    }
-    else if (Val == SymbolTable::UInt64){
+    } else if (Val == SymbolTable::UInt64) {
       return lookupSymbol(SymbolTable::UInt64_Lt);
-    }
-    else{
+    } else {
       assert(false && "unimplemented case.\n");
     }
     break;
@@ -433,20 +261,17 @@ const char* getSymbolKeyForOperator(SymbolTable Val, clang::BinaryOperatorKind &
   case clang::BO_GT:
   case clang::BO_LE:
   case clang::BO_GE:
-  case clang::BO_EQ:{
-    if (Val == SymbolTable::Int8){
+  case clang::BO_EQ: {
+    if (Val == SymbolTable::Int8) {
       return lookupSymbol(SymbolTable::Int8_Eq);
-    }
-    else if (Val == SymbolTable::Int16){
+    } else if (Val == SymbolTable::Int16) {
       return lookupSymbol(SymbolTable::Int16_Eq);
-    }
-    else if (Val == SymbolTable::Int32){
+    } else if (Val == SymbolTable::Int32) {
       return lookupSymbol(SymbolTable::Int32_Eq);
-    }
-    else if (Val == SymbolTable::Int64){
+    } else if (Val == SymbolTable::Int64) {
       return lookupSymbol(SymbolTable::Int64_Eq);
     }
-    
+
     break;
   }
   case clang::BO_NE:
@@ -481,9 +306,7 @@ const char* getSymbolKeyForOperator(SymbolTable Val, clang::BinaryOperatorKind &
 //   Sequence
 // };
 
-Binder::Binder(std::string FallBack){
-  Ident = FallBack;
-}
+Binder::Binder(std::string FallBack) { Ident = FallBack; }
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &os, PulseStmtTag T) {
   switch (T) {
@@ -528,7 +351,7 @@ llvm::raw_ostream &operator<<(llvm::raw_ostream &os, PulseDeclKind T) {
     break;
   case PulseDeclKind::ValDecl:
     os << "ValDecl";
-    break;  
+    break;
   }
   return os;
 }
@@ -539,100 +362,73 @@ void Term::printTag() { llvm::outs() << Tag << "\n"; }
 
 void Term::dumpPretty() { printTag(); }
 
-
 void Lemma::dumpPretty() {
-  for (auto lemma : lemmas){
+  for (auto lemma : lemmas) {
     llvm::outs() << lemma << "\n";
   }
 }
 
+GenericStmt::GenericStmt() { Tag = PulseStmtTag::GenericStmt; }
 
-FallBackStmt::FallBackStmt(){
-  Tag = PulseStmtTag::FallBackStmt;
-}
+void GenericStmt::dumpPretty() { llvm::outs() << body << "\n"; }
 
-void FallBackStmt::dumpPretty() {
-  llvm::outs() << body << "\n";
-}
+void LemmaStatement::dumpPretty() { llvm::outs() << Lemma << "\n"; }
 
-void LemmaStatement::dumpPretty() {
-  llvm::outs() << Lemma << "\n";
-}
+Lemma::Lemma() { Tag = TermTag::Lemma; }
 
-Lemma::Lemma(){
-  Tag = TermTag::Lemma;
-}
+LemmaStatement::LemmaStatement() { Tag = TermTag::LemmaStatement; }
 
-LemmaStatement::LemmaStatement(){
-  Tag = TermTag::LemmaStatement;
-}
-
-
-Paren::Paren(){
+Paren::Paren() {
   llvm::outs() << "Called Paren Constructor!!" << "\n";
   Tag = TermTag::Paren;
 }
 
-void Paren::setInnerExpr(Term *Inner){
-  InnerExpr = Inner;
-}
+void Paren::setInnerExpr(Term *Inner) { InnerExpr = Inner; }
 
 void Paren::dumpPretty() {
-  llvm::outs() << "("; 
-  InnerExpr->dumpPretty(); 
+  llvm::outs() << "(";
+  InnerExpr->dumpPretty();
   llvm::outs() << ")";
 }
 
-ConstTerm::ConstTerm(){
-  Tag = TermTag::Const;
-}
+ConstTerm::ConstTerm() { Tag = TermTag::Const; }
 
-Ensures::Ensures(){
-  Tag = TermTag::Ensures;
-}
+Ensures::Ensures() { Tag = TermTag::Ensures; }
 
-Returns::Returns(){
-  Tag = TermTag::Returns;
-}
+Returns::Returns() { Tag = TermTag::Returns; }
 
-void Ensures::dumpPretty(){
+void Ensures::dumpPretty() {
   llvm::outs() << "Ensures ";
   llvm::outs() << Ann;
 }
 
-void Requires::dumpPretty(){
+void Requires::dumpPretty() {
   llvm::outs() << "Requires ";
   llvm::outs() << Ann;
 }
 
-void Returns::dumpPretty(){
+void Returns::dumpPretty() {
   llvm::outs() << "Requires ";
   llvm::outs() << Ann;
 }
 
-Requires::Requires(){
+Requires::Requires() {
   Tag = TermTag::Requires;
   Ann = "";
 }
 
 void ConstTerm::dumpPretty() { llvm::outs() << ConstantValue; }
 
-VarTerm::VarTerm(){
-  Tag = TermTag::Var;
-}
+VarTerm::VarTerm() { Tag = TermTag::Var; }
 
-Name::Name(){
-  Tag = TermTag::Name;
-}
+Name::Name() { Tag = TermTag::Name; }
 
-Name::Name(std::string Name){
+Name::Name(std::string Name) {
   Tag = TermTag::Name;
   NamedValue = Name;
 }
 
-std::string Name::print() {
-  return NamedValue;
-}
+std::string Name::print() { return NamedValue; }
 
 void VarTerm::setVarName(std::string Name) { VarName = Name; }
 
@@ -646,13 +442,9 @@ void FStarType::setName(std::string Name) { NamedValue = Name; }
 
 void FStarType::dumpPretty() { llvm::outs() << NamedValue; }
 
-FStarType::FStarType() {
-  Tag = TermTag::FStarType;
-}
+FStarType::FStarType() { Tag = TermTag::FStarType; }
 
-std::string FStarType::print(){
-  return NamedValue;
-}
+std::string FStarType::print() { return NamedValue; }
 
 FStarType::FStarType(std::string Name) {
   Tag = TermTag::FStarType;
@@ -680,18 +472,14 @@ std::string FStarPointerType::print() {
   return Out;
 }
 
-FStarArrType::FStarArrType(){
-  Tag = TermTag::FStarArrType;
-}
+FStarArrType::FStarArrType() { Tag = TermTag::FStarArrType; }
 
 void FStarArrType::setElementTy(FStarType *Type) { ElementType = Type; }
 void FStarPointerType::setPointerToTy(FStarType *Type) { PointerTo = Type; }
 
-FStarPointerType::FStarPointerType(){
-  Tag = TermTag::FStarPointerType;
-}
+FStarPointerType::FStarPointerType() { Tag = TermTag::FStarPointerType; }
 
-AppE::AppE(){
+AppE::AppE() {
   Tag = TermTag::AppE;
   Args.clear();
 }
@@ -720,14 +508,12 @@ void PulseStmt::printTag() { llvm::outs() << Tag << "\n"; }
 
 void PulseStmt::dumpPretty() { PulseStmt::printTag(); }
 
-void PulseExpr::dumpPretty() { 
+void PulseExpr::dumpPretty() {
   if (E)
-    E->dumpPretty(); 
+    E->dumpPretty();
 }
 
-PulseExpr::PulseExpr(){
-  Tag = PulseStmtTag::Expr; 
-}
+PulseExpr::PulseExpr() { Tag = PulseStmtTag::Expr; }
 
 void PulseAssignment::dumpPretty() {
   Lhs->dumpPretty();
@@ -736,41 +522,35 @@ void PulseAssignment::dumpPretty() {
   llvm::outs() << "\n";
 }
 
-void PulseArrayAssignment::dumpPretty(){
+void PulseArrayAssignment::dumpPretty() {
 
-  Arr->dumpPretty(); 
+  Arr->dumpPretty();
   llvm::outs() << ".(";
-  Index->dumpPretty(); 
+  Index->dumpPretty();
   llvm::outs() << ")";
   llvm::outs() << " <- ";
   Value->dumpPretty();
   llvm::outs() << "\n";
-
 }
 
-LetBinding::LetBinding(){
-  Tag = PulseStmtTag::LetBinding;
-}
+LetBinding::LetBinding() { Tag = PulseStmtTag::LetBinding; }
 
 void LetBinding::dumpPretty() {
   llvm::outs() << "let ";
-  if (Qualifier == MutOrRef::MUT){
+  if (Qualifier == MutOrRef::MUT) {
     llvm::outs() << "mut ";
-  } 
+  }
   llvm::outs() << VarName << " = ";
   if (LetInit != nullptr)
     LetInit->dumpPretty();
   llvm::outs() << "\n";
 }
 
-void PulseIf::dumpPretty(){
+void PulseIf::dumpPretty() {}
 
-  
-}
-
-PulseSequence::PulseSequence(){
+PulseSequence::PulseSequence() {
   Tag = PulseStmtTag::Sequence;
-  S1 = nullptr; 
+  S1 = nullptr;
   S2 = nullptr;
 }
 
@@ -779,24 +559,23 @@ void PulseSequence::assignS1(PulseStmt *S) { S1 = S; }
 void PulseSequence::assignS2(PulseStmt *S) { S2 = S; }
 
 void PulseSequence::dumpPretty() {
-  if (S1 != nullptr){
+  if (S1 != nullptr) {
     S1->dumpPretty();
   }
 
-  if (S2 != nullptr){
-     S2->dumpPretty();
+  if (S2 != nullptr) {
+    S2->dumpPretty();
   }
 }
 
-
 void PulseWhileStmt::dumpPretty() {
 
-  llvm::outs() << "while("; 
-  Guard->dumpPretty(); 
+  llvm::outs() << "while(";
+  Guard->dumpPretty();
   llvm::outs() << ")";
-  llvm::outs() << "{"; 
+  llvm::outs() << "{";
   llvm::outs() << "\n";
-  Body->dumpPretty(); 
+  Body->dumpPretty();
   llvm::outs() << "}";
 }
 
@@ -814,10 +593,10 @@ void PulseFnDefn::dumpPretty() {
   llvm::outs() << "\n";
   llvm::outs() << "Print function arguments: ";
   for (auto *Arg : (Defn->Args)) {
-    if (Arg->useFallBack){
-     llvm::outs() << "(" << Arg->Ident << ")";
-     llvm::outs() << ",";
-     continue;
+    if (Arg->useFallBack) {
+      llvm::outs() << "(" << Arg->Ident << ")";
+      llvm::outs() << ",";
+      continue;
     }
 
     llvm::outs() << "(" << Arg->Ident << ",";
@@ -831,7 +610,7 @@ void PulseFnDefn::dumpPretty() {
 
   llvm::outs() << "\n\nPrint annotations: " << "\n\n";
 
-  for (auto *Ann : Defn->Annotation){
+  for (auto *Ann : Defn->Annotation) {
     Ann->dumpPretty();
     llvm::outs() << "\n";
   }
@@ -841,29 +620,17 @@ void PulseFnDefn::dumpPretty() {
   Defn->Body->dumpPretty();
 }
 
-TyConDecl::TyConDecl(){
-  Kind = PulseDeclKind::TyconDecl;
-}
+TyConDecl::TyConDecl() { Kind = PulseDeclKind::TyconDecl; }
 
-ValDecl::ValDecl(){
-  Kind = PulseDeclKind::ValDecl;
-}
+ValDecl::ValDecl() { Kind = PulseDeclKind::ValDecl; }
 
-TyCon::TyCon(){
-  Tag = TyConTag::Base;
-}
+TyCon::TyCon() { Tag = TyConTag::Base; }
 
-TyConRecord::TyConRecord(){
-  Tag = TyConTag::TyConRecord;
-}
+TyConRecord::TyConRecord() { Tag = TyConTag::TyConRecord; }
 
-TopLevelLet::TopLevelLet() {
-  Kind = PulseDeclKind::TopLevelLet;
-}
+TopLevelLet::TopLevelLet() { Kind = PulseDeclKind::TopLevelLet; }
 
-GenericDecl::GenericDecl() {
-  Kind = PulseDeclKind::GenericDecl;
-}
+GenericDecl::GenericDecl() { Kind = PulseDeclKind::GenericDecl; }
 
 // FstarValDecl::FstarValDecl(){
 //   Tag = FStarDeclTag::ValDecl;

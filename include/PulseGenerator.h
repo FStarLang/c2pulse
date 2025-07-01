@@ -28,7 +28,6 @@ public:
       : TheRewriter(R), Ctx(Ctx), SM(Ctx.getSourceManager()) {}
 
   bool VisitFunctionDecl(clang::FunctionDecl *FD);
-  bool VisitRecordDecl(clang::RecordDecl *RD);
   bool VisitTypedefDecl(clang::TypedefDecl *TypeDefDec);
 
   PulseStmt *pulseFromCompoundStmt(clang::Stmt *S, clang::ExprMutationAnalyzer *A, PulseModul *Module);

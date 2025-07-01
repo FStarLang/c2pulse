@@ -438,7 +438,7 @@ void PulseCodeGen::generateCodeFromPulseStmt(llvm::raw_string_ostream &OS,
     generateCodeFromPulseStmt(OS, S1);
     generateCodeFromPulseStmt(OS, S2);
   } 
-  else if (auto *FallBack = dyn_cast<FallBackStmt>(T)){
+  else if (auto *FallBack = dyn_cast<GenericStmt>(T)){
     OS << FallBack->body;
     OS << PulseSyntax::NewLine;
   }

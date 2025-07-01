@@ -11,10 +11,7 @@
 #include <vector>
 #include <utility>
 
-
-
-// // Define What all kinds of Annotations are there in Pulse.
-// //TODO: These can be term type in IR, we shoudl refactor these
+/// An enum class for all the pulse annotation kinds.
 enum class PulseAnnKind {
   HeapAllocated,
   ErasedArg,
@@ -24,14 +21,16 @@ enum class PulseAnnKind {
   IsArray,
   Invariants,
   LemmaStatement,
-  Assert
+  Assert,
+  Unknown
 };
 
-// Struct for Pulse annotations,
+/// Struct for Pulse annotations.
 struct PulseAnnotation {
   PulseAnnKind kind; 
 };
 
+/// Symbol Table to capture pulse specific types
 enum class SymbolTable {
   Int8, 
   Int16, 
@@ -86,6 +85,7 @@ SymbolTable getSymbolKeyForCType(clang::QualType Ty, clang::ASTContext &Ctx);
 const char* getSymbolKeyForOperator(SymbolTable Val, clang::BinaryOperatorKind &Op);
 const char* lookupSymbol(SymbolTable Key);
 
+/// A map from symbol to its pulse specific string.
 static const llvm::SmallDenseMap<SymbolTable, const char*> SymbolToStringTable {
   {SymbolTable::Int8, "Int8.t"},
   {SymbolTable::Int16, "Int16.t"},
@@ -123,15 +123,16 @@ static const llvm::SmallDenseMap<SymbolTable, const char*> SymbolToStringTable {
  {SymbolTable::Ref, "ref"},
 };
 
-// Define F* IR Similar to type term
-// https://github.com/FStarLang/FStar/blob/3ff998c60bb0efe9925fc94e8fb8b785b9485af0/src/parser/FStarC.Parser.AST.fsti#L40
+/// Define F* IR Similar to type term
+/// https://github.com/FStarLang/FStar/blob/3ff998c60bb0efe9925fc94e8fb8b785b9485af0/src/parser/FStarC.Parser.AST.fsti#L40
 enum class TermTag {Const, Paren, Var, Name, AppE, FStarType, FStarPointerType, FStarArrType, 
                     Ensures, 
                     Requires,
                     Returns,
                     Lemma, 
                     LemmaStatement};
-                    
+
+/// A base class for term.                    
 class Term {
 public:
   TermTag Tag;
@@ -141,6 +142,8 @@ public:
   virtual ~Term() = default;
 };
 
+/// Store Pulse Lemmas.
+/// Store a list of pulse Lemmas.
 class Lemma : public Term{
   public:
     Lemma();
@@ -151,6 +154,7 @@ class Lemma : public Term{
 
 };
 
+/// Lemma statement is any proof term in the middle of a function body.
 class LemmaStatement : public Term{
   public:
     LemmaStatement();
@@ -161,8 +165,8 @@ class LemmaStatement : public Term{
 
 };
 
+/// An IR node for representing a pulse parenthesis.
 class Paren : public Term {
-
   public: 
     Paren(); 
     Term *InnerExpr;
@@ -170,19 +174,18 @@ class Paren : public Term {
     virtual void dumpPretty() override;
     virtual ~Paren() = default;
     static bool classof(const Term *T) { return T->Tag == TermTag::Paren; }
-
 };
 
-
+/// An IR node for representing a pulse ensures.
 class Ensures : public Term {
   public: 
     std::string Ann;
     Ensures();
     virtual void dumpPretty() override;
     static bool classof(const Term *T) { return T->Tag == TermTag::Ensures; }
-
 };
 
+/// An IR node for representing a pulse requires.
 class Requires : public Term {
   public: 
     std::string Ann;
@@ -192,6 +195,7 @@ class Requires : public Term {
 
 };
 
+/// An IR node for representing a pulse return.
 class Returns : public Term {
   public: 
     std::string Ann; 
@@ -200,6 +204,7 @@ class Returns : public Term {
     static bool classof(const Term *T){ return T->Tag == TermTag::Returns; }
 };
 
+/// An IR node for representing a pulse constant term.
 class ConstTerm : public Term {
 public:
   ConstTerm();
@@ -210,6 +215,7 @@ public:
   static bool classof(const Term *T) { return T->Tag == TermTag::Const; }
 };
 
+/// An IR node for representing a pulse variable term.
 class VarTerm : public Term {
 public:
   std::string VarName;
@@ -220,6 +226,10 @@ public:
   static bool classof(const Term *T) { return T->Tag == TermTag::Var; }
 };
 
+/// An IR node for represeting a pulse name term. 
+/// NOTE: This can be used as a fallback node for 
+/// creating pulse terms. 
+/// These can be accumulated in the NamedValue.
 class Name : public Term {
 public:
   Name(); 
@@ -232,6 +242,7 @@ public:
   static bool classof(const Term *T) { return T->Tag == TermTag::Name; }
 };
 
+/// An IR node for representing a type in FStar.
 class FStarType : public Name {
 public:
   FStarType();
@@ -243,6 +254,7 @@ public:
   static bool classof(const Term *T) { return T->Tag == TermTag::FStarType; }
 };
 
+/// An IR node for representing an array type in FStar.
 class FStarArrType : public FStarType {
 
   public:
@@ -258,6 +270,7 @@ class FStarArrType : public FStarType {
 
 };
 
+/// An IR node for representing a pointer type in FStar.
 class FStarPointerType : public FStarType {
 public:
   FStarPointerType();
@@ -276,6 +289,7 @@ public:
   }
 };
 
+/// An IR node for representing a call in pulse.
 class AppE : public Term {
 public:
   VarTerm *CallName;
@@ -288,8 +302,10 @@ public:
   static bool classof(const Term *T) { return T->Tag == TermTag::AppE; }
 };
 
+/// Slprop in pulse can be a term.
 typedef Term Slprop;
 
+/// An enum class for a pulse statements types.
 enum class PulseStmtTag {
   Expr,
   Assignment,
@@ -298,16 +314,17 @@ enum class PulseStmtTag {
   If,
   WhileStmt,
   Sequence, 
-  FallBackStmt,
+  GenericStmt,
 };
 
-
+/// An enum class for specifying if something is mutable or not.
 enum class MutOrRef {
   NOTMUT,
   MUT, 
   REF,
 };
 
+/// The base class for a pulse statement.
 class PulseStmt {
 public:
   PulseStmtTag Tag;
@@ -317,16 +334,22 @@ public:
   virtual ~PulseStmt() = default;
 };
 
-class FallBackStmt : public PulseStmt {
+/// A class for making general pulse statements. 
+/// The pulse code can be accumulated as strings in the body. 
+/// Use this if you don't want to create an in-memory AST but just need
+/// Some fallback node.
+class GenericStmt : public PulseStmt {
   public:
-    FallBackStmt(); 
+    GenericStmt(); 
     std::string body;
     virtual void dumpPretty() override;
     static bool classof(const PulseStmt *S) {
-    return S->Tag == PulseStmtTag::FallBackStmt;
+    return S->Tag == PulseStmtTag::GenericStmt;
   }
 };
 
+/// A class for making a pulse expression.
+/// A Pulse expression stores a term inside.
 class PulseExpr : public PulseStmt {
 public:
   Term *E;
@@ -337,6 +360,7 @@ public:
   }
 };
 
+/// An IR node for representing a pulse assignment statement.
 class PulseAssignment : public PulseStmt {
 public:
   Term *Lhs;
@@ -347,6 +371,7 @@ public:
   }
 };
 
+/// An IR node for representing a pulse array assignment statement.
 class PulseArrayAssignment : public PulseStmt {
 public:
   Term *Arr;
@@ -358,6 +383,7 @@ public:
   }
 };
 
+/// An IR node for representing a pulse let binding.
 class LetBinding : public PulseStmt {
 public:
   std::string VarName;
@@ -370,6 +396,7 @@ public:
   }
 };
 
+/// An IR node for representing a pulse if statement.
 class PulseIf : public PulseStmt {
 public:
   Term *Head;
@@ -379,8 +406,8 @@ public:
   static bool classof(const PulseStmt *S) { return S->Tag == PulseStmtTag::If; }
 };
 
+/// An IR node for representing a pulse while statement.
 class PulseWhileStmt : public PulseStmt {
-
 public:
   PulseStmt *Guard;
   std::vector<Slprop *> Invariant;
@@ -391,6 +418,7 @@ public:
   }
 };
 
+/// An IR node for representing a pulse Sequence statment.
 class PulseSequence : public PulseStmt {
 public:
   PulseStmt *S1;
@@ -404,7 +432,7 @@ public:
   }
 };
 
-// Function declaration in Pulse IR
+/// An IR node for representing a Function Argument.
 struct Binder {
 public:
   Binder(std::string ident, Term *type) : Ident(std::move(ident)), Type(type) {}
@@ -414,13 +442,16 @@ public:
   bool useFallBack = false;
 };
 
+/// An IR node for representing a pulse function declaration.
 struct _PulseFnDecl {
   std::string Name;
   std::vector<Binder *> Args;
 };
 
+/// Attributes a function may have.
 typedef std::vector<Term*> Attributes;
 
+/// An IR node for representing a pulse function definition.
 struct _PulseFnDefn {
   Attributes Attr;
   std::string Name;
@@ -432,14 +463,17 @@ struct _PulseFnDefn {
   std::string FallBackBody;
 };
 
+/// An IR node for representing a pulse record element type.
 struct RecordElement {
   std::string Ident; 
   Attributes Attrs;
   Term *ElementTerm;
 };
 
+/// An enum class for the type of tycon.
 enum class TyConTag {Base, TyConAbstract, TyConAbbrev, TyConRecord, TyConVariant};
 
+/// A class for representing a pulse tycon.
 class TyCon {
   public: 
     TyCon();
@@ -449,6 +483,7 @@ class TyCon {
 
 };
 
+/// A class for representing a pulse tycon record type.
 class TyConRecord : public TyCon {
   public:
     TyConRecord();
@@ -459,6 +494,7 @@ class TyConRecord : public TyCon {
     }
 };
 
+/// A pulse declaration kind.
 enum class PulseDeclKind {
   FnDefn, // Function definition
   FnDecl,  // Function declaration
@@ -468,12 +504,18 @@ enum class PulseDeclKind {
   GenericDecl, //A Super Generic declaration. A fallback AST Node in the compiler.
 };
 
+/// An enum class to represent what kind of a pulse declaration it is.
 class PulseDecl {
 public:
   PulseDeclKind Kind;
   PulseDeclKind getKind();
 };
 
+/// An IR node to represent a generic pulse declaration. 
+/// NOTE: Use this node as a fallback. 
+/// We can accumulate strings in this declaration in Ident.
+/// This is an escape hatch in case the programmer does not 
+/// want to use the defined pulse IR.
 class GenericDecl : public PulseDecl {
   public:
     GenericDecl(); 
@@ -484,6 +526,7 @@ class GenericDecl : public PulseDecl {
 
 };
 
+/// An IR node to represent a top level let bind.
 class TopLevelLet : public PulseDecl {
 public:
   TopLevelLet();
@@ -494,6 +537,7 @@ public:
   }
 };
 
+/// An IR node to represent a top level declaration.
 class TyConDecl : public PulseDecl {
   public: 
     TyConDecl(); 
@@ -505,6 +549,7 @@ class TyConDecl : public PulseDecl {
   }
 };
 
+/// An IR node to represent a value declaration 
 class ValDecl : public PulseDecl {
   public:
     ValDecl();
@@ -515,6 +560,7 @@ class ValDecl : public PulseDecl {
   }
 };
 
+/// An IR node to represent a pulse function definition.
 class PulseFnDefn : public PulseDecl {
 public:
   PulseFnDefn(_PulseFnDefn *Defn);
@@ -526,6 +572,7 @@ public:
   void dumpPretty();
 };
 
+/// An IR node to represent a pulse function declaration.
 class PulseFnDecl : public PulseDecl {
 public:
   _PulseFnDecl *Defn;
@@ -534,21 +581,23 @@ public:
   }
 };
 
+/// An IR node to represent a pulse module.
 class PulseModul {
 public:
   bool includePulsePrelude;
   std::set<std::string> IncludedModules;
   std::string ModuleName;
   std::vector<PulseDecl *> Decls;
-  // set to true for .fsti files
+  /// set to true for .fsti files
   bool isHeader = false;
 };
 
-// Class File:
-// We treat a Module as equivalent to a source file.
-// In Clang, a Translation Unit represents a single compilable file—
-// that is, the source file along with all its includes and other necessary
-// context required to compile it.
+/// Class File:
+/// We treat a Module as equivalent to a source file.
+/// In Clang, a Translation Unit represents a single compilable file—
+/// that is, the source file along with all its includes and other necessary
+/// context required to compile it.
 typedef PulseModul File;
 
+/// A function to get the kind of pulse annotation from a string.
 PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data, std::string &match);
