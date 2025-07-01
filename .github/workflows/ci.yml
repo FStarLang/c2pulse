@@ -24,6 +24,8 @@ jobs:
     - name: Read submodule commit hashes
       id: commits
       run: |
+        C=$(git -C external/llvm-project rev-parse HEAD)
+        echo "LLVMCOMMIT=$C" >>"$GITHUB_OUTPUT"
         C=$(git -C external/FStar rev-parse HEAD)
         echo "FSTARCOMMIT=$C" >>"$GITHUB_OUTPUT"
         C=$(git -C external/pulse rev-parse HEAD)
@@ -59,9 +61,24 @@ jobs:
         sudo ln -s $(which ccache) $HOME/bin/cc1plus
         sudo ln -s $(which ccache) $HOME/bin/c++
 
+    - name: Try fetch built LLVM/Clang
+      id: cache-llvm
+      uses: actions/cache/restore@v4
+      with:
+        path: external/llvm-project/build
+        key: llvm-${{ runner.os }}-${{ runner.arch }}-${{ steps.commits.outputs.LLVMCOMMIT }}
+
     - name: Build LLVM/Clang
+      if: steps.cache-llvm.outputs.cache-hit != 'true'
       run: |
         ./build_clang.sh
+
+    - name: Save built LLVM/Clang
+      if: steps.cache-llvm.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: external/llvm-project/build
+        key: llvm-${{ runner.os }}-${{ runner.arch }}-${{ steps.commits.outputs.LLVMCOMMIT }}
 
     - name: Try fetch built F*
       id: cache-fstar
