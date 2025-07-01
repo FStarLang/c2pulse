@@ -73,15 +73,19 @@ PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data,
     }
   }
 
-  std::array<std::string, 8> StartOfAnnotations = {
+  std::array<std::string, 9> StartOfAnnotations = {
       "requires:", "ensures:",    "array:",          "lemma:",
-      "returns:",  "erased_arg:", "heap_allocated:", "assert:"};
+      "returns:",  "erased_arg:", "heap_allocated:", "assert:", 
+      "includes:"
+    };
 
-  std::array<PulseAnnKind, 8> ArrayAnnotationKinds = {
+  std::array<PulseAnnKind, 9> ArrayAnnotationKinds = {
       PulseAnnKind::Requires,      PulseAnnKind::Ensures,
       PulseAnnKind::IsArray,       PulseAnnKind::LemmaStatement,
       PulseAnnKind::Returns,       PulseAnnKind::ErasedArg,
-      PulseAnnKind::HeapAllocated, PulseAnnKind::Assert};
+      PulseAnnKind::HeapAllocated, PulseAnnKind::Assert, 
+      PulseAnnKind::Includes
+      };
 
   std::string EndDelimiter = "|END";
   size_t NumAnnotations = StartOfAnnotations.size();
@@ -617,7 +621,8 @@ void PulseFnDefn::dumpPretty() {
 
   llvm::outs() << "\n\n";
   llvm::outs() << "Print the function body: " << "\n\n";
-  Defn->Body->dumpPretty();
+  if (Defn->Body)
+    Defn->Body->dumpPretty();
 }
 
 TyConDecl::TyConDecl() { Kind = PulseDeclKind::TyconDecl; }
@@ -631,6 +636,14 @@ TyConRecord::TyConRecord() { Tag = TyConTag::TyConRecord; }
 TopLevelLet::TopLevelLet() { Kind = PulseDeclKind::TopLevelLet; }
 
 GenericDecl::GenericDecl() { Kind = PulseDeclKind::GenericDecl; }
+
+
+void PulseModul::insertModule(std::string IncModule){
+  //Module does not exists
+  if (std::find(IncludedModules.begin(), IncludedModules.end(), IncModule) == IncludedModules.end()){
+    IncludedModules.push_back(IncModule);
+  }
+}
 
 // FstarValDecl::FstarValDecl(){
 //   Tag = FStarDeclTag::ValDecl;

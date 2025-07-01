@@ -7,5 +7,5 @@
 #define LEMMA(l) [[clang::pulse("lemma:" STR(l)"|END")]]
 #define ERASED_ARG(arg) [[clang::pulse("erased_arg:" STR(arg)"|END")]]
 #define ASSERT(message) [[clang::pulse("assert:" STR(message) "|END")]]
-#define HEAPALLOCATED(message)                                                 \
-  [[clang::pulse("heap_allocated:" STR(message) "|END")]]
+#define HEAPALLOCATED(message) [[clang::pulse("heap_allocated:" STR(message) "|END")]]
+#define INCLUDE(...) [[clang::pulse("includes:" STR(__VA_ARGS__) "|END")]] void __pulse_include_anchor(void) {}
