@@ -1213,34 +1213,44 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
           auto MemberName = LhsDecl->getDeclName();
 
-          auto *PulseCall = new AppE();
-          auto *CallName = new VarTerm();
-
-          CallName->setVarName( StructName + "_set_" + MemberName.getAsString());
-          PulseCall->setCallName(CallName);
-
-          auto *InnerTermCallArg = new VarTerm();
-            InnerTermCallArg->setVarName(NameOfDecl);
-
-          PulseCall->pushArg(InnerTermCallArg);
-
           // TODO: Angelica, I don't this releasing expressions before is
           // required. This was done because Pulse was not in ANF before.
           // However, it is in ANF now.
           SmallVector<PulseStmt *> ExprsBef;
-          auto *RhsExpr =
-              getTermFromCExpr(Rhs, Analyzer, ExprsBef, Parent, BO->getType(), Module);
-          PulseCall->pushArg(RhsExpr);
+          auto *PulseRhsTerm =
+              getTermFromCExpr(Rhs, Analyzer, ExprsBef, Parent,BO->getType(), Module);
+          PulseAssignment *Assignment = new PulseAssignment();
+          Assignment->setTag(PulseStmtTag::Assignment);
+          Assignment->Value = PulseRhsTerm;
 
-          // Perhaps warp this In Pulse Expr
-          auto *Expr = new PulseExpr();
-          Expr->E = PulseCall;
+          auto *DerefAppE = new AppE();
+          auto *FuncName = new VarTerm();
+          FuncName->setVarName("!");
+          FuncName->setTag(TermTag::Var);
+          DerefAppE->setTag(TermTag::AppE);
+          DerefAppE->setCallName(FuncName);
+          auto *InnerTermCallArg = new VarTerm();
+          InnerTermCallArg->setVarName(NameOfDecl);
+          DerefAppE->pushArg(InnerTermCallArg);
+          // Wrap this deref in a parenthesis.
+          auto *ParenthesisDeref = new Paren();
+          ParenthesisDeref->setInnerExpr(DerefAppE);
+
+          auto *PulseCall = new AppE();
+          auto *CallName = new VarTerm();
+
+          CallName->setVarName("Mk" + StructName + "?." + MemberName.getAsString());
+          PulseCall->setCallName(CallName);
+
+          PulseCall->pushArg(ParenthesisDeref);
+          Assignment->Lhs = PulseCall;
+
           assert(ExprsBef.empty() && "Expected ExprsBefore to be empty!\n");
 
           auto It = TrackStructExplodeAndRecover.find(VD);
           if (It == TrackStructExplodeAndRecover.end()){
             auto *NewSeq = new PulseSequence();
-            NewSeq->assignS2(Expr);
+            NewSeq->assignS2(Assignment);
             auto *ExplodeStmt = new GenericStmt();
             ExplodeStmt->body = StructName + "_explode " + VD->getNameAsString() + ";";
             NewSeq->assignS1(ExplodeStmt);
@@ -1248,7 +1258,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
             return NewSeq;
           }
 
-          return Expr;
+          return Assignment;
         }
 
         ME->dump();
@@ -1272,25 +1282,13 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
           auto MemberName = LhsDecl->getDeclName();
 
-          auto *PulseCall = new AppE();
-          auto *CallName = new VarTerm();
-          CallName->setVarName(StructName + "_get_" + MemberName.getAsString());
-          PulseCall->setCallName(CallName);
-          auto *InnerTermCallArg = new VarTerm();
-          InnerTermCallArg->setVarName(NameOfDecl);
-          PulseCall->pushArg(InnerTermCallArg);
-
-          // TODO: Angelica, I don't this releasing expressions before is
-          // required. This was done because Pulse was not in ANF before.
-          // However, it is in ANF now.
-          SmallVector<PulseStmt *> ExprsBef;
-          auto *RhsExpr =
-              getTermFromCExpr(Rhs, Analyzer, ExprsBef, Parent, BO->getType(), Module);
-          PulseCall->pushArg(RhsExpr);
+          //x->f translates to (!(!x).f)
+          auto *GenStmt = new Name();
+          GenStmt->NamedValue = "(!(!" +NameOfDecl+")."+MemberName.getAsString()+")";
 
           // Perhaps warp this In Pulse Expr
           auto *Expr = new PulseExpr();
-          Expr->E = PulseCall;
+          Expr->E = GenStmt;
           assert(ExprsBef.empty() && "Expected Exprs before to be empty!\n");
           
           auto It = TrackStructExplodeAndRecover.find(VD);
@@ -1757,9 +1755,8 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
 
           auto *GenStmt = new Name();
           GenStmt->NamedValue =
-              "(" + StructName + "_to_" +
-              Mem->getMemberDecl()->getDeclName().getAsString() + " " +
-              Dec->getDecl()->getNameAsString() + ")";
+              "(!" + Dec->getDecl()->getNameAsString() + ")." +
+              Mem->getMemberDecl()->getDeclName().getAsString();
 
           auto It = TrackStructExplodeAndRecover.find(VD);
           if (It == TrackStructExplodeAndRecover.end()) {
@@ -2071,19 +2068,9 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       StructName = TyOfDecl->getPointeeType().getAsString();
 
       auto MemberName = LhsDecl->getDeclName();
-      auto *PulseCall = new AppE();
-      auto *CallName = new VarTerm();
-      std::string MethodName = isWrite ? "_set_" : "_get_";
-      CallName->setVarName(StructName + MethodName + MemberName.getAsString());
-      PulseCall->setCallName(CallName);
-
-      auto *InnerTermCallArg = new VarTerm();
-      InnerTermCallArg->setVarName(NameOfDecl);
-      PulseCall->pushArg(InnerTermCallArg);
-
-      // Wrap in Paren expression.
-      auto *PulseParen = new Paren();
-      PulseParen->InnerExpr = PulseCall;
+      assert(!isWrite && "expected isWrite to be false");
+      auto *GenStmt = new Name();
+      GenStmt->NamedValue = "(!(!" +NameOfDecl+")." +MemberName.getAsString()+")";
       
       //TODO: Vidush, ensure heuristic is correct.
       //check if we already added an explode for the struct here. 
@@ -2097,7 +2084,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
         TrackStructExplodeAndRecover.insert(std::make_pair(VD, std::make_pair(true, false)));
       }
 
-      return PulseParen;
+      return GenStmt;
     }
 
     return nullptr;
