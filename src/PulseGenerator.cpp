@@ -2051,7 +2051,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
   } else if (auto *ME = dyn_cast<MemberExpr>(E)) {
    
     
-    auto *LhsDecl = ME->getMemberDecl();
+    auto *MemberExprDecl = ME->getMemberDecl();
 
     auto *BaseExpr = ME->getBase()->IgnoreParens()->IgnoreImpCasts();
 
@@ -2069,7 +2069,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       llvm::outs() << TyOfDecl->getPointeeType().getAsString() << "\n";
       StructName = TyOfDecl->getPointeeType().getAsString();
 
-      auto MemberName = LhsDecl->getDeclName();
+      auto MemberName = MemberExprDecl->getDeclName();
       assert(!isWrite && "expected isWrite to be false");
       auto *GenStmt = new Name();
       GenStmt->NamedValue = "(!(!" +NameOfDecl+")." +MemberName.getAsString()+")";
