@@ -526,6 +526,10 @@ void PulseAssignment::dumpPretty() {
   llvm::outs() << "\n";
 }
 
+PulseAssignment::PulseAssignment(){
+  Tag = PulseStmtTag::Assignment;
+}
+
 void PulseArrayAssignment::dumpPretty() {
 
   Arr->dumpPretty();

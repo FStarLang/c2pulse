@@ -1219,7 +1219,6 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           auto *PulseRhsTerm =
               getTermFromCExpr(Rhs, Analyzer, ExprsBef, Parent,BO->getType(), Module);
           PulseAssignment *Assignment = new PulseAssignment();
-          Assignment->setTag(PulseStmtTag::Assignment);
           Assignment->Value = PulseRhsTerm;
 
           auto *DerefAppE = new AppE();
@@ -1285,14 +1284,18 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           auto *GenStmt = new Name();
           GenStmt->NamedValue = "(!(!" +NameOfDecl+")."+MemberName.getAsString()+")";
 
-          // Perhaps warp this In Pulse Expr
-          auto *Expr = new PulseExpr();
-          Expr->E = GenStmt;
+          SmallVector<PulseStmt *> ExprsBef;
+          auto *PulseLhsTerm = getTermFromCExpr(Lhs, Analyzer, ExprsBef,
+                                              Parent, BO->getType(), Module, true);
+           PulseAssignment *Assignment = new PulseAssignment();
+           Assignment->Lhs = PulseLhsTerm;
+           Assignment->Value = GenStmt;
+          
 
           auto It = TrackStructExplodeAndRecover.find(VD);
           if (It == TrackStructExplodeAndRecover.end()) {
             auto *NewSeq = new PulseSequence();
-            NewSeq->assignS2(Expr);
+            NewSeq->assignS2(Assignment);
             auto *ExplodeStmt = new GenericStmt();
             ExplodeStmt->body = StructName + "_explode " + VD->getNameAsString();
             NewSeq->assignS2(ExplodeStmt);
@@ -1300,7 +1303,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
             return NewSeq;
           }
 
-          return Expr;
+          return Assignment;
         }
 
       }
@@ -1317,7 +1320,6 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
         PulseAssignment *Assignment = new PulseAssignment();
         Assignment->Lhs = PulseLhsTerm;
         Assignment->Value = PulseRhsTerm;
-        Assignment->setTag(PulseStmtTag::Assignment);
 
         // We need to make a sequence of pulse statements.
         PulseSequence *Start = nullptr;
