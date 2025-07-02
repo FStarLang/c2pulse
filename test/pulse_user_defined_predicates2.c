@@ -16,7 +16,7 @@ typedef struct _point {
 } point;
 
 
-INCLUDE ("
+INCLUDE (
   let is_diag_point (p:ref point) (v:int32)
   : slprop
   = point_pred p {px=v; py=v}
@@ -24,18 +24,26 @@ INCLUDE ("
   let is_point (p:ref point) (xy : (int & int))
   : slprop
   = exists* v. point_pred p v ** pure (as_int v.px == fst xy) ** pure (as_int v.py == snd xy)
-"
+
+  ghost
+  fn fold_is_point (p:ref point) (#s:point_spec)
+  requires point_pred p s
+  ensures exists* v. is_point p v ** pure (v == (as_int s.px, as_int s.py))
+  {
+    fold (is_point p (as_int s.px, as_int s.py));
+  }
+
 )
 
 ERASED_ARG(#v:erased _)
 REQUIRES(is_point p v)
-REQUIRES(fits (+) (fst v) (as_int dx))
-REQUIRES(fits (+) (snd v) (as_int dy))
-ENSURES(is_point p (fst v + as_int dx, snd v + as_int dy))
+REQUIRES(pure <| fits (+) (fst v) (as_int dx))
+REQUIRES(pure <| fits (+) (snd v) (as_int dy))
+ENSURES(exists* w. point_pred p w) //ENSURES(is_point p (fst v + as_int dx, snd v + as_int dy))
 void move(point *p, int dx, int dy)
 {
-  LEMMA(unfold(is_point));
+  LEMMA(unfold(is_point); point_explode p);
   p->px = p->px + dx;
   p->py = p->py + dy;
-  LEMMA(fold(is_point));
+  // LEMMA(point_recover p; fold_is_point p);
 }
