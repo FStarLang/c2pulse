@@ -1213,9 +1213,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
           auto MemberName = LhsDecl->getDeclName();
 
-          // TODO: Angelica, I don't this releasing expressions before is
-          // required. This was done because Pulse was not in ANF before.
-          // However, it is in ANF now.
+          // UPDATE: Vidush: Releasing expresssions may be required in certain cases. 
+          //Especially when you want to add calls to explode struct.
           SmallVector<PulseStmt *> ExprsBef;
           auto *PulseRhsTerm =
               getTermFromCExpr(Rhs, Analyzer, ExprsBef, Parent,BO->getType(), Module);
@@ -1289,7 +1288,6 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           // Perhaps warp this In Pulse Expr
           auto *Expr = new PulseExpr();
           Expr->E = GenStmt;
-          assert(ExprsBef.empty() && "Expected Exprs before to be empty!\n");
           
           auto It = TrackStructExplodeAndRecover.find(VD);
           if (It == TrackStructExplodeAndRecover.end()) {
