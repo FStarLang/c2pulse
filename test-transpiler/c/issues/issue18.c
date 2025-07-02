@@ -42,8 +42,8 @@ REQUIRES(pure <| fits (+) (snd v) (as_int dy))
 ENSURES(is_point p (fst v + as_int dx, snd v + as_int dy))
 void move(point *p, int dx, int dy)
 {
-  LEMMA(unfold(is_point));
+  LEMMA(unfold(is_point); point_explode p);
   p->px = p->px + dx;
   p->py = p->py + dy;
-  LEMMA(fold_is_point p);
+  LEMMA(point_recover p; fold_is_point p);
 }
