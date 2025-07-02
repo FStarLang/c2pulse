@@ -8,4 +8,7 @@
 #define ERASED_ARG(arg) [[clang::pulse("erased_arg:" STR(arg)"|END")]]
 #define ASSERT(message) [[clang::pulse("assert:" STR(message) "|END")]]
 #define HEAPALLOCATED(message) [[clang::pulse("heap_allocated:" STR(message) "|END")]]
-#define INCLUDE(...) [[clang::pulse("includes:" STR(__VA_ARGS__) "|END")]] void __pulse_include_anchor(void) {}
+
+#define CONCAT_IND(x, y) x ## y
+#define CONCAT(x, y) CONCAT_IND(x, y)
+#define INCLUDE(...) [[clang::pulse("includes:" STR(__VA_ARGS__) "|END")]] void CONCAT(__pulse_include_anchor_, __COUNTER__) (void) {}

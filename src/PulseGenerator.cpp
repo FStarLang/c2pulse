@@ -865,7 +865,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
               Module->Decls.push_back(Inc);
               //If function name is the anchor dummy function. 
               //Skip generating code for it entirely.
-              if (FuncName == "__pulse_include_anchor"){
+              if ((FuncName.find("__pulse_include_anchor") != std::string::npos)){
                 return true;
               }
               break;
