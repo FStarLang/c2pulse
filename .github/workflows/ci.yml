@@ -20,11 +20,27 @@ jobs:
       run: |
         git submodule init
         git submodule update --depth 1
+
+    - name: Read submodule commit hashes
+      id: commits
+      run: |
+        C=$(git -C external/llvm-project rev-parse HEAD)
+        echo "LLVMCOMMIT=$C" >>"$GITHUB_OUTPUT"
+        C=$(git -C external/FStar rev-parse HEAD)
+        echo "FSTARCOMMIT=$C" >>"$GITHUB_OUTPUT"
+        C=$(git -C external/pulse rev-parse HEAD)
+        echo "PULSECOMMIT=$C" >>"$GITHUB_OUTPUT"
  
+    - name: Set-up OCaml
+      uses: ocaml/setup-ocaml@v3
+      with:
+        ocaml-compiler: 5
+
     - name: Install some dependencies
       run: |
         sudo apt update
         sudo apt install -y lld
+        opam install --deps-only external/FStar/fstar.opam
 
     - name: Obtain cached ccache
       uses: actions/cache/restore@v4
@@ -45,13 +61,73 @@ jobs:
         sudo ln -s $(which ccache) $HOME/bin/cc1plus
         sudo ln -s $(which ccache) $HOME/bin/c++
 
-    - name: Build
+    - name: Try fetch built LLVM/Clang
+      id: cache-llvm
+      uses: actions/cache/restore@v4
+      with:
+        path: external/llvm-project/build
+        key: llvm-${{ runner.os }}-${{ runner.arch }}-${{ steps.commits.outputs.LLVMCOMMIT }}
+
+    - name: Build LLVM/Clang
+      if: steps.cache-llvm.outputs.cache-hit != 'true'
       run: |
-        ./build_clang.sh
+        C2PULSE_BUILD_TYPE=MinSizeRel ./build_clang.sh
+
+    - name: Save built LLVM/Clang
+      if: steps.cache-llvm.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: external/llvm-project/build
+        key: llvm-${{ runner.os }}-${{ runner.arch }}-${{ steps.commits.outputs.LLVMCOMMIT }}
+
+    - name: Try fetch built F*
+      id: cache-fstar
+      uses: actions/cache/restore@v4
+      with:
+        path: external/FStar
+        key: FStar-${{ runner.os }}-${{ runner.arch }}-${{ steps.commits.outputs.FSTARCOMMIT }}
+
+    - name: Build F*
+      if: steps.cache-fstar.outputs.cache-hit != 'true'
+      run: |
+        eval $(opam env)
+        make -C external/FStar -skj$(nproc) ADMIT=1
+
+    - name: Save built F*
+      if: steps.cache-fstar.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: external/FStar
+        key: FStar-${{ runner.os }}-${{ runner.arch }}-${{ steps.commits.outputs.FSTARCOMMIT }}
+
+    - name: Try fetch built Pulse
+      id: cache-pulse
+      uses: actions/cache/restore@v4
+      with:
+        path: external/pulse
+        key: pulse-${{ runner.os }}-${{ runner.arch }}-${{ steps.commits.outputs.FSTARCOMMIT}}-${{ steps.commits.outputs.PULSECOMMIT }}
+
+    - name: Build Pulse
+      if: steps.cache-pulse.outputs.cache-hit != 'true'
+      run: |
+        eval $(opam env)
+        make -C external/pulse -skj$(nproc) ADMIT=1 FSTAR_EXE=$(pwd)/external/FStar/bin/fstar.exe
+
+    - name: Save built Pulse
+      if: steps.cache-pulse.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: external/pulse
+        key: pulse-${{ runner.os }}-${{ runner.arch }}-${{ steps.commits.outputs.FSTARCOMMIT}}-${{ steps.commits.outputs.PULSECOMMIT }}
+
+    - name: Build c2pulse
+      run: |
+        eval $(opam env)
         ./build.sh
 
     - name: Run tests
       run: |
+        eval $(opam env)
         ./run-lit.sh test/*.c
         ./run.sh test/*.c
 

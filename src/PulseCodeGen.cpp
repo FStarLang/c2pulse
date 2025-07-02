@@ -149,6 +149,14 @@ void PulseCodeGen::generateCodeFromPulseAST(llvm::raw_string_ostream &OS,
       generateCodeFromPulseStmt(OS, FuncBody);
       OS << PulseSyntax::ClosingCurlyBrace << PulseSyntax::NewLine;
     }
+    else {
+      OS << PulseSyntax::OpeningCurlyBrace << PulseSyntax::NewLine;
+      OS << PulseSyntax::OpeningParenthesis;
+      OS << PulseSyntax::ClosingParenthesis;
+      OS << PulseSyntax::Semicolon;
+      OS << PulseSyntax::NewLine;
+      OS << PulseSyntax::ClosingCurlyBrace << PulseSyntax::NewLine;
+    }
 
   } else if (auto *ValD = dyn_cast<ValDecl>(FD)) {
     OS << PulseSyntax::Val;
@@ -226,6 +234,11 @@ std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
                                                Term *T) {
 
   std::string TermString = "";
+
+  if (!T) {
+    return TermString;
+  }
+
   if (Paren *P = dyn_cast<Paren>(T)) {
     TermString += PulseSyntax::OpeningParenthesis;
     TermString += generateCodeFromTerm(OS, P->InnerExpr);

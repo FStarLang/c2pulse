@@ -292,6 +292,9 @@ bool PulseVisitor::checkIsRecursiveStmt(Stmt *InnerStmt,
 bool PulseVisitor::checkIsRecursiveExpr(Expr *ExprPtr,
                                         FunctionDecl *CurrFunction) {
 
+  if (!ExprPtr)
+        return false;
+
   if (auto *BinOp = dyn_cast<clang::BinaryOperator>(ExprPtr)) {
     /// TODO: Vidush:
     /// If this BinOp is of the shape: *Arr + 8 etc, we may conclude it is of an
@@ -849,17 +852,20 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
             }
             case PulseAnnKind::Includes: {
               //Assume modules will be comma seperated.
-              StringRef MatchRef(Match);
-              llvm::SmallVector<StringRef, 4> IncModules;
-              MatchRef.split(IncModules, ",");
-              for (auto &IncModule : IncModules){
-                auto RTrimmed = IncModule.rtrim();
-                auto LTrimmed = RTrimmed.ltrim();
-                Module->insertModule(LTrimmed.str());
-              }
+              //StringRef MatchRef(Match);
+              //llvm::SmallVector<StringRef, 4> IncModules;
+              //MatchRef.split(IncModules, ",");
+              //for (auto &IncModule : IncModules){
+              //  auto RTrimmed = IncModule.rtrim();
+              //  auto LTrimmed = RTrimmed.ltrim();
+              //  Module->insertModule(LTrimmed.str());
+              //}
+              auto *Inc = new GenericDecl();
+              Inc->Ident = Match;
+              Module->Decls.push_back(Inc);
               //If function name is the anchor dummy function. 
               //Skip generating code for it entirely.
-              if (FuncName == "__pulse_include_anchor"){
+              if ((FuncName.find("__pulse_include_anchor") != std::string::npos)){
                 return true;
               }
               break;
