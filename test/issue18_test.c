@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include <stdlib.h>
-#include "../../../include/PulseMacros.h"
+#include "../include/PulseMacros.h"
 
 REQUIRES(emp)
 RETURNS(i:int32)
