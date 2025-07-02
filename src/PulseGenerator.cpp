@@ -1303,6 +1303,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
             return NewSeq;
           }
 
+          assert(ExprsBef.empty() && "Expected ExprsBefore to be empty!\n");
+
           return Assignment;
         }
 
