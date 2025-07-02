@@ -1265,7 +1265,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
       } else if (auto *ME = dyn_cast<MemberExpr>(Rhs)) {
 
-        auto *LhsDecl = ME->getMemberDecl();
+        auto *RhsDecl = ME->getMemberDecl();
         auto *BaseExpr = ME->getBase()->IgnoreParens()->IgnoreImpCasts();
         BaseExpr->dump();
 
@@ -1279,7 +1279,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           TyOfDecl = VD->getType();
           StructName = TyOfDecl->getPointeeType().getAsString();
 
-          auto MemberName = LhsDecl->getDeclName();
+          auto MemberName = RhsDecl->getDeclName();
 
           //x->f translates to (!(!x).f)
           auto *GenStmt = new Name();
@@ -1288,7 +1288,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           // Perhaps warp this In Pulse Expr
           auto *Expr = new PulseExpr();
           Expr->E = GenStmt;
-          
+
           auto It = TrackStructExplodeAndRecover.find(VD);
           if (It == TrackStructExplodeAndRecover.end()) {
             auto *NewSeq = new PulseSequence();
