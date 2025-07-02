@@ -484,24 +484,14 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
     //5. A ghost function that unfolds the predicate for u32_pair_struct_refs
     // ghost fn u32_pair_struct_explode (x:ref u32_pair_struct) (#s:u32_pair_struct_spec)
     // requires u32_pair_struct_pred x s
-    // ensures exists* (v: u32_pair_struct). (x |-> ({first=v.first; second=v.second} <: u32_pair_struct))
+    // ensures exists* (v: u32_pair_struct). (x |-> v)
     //   ** (v.first |-> s.first) ** (v.second |-> s.second)
     // { unfold u32_pair_struct_pred }
 
     auto *GhostExplode = new GenericDecl(); 
     GhostExplode->Ident = "ghost fn " + StructName + "_explode (x:ref " + StructName + ") " + "(#s:" + StructName + "_spec)\n";
     GhostExplode->Ident += "requires " + StructName + "_pred x s\n";
-    GhostExplode->Ident += "ensures exists* (v: " + StructName + "). " + "(x |-> ({";
-    Counter = 0;
-    for (auto *Fld : RD->fields()){
-      GhostExplode->Ident += Fld->getNameAsString();
-      GhostExplode->Ident += "=v." + Fld->getNameAsString();
-      if (Counter < NumRecordFields - 1){
-        GhostExplode->Ident += "; ";
-      }
-      Counter++;
-    }
-    GhostExplode->Ident += "} <: " + StructName + "))\n";
+    GhostExplode->Ident += "ensures exists* (v: " + StructName + "). " + "(x |-> v)";
     GhostExplode->Ident += " ** ";
     Counter = 0;
     for (auto *Fld : RD->fields()){
@@ -515,162 +505,11 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
     GhostExplode->Ident += "{unfold " + StructName + "_pred" + "}\n\n";
     NewModul->Decls.push_back(GhostExplode);
 
-    //6. Utility functions that convert a reference to the struct to a reference to its fields
-
-    // // &(x->first)
-    // fn u32_pair_struct_to_first (x: ref u32_pair_struct) (#first #second: erased _)
-    // requires x |-> ({ first; second } <: u32_pair_struct)
-    // requires reveal first |-> 'y
-    // returns first': ref UInt32.t
-    // ensures (x |-> ({ first=first'; second } <: u32_pair_struct))
-    // ensures first' |-> 'y
-    // ensures pure (first == first')
-    // { let vx' = !x; rewrite each first as vx'.first; vx'.first }
-
-    // // &(x->second)
-    // fn u32_pair_struct_to_second (x: ref u32_pair_struct) (#first #second: erased _)
-    // requires x |-> ({ first; second } <: u32_pair_struct)
-    // requires reveal second |-> 'y
-    // returns second': ref UInt32.t
-    // ensures (x |-> ({ first; second=second' } <: u32_pair_struct))
-    // ensures second' |-> 'y
-    // ensures pure (second == second')
-    // { let vx' = !x; rewrite each second as vx'.second; vx'.second }
-
-    std::string ErasedBinder = "(";
-    for (auto *Fld : RD->fields()){
-      ErasedBinder += "#" + Fld->getNameAsString() + " ";
-    }
-    ErasedBinder += ":erased _)";
-
-    std::string EnsuresHelper = "({ "; 
-    Counter = 0;
-    for (auto *Fld : RD->fields()){
-      EnsuresHelper += Fld->getNameAsString();
-      if (Counter < NumRecordFields - 1){
-        EnsuresHelper += ";";
-      }
-      Counter++;
-    }
-    EnsuresHelper += " }";
-
-    for (auto *Fld : RD->fields()){
-
-      auto Ty = Fld->getType(); 
-      auto *PulseTy = getPulseTyFromCTy(Ty);
-      
-      auto * StructToFieldRef = new GenericDecl();
-      StructToFieldRef->Ident = "fn " + StructName + "_to_" + Fld->getNameAsString() + " ";
-      StructToFieldRef->Ident += "(x: ref " + StructName + ")" + " ";
-      StructToFieldRef->Ident += ErasedBinder + "\n"; 
-      StructToFieldRef->Ident += "requires x |-> " + EnsuresHelper + " <: " + StructName + ")\n";
-      StructToFieldRef->Ident += "requires reveal " + Fld->getNameAsString() + " |-> 'y\n";
-      StructToFieldRef->Ident +=  "returns " + Fld->getNameAsString() + "': ref " + PulseTy->print() + "\n";
-      StructToFieldRef->Ident += "ensures (x |-> ({";
-      Counter = 0;
-      for (auto *FldPr : RD->fields()){
-            StructToFieldRef->Ident += FldPr->getNameAsString();
-            if (FldPr == Fld){
-              StructToFieldRef->Ident += "=" + FldPr->getNameAsString() + "'";
-            }
-            if (Counter < NumRecordFields - 1){
-              StructToFieldRef->Ident += "; ";
-            }
-            Counter++;
-      } 
-      StructToFieldRef->Ident += " } <: " + StructName + "))\n";
-      StructToFieldRef->Ident += "ensures " + Fld->getNameAsString() + "' |-> 'y\n";
-      StructToFieldRef->Ident += "ensures pure (" + Fld->getNameAsString() + " == " + Fld->getNameAsString() + "'" + ")\n";
-      StructToFieldRef->Ident += "{ let vx' = !x; rewrite each " + Fld->getNameAsString() + " as vx'." + Fld->getNameAsString() + "; vx'." + Fld->getNameAsString() + " }\n";
-      NewModul->Decls.push_back(StructToFieldRef);
-    }
-
-    //7. Setters/getters
-
-    // // x->first
-    // fn u32_pair_struct_get_first (x: ref u32_pair_struct) (#first #second: erased _)
-    // requires x |-> ({ first; second } <: u32_pair_struct)
-    // requires reveal first |-> 'y
-    // returns first': UInt32.t
-    // ensures (x |-> ({ first; second } <: u32_pair_struct))
-    // ensures reveal first |-> 'y
-    // ensures pure ('y == first')
-    // { let vfirst = u32_pair_struct_to_first x; let ret = !vfirst; rewrite each vfirst as first; ret }
-
-    // // x->second
-    // fn u32_pair_struct_get_second (x: ref u32_pair_struct) (#first #second: erased _)
-    // requires x |-> ({ first; second } <: u32_pair_struct)
-    // requires reveal second |-> 'y
-    // returns second': UInt32.t
-    // ensures (x |-> ({ first; second } <: u32_pair_struct))
-    // ensures reveal second |-> 'y
-    // ensures pure ('y == second')
-    // { let vsecond = u32_pair_struct_to_second x; let ret = !vsecond; rewrite each vsecond as second; ret }
-
-    for (auto *Fld : RD->fields()){
-
-      auto Ty = Fld->getType(); 
-      auto *PulseTy = getPulseTyFromCTy(Ty);
-      
-      auto * StructToFieldRef = new GenericDecl();
-      StructToFieldRef->Ident = "fn " + StructName + "_get_" + Fld->getNameAsString() + " ";
-      StructToFieldRef->Ident += "(x: ref " + StructName + ")" + " ";
-      StructToFieldRef->Ident += ErasedBinder + "\n"; 
-      StructToFieldRef->Ident += "requires x |-> " + EnsuresHelper + " <: " + StructName + ")\n";
-      StructToFieldRef->Ident += "requires reveal " + Fld->getNameAsString() + " |-> 'y\n";
-      StructToFieldRef->Ident +=  "returns " + Fld->getNameAsString() + "': " + PulseTy->print() + "\n";
-      StructToFieldRef->Ident += "ensures (x |-> ";
-      StructToFieldRef->Ident += EnsuresHelper;
-      StructToFieldRef->Ident += " <: " + StructName + "))\n";
-      StructToFieldRef->Ident += "ensures reveal " + Fld->getNameAsString() + " |-> 'y\n";
-      StructToFieldRef->Ident += "ensures pure ('y == " + Fld->getNameAsString() + "'" + ")\n";
-      StructToFieldRef->Ident += "{ let v" + Fld->getNameAsString() + " = " + StructName + "_to_" + Fld->getNameAsString() + " x; let ret = !v" + Fld->getNameAsString() + "; " + "rewrite each " + "v" + Fld->getNameAsString() + " as " + Fld->getNameAsString() + "; ret " + "}\n";
-      NewModul->Decls.push_back(StructToFieldRef);
-    }
-
-    // // x->first = first'
-    // fn u32_pair_struct_set_first (x: ref u32_pair_struct) (#first #second: erased _) (first': UInt32.t)
-    // requires x |-> ({ first; second } <: u32_pair_struct)
-    // requires reveal first |-> 'y
-    // ensures (x |-> ({ first; second } <: u32_pair_struct))
-    // ensures reveal first |-> first'
-    // { let vfirst = u32_pair_struct_to_first x; vfirst := first'; rewrite each vfirst as first }
-
-    // // x->second = second'
-    // fn u32_pair_struct_set_second (x: ref u32_pair_struct) (#first #second: erased _) (second': UInt32.t)
-    // requires x |-> ({ first; second } <: u32_pair_struct)
-    // requires reveal second |-> 'y
-    // ensures (x |-> ({ first; second } <: u32_pair_struct))
-    // ensures reveal second |-> second'
-    // { let vsecond = u32_pair_struct_to_second x; vsecond := second'; rewrite each vsecond as second }
-
-    for (auto *Fld : RD->fields()){
-
-      auto Ty = Fld->getType(); 
-      auto *PulseTy = getPulseTyFromCTy(Ty);
-      
-      auto * StructToFieldRef = new GenericDecl();
-      StructToFieldRef->Ident = "fn " + StructName + "_set_" + Fld->getNameAsString() + " ";
-      StructToFieldRef->Ident += "(x: ref " + StructName + ")" + " ";
-      StructToFieldRef->Ident += ErasedBinder + " ";
-      StructToFieldRef->Ident += "(" + Fld->getNameAsString() + "': "; 
-      StructToFieldRef->Ident += PulseTy->print() + ")" + "\n"; 
-      StructToFieldRef->Ident += "requires x |-> " + EnsuresHelper + " <: " + StructName + ")\n";
-      StructToFieldRef->Ident += "requires reveal " + Fld->getNameAsString() + " |-> 'y\n";
-      StructToFieldRef->Ident += "ensures (x |-> ";
-      StructToFieldRef->Ident += EnsuresHelper;
-      StructToFieldRef->Ident += " <: " + StructName + "))\n";
-      StructToFieldRef->Ident += "ensures reveal " + Fld->getNameAsString() + " |-> " + Fld->getNameAsString() + "'" + "\n";
-      StructToFieldRef->Ident += "{ let v" + Fld->getNameAsString() + " = " + StructName + "_to_" + Fld->getNameAsString() + " x;" + "v" + Fld->getNameAsString() + ":=" + Fld->getNameAsString() + "'" + "; " + "rewrite each " + "v" + Fld->getNameAsString() + " as " + Fld->getNameAsString() + " }\n";
-      NewModul->Decls.push_back(StructToFieldRef);
-    }
-
-
     //8. A ghost function that folds the predicate for u32_pair_struct_refs
     // ghost
     // fn u32_pair_struct_recover (x:ref u32_pair_struct) (#a0 #a1 :erased U32.t)
     // requires exists* (y: u32_pair_struct). (x |-> y) ** (y.first |-> a0) ** (y.second |-> a1)
-    // ensures u32_pair_struct_pred x ({first = a0; second = a1})
+    // ensures exists* w. u32_pair_struct_pred x w ** pure (w == {first = a0; second = a1})
     // { fold u32_pair_struct_pred x ({first = a0; second = a1}) }
 
     std::string FieldPrefix = "a";
@@ -708,7 +547,7 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
     }
     NewGhostFunction->Ident += "\n";
 
-    NewGhostFunction->Ident += "ensures " + StructName + "_pred x ({";
+    NewGhostFunction->Ident += "ensures exists* w. " + StructName + "_pred x w ** pure (w == {";
     Counter = 0;
     std::string TempStr = "";
     for (auto *Fld : RD->fields()){
