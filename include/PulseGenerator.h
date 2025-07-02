@@ -7,6 +7,7 @@
 #include "clang/AST/DeclBase.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/RecursiveASTVisitor.h"
+#include "clang/AST/Stmt.h"
 #include "clang/AST/Type.h"
 #include "clang/Analysis/Analyses/ExprMutationAnalyzer.h"
 #include "clang/Basic/SourceManager.h"
@@ -31,7 +32,9 @@ public:
   bool VisitTypedefDecl(clang::TypedefDecl *TypeDefDec);
 
   PulseStmt *pulseFromCompoundStmt(clang::Stmt *S, clang::ExprMutationAnalyzer *A, PulseModul *Module);
-  PulseStmt *pulseFromStmt(clang::Stmt *S, clang::ExprMutationAnalyzer *A, clang::Stmt *Parent, PulseModul *Module);
+  PulseStmt *pulseFromStmt(clang::Stmt *S, clang::ExprMutationAnalyzer *A,
+                           clang::Stmt *Parent, PulseModul *Module,
+                           clang::CompoundStmt *CS);
   FStarType *getPulseTyFromCTy(clang::QualType CType);
   Term *getTermFromCExpr(clang::Expr *E, clang::ExprMutationAnalyzer *A, llvm::SmallVector<PulseStmt*> &ExprsBef,
                            clang::Stmt *Parent, clang::QualType ParentType, PulseModul *Module, bool isWrite = false);

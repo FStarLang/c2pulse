@@ -76,6 +76,73 @@ std::map<Decl *, QualType> PulseVisitor::inferArrayTypes(FunctionDecl *FD) {
   return DeclToPulseSymbol;
 }
 
+bool checkIsSameStructInstance(Expr *A, Expr *B, ASTContext &Context) {
+  A = A->IgnoreImpCasts();
+  B = B->IgnoreImpCasts();
+
+  DeclRefExpr *DeclRefA = dyn_cast<DeclRefExpr>(A);
+  if (!DeclRefA)
+    return false;
+
+  DeclRefExpr *DeclRefB = dyn_cast<DeclRefExpr>(B);
+  if (!DeclRefB)
+    return false;
+
+  if (DeclRefA && DeclRefB) {
+    return DeclRefA->getDecl() == DeclRefB->getDecl();
+  }
+
+  MemberExpr *MemA = dyn_cast<MemberExpr>(A);
+  MemberExpr *MemB = dyn_cast<MemberExpr>(B);
+
+  if (MemA && MemB) {
+    return checkIsSameStructInstance(MemA->getBase(), MemB->getBase(), Context);
+  }
+
+  // Also check recursively pointer derefernces and array access.
+  UnaryOperator *UOA = dyn_cast<UnaryOperator>(A);
+  UnaryOperator *UOB = dyn_cast<UnaryOperator>(B);
+
+  if (UOA && UOB && UOA->getOpcode() == UOB->getOpcode()) {
+    return checkIsSameStructInstance(UOA->getSubExpr(), UOB->getSubExpr(),
+                                     Context);
+  }
+
+  return false;
+}
+
+bool checkIfLastStructAccess(MemberExpr *ToCheck, CompoundStmt *CS,
+                             ASTContext &Context) {
+  Expr *ToCheckBase = ToCheck->getBase()->IgnoreImpCasts();
+  SourceManager &SM = Context.getSourceManager();
+  SourceLocation ToCheckLoc = ToCheck->getExprLoc();
+  SourceLocation LastLoc = ToCheckLoc;
+
+  for (const Stmt *S : CS->body()) {
+    // Traverse the compound statement and visit it recursively.
+    // We store the last accessed member in LastLoc.
+    // When we encounter a member expr, we check if this is the same instance as
+    //  the ToBeChecked member expression.
+    // We also check if the member expression comes after the to be checked
+    // member,
+    //  if so we update Last loc.
+    for (const Stmt *Child : S->children()) {
+      if (auto *ME = dyn_cast<MemberExpr>(Child)) {
+        Expr *Base = ME->getBase()->IgnoreImpCasts();
+        if (Context.getParents(*Base).size() > 0 &&
+            SM.isBeforeInTranslationUnit(ToCheckLoc, ME->getExprLoc()) &&
+            checkIsSameStructInstance(Base, ToCheckBase, Context)) {
+          LastLoc = ME->getExprLoc();
+        }
+      }
+    }
+  }
+
+  // If the location of the member to be checked is the same as the last loc
+  // This is indeed the last access to the member.
+  return ToCheckLoc == LastLoc;
+}
+
 bool PulseVisitor::checkIsRecursiveFunction(FunctionDecl *FD) {
 
   bool result = false;
@@ -852,6 +919,8 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
       auto *PulseBody = pulseFromCompoundStmt(CS, &Analyzer, Module);
 
       // Release declarations that are function parameters.
+      //TODO: Vidush Eventually we should get rid of these.
+      //This is just in case there are release expressions left and we need to release them.
       PulseSequence *NewSeq = nullptr;
       PulseSequence *Head = nullptr;
       for (auto It = TrackStructExplodeAndRecover.begin(); It != TrackStructExplodeAndRecover.end();) {
@@ -975,7 +1044,8 @@ PulseStmt *PulseVisitor::pulseFromCompoundStmt(Stmt *S,
 
     for (auto *InnerStmt : CS->body()) {
 
-      auto *NextPulseStmt = pulseFromStmt(InnerStmt, Analyzer, nullptr, Modul);
+      auto *NextPulseStmt =
+          pulseFromStmt(InnerStmt, Analyzer, nullptr, Modul, CS);
       if (NextPulseStmt == nullptr)
         continue;
 
@@ -998,7 +1068,8 @@ PulseStmt *PulseVisitor::pulseFromCompoundStmt(Stmt *S,
 }
 
 PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
-                                       Stmt *Parent, PulseModul *Module) {
+                                       Stmt *Parent, PulseModul *Module,
+                                       CompoundStmt *CS) {
 
   if (!S)
     return nullptr;
@@ -1243,8 +1314,6 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           PulseCall->pushArg(ParenthesisDeref);
           Assignment->Lhs = PulseCall;
 
-          assert(ExprsBef.empty() && "Expected ExprsBefore to be empty!\n");
-
           auto It = TrackStructExplodeAndRecover.find(VD);
           if (It == TrackStructExplodeAndRecover.end()){
             auto *NewSeq = new PulseSequence();
@@ -1254,6 +1323,47 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
             NewSeq->assignS1(ExplodeStmt);
             TrackStructExplodeAndRecover.insert(std::make_pair(VD, std::make_pair(true, false)));
             return NewSeq;
+          }
+
+          auto *RetSeq = releaseExprs(ExprsBef);
+
+          assert(ExprsBef.empty() && "Expected ExprsBefore to be empty!\n");
+
+          if (checkIfLastStructAccess(ME, CS, Ctx)) {
+
+            It = TrackStructExplodeAndRecover.find(VD);
+            auto ItElem = *It;
+            auto &Decl = ItElem.first;
+            auto &Info = ItElem.second;
+            // recover not released.
+            // In fact assert that a recover should not be released before.
+            assert(!Info.second && "A recover was released for the struct when "
+                                   "there are accesses remaining!\n");
+            if (auto *ParamD = dyn_cast<ParmVarDecl>(Decl)) {
+
+              auto StructName =
+                  ParamD->getType()->getPointeeType().getAsString();
+
+              auto *RecoverStatememt = new GenericStmt();
+              RecoverStatememt->body =
+                  StructName + "_recover " + ParamD->getNameAsString() + ";";
+              TrackStructExplodeAndRecover.erase(It);
+
+              auto *NewSeq = new PulseSequence();
+              NewSeq->assignS1(Assignment);
+              NewSeq->assignS2(RecoverStatememt);
+              if (RetSeq) {
+                RetSeq->assignS2(NewSeq);
+                return RetSeq;
+              }
+
+              return NewSeq;
+            }
+          }
+
+          if (RetSeq) {
+            RetSeq->assignS2(Assignment);
+            return RetSeq;
           }
 
           return Assignment;
@@ -1432,8 +1542,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
     auto PulseCond =
         getTermFromCExpr(Cond, Analyzer, ExprsBefore, Parent, Cond->getType(), Module);
-    auto *PulseElse = pulseFromStmt(Else, Analyzer, Parent, Module);
-    auto *PulseThen = pulseFromStmt(Then, Analyzer, Parent, Module);
+    auto *PulseElse = pulseFromStmt(Else, Analyzer, Parent, Module, CS);
+    auto *PulseThen = pulseFromStmt(Then, Analyzer, Parent, Module, CS);
 
     auto PulseIfStmt = new PulseIf();
     PulseIfStmt->setTag(PulseStmtTag::If);
@@ -1551,7 +1661,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
       }
 
       PulseWhile->setTag(PulseStmtTag::WhileStmt);
-      PulseWhile->Guard = pulseFromStmt(WhileCond, Analyzer, Parent, Module);
+      PulseWhile->Guard =
+          pulseFromStmt(WhileCond, Analyzer, Parent, Module, CS);
       PulseWhile->Body = pulseFromCompoundStmt(CompundBody, Analyzer, Module);
 
       return PulseWhile;
@@ -1560,7 +1671,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
       auto *PulseWhile = new PulseWhileStmt();
       PulseWhile->setTag(PulseStmtTag::WhileStmt);
 
-      PulseWhile->Guard = pulseFromStmt(WhileCond, Analyzer, Parent, Module);
+      PulseWhile->Guard =
+          pulseFromStmt(WhileCond, Analyzer, Parent, Module, CS);
       PulseWhile->Body = pulseFromCompoundStmt(WhileBody, Analyzer, Module);
 
       return PulseWhile;
@@ -1605,7 +1717,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
         }
       }
     }
-    NewSequence->assignS2(pulseFromStmt(SubStmt, Analyzer, Parent, Module));
+    NewSequence->assignS2(pulseFromStmt(SubStmt, Analyzer, Parent, Module, CS));
     return NewSequence;
   } else {
     llvm::outs() << "\n\nPrint in pulseFromStmt\n";
@@ -1715,9 +1827,6 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     // Wrap Call Expr into a Paren to be safe.
     auto *NewParen = new Paren();
     NewParen->setInnerExpr(NewAppENode);
-
-    assert(ExprsBefore.empty() && "Unreleased expressions!\n");
-
     return NewParen;
 
     llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "
@@ -2049,8 +2158,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     assert(false && "Should not reach here!");
     return nullptr;
   } else if (auto *ME = dyn_cast<MemberExpr>(E)) {
-   
-    
+
     auto *MemberExprDecl = ME->getMemberDecl();
 
     auto *BaseExpr = ME->getBase()->IgnoreParens()->IgnoreImpCasts();
