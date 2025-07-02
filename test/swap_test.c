@@ -1,5 +1,6 @@
 // RUN: %c2pulse %s 
-// RUN: cat %p/Swap_test.fst | %{FILECHECK} %s --check-prefix=C2PULSE
+// RUN: cat %p/Swap_test.fst 
+// RUN: diff %p/Swap_test.fst %p/snapshots/Swap_test.fst
 // RUN: %run_fstar.sh %p/Swap_test.fst 2>&1 | %{FILECHECK} %s --check-prefix=PULSE
 
 #include "../include/PulseMacros.h"
@@ -12,20 +13,5 @@ void ref_swap(int* r1, int* r2)
   *r1 = *r2;
   *r2 = tmp;
 }
-
-// C2PULSE: module Swap_test
-// C2PULSE: #lang-pulse
-// C2PULSE: open Pulse
-
-// C2PULSE: fn ref_swap
-// C2PULSE: (r1 : ref Int32.t)
-// C2PULSE: (r2 : ref Int32.t)
-// C2PULSE: requires (r1 `pts_to` 'w1) ** (r2 `pts_to` 'w2)
-// C2PULSE: ensures (r1 `pts_to` 'w2) ** (r2 `pts_to` 'w1)
-// C2PULSE: {
-// C2PULSE: let tmp = (! r1);
-// C2PULSE: r1 := (! r2);
-// C2PULSE: r2 := tmp;
-// C2PULSE: }
 
 // PULSE: All verification conditions discharged successfully
