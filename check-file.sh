@@ -32,4 +32,4 @@ for file in "${SRC_FILES[@]}"; do
   fi
 done
 
-echo "✅ All files match their snapshots."
+echo "✔ All files match their snapshots."
