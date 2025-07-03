@@ -12,4 +12,6 @@ fi
 echo "Processing all files: $@"
 
 $HERE/external/llvm-project/build/bin/c2pulse "$@" \
-  --extra-arg-before=-DC2PULSE
+  --extra-arg-before=-DC2PULSE \
+  --extra-arg-before=-include \
+  --extra-arg-before=$(realpath "$HERE/test/include/PulseMacros.h")
