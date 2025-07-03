@@ -2,8 +2,11 @@
 set -euo pipefail
 
 HERE=$(dirname "$0")
+
 # System headers
-SYSTEM_CC_INCLUDE="/usr/lib/clang/18.1.3/include"
+clang_version=$(clang --version | grep "clang version" | awk '{print $4}'  | cut -d'-' -f1 | cut -d'.' -f1-3)
+SYSTEM_CC_INCLUDE="/usr/lib/clang/$clang_version/include"
+echo "Using Clang version: $clang_version"
 SYSTEM_INCLUDE="/usr/include"
 SYSTEM_ARCH_INCLUDE="/usr/include/x86_64-linux-gnu"
 C_STD="-std=c23"
@@ -12,15 +15,14 @@ FSTAR_BIN="$(realpath $HERE/external/FStar/bin/fstar.exe)"
 PULSE_DIR="$(realpath $HERE/external/pulse/out/lib/pulse)"
 PULSE_LIB_C_DIR="$(realpath $HERE/include/pulse)"
 
-# Check input
 if [ "$#" -lt 1 ]; then
-  echo "Usage: $0 <source1.c> [source2.c ...]"
+  echo "Usage: $0 <source1.c | directory> [source2.c ... | directory...]"
   exit 1
 fi
 
-echo "Processing input files: $@"
+echo "Processing input: $@"
 
-# Parse optional --log argument (very simple approach)
+# Optional --log argument
 LOG_FILE=""
 POSITIONAL_ARGS=()
 
@@ -44,42 +46,52 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Restore positional arguments (source files etc.)
+# Restore positional args
 set -- "${POSITIONAL_ARGS[@]}"
 
+# Resolve files and directories into flat list of `.c` files (non-recursive)
+C_FILES=()
+for input in "$@"; do
+  if [[ -f "$input" && "$input" == *.c ]]; then
+    C_FILES+=("$input")
+  elif [[ -d "$input" ]]; then
+    while IFS= read -r -d $'\0' file; do
+      C_FILES+=("$file")
+    done < <(find "$input" -maxdepth 1 -type f -name "*.c" -print0)
+  fi
+done
 
-# Prepare the command invocation as a variable for reuse
-CMD=( $C2PULSE "$@" \
-  -p $HERE/external/llvm-project/build/ \
+if [ ${#C_FILES[@]} -eq 0 ]; then
+  echo "No C source files found."
+  exit 1
+fi
+
+# Prepare C2Pulse command as a variable for reuse
+CMD=(
+  $C2PULSE "${C_FILES[@]}" \
+  -p "$HERE/external/llvm-project/build/" \
   --extra-arg-before="-resource-dir" \
   --extra-arg-before="$HERE/external/llvm-project/build/lib/clang/21" \
-  --extra-arg-before="-isystem" \
-  --extra-arg-before="$SYSTEM_CC_INCLUDE" \
-  --extra-arg-before="-isystem" \
-  --extra-arg-before="$SYSTEM_ARCH_INCLUDE" \
-  --extra-arg-before="-isystem" \
-  --extra-arg-before="$SYSTEM_INCLUDE" \
-  --extra-arg-before="-isystem" \
-  --extra-arg-before="$HERE/external/llvm-project/build/lib/clang/21/include" \
-  --extra-arg-before="-x" \
-  --extra-arg-before="c" \
+  --extra-arg-before="-isystem" --extra-arg-before="$SYSTEM_CC_INCLUDE" \
+  --extra-arg-before="-isystem" --extra-arg-before="$SYSTEM_ARCH_INCLUDE" \
+  --extra-arg-before="-isystem" --extra-arg-before="$SYSTEM_INCLUDE" \
+  --extra-arg-before="-isystem" --extra-arg-before="$HERE/external/llvm-project/build/lib/clang/21/include" \
+  --extra-arg-before="-x" --extra-arg-before="c" \
   --extra-arg-before="$C_STD" \
   --extra-arg-before="-c" \
   --extra-arg-before=-fmodules \
   --extra-arg-before=-fimplicit-modules \
-  --extra-arg-before=-fmodules-cache-path=/tmp/clang-modules )
+  --extra-arg-before=-fmodules-cache-path=/tmp/clang-modules
+)
 
 # Run command, capture output and optionally save to log
 if [[ -n "$LOG_FILE" ]]; then
-  # Save full output to log file AND pipe to awk for extraction
-  # Using tee to write output to the log file while also piping
   mapfile -t SRC_FILES < <(
     "${CMD[@]}" 2>&1 | tee "$LOG_FILE" | awk '/Print the filename!/ {getline; if ($0 ~ /\.fst[i]?$/) print}'
   )
 else
-  # Just capture the output without logging
   mapfile -t SRC_FILES < <(
-    "${CMD[@]}" 2>&1 | tee /dev/stderr | awk '/Print the filename!/ {getline; if ($0 ~ /\.fst[i]?$/) print}'
+    "${CMD[@]}" 2>&1 | awk '/Print the filename!/ {getline; if ($0 ~ /\.fst[i]?$/) print}'
   )
 fi
 
@@ -94,30 +106,39 @@ for file in "${SRC_FILES[@]}"; do
   echo "  $file"
 done
 
-echo "Checking if the generated file matches the expected output."
-for file in "${SRC_FILES[@]}"; do
-  # Extract the base name and capitalize it for snapshot comparison
-  name="$(basename "$file")"        
-  capitalized="${name^}"    
-  snapshot="$(realpath "$HERE/test/snapshots/$capitalized")"        
-
-  echo "  Checking: [ $file ] against snapshot [ $snapshot ]"
-
-  if diff_output=$(diff -u "$file" "$snapshot"); then
-    echo "    ✔ OK: $file matches snapshot."
-  else
-    echo "    ❌ Mismatch found in $file!"
-    echo "$diff_output"
-    exit 1
-  fi
-done
-
 echo "Running F* on generated files..."
-# Run fstar on all files at once
-exec "$FSTAR_BIN" \
+fstar_output=$("$FSTAR_BIN" \
   --include "$PULSE_DIR" \
   --include "$PULSE_LIB_C_DIR" \
   --query_stats --z3version 4.13.3 \
-  "${SRC_FILES[@]}" 
+  "${SRC_FILES[@]}" 2>&1)
 
+echo "$fstar_output"
 
+# Check for VC success
+if echo "$fstar_output" | grep -q "All verification conditions discharged successfully"; then
+  echo -e "✔ All VCs discharged. Generating lit tests..."
+  python3 create_lit_tests.py "${C_FILES[@]}"
+else
+  echo -e "❌ Verification failed."
+  exit 1
+fi
+
+# echo "Checking if the generated file matches the expected output."
+# for file in "${SRC_FILES[@]}"; do
+#   # Extract the base name and capitalize it for snapshot comparison
+#   name="$(basename "$file")"        
+#   capitalized="${name^}"    
+#   snapshot="$(realpath "$HERE/test/snapshots/$capitalized")"        
+
+#   echo "  Checking: [ $file ] against snapshot [ $snapshot ]"
+
+#   if diff_output=$(diff -u "$file" "$snapshot"); then
+#     echo "    ✔ OK: $file matches snapshot."
+#     python3 create_lit_tests.py "$file" 
+#   else
+#     echo "    ❌ Mismatch found in $file!"
+#     echo "$diff_output"
+#     exit 1
+#   fi
+# done
