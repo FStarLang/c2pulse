@@ -76,6 +76,73 @@ std::map<Decl *, QualType> PulseVisitor::inferArrayTypes(FunctionDecl *FD) {
   return DeclToPulseSymbol;
 }
 
+bool checkIsSameStructInstance(Expr *A, Expr *B, ASTContext &Context) {
+  A = A->IgnoreImpCasts();
+  B = B->IgnoreImpCasts();
+
+  DeclRefExpr *DeclRefA = dyn_cast<DeclRefExpr>(A);
+  if (!DeclRefA)
+    return false;
+
+  DeclRefExpr *DeclRefB = dyn_cast<DeclRefExpr>(B);
+  if (!DeclRefB)
+    return false;
+
+  if (DeclRefA && DeclRefB) {
+    return DeclRefA->getDecl() == DeclRefB->getDecl();
+  }
+
+  MemberExpr *MemA = dyn_cast<MemberExpr>(A);
+  MemberExpr *MemB = dyn_cast<MemberExpr>(B);
+
+  if (MemA && MemB) {
+    return checkIsSameStructInstance(MemA->getBase(), MemB->getBase(), Context);
+  }
+
+  // Also check recursively pointer derefernces and array access.
+  UnaryOperator *UOA = dyn_cast<UnaryOperator>(A);
+  UnaryOperator *UOB = dyn_cast<UnaryOperator>(B);
+
+  if (UOA && UOB && UOA->getOpcode() == UOB->getOpcode()) {
+    return checkIsSameStructInstance(UOA->getSubExpr(), UOB->getSubExpr(),
+                                     Context);
+  }
+
+  return false;
+}
+
+bool checkIfLastStructAccess(MemberExpr *ToCheck, CompoundStmt *CS,
+                             ASTContext &Context) {
+  Expr *ToCheckBase = ToCheck->getBase()->IgnoreImpCasts();
+  SourceManager &SM = Context.getSourceManager();
+  SourceLocation ToCheckLoc = ToCheck->getExprLoc();
+  SourceLocation LastLoc = ToCheckLoc;
+
+  for (const Stmt *S : CS->body()) {
+    // Traverse the compound statement and visit it recursively.
+    // We store the last accessed member in LastLoc.
+    // When we encounter a member expr, we check if this is the same instance as
+    //  the ToBeChecked member expression.
+    // We also check if the member expression comes after the to be checked
+    // member,
+    //  if so we update Last loc.
+    for (const Stmt *Child : S->children()) {
+      if (auto *ME = dyn_cast<MemberExpr>(Child)) {
+        Expr *Base = ME->getBase()->IgnoreImpCasts();
+        if (Context.getParents(*Base).size() > 0 &&
+            SM.isBeforeInTranslationUnit(ToCheckLoc, ME->getExprLoc()) &&
+            checkIsSameStructInstance(Base, ToCheckBase, Context)) {
+          LastLoc = ME->getExprLoc();
+        }
+      }
+    }
+  }
+
+  // If the location of the member to be checked is the same as the last loc
+  // This is indeed the last access to the member.
+  return ToCheckLoc == LastLoc;
+}
+
 bool PulseVisitor::checkIsRecursiveFunction(FunctionDecl *FD) {
 
   bool result = false;
@@ -484,24 +551,14 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
     //5. A ghost function that unfolds the predicate for u32_pair_struct_refs
     // ghost fn u32_pair_struct_explode (x:ref u32_pair_struct) (#s:u32_pair_struct_spec)
     // requires u32_pair_struct_pred x s
-    // ensures exists* (v: u32_pair_struct). (x |-> ({first=v.first; second=v.second} <: u32_pair_struct))
+    // ensures exists* (v: u32_pair_struct). (x |-> v)
     //   ** (v.first |-> s.first) ** (v.second |-> s.second)
     // { unfold u32_pair_struct_pred }
 
     auto *GhostExplode = new GenericDecl(); 
     GhostExplode->Ident = "ghost fn " + StructName + "_explode (x:ref " + StructName + ") " + "(#s:" + StructName + "_spec)\n";
     GhostExplode->Ident += "requires " + StructName + "_pred x s\n";
-    GhostExplode->Ident += "ensures exists* (v: " + StructName + "). " + "(x |-> ({";
-    Counter = 0;
-    for (auto *Fld : RD->fields()){
-      GhostExplode->Ident += Fld->getNameAsString();
-      GhostExplode->Ident += "=v." + Fld->getNameAsString();
-      if (Counter < NumRecordFields - 1){
-        GhostExplode->Ident += "; ";
-      }
-      Counter++;
-    }
-    GhostExplode->Ident += "} <: " + StructName + "))\n";
+    GhostExplode->Ident += "ensures exists* (v: " + StructName + "). " + "(x |-> v)";
     GhostExplode->Ident += " ** ";
     Counter = 0;
     for (auto *Fld : RD->fields()){
@@ -515,162 +572,11 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
     GhostExplode->Ident += "{unfold " + StructName + "_pred" + "}\n\n";
     NewModul->Decls.push_back(GhostExplode);
 
-    //6. Utility functions that convert a reference to the struct to a reference to its fields
-
-    // // &(x->first)
-    // fn u32_pair_struct_to_first (x: ref u32_pair_struct) (#first #second: erased _)
-    // requires x |-> ({ first; second } <: u32_pair_struct)
-    // requires reveal first |-> 'y
-    // returns first': ref UInt32.t
-    // ensures (x |-> ({ first=first'; second } <: u32_pair_struct))
-    // ensures first' |-> 'y
-    // ensures pure (first == first')
-    // { let vx' = !x; rewrite each first as vx'.first; vx'.first }
-
-    // // &(x->second)
-    // fn u32_pair_struct_to_second (x: ref u32_pair_struct) (#first #second: erased _)
-    // requires x |-> ({ first; second } <: u32_pair_struct)
-    // requires reveal second |-> 'y
-    // returns second': ref UInt32.t
-    // ensures (x |-> ({ first; second=second' } <: u32_pair_struct))
-    // ensures second' |-> 'y
-    // ensures pure (second == second')
-    // { let vx' = !x; rewrite each second as vx'.second; vx'.second }
-
-    std::string ErasedBinder = "(";
-    for (auto *Fld : RD->fields()){
-      ErasedBinder += "#" + Fld->getNameAsString() + " ";
-    }
-    ErasedBinder += ":erased _)";
-
-    std::string EnsuresHelper = "({ "; 
-    Counter = 0;
-    for (auto *Fld : RD->fields()){
-      EnsuresHelper += Fld->getNameAsString();
-      if (Counter < NumRecordFields - 1){
-        EnsuresHelper += ";";
-      }
-      Counter++;
-    }
-    EnsuresHelper += " }";
-
-    for (auto *Fld : RD->fields()){
-
-      auto Ty = Fld->getType(); 
-      auto *PulseTy = getPulseTyFromCTy(Ty);
-      
-      auto * StructToFieldRef = new GenericDecl();
-      StructToFieldRef->Ident = "fn " + StructName + "_to_" + Fld->getNameAsString() + " ";
-      StructToFieldRef->Ident += "(x: ref " + StructName + ")" + " ";
-      StructToFieldRef->Ident += ErasedBinder + "\n"; 
-      StructToFieldRef->Ident += "requires x |-> " + EnsuresHelper + " <: " + StructName + ")\n";
-      StructToFieldRef->Ident += "requires reveal " + Fld->getNameAsString() + " |-> 'y\n";
-      StructToFieldRef->Ident +=  "returns " + Fld->getNameAsString() + "': ref " + PulseTy->print() + "\n";
-      StructToFieldRef->Ident += "ensures (x |-> ({";
-      Counter = 0;
-      for (auto *FldPr : RD->fields()){
-            StructToFieldRef->Ident += FldPr->getNameAsString();
-            if (FldPr == Fld){
-              StructToFieldRef->Ident += "=" + FldPr->getNameAsString() + "'";
-            }
-            if (Counter < NumRecordFields - 1){
-              StructToFieldRef->Ident += "; ";
-            }
-            Counter++;
-      } 
-      StructToFieldRef->Ident += " } <: " + StructName + "))\n";
-      StructToFieldRef->Ident += "ensures " + Fld->getNameAsString() + "' |-> 'y\n";
-      StructToFieldRef->Ident += "ensures pure (" + Fld->getNameAsString() + " == " + Fld->getNameAsString() + "'" + ")\n";
-      StructToFieldRef->Ident += "{ let vx' = !x; rewrite each " + Fld->getNameAsString() + " as vx'." + Fld->getNameAsString() + "; vx'." + Fld->getNameAsString() + " }\n";
-      NewModul->Decls.push_back(StructToFieldRef);
-    }
-
-    //7. Setters/getters
-
-    // // x->first
-    // fn u32_pair_struct_get_first (x: ref u32_pair_struct) (#first #second: erased _)
-    // requires x |-> ({ first; second } <: u32_pair_struct)
-    // requires reveal first |-> 'y
-    // returns first': UInt32.t
-    // ensures (x |-> ({ first; second } <: u32_pair_struct))
-    // ensures reveal first |-> 'y
-    // ensures pure ('y == first')
-    // { let vfirst = u32_pair_struct_to_first x; let ret = !vfirst; rewrite each vfirst as first; ret }
-
-    // // x->second
-    // fn u32_pair_struct_get_second (x: ref u32_pair_struct) (#first #second: erased _)
-    // requires x |-> ({ first; second } <: u32_pair_struct)
-    // requires reveal second |-> 'y
-    // returns second': UInt32.t
-    // ensures (x |-> ({ first; second } <: u32_pair_struct))
-    // ensures reveal second |-> 'y
-    // ensures pure ('y == second')
-    // { let vsecond = u32_pair_struct_to_second x; let ret = !vsecond; rewrite each vsecond as second; ret }
-
-    for (auto *Fld : RD->fields()){
-
-      auto Ty = Fld->getType(); 
-      auto *PulseTy = getPulseTyFromCTy(Ty);
-      
-      auto * StructToFieldRef = new GenericDecl();
-      StructToFieldRef->Ident = "fn " + StructName + "_get_" + Fld->getNameAsString() + " ";
-      StructToFieldRef->Ident += "(x: ref " + StructName + ")" + " ";
-      StructToFieldRef->Ident += ErasedBinder + "\n"; 
-      StructToFieldRef->Ident += "requires x |-> " + EnsuresHelper + " <: " + StructName + ")\n";
-      StructToFieldRef->Ident += "requires reveal " + Fld->getNameAsString() + " |-> 'y\n";
-      StructToFieldRef->Ident +=  "returns " + Fld->getNameAsString() + "': " + PulseTy->print() + "\n";
-      StructToFieldRef->Ident += "ensures (x |-> ";
-      StructToFieldRef->Ident += EnsuresHelper;
-      StructToFieldRef->Ident += " <: " + StructName + "))\n";
-      StructToFieldRef->Ident += "ensures reveal " + Fld->getNameAsString() + " |-> 'y\n";
-      StructToFieldRef->Ident += "ensures pure ('y == " + Fld->getNameAsString() + "'" + ")\n";
-      StructToFieldRef->Ident += "{ let v" + Fld->getNameAsString() + " = " + StructName + "_to_" + Fld->getNameAsString() + " x; let ret = !v" + Fld->getNameAsString() + "; " + "rewrite each " + "v" + Fld->getNameAsString() + " as " + Fld->getNameAsString() + "; ret " + "}\n";
-      NewModul->Decls.push_back(StructToFieldRef);
-    }
-
-    // // x->first = first'
-    // fn u32_pair_struct_set_first (x: ref u32_pair_struct) (#first #second: erased _) (first': UInt32.t)
-    // requires x |-> ({ first; second } <: u32_pair_struct)
-    // requires reveal first |-> 'y
-    // ensures (x |-> ({ first; second } <: u32_pair_struct))
-    // ensures reveal first |-> first'
-    // { let vfirst = u32_pair_struct_to_first x; vfirst := first'; rewrite each vfirst as first }
-
-    // // x->second = second'
-    // fn u32_pair_struct_set_second (x: ref u32_pair_struct) (#first #second: erased _) (second': UInt32.t)
-    // requires x |-> ({ first; second } <: u32_pair_struct)
-    // requires reveal second |-> 'y
-    // ensures (x |-> ({ first; second } <: u32_pair_struct))
-    // ensures reveal second |-> second'
-    // { let vsecond = u32_pair_struct_to_second x; vsecond := second'; rewrite each vsecond as second }
-
-    for (auto *Fld : RD->fields()){
-
-      auto Ty = Fld->getType(); 
-      auto *PulseTy = getPulseTyFromCTy(Ty);
-      
-      auto * StructToFieldRef = new GenericDecl();
-      StructToFieldRef->Ident = "fn " + StructName + "_set_" + Fld->getNameAsString() + " ";
-      StructToFieldRef->Ident += "(x: ref " + StructName + ")" + " ";
-      StructToFieldRef->Ident += ErasedBinder + " ";
-      StructToFieldRef->Ident += "(" + Fld->getNameAsString() + "': "; 
-      StructToFieldRef->Ident += PulseTy->print() + ")" + "\n"; 
-      StructToFieldRef->Ident += "requires x |-> " + EnsuresHelper + " <: " + StructName + ")\n";
-      StructToFieldRef->Ident += "requires reveal " + Fld->getNameAsString() + " |-> 'y\n";
-      StructToFieldRef->Ident += "ensures (x |-> ";
-      StructToFieldRef->Ident += EnsuresHelper;
-      StructToFieldRef->Ident += " <: " + StructName + "))\n";
-      StructToFieldRef->Ident += "ensures reveal " + Fld->getNameAsString() + " |-> " + Fld->getNameAsString() + "'" + "\n";
-      StructToFieldRef->Ident += "{ let v" + Fld->getNameAsString() + " = " + StructName + "_to_" + Fld->getNameAsString() + " x;" + "v" + Fld->getNameAsString() + ":=" + Fld->getNameAsString() + "'" + "; " + "rewrite each " + "v" + Fld->getNameAsString() + " as " + Fld->getNameAsString() + " }\n";
-      NewModul->Decls.push_back(StructToFieldRef);
-    }
-
-
     //8. A ghost function that folds the predicate for u32_pair_struct_refs
     // ghost
     // fn u32_pair_struct_recover (x:ref u32_pair_struct) (#a0 #a1 :erased U32.t)
     // requires exists* (y: u32_pair_struct). (x |-> y) ** (y.first |-> a0) ** (y.second |-> a1)
-    // ensures u32_pair_struct_pred x ({first = a0; second = a1})
+    // ensures exists* w. u32_pair_struct_pred x w ** pure (w == {first = a0; second = a1})
     // { fold u32_pair_struct_pred x ({first = a0; second = a1}) }
 
     std::string FieldPrefix = "a";
@@ -708,7 +614,7 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
     }
     NewGhostFunction->Ident += "\n";
 
-    NewGhostFunction->Ident += "ensures " + StructName + "_pred x ({";
+    NewGhostFunction->Ident += "ensures exists* w. " + StructName + "_pred x w ** pure (w == {";
     Counter = 0;
     std::string TempStr = "";
     for (auto *Fld : RD->fields()){
@@ -820,6 +726,35 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
 
       if (auto *AnnAttr = dyn_cast<AnnotateAttr>(Attr)) {
         if (AnnAttr->getAttrName()->getName() == "pulse") {
+          
+          // Uncomment to print location information.
+          // 
+          // auto Loc = AnnAttr->getLocation();
+          // auto ExpansionLoc = SM.getExpansionLoc(Loc);
+          // ExpansionLoc.dump(SM);
+          // auto PLoc = SM.getPresumedLoc(ExpansionLoc);
+          // llvm::outs() << "Print Location Info: for attribute: " << "\n";
+          // llvm::outs() << "Filename: " <<  PLoc.getFilename() << "\n";
+          // llvm::outs() << "Column: " << PLoc.getColumn() << "\n";
+          // llvm::outs() << "LineNumber: " << PLoc.getLine() << "\n";
+          // llvm::outs() << "End printing location info for attribute\n";
+          // auto Args = AnnAttr->args();
+          // llvm::outs() << "\n\n";
+          // for (auto *Arg : Args){
+          //   Arg->dump();
+          //   llvm::outs() << "\n";
+          //   auto Loc = Arg->getExprLoc();
+          //      auto ExpansionLoc = SM.getExpansionLoc(Loc);
+          //      ExpansionLoc.dump(SM);
+          //       auto PLoc = SM.getPresumedLoc(ExpansionLoc);
+          //       llvm::outs() << "Print Location Info for Arg: " << "\n";
+          //       llvm::outs() << "Filename: " <<  PLoc.getFilename() << "\n";
+          //       llvm::outs() << "Column: " << PLoc.getColumn() << "\n";
+          //       llvm::outs() << "LineNumber: " << PLoc.getLine() << "\n";
+          //       llvm::outs() << "End printing location info for attribute\n";
+          //       llvm::outs() << "\n\n";
+          // }
+           
           auto Ref = AnnAttr->getAnnotation();
           if (!Ref.empty()) {
             std::string Match = "";
@@ -1009,51 +944,53 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
       ExprMutationAnalyzer Analyzer(*CS, Ctx);
 
       // Track struct variables per function.
-      TrackStructExplodeAndRecover.clear();
+      //TrackStructExplodeAndRecover.clear();
       auto *PulseBody = pulseFromCompoundStmt(CS, &Analyzer, Module);
 
       // Release declarations that are function parameters.
+      //TODO: Vidush Eventually we should get rid of these.
+      //This is just in case there are release expressions left and we need to release them.
       PulseSequence *NewSeq = nullptr;
       PulseSequence *Head = nullptr;
-      for (auto It = TrackStructExplodeAndRecover.begin(); It != TrackStructExplodeAndRecover.end();) {
-        auto ItElem = *It;
-        auto &Decl = ItElem.first;
-        auto &Info = ItElem.second;
-        // recover not released.
-        if (!Info.second) {
-          if (auto *ParamD = dyn_cast<ParmVarDecl>(Decl)) {
+      // for (auto It = TrackStructExplodeAndRecover.begin(); It != TrackStructExplodeAndRecover.end();) {
+      //   auto ItElem = *It;
+      //   auto &Decl = ItElem.first;
+      //   auto &Info = ItElem.second;
+      //   // recover not released.
+      //   if (!Info.second) {
+      //     if (auto *ParamD = dyn_cast<ParmVarDecl>(Decl)) {
 
-            auto StructName = ParamD->getType()->getPointeeType().getAsString();
+      //       auto StructName = ParamD->getType()->getPointeeType().getAsString();
 
-            auto *RecoverStatememt = new GenericStmt();
-            RecoverStatememt->body =
-                StructName + "_recover " + ParamD->getNameAsString() + ";";
-            if (Head == nullptr) {
-              Head = new PulseSequence();
-              NewSeq = Head;
-              NewSeq->assignS1(PulseBody);
+      //       auto *RecoverStatememt = new GenericStmt();
+      //       RecoverStatememt->body =
+      //           StructName + "_recover " + ParamD->getNameAsString() + ";";
+      //       if (Head == nullptr) {
+      //         Head = new PulseSequence();
+      //         NewSeq = Head;
+      //         NewSeq->assignS1(PulseBody);
 
-              auto *NextSequence = new PulseSequence();
-              NextSequence->assignS1(RecoverStatememt);
-              NewSeq->assignS2(NextSequence);
-              NewSeq = NextSequence;
-               TrackStructExplodeAndRecover.erase(It++);
-              continue;
-            }
+      //         auto *NextSequence = new PulseSequence();
+      //         NextSequence->assignS1(RecoverStatememt);
+      //         NewSeq->assignS2(NextSequence);
+      //         NewSeq = NextSequence;
+      //          TrackStructExplodeAndRecover.erase(It++);
+      //         continue;
+      //       }
 
-            auto *NextSequence = new PulseSequence();
-            NextSequence->assignS1(RecoverStatememt);
-            NewSeq->assignS2(NextSequence);
-            NewSeq = NextSequence;
+      //       auto *NextSequence = new PulseSequence();
+      //       NextSequence->assignS1(RecoverStatememt);
+      //       NewSeq->assignS2(NextSequence);
+      //       NewSeq = NextSequence;
 
-            TrackStructExplodeAndRecover.erase(It++);
-            continue;
-          }
-        }
-        It++;
-      }
+      //       TrackStructExplodeAndRecover.erase(It++);
+      //       continue;
+      //     }
+      //   }
+      //   It++;
+      // }
 
-      assert(TrackStructExplodeAndRecover.empty() && "Failed to recover all structure types in the function!\n");
+      // assert(TrackStructExplodeAndRecover.empty() && "Failed to recover all structure types in the function!\n");
 
       if (Head != nullptr) {
         Head->dumpPretty();
@@ -1136,7 +1073,8 @@ PulseStmt *PulseVisitor::pulseFromCompoundStmt(Stmt *S,
 
     for (auto *InnerStmt : CS->body()) {
 
-      auto *NextPulseStmt = pulseFromStmt(InnerStmt, Analyzer, nullptr, Modul);
+      auto *NextPulseStmt =
+          pulseFromStmt(InnerStmt, Analyzer, nullptr, Modul, CS);
       if (NextPulseStmt == nullptr)
         continue;
 
@@ -1159,7 +1097,8 @@ PulseStmt *PulseVisitor::pulseFromCompoundStmt(Stmt *S,
 }
 
 PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
-                                       Stmt *Parent, PulseModul *Module) {
+                                       Stmt *Parent, PulseModul *Module,
+                                       CompoundStmt *CS) {
 
   if (!S)
     return nullptr;
@@ -1374,42 +1313,89 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
           auto MemberName = LhsDecl->getDeclName();
 
+          // UPDATE: Vidush: Releasing expresssions may be required in certain cases. 
+          //Especially when you want to add calls to explode struct.
+          SmallVector<PulseStmt *> ExprsBef;
+          auto *PulseRhsTerm =
+              getTermFromCExpr(Rhs, Analyzer, ExprsBef, Parent,BO->getType(), Module);
+          PulseAssignment *Assignment = new PulseAssignment();
+          Assignment->Value = PulseRhsTerm;
+
+          auto *DerefAppE = new AppE();
+          auto *FuncName = new VarTerm();
+          FuncName->setVarName("!");
+          FuncName->setTag(TermTag::Var);
+          DerefAppE->setTag(TermTag::AppE);
+          DerefAppE->setCallName(FuncName);
+          auto *InnerTermCallArg = new VarTerm();
+          InnerTermCallArg->setVarName(NameOfDecl);
+          DerefAppE->pushArg(InnerTermCallArg);
+          // Wrap this deref in a parenthesis.
+          auto *ParenthesisDeref = new Paren();
+          ParenthesisDeref->setInnerExpr(DerefAppE);
+
           auto *PulseCall = new AppE();
           auto *CallName = new VarTerm();
 
-          CallName->setVarName( StructName + "_set_" + MemberName.getAsString());
+          CallName->setVarName("Mk" + StructName + "?." + MemberName.getAsString());
           PulseCall->setCallName(CallName);
 
-          auto *InnerTermCallArg = new VarTerm();
-            InnerTermCallArg->setVarName(NameOfDecl);
+          PulseCall->pushArg(ParenthesisDeref);
+          Assignment->Lhs = PulseCall;
 
-          PulseCall->pushArg(InnerTermCallArg);
+          // auto It = TrackStructExplodeAndRecover.find(VD);
+          // if (It == TrackStructExplodeAndRecover.end()){
+          //   auto *NewSeq = new PulseSequence();
+          //   NewSeq->assignS2(Assignment);
+          //   auto *ExplodeStmt = new GenericStmt();
+          //   ExplodeStmt->body = StructName + "_explode " + VD->getNameAsString() + ";";
+          //   NewSeq->assignS1(ExplodeStmt);
+          //   TrackStructExplodeAndRecover.insert(std::make_pair(VD, std::make_pair(true, false)));
+          //   return NewSeq;
+          // }
 
-          // TODO: Angelica, I don't this releasing expressions before is
-          // required. This was done because Pulse was not in ANF before.
-          // However, it is in ANF now.
-          SmallVector<PulseStmt *> ExprsBef;
-          auto *RhsExpr =
-              getTermFromCExpr(Rhs, Analyzer, ExprsBef, Parent, BO->getType(), Module);
-          PulseCall->pushArg(RhsExpr);
+          auto *RetSeq = releaseExprs(ExprsBef);
 
-          // Perhaps warp this In Pulse Expr
-          auto *Expr = new PulseExpr();
-          Expr->E = PulseCall;
           assert(ExprsBef.empty() && "Expected ExprsBefore to be empty!\n");
 
-          auto It = TrackStructExplodeAndRecover.find(VD);
-          if (It == TrackStructExplodeAndRecover.end()){
-            auto *NewSeq = new PulseSequence();
-            NewSeq->assignS2(Expr);
-            auto *ExplodeStmt = new GenericStmt();
-            ExplodeStmt->body = StructName + "_explode " + VD->getNameAsString() + ";";
-            NewSeq->assignS1(ExplodeStmt);
-            TrackStructExplodeAndRecover.insert(std::make_pair(VD, std::make_pair(true, false)));
-            return NewSeq;
+          // if (checkIfLastStructAccess(ME, CS, Ctx)) {
+
+          //   auto It = TrackStructExplodeAndRecover.find(VD);
+          //   auto ItElem = *It;
+          //   auto &Decl = ItElem.first;
+          //   auto &Info = ItElem.second;
+          //   // recover not released.
+          //   // In fact assert that a recover should not be released before.
+          //   assert(!Info.second && "A recover was released for the struct when "
+          //                          "there are accesses remaining!\n");
+          //   if (auto *ParamD = dyn_cast<ParmVarDecl>(Decl)) {
+
+          //     auto StructName =
+          //         ParamD->getType()->getPointeeType().getAsString();
+
+          //     auto *RecoverStatememt = new GenericStmt();
+          //     RecoverStatememt->body =
+          //         StructName + "_recover " + ParamD->getNameAsString() + ";";
+          //     TrackStructExplodeAndRecover.erase(It);
+
+          //     auto *NewSeq = new PulseSequence();
+          //     NewSeq->assignS1(Assignment);
+          //     NewSeq->assignS2(RecoverStatememt);
+          //     if (RetSeq) {
+          //       RetSeq->assignS2(NewSeq);
+          //       return RetSeq;
+          //     }
+
+          //     return NewSeq;
+          //   }
+          // }
+
+          if (RetSeq) {
+            RetSeq->assignS2(Assignment);
+            return RetSeq;
           }
 
-          return Expr;
+          return Assignment;
         }
 
         ME->dump();
@@ -1417,7 +1403,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
       } else if (auto *ME = dyn_cast<MemberExpr>(Rhs)) {
 
-        auto *LhsDecl = ME->getMemberDecl();
+        auto *RhsDecl = ME->getMemberDecl();
         auto *BaseExpr = ME->getBase()->IgnoreParens()->IgnoreImpCasts();
         BaseExpr->dump();
 
@@ -1431,41 +1417,34 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           TyOfDecl = VD->getType();
           StructName = TyOfDecl->getPointeeType().getAsString();
 
-          auto MemberName = LhsDecl->getDeclName();
+          auto MemberName = RhsDecl->getDeclName();
 
-          auto *PulseCall = new AppE();
-          auto *CallName = new VarTerm();
-          CallName->setVarName(StructName + "_get_" + MemberName.getAsString());
-          PulseCall->setCallName(CallName);
-          auto *InnerTermCallArg = new VarTerm();
-          InnerTermCallArg->setVarName(NameOfDecl);
-          PulseCall->pushArg(InnerTermCallArg);
+          //x->f translates to (!(!x).f)
+          auto *GenStmt = new Name();
+          GenStmt->NamedValue = "(!(!" +NameOfDecl+")."+MemberName.getAsString()+")";
 
-          // TODO: Angelica, I don't this releasing expressions before is
-          // required. This was done because Pulse was not in ANF before.
-          // However, it is in ANF now.
           SmallVector<PulseStmt *> ExprsBef;
-          auto *RhsExpr =
-              getTermFromCExpr(Rhs, Analyzer, ExprsBef, Parent, BO->getType(), Module);
-          PulseCall->pushArg(RhsExpr);
-
-          // Perhaps warp this In Pulse Expr
-          auto *Expr = new PulseExpr();
-          Expr->E = PulseCall;
-          assert(ExprsBef.empty() && "Expected Exprs before to be empty!\n");
+          auto *PulseLhsTerm = getTermFromCExpr(Lhs, Analyzer, ExprsBef,
+                                              Parent, BO->getType(), Module, true);
+           PulseAssignment *Assignment = new PulseAssignment();
+           Assignment->Lhs = PulseLhsTerm;
+           Assignment->Value = GenStmt;
           
-          auto It = TrackStructExplodeAndRecover.find(VD);
-          if (It == TrackStructExplodeAndRecover.end()) {
-            auto *NewSeq = new PulseSequence();
-            NewSeq->assignS2(Expr);
-            auto *ExplodeStmt = new GenericStmt();
-            ExplodeStmt->body = StructName + "_explode " + VD->getNameAsString();
-            NewSeq->assignS2(ExplodeStmt);
-            TrackStructExplodeAndRecover.insert(std::make_pair(VD, std::make_pair(true, false)));
-            return NewSeq;
-          }
 
-          return Expr;
+          // auto It = TrackStructExplodeAndRecover.find(VD);
+          // if (It == TrackStructExplodeAndRecover.end()) {
+          //   auto *NewSeq = new PulseSequence();
+          //   NewSeq->assignS2(Assignment);
+          //   auto *ExplodeStmt = new GenericStmt();
+          //   ExplodeStmt->body = StructName + "_explode " + VD->getNameAsString();
+          //   NewSeq->assignS2(ExplodeStmt);
+          //   TrackStructExplodeAndRecover.insert(std::make_pair(VD, std::make_pair(true, false)));
+          //   return NewSeq;
+          // }
+
+          assert(ExprsBef.empty() && "Expected ExprsBefore to be empty!\n");
+
+          return Assignment;
         }
 
       }
@@ -1482,7 +1461,6 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
         PulseAssignment *Assignment = new PulseAssignment();
         Assignment->Lhs = PulseLhsTerm;
         Assignment->Value = PulseRhsTerm;
-        Assignment->setTag(PulseStmtTag::Assignment);
 
         // We need to make a sequence of pulse statements.
         PulseSequence *Start = nullptr;
@@ -1593,8 +1571,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
     auto PulseCond =
         getTermFromCExpr(Cond, Analyzer, ExprsBefore, Parent, Cond->getType(), Module);
-    auto *PulseElse = pulseFromStmt(Else, Analyzer, Parent, Module);
-    auto *PulseThen = pulseFromStmt(Then, Analyzer, Parent, Module);
+    auto *PulseElse = pulseFromStmt(Else, Analyzer, Parent, Module, CS);
+    auto *PulseThen = pulseFromStmt(Then, Analyzer, Parent, Module, CS);
 
     auto PulseIfStmt = new PulseIf();
     PulseIfStmt->setTag(PulseStmtTag::If);
@@ -1614,39 +1592,40 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
       auto *RetTerm = getTermFromCExpr(RetVal, Analyzer, ExprsBefore,
                                        Parent, RetVal->getType(), Module);
 
-      if (auto *DeclRef = dyn_cast<DeclRefExpr>(RetVal->IgnoreParenImpCasts()->IgnoreImpCasts())){
-        auto It = TrackStructExplodeAndRecover.find(DeclRef->getDecl());
-        if (It != TrackStructExplodeAndRecover.end()){
-          auto Info = It->second; 
-          if (!Info.second){
+    //   if (auto *DeclRef = dyn_cast<DeclRefExpr>(RetVal->IgnoreParenImpCasts()->IgnoreImpCasts())){
+    //     auto It = TrackStructExplodeAndRecover.find(DeclRef->getDecl());
+    //     if (It != TrackStructExplodeAndRecover.end()){
+    //       auto Info = It->second; 
+    //       if (!Info.second){
 
-            //Get struct name from declration.
-              const auto *VD = DeclRef->getDecl();
-              auto *PSeq = new PulseSequence();
-              auto StructName = VD->getType()->getPointeeType().getAsString(); 
-              if (RetTerm){
-                 NewPulseExpr->E = RetTerm;
-                 PSeq->assignS2(NewPulseExpr);
-                 auto *FallBack  = new GenericStmt(); 
-                 FallBack->body += StructName + "_recover " +  DeclRef->getDecl()->getNameAsString() + ";";
-                 PSeq->assignS1(FallBack);
-                 // update element in map.
-                 TrackStructExplodeAndRecover.erase(It);
-                 return PSeq;
-             }
+    //         //Get struct name from declration.
+    //           const auto *VD = DeclRef->getDecl();
+    //           auto *PSeq = new PulseSequence();
+    //           auto StructName = VD->getType()->getPointeeType().getAsString(); 
+    //           if (RetTerm){
+    //              NewPulseExpr->E = RetTerm;
+    //              PSeq->assignS2(NewPulseExpr);
+    //              auto *FallBack  = new GenericStmt(); 
+    //              FallBack->body += StructName + "_recover " +  DeclRef->getDecl()->getNameAsString() + ";";
+    //              PSeq->assignS1(FallBack);
+    //              // update element in map.
+    //              TrackStructExplodeAndRecover.erase(It);
+    //              return PSeq;
+    //          }
 
-            auto *FallBack  = new GenericStmt(); 
-            FallBack->body += StructName + "_recover " +  DeclRef->getDecl()->getNameAsString() + ";";
+    //         auto *FallBack  = new GenericStmt(); 
+    //         FallBack->body += StructName + "_recover " +  DeclRef->getDecl()->getNameAsString() + ";";
 
-            // update element in map.
-            TrackStructExplodeAndRecover.erase(It);
-            return FallBack;
-        }
-      }
-    }
+    //         // update element in map.
+    //         TrackStructExplodeAndRecover.erase(It);
+    //         return FallBack;
+    //     }
+    //   }
+    // }
 
       if (RetTerm == nullptr)
         return nullptr;
+      
       NewPulseExpr->E = RetTerm;
 
       assert(ExprsBefore.empty() && "Expected expressions to be released!");
@@ -1712,7 +1691,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
       }
 
       PulseWhile->setTag(PulseStmtTag::WhileStmt);
-      PulseWhile->Guard = pulseFromStmt(WhileCond, Analyzer, Parent, Module);
+      PulseWhile->Guard =
+          pulseFromStmt(WhileCond, Analyzer, Parent, Module, CS);
       PulseWhile->Body = pulseFromCompoundStmt(CompundBody, Analyzer, Module);
 
       return PulseWhile;
@@ -1721,7 +1701,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
       auto *PulseWhile = new PulseWhileStmt();
       PulseWhile->setTag(PulseStmtTag::WhileStmt);
 
-      PulseWhile->Guard = pulseFromStmt(WhileCond, Analyzer, Parent, Module);
+      PulseWhile->Guard =
+          pulseFromStmt(WhileCond, Analyzer, Parent, Module, CS);
       PulseWhile->Body = pulseFromCompoundStmt(WhileBody, Analyzer, Module);
 
       return PulseWhile;
@@ -1766,7 +1747,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
         }
       }
     }
-    NewSequence->assignS2(pulseFromStmt(SubStmt, Analyzer, Parent, Module));
+    NewSequence->assignS2(pulseFromStmt(SubStmt, Analyzer, Parent, Module, CS));
     return NewSequence;
   } else {
     llvm::outs() << "\n\nPrint in pulseFromStmt\n";
@@ -1876,9 +1857,6 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     // Wrap Call Expr into a Paren to be safe.
     auto *NewParen = new Paren();
     NewParen->setInnerExpr(NewAppENode);
-
-    assert(ExprsBefore.empty() && "Unreleased expressions!\n");
-
     return NewParen;
 
     llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "
@@ -1918,19 +1896,18 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
 
           auto *GenStmt = new Name();
           GenStmt->NamedValue =
-              "(" + StructName + "_to_" +
-              Mem->getMemberDecl()->getDeclName().getAsString() + " " +
-              Dec->getDecl()->getNameAsString() + ")";
+              "(!" + Dec->getDecl()->getNameAsString() + ")." +
+              Mem->getMemberDecl()->getDeclName().getAsString();
 
-          auto It = TrackStructExplodeAndRecover.find(VD);
-          if (It == TrackStructExplodeAndRecover.end()) {
-            auto *ExplodeStmt = new GenericStmt();
-            ExplodeStmt->body =
-                StructName + "_explode " + VD->getNameAsString() + ";";
-            ExprsBefore.push_back(ExplodeStmt);
-            TrackStructExplodeAndRecover.insert(
-                std::make_pair(VD, std::make_pair(true, false)));
-          }
+          // auto It = TrackStructExplodeAndRecover.find(VD);
+          // if (It == TrackStructExplodeAndRecover.end()) {
+          //   auto *ExplodeStmt = new GenericStmt();
+          //   ExplodeStmt->body =
+          //       StructName + "_explode " + VD->getNameAsString() + ";";
+          //   ExprsBefore.push_back(ExplodeStmt);
+          //   TrackStructExplodeAndRecover.insert(
+          //       std::make_pair(VD, std::make_pair(true, false)));
+          // }
 
           return GenStmt;
         }
@@ -2247,9 +2224,8 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     assert(false && "Should not reach here!");
     return nullptr;
   } else if (auto *ME = dyn_cast<MemberExpr>(E)) {
-   
-    
-    auto *LhsDecl = ME->getMemberDecl();
+
+    auto *MemberExprDecl = ME->getMemberDecl();
 
     auto *BaseExpr = ME->getBase()->IgnoreParens()->IgnoreImpCasts();
 
@@ -2267,34 +2243,24 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       llvm::outs() << TyOfDecl->getPointeeType().getAsString() << "\n";
       StructName = TyOfDecl->getPointeeType().getAsString();
 
-      auto MemberName = LhsDecl->getDeclName();
-      auto *PulseCall = new AppE();
-      auto *CallName = new VarTerm();
-      std::string MethodName = isWrite ? "_set_" : "_get_";
-      CallName->setVarName(StructName + MethodName + MemberName.getAsString());
-      PulseCall->setCallName(CallName);
-
-      auto *InnerTermCallArg = new VarTerm();
-      InnerTermCallArg->setVarName(NameOfDecl);
-      PulseCall->pushArg(InnerTermCallArg);
-
-      // Wrap in Paren expression.
-      auto *PulseParen = new Paren();
-      PulseParen->InnerExpr = PulseCall;
+      auto MemberName = MemberExprDecl->getDeclName();
+      assert(!isWrite && "expected isWrite to be false");
+      auto *GenStmt = new Name();
+      GenStmt->NamedValue = "(!(!" +NameOfDecl+")." +MemberName.getAsString()+")";
       
       //TODO: Vidush, ensure heuristic is correct.
       //check if we already added an explode for the struct here. 
-      auto It = TrackStructExplodeAndRecover.find(VD);
+      // auto It = TrackStructExplodeAndRecover.find(VD);
       
-      //We did not add a explode expression. 
-      if (It == TrackStructExplodeAndRecover.end()){
-        auto *ExplodeStmt = new GenericStmt();
-        ExplodeStmt->body = StructName + "_explode " + VD->getNameAsString() + ";";
-        ExprsBefore.push_back(ExplodeStmt);
-        TrackStructExplodeAndRecover.insert(std::make_pair(VD, std::make_pair(true, false)));
-      }
+      // //We did not add a explode expression. 
+      // if (It == TrackStructExplodeAndRecover.end()){
+      //   auto *ExplodeStmt = new GenericStmt();
+      //   ExplodeStmt->body = StructName + "_explode " + VD->getNameAsString() + ";";
+      //   ExprsBefore.push_back(ExplodeStmt);
+      //   TrackStructExplodeAndRecover.insert(std::make_pair(VD, std::make_pair(true, false)));
+      // }
 
-      return PulseParen;
+      return GenStmt;
     }
 
     return nullptr;

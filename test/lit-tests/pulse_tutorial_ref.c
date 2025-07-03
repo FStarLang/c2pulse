@@ -1,6 +1,10 @@
+// RUN: %c2pulse %s
+// RUN: cat %p/Pulse_tutorial_ref.fst
+// RUN: diff %p/Pulse_tutorial_ref.fst %p/../snapshots/Pulse_tutorial_ref.fst
+// RUN: %run_fstar.sh %p/Pulse_tutorial_ref.fst 2>&1 | %{FILECHECK} %s --check-prefix=PULSE
 #include <stdint.h>
 #include <stdlib.h>
-#include "../include/PulseMacros.h"
+#include "../../include/PulseMacros.h"
 
 REQUIRES("r |-> 'v")
 RETURNS(v:int32)
@@ -152,3 +156,6 @@ int* refs_are_scoped()
     int s = 0;
     return &s;
 }*/
+
+
+// PULSE: All verification conditions discharged successfully

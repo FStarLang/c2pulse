@@ -1,7 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
-SYSTEM_CC_INCLUDE="/usr/lib/clang/18.1.3/include"
+clang_version=$(clang --version | grep "clang version" | awk '{print $4}'  | cut -d'-' -f1 | cut -d'.' -f1-3)
+SYSTEM_CC_INCLUDE="/usr/lib/clang/$clang_version/include"
+echo "Using Clang version: $clang_version"
 SYSTEM_INCLUDE="/usr/include"
 SYSTEM_ARCH_INCLUDE="/usr/include/x86_64-linux-gnu"
 C_STD="-std=c23"
@@ -14,7 +16,7 @@ fi
 
 echo "Processing all files: $@"
 
-./external/llvm-project/build/bin/c2pulse "$@" \
+../external/llvm-project/build/bin/c2pulse "$@" \
   -p ./external/llvm-project/build/ \
   --extra-arg-before="-resource-dir" \
   --extra-arg-before="./external/llvm-project/build/lib/clang/21" \

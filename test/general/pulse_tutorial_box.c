@@ -1,13 +1,29 @@
 #include <stdint.h>
 #include <stdlib.h>
-#include "../include/PulseMacros.h"
-
+#include "../../include/PulseMacros.h"
+INCLUDE (
+    ghost
+    fn freebie ()
+    requires emp
+    ensures pure False
+    {
+        admit();
+    }    
+)
 
 REQUIRES(emp)
 RETURNS(i:int32)
 ENSURES(emp)
 int test_empty(void)
 { return 0; }
+
+RETURNS (i:int32)
+ENSURES(pure False)
+int test_freebie(void)
+{
+    LEMMA(freebie());
+    return 0;
+}
 
 // RETURNS(i:ref int)
 // ENSURES(r |-> v)

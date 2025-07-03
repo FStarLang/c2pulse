@@ -2,9 +2,9 @@
 set -euo pipefail
 
 HERE=$(dirname $0)
-FSTAR_BIN="$(realpath $HERE/external/FStar/bin/fstar.exe)"
-PULSE_DIR="$(realpath $HERE/external/pulse/out/lib/pulse)"
-AUX_LIBS="$(realpath $HERE/include/pulse)"
+FSTAR_BIN="$(realpath $HERE/../external/FStar/bin/fstar.exe)"
+PULSE_DIR="$(realpath $HERE/../external/pulse/out/lib/pulse)"
+AUX_LIBS="$(realpath $HERE/../include/pulse)"
 
 if [ $# -lt 1 ]; then
   echo "Usage: $0 <source_file.fst> [additional F* args]"
