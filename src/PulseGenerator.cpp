@@ -1947,10 +1947,6 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
         Parenthesis->setInnerExpr(TermForBaseExpr);
         return Parenthesis;
       }
-
-      llvm::outs() << "Print in Addr of" << "\n";
-      E->dump();
-      assert(false && "Not implemented Member Expression!\n");
     }
     else {
       llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "
