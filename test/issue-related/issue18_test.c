@@ -39,11 +39,11 @@ ERASED_ARG(#v:erased _)
 REQUIRES(is_point p v)
 REQUIRES(pure <| fits (+) (fst v) (as_int dx))
 REQUIRES(pure <| fits (+) (snd v) (as_int dy))
-ENSURES(exists* w. point_pred p w) //ENSURES(is_point p (fst v + as_int dx, snd v + as_int dy))
+ENSURES(is_point p (fst v + as_int dx, snd v + as_int dy))
 void move(point *p, int dx, int dy)
 {
   LEMMA(unfold(is_point); point_explode p);
   p->px = p->px + dx;
   p->py = p->py + dy;
-  // LEMMA(point_recover p; fold_is_point p);
+  LEMMA(point_recover p; fold_is_point p);
 }

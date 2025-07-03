@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include <stdlib.h>
-#include "../include/PulseMacros.h"
+#include "../../include/PulseMacros.h"
 
 REQUIRES("x |-> 'i")
 REQUIRES("pure FStar.Int32.(fits (v 'i + 1))")

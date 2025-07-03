@@ -2,7 +2,7 @@
 set -euo pipefail
 
 HERE=$(dirname "$0")
-LLVM_DIR="$(realpath $HERE/external/llvm-project/)"
+LLVM_DIR="$(realpath $HERE/../external/llvm-project/)"
 LLVM_BUILD_DIR="$LLVM_DIR/build"
 LIT_BIN="$LLVM_BUILD_DIR/bin/llvm-lit"
 

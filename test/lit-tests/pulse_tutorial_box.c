@@ -1,3 +1,7 @@
+// RUN: %c2pulse %s
+// RUN: cat %p/Pulse_tutorial_box.fst
+// RUN: diff %p/Pulse_tutorial_box.fst %p/../snapshots/Pulse_tutorial_box.fst
+// RUN: %run_fstar.sh %p/Pulse_tutorial_box.fst 2>&1 | %{FILECHECK} %s --check-prefix=PULSE
 #include <stdint.h>
 #include <stdlib.h>
 #include "../../include/PulseMacros.h"
@@ -73,3 +77,6 @@ int test_freebie(void)
 //     *s = v;
 //     return s;
 // }
+
+
+// PULSE: All verification conditions discharged successfully

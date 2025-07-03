@@ -16,7 +16,7 @@ PULSE_LIB_C_DIR="$(realpath $HERE/include/pulse)"
 
 # Check input
 if [ "$#" -lt 1 ]; then
-  echo "Usage: $0 <source1.c> [source2.c ...]"
+  echo "Usage: $0 <source1.c> [source2.c ...] [--log <logfile>]"
   exit 1
 fi
 

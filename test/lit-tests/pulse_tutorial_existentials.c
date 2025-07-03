@@ -1,3 +1,7 @@
+// RUN: %c2pulse %s
+// RUN: cat %p/Pulse_tutorial_existentials.fst
+// RUN: diff %p/Pulse_tutorial_existentials.fst %p/../snapshots/Pulse_tutorial_existentials.fst
+// RUN: %run_fstar.sh %p/Pulse_tutorial_existentials.fst 2>&1 | %{FILECHECK} %s --check-prefix=PULSE
 #include <stdint.h>
 #include <stdlib.h>
 #include "../../include/PulseMacros.h"
@@ -50,3 +54,6 @@ void call_make_even (int *x)
 {
   make_even(x);
 }
+
+
+// PULSE: All verification conditions discharged successfully

@@ -1,6 +1,10 @@
+// RUN: %c2pulse %s
+// RUN: cat %p/Issue18_test.fst
+// RUN: diff %p/Issue18_test.fst %p/../snapshots/Issue18_test.fst
+// RUN: %run_fstar.sh %p/Issue18_test.fst 2>&1 | %{FILECHECK} %s --check-prefix=PULSE
 #include <stdint.h>
 #include <stdlib.h>
-#include "../include/PulseMacros.h"
+#include "../../include/PulseMacros.h"
 
 REQUIRES(emp)
 RETURNS(i:int32)
@@ -47,3 +51,6 @@ void move(point *p, int dx, int dy)
   p->py = p->py + dy;
   LEMMA(point_recover p; fold_is_point p);
 }
+
+
+// PULSE: All verification conditions discharged successfully

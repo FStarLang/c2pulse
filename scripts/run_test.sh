@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-HERE=$(dirname "$0")
+HERE="$(dirname "$0")/../"
 
 # System headers
 clang_version=$(clang --version | grep "clang version" | awk '{print $4}'  | cut -d'-' -f1 | cut -d'.' -f1-3)
@@ -16,7 +16,7 @@ PULSE_DIR="$(realpath $HERE/external/pulse/out/lib/pulse)"
 PULSE_LIB_C_DIR="$(realpath $HERE/include/pulse)"
 
 if [ "$#" -lt 1 ]; then
-  echo "Usage: $0 <source1.c | directory> [source2.c ... | directory...]"
+  echo "Usage: $0 <source1.c> [source2.c ...] [--log <logfile>]"
   exit 1
 fi
 
@@ -91,7 +91,7 @@ if [[ -n "$LOG_FILE" ]]; then
   )
 else
   mapfile -t SRC_FILES < <(
-    "${CMD[@]}" 2>&1 | awk '/Print the filename!/ {getline; if ($0 ~ /\.fst[i]?$/) print}'
+    "${CMD[@]}" 2>&1 | stdbuf -oL awk '/Print the filename!/ {getline; if ($0 ~ /\.fst[i]?$/) print}'
   )
 fi
 
@@ -105,6 +105,8 @@ echo "Generated Pulse files:"
 for file in "${SRC_FILES[@]}"; do
   echo "  $file"
 done
+
+echo "${SRC_FILES[@]}"
 
 echo "Running F* on generated files..."
 fstar_output=$("$FSTAR_BIN" \
@@ -124,21 +126,25 @@ else
   exit 1
 fi
 
-# echo "Checking if the generated file matches the expected output."
-# for file in "${SRC_FILES[@]}"; do
-#   # Extract the base name and capitalize it for snapshot comparison
-#   name="$(basename "$file")"        
-#   capitalized="${name^}"    
-#   snapshot="$(realpath "$HERE/test/snapshots/$capitalized")"        
+echo "Checking if the generated file matches the expected output."
+for file in "${SRC_FILES[@]}"; do
+ echo "  Checking file: $file"
 
-#   echo "  Checking: [ $file ] against snapshot [ $snapshot ]"
+  # Extract the base name and capitalize it for snapshot comparison
+  name="$(basename "$file")"        
+  capitalized="${name^}"    
+  snapshot="$(realpath "$HERE/test/snapshots/$capitalized")"        
 
-#   if diff_output=$(diff -u "$file" "$snapshot"); then
-#     echo "    ✔ OK: $file matches snapshot."
-#     python3 create_lit_tests.py "$file" 
-#   else
-#     echo "    ❌ Mismatch found in $file!"
-#     echo "$diff_output"
-#     exit 1
-#   fi
-# done
+  echo "  Checking: [ $file ] against snapshot [ $snapshot ]"
+
+  if diff_output=$(diff -u "$file" "$snapshot"); then
+    echo "    ✔ OK: $file matches snapshot."
+  else
+    echo "    ❌ Mismatch found in $file!"
+    echo "$diff_output"
+    exit 1
+  fi
+  echo "    ✔ Snapshot check passed for $file"
+done
+exit 0
+echo "All files processed successfully."

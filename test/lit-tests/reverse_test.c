@@ -1,3 +1,7 @@
+// RUN: %c2pulse %s
+// RUN: cat %p/Reverse_test.fst
+// RUN: diff %p/Reverse_test.fst %p/../snapshots/Reverse_test.fst
+// RUN: %run_fstar.sh %p/Reverse_test.fst 2>&1 | %{FILECHECK} %s --check-prefix=PULSE
 #include "../../include/PulseMacros.h"
 
 #include <stdint.h>
@@ -22,3 +26,7 @@ void reverse(ISARRAY(len) uint32_t *arr, size_t len) {
                 i = i + 1;
         }
 }
+
+
+
+// PULSE: All verification conditions discharged successfully

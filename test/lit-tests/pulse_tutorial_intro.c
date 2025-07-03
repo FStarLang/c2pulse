@@ -1,3 +1,7 @@
+// RUN: %c2pulse %s
+// RUN: cat %p/Pulse_tutorial_intro.fst
+// RUN: diff %p/Pulse_tutorial_intro.fst %p/../snapshots/Pulse_tutorial_intro.fst
+// RUN: %run_fstar.sh %p/Pulse_tutorial_intro.fst 2>&1 | %{FILECHECK} %s --check-prefix=PULSE
 #include <stdint.h>
 #include <stdlib.h>
 #include "../../include/PulseMacros.h"
@@ -30,3 +34,6 @@ void incr_frame(int *x, int *y)
 {
     incr(x);
 }
+
+
+// PULSE: All verification conditions discharged successfully

@@ -7,33 +7,25 @@ if [ "$#" -lt 1 ]; then
 fi
 
 HERE=$(dirname "$0")
-SNAPSHOT_DIR="$(realpath "$HERE/../test/snapshots")"
-
-# Ensure snapshot directory exists
-mkdir -p "$SNAPSHOT_DIR"
 
 FAILED_FILES=()
-
-echo "Snapshot output directory: $SNAPSHOT_DIR"
 
 # Function to process a single .c file
 process_c_file() {
   local cfile="$1"
-  if bash $HERE/../run.sh "$cfile" &> /dev/null ; then
+  echo "Processing: $cfile"
+ 
+  if bash $HERE/run_test.sh "$cfile" &> /dev/null ; then
     echo "  ✔ Success: $cfile"
-    local fst_file="${cfile%.c}.fst"
-    if [ -f "$fst_file" ]; then
-      echo "  Copying: $(basename "$fst_file")"
-      cp "$fst_file" "$SNAPSHOT_DIR/"
-    fi
+    python3 create_lit_tests.py "$cfile" 
   else
     echo "  ❌ Failed: $cfile"
     FAILED_FILES+=("$cfile")
   fi
-
 }
 
 echo "▶ Generating Pulse code from C code and running F* on them"
+echo "$@"
 for path in "$@"; do
   if [ -f "$path" ] && [[ "$path" == *.c ]]; then
     echo "Processing C file: $path"
@@ -60,4 +52,3 @@ if [ "${#FAILED_FILES[@]}" -ne 0 ]; then
 else
   echo "✔ All files processed successfully."
 fi
-echo "Pulse files copied to: $SNAPSHOT_DIR"
