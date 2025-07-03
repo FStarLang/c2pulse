@@ -9,7 +9,7 @@ DEFAULT_PATHS=(
 
 # Check if any arguments are provided, if not use default paths.
 if [ "$#" -lt 1 ]; then
-  echo "The user did not provide any paths, running tests on known directories!\n"
+  echo "The user did not provide any paths, running tests on known directories!"
   set -- "${DEFAULT_PATHS[@]}"
 fi
 
