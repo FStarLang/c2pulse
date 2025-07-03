@@ -1937,12 +1937,8 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       }
       else {
 
-
-        ///If this a call argument, we may need to check what the callee expects this to be. 
-        ///For instance, if the callee expects to pass a reference then in pulse we don't need 
-        /// the bang (!).
-        /// if its not a call, for now, we always attach a bang and release its value.
-
+        /// Expecting Decl ref to add ! since it will consider addof as yes to
+        /// the variable being mutated.
         auto *TermForBaseExpr = getTermFromCExpr(UO->getSubExpr(), MutAnalyzer,
                                                ExprsBefore, Parent, ParentType, Module);
 
