@@ -1,9 +1,16 @@
 #!/bin/bash
 set -euo pipefail
 
+#Default paths to run in case user does not provide any paths.
+DEFAULT_PATHS=(
+  "./test/general/"
+  "./test/issue-related/"
+)
+
+# Check if any arguments are provided, if not use default paths.
 if [ "$#" -lt 1 ]; then
-  echo "Usage: $0 <source1.c | directory>"
-  exit 1
+  echo "The user did not provide any paths, updating snapshots for known directories!\n"
+  set -- "${DEFAULT_PATHS[@]}"
 fi
 
 HERE=$(dirname "$0")
