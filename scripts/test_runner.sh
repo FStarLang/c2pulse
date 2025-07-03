@@ -17,7 +17,6 @@ process_c_file() {
  
   if bash $HERE/run_test.sh "$cfile" &> /dev/null ; then
     echo "  ✔ Success: $cfile"
-    python3 create_lit_tests.py "$cfile" 
   else
     echo "  ❌ Failed: $cfile"
     FAILED_FILES+=("$cfile")

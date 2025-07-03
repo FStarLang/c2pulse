@@ -24,8 +24,7 @@ for file in "${SRC_FILES[@]}"; do
   echo "  Checking: [ $file ] against snapshot [ $snapshot ]"
 
   if diff_output=$(diff -u "$file" "$snapshot"); then
-    echo "    ✔ OK: $file matches snapshot."
-    python3 create_lit_tests.py "$file" 
+    echo "    ✔ OK: $file matches snapshot." 
   else
     echo "    ❌ Mismatch found in $file!"
     echo "$diff_output"

@@ -119,8 +119,7 @@ echo "$fstar_output"
 
 # Check for VC success
 if echo "$fstar_output" | grep -q "All verification conditions discharged successfully"; then
-  echo -e "✔ All VCs discharged. Generating lit tests..."
-  python3 create_lit_tests.py "${C_FILES[@]}"
+  echo -e "✔ All VCs discharged."
 else
   echo -e "❌ Verification failed."
   exit 1
