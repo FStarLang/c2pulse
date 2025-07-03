@@ -1,5 +1,3 @@
-#include "../../include/PulseMacros.h"
-
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>

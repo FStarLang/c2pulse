@@ -1,4 +1,3 @@
-#include "../../include/PulseMacros.h"
 
 REQUIRES((r1 `pts_to` 'w1) ** (r2 `pts_to` 'w2))
 ENSURES((r1 `pts_to` 'w2) ** (r2 `pts_to` 'w1))

@@ -1,4 +1,3 @@
-#include "../../include/PulseMacros.h"
 
 REQUIRES(emp)
 ENSURES(emp)

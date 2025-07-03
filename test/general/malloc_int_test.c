@@ -1,4 +1,3 @@
-#include "../../include/PulseMacros.h"
 
 RETURNS(r:ref int32)
 ENSURES(r |-> v)
