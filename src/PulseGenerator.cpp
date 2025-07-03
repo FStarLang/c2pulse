@@ -2191,7 +2191,6 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
           }
           auto *CastType = CCastExpr->getType()->getPointeeOrArrayElementType();
           CastType->dump();
-          
           assert(false && "malloc not implemented for other than record or typedef types!");
         }
       }
