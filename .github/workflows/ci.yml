@@ -10,8 +10,11 @@ defaults:
 
 jobs:
   main:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     steps:
+    - name: Clean
+      run: find . -delete
+
     - uses: actions/checkout@v3
     - uses: cda-tum/setup-z3@main
       with:
@@ -31,16 +34,16 @@ jobs:
         C=$(git -C external/pulse rev-parse HEAD)
         echo "PULSECOMMIT=$C" >>"$GITHUB_OUTPUT"
  
-    - name: Set-up OCaml
-      uses: ocaml/setup-ocaml@v3
-      with:
-        ocaml-compiler: 5
+    # - name: Set-up OCaml
+    #   uses: ocaml/setup-ocaml@v3
+    #   with:
+    #     ocaml-compiler: 5
 
-    - name: Install some dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y lld
-        opam install --deps-only external/FStar/fstar.opam
+    # - name: Install some dependencies
+    #   run: |
+    #     sudo apt update
+    #     sudo apt install -y lld
+    #     opam install --deps-only external/FStar/fstar.opam
 
     - name: Obtain cached ccache
       uses: actions/cache/restore@v4
@@ -50,16 +53,16 @@ jobs:
 
     - name: Set up ccache compiler
       run: |
-        echo "CCACHE_DIR=$(pwd)/ccache" | sudo tee -a $GITHUB_ENV
-        sudo apt-get install -y ccache
-        mkdir -p $HOME/bin
-        echo "PATH=${HOME}/bin:$PATH" | sudo tee -a $GITHUB_ENV
-        sudo ln -s $(which ccache) $HOME/bin/gcc
-        sudo ln -s $(which ccache) $HOME/bin/g++
-        sudo ln -s $(which ccache) $HOME/bin/cc
-        sudo ln -s $(which ccache) $HOME/bin/cc1
-        sudo ln -s $(which ccache) $HOME/bin/cc1plus
-        sudo ln -s $(which ccache) $HOME/bin/c++
+        echo "CCACHE_DIR=$(pwd)/ccache" | tee -a $GITHUB_ENV
+        # sudo apt-get install -y ccache
+        mkdir -p ./_bin
+        echo "PATH=$(pwd)/_bin:$PATH" | tee -a $GITHUB_ENV
+        ln -s $(which ccache) ./_bin/gcc
+        ln -s $(which ccache) ./_bin/g++
+        ln -s $(which ccache) ./_bin/cc
+        ln -s $(which ccache) ./_bin/cc1
+        ln -s $(which ccache) ./_bin/cc1plus
+        ln -s $(which ccache) ./_bin/c++
 
     - name: Try fetch built LLVM/Clang
       id: cache-llvm
@@ -71,7 +74,7 @@ jobs:
     - name: Build LLVM/Clang
       if: steps.cache-llvm.outputs.cache-hit != 'true'
       run: |
-        C2PULSE_BUILD_TYPE=MinSizeRel ./build_clang.sh
+        C2PULSE_BUILD_TYPE=MinSizeRel ./scripts/build_clang.sh
 
     - name: Save built LLVM/Clang
       if: steps.cache-llvm.outputs.cache-hit != 'true'
@@ -128,8 +131,7 @@ jobs:
     - name: Run tests
       run: |
         eval $(opam env)
-        ./run-lit.sh test/*.c
-        ./run.sh test/*.c
+        ./test_runner.sh
 
     - name: Save ccache
       if: always()
