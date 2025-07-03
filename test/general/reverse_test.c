@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "../include/PulseMacros.h"
 
 REQUIRES(exists* s.arr |-> s)
 REQUIRES(pure (length arr == SizeT.v len))

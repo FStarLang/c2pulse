@@ -63,8 +63,8 @@ fi
 CMD=(
   $C2PULSE "${C_FILES[@]}" \
   --extra-arg-before=-DC2PULSE
-  --extra-arg-before=-include \
-  --extra-arg-before=$(realpath "$HERE/test/include/PulseMacros.h") \
+  #--extra-arg-before=-include \
+  #--extra-arg-before=$(realpath "$HERE/test/include/PulseMacros.h") \
 )
 
 # Run command, capture output and optionally save to log

@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdlib.h>
+#include "../include/PulseMacros.h"
 
 INCLUDE (
     ghost
