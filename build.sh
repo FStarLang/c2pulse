@@ -9,33 +9,19 @@ CLANG_BIN="$LLVM_BUILD_DIR/bin"
 
 #Ensure that LLVM is build first.
 if [[ ! -x "$CLANG_BIN/clang++" ]]; then
-  echo "clang++ not found in $CLANG_BIN!" >&2
-  echo "Please build LLVM first by running ./scripts/build_clang.sh" >&2
-  exit 1
+  echo "clang++ not found in $CLANG_BIN!"
+  echo "Building LLVM first"
+  $HERE/build_clang.sh
 fi
 
-if ! [[ -x "$HERE/external/FStar/bin/fstar.exe" ]]; then
-  echo "Building F*"
-  make -C $HERE/external/FStar -j$(nproc) ADMIT=1
-fi
+echo "Building F*"
+make -C $HERE/external/FStar -j$(nproc) ADMIT=1
 
-if ! [[ -x "$HERE/external/pulse/out/lib/pulse/pulse.cmxs" ]]; then
-  echo "Building Pulse"
-  make -C $HERE/external/pulse -j$(nproc) ADMIT=1 FSTAR_EXE=$(realpath $HERE/external/FStar/bin/fstar.exe)
-fi
+echo "Building Pulse"
+make -C $HERE/external/pulse -j$(nproc) ADMIT=1 FSTAR_EXE=$(realpath $HERE/external/FStar/bin/fstar.exe)
 
-
-if ! [[ -x "./include/pulse/_cache/Pulse.Lib.C.Int32.fst.checked" ]]; then
-  echo "Building Pulse.Lib.C libraries"
-  make -C $HERE/include/pulse -j$(nproc)
-fi
-
-if [[ -x "$CLANG_BIN/c2pulse" ]]; then
-  echo "C2Pulse exists in $CLANG_BIN!"
-  echo "Rebuilding existing project!"
-  ninja -C $LLVM_BUILD_DIR -j $(nproc)
-  exit 0
-fi
+echo "Building Pulse.Lib.C libraries"
+make -C $HERE/include/pulse -j$(nproc)
 
 if [[ ! -x "$LLVM_DIR/clang/tools/c2pulse" ]]; then
 	ln -s "$(pwd)" $LLVM_DIR/clang/tools/c2pulse
