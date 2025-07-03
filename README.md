@@ -45,23 +45,11 @@ sudo apt install opam
 
 ## Building C2Pulse 
 
-### Build Custom LLVM 
-```bash
-git clone --recurse-submodules git@github.com:angelica-moreira/CodeShield.git
-cd CodeShield/external_tools/llvm-project
-mkdir build 
-cd build
-cmake -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DLLVM_PARALLEL_LINK_JOBS=2 -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_LINK_LLVM_DYLIB=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_ENABLE_LLD=ON -DCMAKE_LINKER=lld -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra" -DLLVM_TARGETS_TO_BUILD="X86" ../llvm
-ninja -j $(nproc)
-```
----
-
-## Build C2Pulse from build script
 ```bash
 ./build.sh
 ```
 
-Use **-DCMAKE_BUILD_TYPE=Release** if you are not a developer for faster build and faster
+Set the environment variable `C2PULSE_BUILD_TYPE=Release` if you are not a developer for faster build and faster
 binary executable. This will produce a binary executable in the build/bin directory of the LLVM build. 
 The binary will be called `c2pulse`. You can run the tool as follows:
 
@@ -116,7 +104,7 @@ The plugin rewrites it to a Pulse program stored in file Swap.fst.
 In general, it emits pulse code for the file in a file called
 Filename.fst (capitalizes the first letter)
 
-```pulse
+```fstar
 module Swap
 
 #lang-pulse
