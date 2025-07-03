@@ -2188,10 +2188,21 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
             CastType->dump();
             assert(false &&
                    "Not implemented a non record type in malloc call!\n");
-          }
-          auto *CastType = CCastExpr->getType()->getPointeeOrArrayElementType();
+          } 
+          auto CastType = CCastExpr->getType();
           CastType->dump();
-          assert(false && "malloc not implemented for other than record or typedef types!");
+          auto *PulseTy = getPulseTyFromCTy(CastType);
+          llvm::outs() << "The corresponding pulse type is: " << PulseTy->print() << "\n";
+
+          if (auto *PulsePointerTy = dyn_cast<FStarPointerType>(PulseTy)){
+            auto *NewCall = new AppE();
+            auto *NewCallName = new VarTerm();
+            NewCallName->setVarName("alloc_ref #" + PulsePointerTy->PointerTo->print());
+            NewCall->setCallName(NewCallName);
+            return NewCall;
+          }
+
+          assert(false && "Expected allocated type for malloc to be a reference but found a pulse type that's not a reference!\n");
         }
       }
     } else {
