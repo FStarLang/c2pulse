@@ -364,6 +364,7 @@ public:
 /// An IR node for representing a pulse assignment statement.
 class PulseAssignment : public PulseStmt {
 public:
+  PulseAssignment();
   Term *Lhs;
   Term *Value;
   virtual void dumpPretty() override;

@@ -1,5 +1,5 @@
 #define STR(...) #__VA_ARGS__
-#define REQUIRES(s) [[clang::pulse("requires:" STR(s)"|END")]]
+#define REQUIRES(s) [[clang::pulse("requires:"#s"|END")]] 
 #define ENSURES(s) [[clang::pulse("ensures:" STR(s)"|END")]]
 #define RETURNS(s) [[clang::pulse("returns:" STR(s)"|END")]]
 #define ISARRAY(len) [[clang::pulse("array:" STR(len)"|END")]]

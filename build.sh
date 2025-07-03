@@ -10,7 +10,7 @@ CLANG_BIN="$LLVM_BUILD_DIR/bin"
 #Ensure that LLVM is build first.
 if [[ ! -x "$CLANG_BIN/clang++" ]]; then
   echo "clang++ not found in $CLANG_BIN!" >&2
-  echo "Please build LLVM first by running ./build_clang.sh" >&2
+  echo "Please build LLVM first by running ./scripts/build_clang.sh" >&2
   exit 1
 fi
 
