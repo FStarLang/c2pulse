@@ -1935,6 +1935,22 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
           return GenStmt;
         }
       }
+      else {
+
+
+        ///If this a call argument, we may need to check what the callee expects this to be. 
+        ///For instance, if the callee expects to pass a reference then in pulse we don't need 
+        /// the bang (!).
+        /// if its not a call, for now, we always attach a bang and release its value.
+        
+        auto *TermForBaseExpr = getTermFromCExpr(UO->getSubExpr(), MutAnalyzer,
+                                               ExprsBefore, Parent, ParentType, Module);
+
+        // Wrap address of in a parenthesis.
+        auto *Parenthesis = new Paren();
+        Parenthesis->setInnerExpr(TermForBaseExpr);
+        return Parenthesis;
+      }
 
       llvm::outs() << "Print in Addr of" << "\n";
       E->dump();
