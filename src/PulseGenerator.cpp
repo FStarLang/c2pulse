@@ -1942,7 +1942,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
         ///For instance, if the callee expects to pass a reference then in pulse we don't need 
         /// the bang (!).
         /// if its not a call, for now, we always attach a bang and release its value.
-        
+
         auto *TermForBaseExpr = getTermFromCExpr(UO->getSubExpr(), MutAnalyzer,
                                                ExprsBefore, Parent, ParentType, Module);
 
@@ -2030,9 +2030,26 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     if (CallName != "free") {
       FuncName->setVarName(CallName);
       CallAppE->setCallName(FuncName);
-
+      
+      auto *CallE = CE->getDirectCallee(); 
       for (size_t i = 0; i < CE->getNumArgs(); i++) {
         auto *Arg = CE->getArg(i);
+        auto *Param = CallE->getParamDecl(i);
+
+        //check if this is an addr of.
+        if (auto *UO_Arg = dyn_cast<UnaryOperator>(Arg)){
+          if (UO_Arg->getOpcode() == UO_AddrOf){
+            assert(Param->getType()->isPointerType() && "Expect to pass a reference since function param expects it!");
+            auto *BaseExpr = UO_Arg->getSubExpr();
+            if (auto *DeclSub = dyn_cast<DeclRefExpr>(BaseExpr)){
+                auto *NewVar = new  VarTerm(); 
+                NewVar->setVarName(DeclSub->getDecl()->getNameAsString());
+                CallAppE->pushArg(NewVar);
+                continue;
+            }
+          }
+        }
+
         auto *ArgTerm = getTermFromCExpr(Arg, MutAnalyzer, ExprsBefore, CE,
                                          ParentType, Module);
         CallAppE->pushArg(ArgTerm);
@@ -2090,28 +2107,28 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
   } else if (auto *DRE = dyn_cast<DeclRefExpr>(E)) {
 
     auto *DreDecl = DRE->getDecl();
-    PulseDecl *PDef = nullptr;
-    CallExpr *Call = nullptr;
-    if (Parent){
-      if (auto *C = dyn_cast<CallExpr>(Parent)){
-          Call = C;
-          llvm::outs() << "Print the call Name in DeclRefExpr\n";
-          llvm::outs() << C->getDirectCallee()->getNameAsString() << "\n";
-          llvm::outs() << "End call name print in DeclRefExpr.\n";
-          auto *ClangFunctionDec = C->getDirectCallee();
-          auto It = DeclarationsMap.find(ClangFunctionDec);          
-          if (It != DeclarationsMap.end()){
-            PDef = It->second;
-          }
-      }
-    }
+    // PulseDecl *PDef = nullptr;
+    // CallExpr *Call = nullptr;
+    // if (Parent){
+    //   if (auto *C = dyn_cast<CallExpr>(Parent)){
+    //       Call = C;
+    //       llvm::outs() << "Print the call Name in DeclRefExpr\n";
+    //       llvm::outs() << C->getDirectCallee()->getNameAsString() << "\n";
+    //       llvm::outs() << "End call name print in DeclRefExpr.\n";
+    //       auto *ClangFunctionDec = C->getDirectCallee();
+    //       auto It = DeclarationsMap.find(ClangFunctionDec);          
+    //       if (It != DeclarationsMap.end()){
+    //         PDef = It->second;
+    //       }
+    //   }
+    // }
     
-    PulseFnDefn *PFDef = nullptr;
-    if (PDef){
-      if (auto *PFDefTmp = dyn_cast<PulseFnDefn>(PDef)){
-        PFDef = PFDefTmp;
-      }
-    }
+    // PulseFnDefn *PFDef = nullptr;
+    // if (PDef){
+    //   if (auto *PFDefTmp = dyn_cast<PulseFnDefn>(PDef)){
+    //     PFDef = PFDefTmp;
+    //   }
+    // }
 
     //TODO : Vidush check if this declaration has a attribute attached to it that says something 
     // about if this is head or stack allocated?
@@ -2143,8 +2160,8 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     VTerm->setTag(TermTag::Var);
     VTerm->setVarName(DRE->getDecl()->getNameAsString());
 
-    if (!Call)
-        return VTerm;
+    // if (!Call)
+    //     return VTerm;
 
     return VTerm;
   } else if (auto *ArrSubExpr = dyn_cast<ArraySubscriptExpr>(E)) {
