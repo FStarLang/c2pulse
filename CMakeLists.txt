@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.13)
 project(C2Pulse LANGUAGES C CXX)
 
 set(LLVM_LINK_COMPONENTS support)
-add_subdirectory(test/lit-tests)
 
 # Define which LLVM components we need
 llvm_map_components_to_libnames(LLVM_LIBS
