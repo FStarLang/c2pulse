@@ -726,32 +726,34 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
 
       if (auto *AnnAttr = dyn_cast<AnnotateAttr>(Attr)) {
         if (AnnAttr->getAttrName()->getName() == "pulse") {
-
-          auto Loc = AnnAttr->getLocation();
-          auto ExpansionLoc = SM.getExpansionLoc(Loc);
-          ExpansionLoc.dump(SM);
-          auto PLoc = SM.getPresumedLoc(ExpansionLoc);
-          llvm::outs() << "Print Location Info: for attribute: " << "\n";
-          llvm::outs() << "Filename: " <<  PLoc.getFilename() << "\n";
-          llvm::outs() << "Column: " << PLoc.getColumn() << "\n";
-          llvm::outs() << "LineNumber: " << PLoc.getLine() << "\n";
-          llvm::outs() << "End printing location info for attribute\n";
-          auto Args = AnnAttr->args();
-          llvm::outs() << "\n\n";
-          for (auto *Arg : Args){
-            Arg->dump();
-            llvm::outs() << "\n";
-            auto Loc = Arg->getExprLoc();
-               auto ExpansionLoc = SM.getExpansionLoc(Loc);
-               ExpansionLoc.dump(SM);
-                auto PLoc = SM.getPresumedLoc(ExpansionLoc);
-                llvm::outs() << "Print Location Info for Arg: " << "\n";
-                llvm::outs() << "Filename: " <<  PLoc.getFilename() << "\n";
-                llvm::outs() << "Column: " << PLoc.getColumn() << "\n";
-                llvm::outs() << "LineNumber: " << PLoc.getLine() << "\n";
-                llvm::outs() << "End printing location info for attribute\n";
-                llvm::outs() << "\n\n";
-          }
+          
+          // Uncomment to print location information.
+          // 
+          // auto Loc = AnnAttr->getLocation();
+          // auto ExpansionLoc = SM.getExpansionLoc(Loc);
+          // ExpansionLoc.dump(SM);
+          // auto PLoc = SM.getPresumedLoc(ExpansionLoc);
+          // llvm::outs() << "Print Location Info: for attribute: " << "\n";
+          // llvm::outs() << "Filename: " <<  PLoc.getFilename() << "\n";
+          // llvm::outs() << "Column: " << PLoc.getColumn() << "\n";
+          // llvm::outs() << "LineNumber: " << PLoc.getLine() << "\n";
+          // llvm::outs() << "End printing location info for attribute\n";
+          // auto Args = AnnAttr->args();
+          // llvm::outs() << "\n\n";
+          // for (auto *Arg : Args){
+          //   Arg->dump();
+          //   llvm::outs() << "\n";
+          //   auto Loc = Arg->getExprLoc();
+          //      auto ExpansionLoc = SM.getExpansionLoc(Loc);
+          //      ExpansionLoc.dump(SM);
+          //       auto PLoc = SM.getPresumedLoc(ExpansionLoc);
+          //       llvm::outs() << "Print Location Info for Arg: " << "\n";
+          //       llvm::outs() << "Filename: " <<  PLoc.getFilename() << "\n";
+          //       llvm::outs() << "Column: " << PLoc.getColumn() << "\n";
+          //       llvm::outs() << "LineNumber: " << PLoc.getLine() << "\n";
+          //       llvm::outs() << "End printing location info for attribute\n";
+          //       llvm::outs() << "\n\n";
+          // }
            
           auto Ref = AnnAttr->getAnnotation();
           if (!Ref.empty()) {
