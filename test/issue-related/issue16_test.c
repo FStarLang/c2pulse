@@ -1,3 +1,4 @@
+#include "../include/PulseMacros.h"
 
 ERASED_ARG(#vr:erased _)
 REQUIRES(r |-> vr)
