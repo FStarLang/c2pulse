@@ -11,7 +11,7 @@ CLANG_BIN="$LLVM_BUILD_DIR/bin"
 if [[ ! -x "$CLANG_BIN/clang++" ]]; then
   echo "clang++ not found in $CLANG_BIN!"
   echo "Building LLVM first"
-  $HERE/build_clang.sh
+  $HERE/scripts/build_clang.sh
 fi
 
 echo "Building F*"
