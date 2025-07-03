@@ -80,8 +80,8 @@ jobs:
       if: steps.cache-llvm.outputs.cache-hit != 'true'
       uses: actions/cache/save@v4
       with:
-        path: external/llvm-project/build
-        key: llvm-${{ runner.os }}-${{ runner.arch }}-${{ steps.commits.outputs.LLVMCOMMIT }}
+        path: external/llvm-project
+        key: llvm-2-${{ runner.os }}-${{ runner.arch }}-${{ steps.commits.outputs.LLVMCOMMIT }}
 
     - name: Try fetch built F*
       id: cache-fstar
