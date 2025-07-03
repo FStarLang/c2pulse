@@ -70,6 +70,7 @@ fi
 CMD=(
   $C2PULSE "${C_FILES[@]}" \
   -p "$HERE/external/llvm-project/build/" \
+  --extra-arg-before=-DC2PULSE \
   --extra-arg-before="-resource-dir" \
   --extra-arg-before="$HERE/external/llvm-project/build/lib/clang/21" \
   --extra-arg-before="-isystem" --extra-arg-before="$SYSTEM_CC_INCLUDE" \

@@ -1,4 +1,3 @@
-#define C2PULSE
 #ifdef C2PULSE
 #define STR(...) #__VA_ARGS__
 #define REQUIRES(s) [[clang::pulse("requires:" STR(s)"|END")]] 

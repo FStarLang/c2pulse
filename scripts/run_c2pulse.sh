@@ -18,6 +18,7 @@ echo "Processing all files: $@"
 
 ../external/llvm-project/build/bin/c2pulse "$@" \
   -p ./external/llvm-project/build/ \
+  --extra-arg-before=-DC2PULSE \
   --extra-arg-before="-resource-dir" \
   --extra-arg-before="./external/llvm-project/build/lib/clang/21" \
   --extra-arg-before="-isystem" \

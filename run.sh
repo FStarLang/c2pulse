@@ -53,6 +53,7 @@ set -- "${POSITIONAL_ARGS[@]}"
 # Prepare the command invocation as a variable for reuse
 CMD=( $C2PULSE "$@" \
   -p $HERE/external/llvm-project/build/ \
+  --extra-arg-before=-DC2PULSE \
   --extra-arg-before="-resource-dir" \
   --extra-arg-before="$HERE/external/llvm-project/build/lib/clang/21" \
   --extra-arg-before="-isystem" \
