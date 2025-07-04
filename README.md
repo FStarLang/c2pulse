@@ -54,21 +54,10 @@ binary executable. This will produce a binary executable in the build/bin direct
 The binary will be called `c2pulse`. You can run the tool as follows:
 
 ```bash
-./build/c2pulse /path/to/test.c \
-  -p build \
-  --extra-arg-before="-resource-dir" \
-  --extra-arg-before="path/to/llvm-project/build/lib/clang/21" \
-  --extra-arg-before="-x" \
-  --extra-arg-before="c" \
-  --extra-arg-before="-std=c11" \
-  --extra-arg-before="-c" \
-  -func="<function name>" \
-  -mode="anf"
+./build/c2pulse /path/to/test.c
 ```
 
 Alternatively, please find a `run_c2pulse.sh` scipt in the root directory.
-Please make sure you add correct environment variable in `run_c2pulse.sh` script. You will need to add some system include files. You may also want to add 
-The include path of the compiler you used to build LLVM in `SYSTEM_CC_INCLUDE`.
 
 ---
 
