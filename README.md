@@ -54,7 +54,7 @@ binary executable. This will produce a binary executable in the build/bin direct
 The binary will be called `c2pulse`. You can run the tool as follows:
 
 ```bash
-./build/c2pulse /path/to/test.c
+./external/llvm-project/build/bin/c2pulse /path/to/test.c
 ```
 
 Alternatively, please find a `run_c2pulse.sh` scipt in the root directory.
