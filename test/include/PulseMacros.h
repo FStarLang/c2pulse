@@ -9,6 +9,7 @@
 #define ERASED_ARG(arg) [[clang::pulse("erased_arg:" STR(arg)"|END")]]
 #define ASSERT(message) [[clang::pulse("assert:" STR(message) "|END")]]
 #define HEAPALLOCATED(message) [[clang::pulse("heap_allocated:" STR(message) "|END")]]
+#define EXPECT_FAILURE(...) [[clang::pulse("expect_failure:" STR(__VA_ARGS__)"|END")]]
 
 #define CONCAT_IND(x, y) x ## y
 #define CONCAT(x, y) CONCAT_IND(x, y)
@@ -27,4 +28,5 @@
 #define CONCAT_IND(x, y)
 #define CONCAT(x, y)
 #define INCLUDE(...)
+#define EXPECT_FAILURE(...)
 #endif

@@ -761,6 +761,29 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
             PulseAnnKind AnnKind = getPulseAnnKindFromString(
                 AnnAttr->getAnnotation().data(), Match);
             switch (AnnKind) {
+            case PulseAnnKind::ExpectFailure: {
+              StringRef MatchRef(Match);
+              llvm::SmallVector<StringRef, 4> CommaSeperatedItems;
+              MatchRef.split(CommaSeperatedItems, ",");
+              auto *NewAttr = new Name();
+              
+              if (CommaSeperatedItems.empty()){
+                NewAttr->setName("@@expect_failure");
+                FDefn->Attr.push_back(NewAttr);
+                break;
+              }
+
+              std::string AttrStr = "@@expect_failure [";
+              for (auto &Item : CommaSeperatedItems){
+               auto RTrimmed = Item.rtrim();
+               auto LTrimmed = RTrimmed.ltrim();
+               AttrStr.append(LTrimmed);
+              }
+              AttrStr.append("]");
+              NewAttr->setName(AttrStr);
+              FDefn->Attr.push_back(NewAttr);
+              break;
+            }
             case PulseAnnKind::Requires: {
               auto *NewRequires = new Requires();
               NewRequires->Ann = Match;
