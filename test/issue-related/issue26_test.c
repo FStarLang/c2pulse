@@ -56,4 +56,6 @@ void create_and_move()
 {
   point *p = create_point(0, 0);
   move_alt(p, 1, 1);
+  LEMMA(unfold(is_point); point_explode p; point_recover p);
+  free(p);
 }
