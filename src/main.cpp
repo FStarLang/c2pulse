@@ -48,7 +48,14 @@ int main(int argc, const char **argv) {
     auto Tool = std::make_unique<ClangTool>(
         OptionsParser->getCompilations(), SourceFiles
     );
-    
+
+    int Result = Tool->run(newFrontendActionFactory<SyntaxOnlyAction>().get());
+    if (Result != 0) {
+        llvm::errs() << "c2pulse cannot compile the C files due to a syntax error!\n";
+        llvm::errs() << "Exiting..." << "\n";
+        return Result;
+    }
+
     LLVM_DEBUG({
         for (const auto &file : SourceFiles) {
             llvm::dbgs() << "Parsing: " << file << "\n";
