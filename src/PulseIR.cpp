@@ -74,18 +74,16 @@ PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data,
   }
 
   std::array<std::string, 10> StartOfAnnotations = {
-      "requires:", "ensures:",    "array:",          "lemma:",
-      "returns:",  "erased_arg:", "heap_allocated:", "assert:", 
-      "includes:", "expect_failure:"
-    };
+      "requires:", "ensures:",       "array:",          "lemma:",
+      "returns:",  "erased_arg:",    "heap_allocated:", "assert:",
+      "includes:", "expect_failure:"};
 
   std::array<PulseAnnKind, 10> ArrayAnnotationKinds = {
       PulseAnnKind::Requires,      PulseAnnKind::Ensures,
       PulseAnnKind::IsArray,       PulseAnnKind::LemmaStatement,
       PulseAnnKind::Returns,       PulseAnnKind::ErasedArg,
-      PulseAnnKind::HeapAllocated, PulseAnnKind::Assert, 
-      PulseAnnKind::Includes, PulseAnnKind::ExpectFailure
-      };
+      PulseAnnKind::HeapAllocated, PulseAnnKind::Assert,
+      PulseAnnKind::Includes,      PulseAnnKind::ExpectFailure};
 
   std::string EndDelimiter = "|END";
   size_t NumAnnotations = StartOfAnnotations.size();
