@@ -113,6 +113,15 @@ point_recover p; fold_is_point p;
 p;
 }
 
+fn create_and_move ()
+{
+let p = (create_point 0l 0l);
+(move_alt p 1l 1l);
+assert(is_point p (1, 1));
+unfold is_point;
+(point_free p);
+}
+
 let is_point_curry (p:ref point) (x y : int) : slprop = exists* v. point_pred p v ** pure (as_int v.px == x) ** pure (as_int v.py == y)
 fn move_curry
 (p : ref point)
