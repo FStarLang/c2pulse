@@ -2027,6 +2027,12 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       auto *CallE = CE->getDirectCallee(); 
       for (size_t i = 0; i < CE->getNumArgs(); i++) {
         auto *Arg = CE->getArg(i);
+
+        //Vidush: TODO: check: for void argument types we don't want to generated any code. 
+        if (Arg->getType()->isVoidType()){
+          continue;
+        }
+
         auto *Param = CallE->getParamDecl(i);
 
         //check if this is an addr of.
@@ -2044,7 +2050,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
         }
 
         auto *ArgTerm = getTermFromCExpr(Arg, MutAnalyzer, ExprsBefore, CE,
-                                         ParentType, Module);
+                                         Arg->getType(), Module);
         CallAppE->pushArg(ArgTerm);
       }
     } else {
@@ -2213,11 +2219,13 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
             CastType->dump();
             assert(false &&
                    "Not implemented a non record type in malloc call!\n");
-          } 
+          }
+          llvm::outs() << "Print the type of cast!" << "\n"; 
           auto CastType = CCastExpr->getType();
           CastType->dump();
+          llvm::outs() << "The corresponding pulse type is: ";
           auto *PulseTy = getPulseTyFromCTy(CastType);
-          llvm::outs() << "The corresponding pulse type is: " << PulseTy->print() << "\n";
+          llvm::outs() << PulseTy->print() << "\n";
 
           if (auto *PulsePointerTy = dyn_cast<FStarPointerType>(PulseTy)){
             auto *NewCall = new AppE();
