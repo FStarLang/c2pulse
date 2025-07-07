@@ -16,8 +16,6 @@
 #include "clang/Basic/SourceLocation.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/StringRef.h"
-#include "llvm/CodeGen/TargetOpcodes.h"
-#include "llvm/Support/ARMBuildAttributes.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
@@ -768,7 +766,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
               llvm::SmallVector<StringRef, 4> CommaSeperatedItems;
               MatchRef.split(CommaSeperatedItems, ",");
               auto *NewAttr = new Name();
-              
+
               if (CommaSeperatedItems.empty()) {
                 NewAttr->setName("[@@expect_failure]");
                 FDefn->Attr.push_back(NewAttr);
