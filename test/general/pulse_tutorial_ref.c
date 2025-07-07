@@ -133,7 +133,6 @@ void incr (int *r)
 
 
 
-/*
 REQUIRES(emp)
 RETURNS(i:int32)
 ENSURES(pure (as_int i == 1))
@@ -144,7 +143,7 @@ int one()
     return i;
 }
 
-EXPECT_FAILURE(19)
+/*EXPECT_FAILURE(19)
 RETURNS(s)
 ENSURES(s |-> 0l)
 int* refs_are_scoped()

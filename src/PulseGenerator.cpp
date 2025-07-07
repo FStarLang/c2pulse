@@ -513,36 +513,22 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
     }
     NewModul->Decls.push_back(GenericPredicate);
 
-    //4. A utility function to heap u32_pair_struct_allocate and u32_pair_struct_free a u32_pair_struct
-    //assume val u32_pair_struct_allocated (x: ref u32_pair_struct) : slprop
     
     auto *UtilityFunctionHeap = new GenericDecl();
-    UtilityFunctionHeap->Ident = "assume ";
-    UtilityFunctionHeap->Ident += "val "; 
-    UtilityFunctionHeap->Ident += StructName + "_allocated ";
-    UtilityFunctionHeap->Ident += "(x: ref ";
-    UtilityFunctionHeap->Ident += StructName + ") : slprop";
-    UtilityFunctionHeap->Ident += "\n\n";
-
-    // fn u32_pair_struct_alloc ()
-    // returns x:ref u32_pair_struct
-    // ensures u32_pair_struct_allocated x
-    // ensures exists* v. u32_pair_struct_pred x v
-    // { admit () }
 
     UtilityFunctionHeap->Ident += "fn " + StructName + "_alloc ()\n";
     UtilityFunctionHeap->Ident += "returns x:ref " + StructName + "\n";
-    UtilityFunctionHeap->Ident += "ensures " + StructName + "_allocated x\n";
+    UtilityFunctionHeap->Ident += "ensures freeable x\n";
     UtilityFunctionHeap->Ident += "ensures exists* v. " + StructName + "_pred x v\n";
     UtilityFunctionHeap->Ident += "{ admit () }\n\n";
 
     // fn u32_pair_struct_free (x:ref u32_pair_struct)
-    // requires u32_pair_struct_allocated x
+    // requires freeable x
     // requires exists* v. u32_pair_struct_pred x v
     // { admit () }
 
     UtilityFunctionHeap->Ident += "fn " + StructName + "_free " + "(x:ref " + StructName + ")\n";
-    UtilityFunctionHeap->Ident += "requires " + StructName + "_allocated x\n";
+    UtilityFunctionHeap->Ident += "requires freeable x\n";
     UtilityFunctionHeap->Ident += "requires exists* v. " + StructName + "_pred x v\n";
     UtilityFunctionHeap->Ident += "{ admit() }\n\n";
 
@@ -2043,7 +2029,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
                                            ParentType, Module);
           CallAppE->pushArg(ArgTerm);
         } else {
-          FuncName->setVarName(CallName);
+          FuncName->setVarName(CallName + "_ref");
           CallAppE->setCallName(FuncName);
           auto *ArgTerm = getTermFromCExpr(Arg, MutAnalyzer, ExprsBefore, CE,
                                            ParentType, Module);
@@ -2177,7 +2163,6 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
             if (auto *RT = dyn_cast<RecordType>(DesugaredElemTy)) {
               // const RecordDecl *RD = RT->getDecl();
               auto RecordName = TT->getDecl()->getDeclName();
-              Module->insertModule("module Box = Pulse.Lib.Box");
               auto *NewCall = new AppE();
               auto *NewCallName = new VarTerm();
               NewCallName->setVarName(RecordName.getAsString() + "_alloc");

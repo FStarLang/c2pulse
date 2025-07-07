@@ -10,7 +10,7 @@ typedef struct _u32_pair_struct {
 
 REQUIRES(emp)
 RETURNS(x:ref u32_pair_struct)
-ENSURES(u32_pair_struct_allocated x)
+ENSURES(freeable x)
 ENSURES((u32_pair_struct_pred x { first = 0ul; second = 1ul }))
 u32_pair_struct* new_u32_pair_struct ()
 {
