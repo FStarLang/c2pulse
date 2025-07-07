@@ -34,16 +34,14 @@ exists* (y: point). (x |-> y) **
 (y.px |-> s.px) **
 (y.py |-> s.py)
 
-assume val point_allocated (x: ref point) : slprop
-
 fn point_alloc ()
 returns x:ref point
-ensures point_allocated x
+ensures freeable x
 ensures exists* v. point_pred x v
 { admit () }
 
 fn point_free (x:ref point)
-requires point_allocated x
+requires freeable x
 requires exists* v. point_pred x v
 { admit() }
 

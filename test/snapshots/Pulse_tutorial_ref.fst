@@ -148,3 +148,13 @@ ensures exists* w. (r |-> w) ** pure (as_int w == as_int vr + 1)
 {
 r := (Int32.add (! r) 1l);
 }
+
+fn one ()
+requires emp
+returns i:int32
+ensures pure (as_int i == 1)
+{
+let mut i = 0l;
+(incr i);
+(! i);
+}

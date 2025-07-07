@@ -23,3 +23,55 @@ ensures pure False
 freebie();
 0l;
 }
+
+fn new_heap_ref
+(v : Int32.t)
+returns i:ref int32
+ensures i |-> v
+ensures freeable i
+{
+let r = alloc_ref #Int32.t ();
+r := v;
+r;
+}
+
+fn last_value_of
+(r : ref Int32.t)
+(#w:_)
+requires (r |-> w) ** freeable r
+returns i:int32
+ensures pure (i == w)
+{
+let v = (! r);
+(free_ref r);
+v;
+}
+
+fn copy_free_box
+(r : ref Int32.t)
+(#w:_)
+requires r |-> w
+requires freeable r
+returns s:ref int32
+ensures s |-> w
+ensures freeable s
+{
+let v = (! r);
+(free_ref r);
+let s = alloc_ref #Int32.t ();
+s := v;
+s;
+}
+
+fn copy_box
+(r : ref Int32.t)
+(#w:_)
+requires r |-> w
+returns s:ref int32
+ensures (r |-> w) ** (s |-> w) ** freeable s
+{
+let v = (! r);
+let s = alloc_ref #Int32.t ();
+s := v;
+s;
+}

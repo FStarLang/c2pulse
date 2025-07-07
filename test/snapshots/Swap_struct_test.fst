@@ -5,7 +5,6 @@ module Swap_struct_test
 open Pulse
 open Pulse.Lib.C
 
-module Box = Pulse.Lib.Box
 
 
 noeq
@@ -27,16 +26,14 @@ exists* (y: u32_pair_struct). (x |-> y) **
 (y.first |-> s.first) **
 (y.second |-> s.second)
 
-assume val u32_pair_struct_allocated (x: ref u32_pair_struct) : slprop
-
 fn u32_pair_struct_alloc ()
 returns x:ref u32_pair_struct
-ensures u32_pair_struct_allocated x
+ensures freeable x
 ensures exists* v. u32_pair_struct_pred x v
 { admit () }
 
 fn u32_pair_struct_free (x:ref u32_pair_struct)
-requires u32_pair_struct_allocated x
+requires freeable x
 requires exists* v. u32_pair_struct_pred x v
 { admit() }
 
@@ -56,7 +53,7 @@ ensures exists* w. u32_pair_struct_pred x w ** pure (w == {first = a0; second = 
 fn new_u32_pair_struct ()
 requires emp
 returns x:ref u32_pair_struct
-ensures u32_pair_struct_allocated x
+ensures freeable x
 ensures (u32_pair_struct_pred x { first = 0ul; second = 1ul })
 {
 let x = u32_pair_struct_alloc ();

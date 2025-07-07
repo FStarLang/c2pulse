@@ -26,16 +26,14 @@ exists* (y: u32_pair_struct). (x |-> y) **
 (y.first |-> s.first) **
 (y.second |-> s.second)
 
-assume val u32_pair_struct_allocated (x: ref u32_pair_struct) : slprop
-
 fn u32_pair_struct_alloc ()
 returns x:ref u32_pair_struct
-ensures u32_pair_struct_allocated x
+ensures freeable x
 ensures exists* v. u32_pair_struct_pred x v
 { admit () }
 
 fn u32_pair_struct_free (x:ref u32_pair_struct)
-requires u32_pair_struct_allocated x
+requires freeable x
 requires exists* v. u32_pair_struct_pred x v
 { admit() }
 
@@ -71,16 +69,14 @@ exists* (y: u64_pair_struct). (x |-> y) **
 (y.first |-> s.first) **
 (y.second |-> s.second)
 
-assume val u64_pair_struct_allocated (x: ref u64_pair_struct) : slprop
-
 fn u64_pair_struct_alloc ()
 returns x:ref u64_pair_struct
-ensures u64_pair_struct_allocated x
+ensures freeable x
 ensures exists* v. u64_pair_struct_pred x v
 { admit () }
 
 fn u64_pair_struct_free (x:ref u64_pair_struct)
-requires u64_pair_struct_allocated x
+requires freeable x
 requires exists* v. u64_pair_struct_pred x v
 { admit() }
 
