@@ -23,7 +23,8 @@ enum class PulseAnnKind {
   LemmaStatement,
   Assert,
   Unknown,
-  Includes
+  Includes,
+  ExpectFailure
 };
 
 /// Struct for Pulse annotations.

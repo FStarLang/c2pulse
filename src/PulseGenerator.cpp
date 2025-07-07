@@ -1,4 +1,5 @@
 #include "PulseGenerator.h"
+#include "Globals.h"
 #include "PulseIR.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Attrs.inc"
@@ -13,8 +14,8 @@
 #include "clang/Analysis/Analyses/ExprMutationAnalyzer.h"
 #include "clang/Basic/Module.h"
 #include "clang/Basic/SourceLocation.h"
+#include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/StringRef.h"
-#include "llvm/CodeGen/TargetOpcodes.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
@@ -25,7 +26,6 @@
 #include <sstream>
 #include <string>
 #include <utility>
-#include "Globals.h"
 
 using namespace clang;
 
@@ -747,6 +747,44 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
             PulseAnnKind AnnKind = getPulseAnnKindFromString(
                 AnnAttr->getAnnotation().data(), Match);
             switch (AnnKind) {
+            case PulseAnnKind::ExpectFailure: {
+              StringRef MatchRef(Match);
+              llvm::SmallVector<StringRef, 4> CommaSeperatedItems;
+              MatchRef.split(CommaSeperatedItems, ",");
+              auto *NewAttr = new Name();
+
+              if (CommaSeperatedItems.empty()) {
+                NewAttr->setName("[@@expect_failure]");
+                FDefn->Attr.push_back(NewAttr);
+                break;
+              }
+
+              if (!CommaSeperatedItems.empty() &&
+                  llvm::all_of(CommaSeperatedItems,
+                               [](const llvm::StringRef &item) {
+                                 return item.empty();
+                               })) {
+                NewAttr->setName("[@@expect_failure]");
+                FDefn->Attr.push_back(NewAttr);
+                break;
+              }
+
+              std::string AttrStr = "[@@expect_failure [";
+              size_t Counter = 0;
+              for (auto &Item : CommaSeperatedItems) {
+                auto RTrimmed = Item.rtrim();
+                auto LTrimmed = RTrimmed.ltrim();
+                AttrStr.append(LTrimmed);
+                if (Counter < CommaSeperatedItems.size() - 1) {
+                  AttrStr.append(";");
+                }
+                Counter++;
+              }
+              AttrStr.append("]]");
+              NewAttr->setName(AttrStr);
+              FDefn->Attr.push_back(NewAttr);
+              break;
+            }
             case PulseAnnKind::Requires: {
               auto *NewRequires = new Requires();
               NewRequires->Ann = Match;
