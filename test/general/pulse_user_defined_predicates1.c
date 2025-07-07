@@ -93,3 +93,24 @@ point* create_point(int x, int y)
 //   // ASSERT(is_point p (1, 1));
 //   // free(p);
 // }
+
+INCLUDE( 
+  let is_point_curry (p:ref point) (x y : int)
+  : slprop
+  = exists* v. point_pred p v ** pure (as_int v.px == x) ** pure (as_int v.py == y)
+)
+
+
+
+ERASED_ARG(#x #y:erased _)
+REQUIRES(is_point_curry p x y)
+REQUIRES(pure <| fits (+) x (as_int dx))
+REQUIRES(pure <| fits (+) y (as_int dy))
+ENSURES(is_point_curry p (x + as_int dx) (y + as_int dy))
+void move_curry(point *p, int dx, int dy)
+{
+  LEMMA(unfold is_point_curry; point_explode p);
+  p->px = p->px + dx;
+  p->py = p->py + dy;
+  LEMMA(point_recover p; fold is_point_curry);
+}

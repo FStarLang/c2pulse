@@ -112,3 +112,20 @@ Mkpoint?.py (! p) := y;
 point_recover p; fold_is_point p;
 p;
 }
+
+let is_point_curry (p:ref point) (x y : int) : slprop = exists* v. point_pred p v ** pure (as_int v.px == x) ** pure (as_int v.py == y)
+fn move_curry
+(p : ref point)
+(dx : Int32.t)
+(dy : Int32.t)
+(#x #y:erased _)
+requires is_point_curry p x y
+requires pure <| fits (+) x (as_int dx)
+requires pure <| fits (+) y (as_int dy)
+ensures is_point_curry p (x + as_int dx) (y + as_int dy)
+{
+unfold is_point_curry; point_explode p;
+Mkpoint?.px (! p) := (Int32.add (!(!p).px) dx);
+Mkpoint?.py (! p) := (Int32.add (!(!p).py) dy);
+point_recover p; fold is_point_curry;
+}
