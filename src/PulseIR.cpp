@@ -487,6 +487,16 @@ void Term::printTag() { llvm::outs() << Tag << "\n"; }
 
 void Term::dumpPretty() { printTag(); }
 
+
+Project::Project(){
+  Tag = TermTag::Project;
+}
+
+void Project::dumpPretty() {
+  BaseTerm->dumpPretty(); 
+  llvm::outs() << "." + MemberName;
+}
+
 void Lemma::dumpPretty() {
   for (auto lemma : lemmas) {
     llvm::outs() << lemma << "\n";

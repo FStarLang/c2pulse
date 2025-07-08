@@ -10,7 +10,6 @@ DEFAULT_PATHS=(
 SHOULD_FAIL=(
  "./test/issue-related/issue27_test.c"
  "./test/issue-related/issue22_test.c"
- "./test/general/stack_allocated_point.c" 
 )
 
 is_expected_to_fail() {

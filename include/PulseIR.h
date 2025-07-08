@@ -162,6 +162,7 @@ enum class TermTag {Const, Paren, Var, Name, AppE, FStarType, FStarPointerType, 
                     Requires,
                     Returns,
                     Lemma, 
+                    Project,
                     LemmaStatement};
 
 /// A base class for term.                    
@@ -174,9 +175,21 @@ public:
   virtual ~Term() = default;
 };
 
+/// An Ast node for projections. 
+/// This is meant to use for a member acces.
+/// for a stack allocated object or a reference.
+class Project : public Term {
+  public: 
+    Project(); 
+    Term* BaseTerm; 
+    std::string MemberName;
+    virtual void dumpPretty() override; 
+    static bool classof(const Term *T) { return T->Tag == TermTag::Project; }
+};
+
 /// Store Pulse Lemmas.
 /// Store a list of pulse Lemmas.
-class Lemma : public Term{
+class Lemma : public Term {
   public:
     Lemma();
     std::vector<std::string> lemmas;

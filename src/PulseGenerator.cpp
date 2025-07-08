@@ -210,12 +210,15 @@ void PulseVisitor::inferArrayTypesStmt(Stmt *InnerStmt) {
           DeclTyMap.insert(std::make_pair(VD, VD->getType()));
         }
 
-        auto *Init = VD->getInit();
-        if (const CallExpr *Call = dyn_cast<CallExpr>(
-                Init->IgnoreParenImpCasts()->IgnoreCasts())) {
-          if (const FunctionDecl *FD = Call->getDirectCallee()) {
-            if (FD->getName() == "malloc") {
-              IsAllocatedOnHeap.insert(VD);
+        if (auto *Init = VD->getInit()) {
+          auto *InitNoCasts = Init->IgnoreParenImpCasts()->IgnoreCasts();
+          if (!InitNoCasts)
+            break;
+          if (const CallExpr *Call = dyn_cast<CallExpr>(InitNoCasts)) {
+            if (const FunctionDecl *FD = Call->getDirectCallee()) {
+              if (FD->getName() == "malloc") {
+                IsAllocatedOnHeap.insert(VD);
+              }
             }
           }
         }
@@ -513,9 +516,61 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
     }
     NewModul->Decls.push_back(GenericPredicate);
 
-    
-    auto *UtilityFunctionHeap = new GenericDecl();
+    // Auto Generated functions for Stack Allocated Structs.
+    // assume val point_spec_default : point_spec
 
+    auto StructPrefix = StructName + "_var";
+    auto StructPrefixSpec = StructPrefix + "_spec";
+
+    auto *StructSpecDefault = new GenericDecl();
+    StructSpecDefault->Ident = "assume val " + StructName +
+                               "_spec_default : " + StructName + "_spec\n";
+    NewModul->Decls.push_back(StructSpecDefault);
+
+    // assume val point_default (ps:point_spec) : point
+
+    auto *StructDefault = new GenericDecl();
+    StructDefault->Ident = "assume val " + StructName + "_default ";
+    StructDefault->Ident += "(" + StructPrefixSpec + ":" + StructName +
+                            "_spec)" + " : " + StructName + "\n";
+    NewModul->Decls.push_back(StructDefault);
+
+    // ghost
+    // fn point_pack (p:ref point) (#ps:point_spec)
+    // requires p |-> point_default ps
+    // ensures exists* v. point_pred p v ** pure (v == ps)
+    // { admit() }
+
+    auto *GhostPack = new GenericDecl();
+    GhostPack->Ident = "ghost\n";
+    GhostPack->Ident += "fn " + StructName + "_pack (" + StructPrefix +
+                        ":ref " + StructName + ") " + "(#" + StructPrefixSpec +
+                        ":" + StructName + "_spec)\n";
+    GhostPack->Ident += "requires " + StructPrefix + "|-> " + StructName +
+                        "_default " + StructPrefixSpec + "\n";
+    GhostPack->Ident += "ensures exists* v. " + StructName + "_pred " +
+                        StructPrefix + " v ** pure (v == " + StructPrefixSpec +
+                        ")\n";
+    GhostPack->Ident += "{ admit() }\n";
+    NewModul->Decls.push_back(GhostPack);
+
+    // ghost
+    // fn point_unpack (p:ref point)
+    // requires exists* v. point_pred p v
+    // ensures exists* u. p |-> u
+    // { admit() }
+
+    auto *GhostUnpack = new GenericDecl();
+    GhostUnpack->Ident = "ghost\n";
+    GhostUnpack->Ident += "fn " + StructName + "_unpack " + "(" + StructPrefix +
+                          ":ref " + StructName + ")\n";
+    GhostUnpack->Ident +=
+        "requires exists* v. " + StructName + "_pred " + StructPrefix + " v \n";
+    GhostUnpack->Ident += "ensures exists* u. " + StructPrefix + " |-> u\n";
+    GhostUnpack->Ident += "{ admit() }\n";
+    NewModul->Decls.push_back(GhostUnpack);
+
+    auto *UtilityFunctionHeap = new GenericDecl();
     UtilityFunctionHeap->Ident += "fn " + StructName + "_alloc ()\n";
     UtilityFunctionHeap->Ident += "returns x:ref " + StructName + "\n";
     UtilityFunctionHeap->Ident += "ensures freeable x\n";
@@ -1242,7 +1297,38 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
           return AppendLet;
         }
+        
+        if (const TypedefType *TT = VD->getType()->getAs<TypedefType>()) {
+
+            auto *TypedefDecl = TT->getDecl();
+            auto StructName = TypedefDecl->getDeclName();
+            llvm::outs() << "Typedef name: " << StructName << "\n";
+
+            if (Analyzer->isMutated(VD)){
+
+              auto *NewMutLet = new LetBinding(); 
+              NewMutLet->Qualifier = MutOrRef::MUT;
+
+              NewMutLet->VarName = VD->getNameAsString();
+
+              auto *Rhs = new Name(); 
+              Rhs->setName(StructName.getAsString() + "_default " + StructName.getAsString() + "_spec_default");
+
+              NewMutLet->LetInit = Rhs;
+
+              return NewMutLet;
+            }
+            
+            //Implement case when the allocation is not mutated.
+            // A normal let bind
+            assert(false && "Did not implemented case when struct allocation is not mutated!\n");
+        }
+
+
+        assert(false && "Hit unimplemented case in declaration statement!\n");
+      
       }
+      assert(false && "Declarations other than variable declarations not implemented!\n");
     }
 
   } else if (auto *BO = dyn_cast<BinaryOperator>(S)) {
@@ -1357,15 +1443,26 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           // Wrap this deref in a parenthesis.
           auto *ParenthesisDeref = new Paren();
           ParenthesisDeref->setInnerExpr(DerefAppE);
+          
+          //Hack to check if the base type is a pointer. 
+          //Leveraging the C syntax.
+          bool BaseIsPointer = ME->isArrow() ? true : false;
 
-          auto *PulseCall = new AppE();
-          auto *CallName = new VarTerm();
-
-          CallName->setVarName("Mk" + StructName + "?." + MemberName.getAsString());
-          PulseCall->setCallName(CallName);
-
-          PulseCall->pushArg(ParenthesisDeref);
-          Assignment->Lhs = PulseCall;
+          if (BaseIsPointer){
+            auto *PulseCall = new AppE();
+            auto *CallName = new VarTerm();
+            
+            CallName->setVarName("Mk" + StructName + "?." + MemberName.getAsString());
+            PulseCall->setCallName(CallName);
+            PulseCall->pushArg(ParenthesisDeref);
+            Assignment->Lhs = PulseCall;
+          }
+          else {
+            auto *NewProjection = new Project();
+            NewProjection->BaseTerm = ParenthesisDeref;
+            NewProjection->MemberName = MemberName.getAsString();
+            Assignment->Lhs = NewProjection; 
+          }
 
           // auto It = TrackStructExplodeAndRecover.find(VD);
           // if (It == TrackStructExplodeAndRecover.end()){

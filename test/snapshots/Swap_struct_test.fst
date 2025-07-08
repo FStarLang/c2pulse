@@ -26,6 +26,22 @@ exists* (y: u32_pair_struct). (x |-> y) **
 (y.first |-> s.first) **
 (y.second |-> s.second)
 
+assume val u32_pair_struct_spec_default : u32_pair_struct_spec
+
+assume val u32_pair_struct_default (u32_pair_struct_var_spec:u32_pair_struct_spec) : u32_pair_struct
+
+ghost
+fn u32_pair_struct_pack (u32_pair_struct_var:ref u32_pair_struct) (#u32_pair_struct_var_spec:u32_pair_struct_spec)
+requires u32_pair_struct_var|-> u32_pair_struct_default u32_pair_struct_var_spec
+ensures exists* v. u32_pair_struct_pred u32_pair_struct_var v ** pure (v == u32_pair_struct_var_spec)
+{ admit() }
+
+ghost
+fn u32_pair_struct_unpack (u32_pair_struct_var:ref u32_pair_struct)
+requires exists* v. u32_pair_struct_pred u32_pair_struct_var v 
+ensures exists* u. u32_pair_struct_var |-> u
+{ admit() }
+
 fn u32_pair_struct_alloc ()
 returns x:ref u32_pair_struct
 ensures freeable x

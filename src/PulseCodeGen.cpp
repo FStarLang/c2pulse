@@ -334,8 +334,16 @@ std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
       OS << Lemma;
   } else if (LemmaStatement *S = dyn_cast<LemmaStatement>(T)) {
     OS << S->Lemma;
-  } else {
+  }
+  else if (Project *P = dyn_cast<Project>(T)){
+    OS << generateCodeFromTerm(OS, P->BaseTerm);
+    OS << PulseSyntax::Dot;
+    OS << P->MemberName;
+  } 
+  
+  else {
     T->dumpPretty();
+    llvm::outs() << "\n\n";
     assert(false && "Did not expect Term node in generateCodeFromTerm");
   }
 

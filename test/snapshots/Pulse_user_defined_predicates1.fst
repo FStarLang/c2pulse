@@ -40,6 +40,22 @@ exists* (y: point). (x |-> y) **
 (y.px |-> s.px) **
 (y.py |-> s.py)
 
+assume val point_spec_default : point_spec
+
+assume val point_default (point_var_spec:point_spec) : point
+
+ghost
+fn point_pack (point_var:ref point) (#point_var_spec:point_spec)
+requires point_var|-> point_default point_var_spec
+ensures exists* v. point_pred point_var v ** pure (v == point_var_spec)
+{ admit() }
+
+ghost
+fn point_unpack (point_var:ref point)
+requires exists* v. point_pred point_var v 
+ensures exists* u. point_var |-> u
+{ admit() }
+
 fn point_alloc ()
 returns x:ref point
 ensures freeable x

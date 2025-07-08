@@ -26,8 +26,7 @@ exists* (y: point). (x |-> y) **
 
 assume val point_spec_default : point_spec
 
-assume
-val point_default (ps:point_spec) : point
+assume val point_default (ps:point_spec) : point
 
 ghost
 fn point_pack (p:ref point) (#ps:point_spec)
