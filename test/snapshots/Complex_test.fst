@@ -50,7 +50,7 @@ fn rec recursiveFunction
 requires pure False
 returns res : Int32.t
 {
-if((Int32.eq x limit))
+if((Int32.gte x limit))
 {
 x;
 }
@@ -75,7 +75,7 @@ fn conditionalProcessing
 requires pure (abs (Int32.v x) < 1000 /\ abs (Int32.v y) < 1000)
 returns res : Int32.t
 {
-if((Int32.eq (Int32.add ((Int32.mul x y)) 2l) 0l))
+if((Int32.eq (Int32.rem ((Int32.mul x y)) 2l) 0l))
 {
 (sum (triple x) (square (Int32.sub y x)));
 }

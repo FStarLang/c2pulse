@@ -186,6 +186,8 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
       return lookupSymbol(SymbolTable::Int32_Mul);
     } else if (Val == SymbolTable::Int64) {
       return lookupSymbol(SymbolTable::Int64_Mul);
+    } else {
+      assert(false && "unimplemented case.\n");
     }
 
     break;
@@ -209,7 +211,21 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
     break;
   }
   case clang::BO_Rem:{
-    assert(false && "Did not implement operator!\n");
+    if (Val == SymbolTable::Int8) {
+      return lookupSymbol(SymbolTable::Int8_Rem);
+    } else if (Val == SymbolTable::Int16) {
+      return lookupSymbol(SymbolTable::Int16_Rem);
+    } else if (Val == SymbolTable::Int32) {
+      return lookupSymbol(SymbolTable::Int32_Rem);
+    } else if (Val == SymbolTable::Int64) {
+      return lookupSymbol(SymbolTable::Int64_Rem);
+    } else if (Val == SymbolTable::SizeT) {
+      return lookupSymbol(SymbolTable::SizeT_Rem);
+    } else if (Val == SymbolTable::UInt64) {
+      return lookupSymbol(SymbolTable::UInt64_Rem);
+    } else {
+      assert(false && "unimplemented case.\n");
+    }
     break;
   }
   case clang::BO_Add: {
@@ -301,7 +317,17 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
     break;
   }
   case clang::BO_GE:{
-    assert(false && "Did not implement operator!\n");
+    if (Val == SymbolTable::Int8) {
+      return lookupSymbol(SymbolTable::Int8_Ge);
+    } else if (Val == SymbolTable::Int16) {
+      return lookupSymbol(SymbolTable::Int16_Ge);
+    } else if (Val == SymbolTable::Int32) {
+      return lookupSymbol(SymbolTable::Int32_Ge);
+    } else if (Val == SymbolTable::Int64) {
+      return lookupSymbol(SymbolTable::Int64_Ge);
+    } else {
+      assert(false && "unimplemented case.\n");
+    }
     break;
   }
   case clang::BO_EQ: {
@@ -313,8 +339,9 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
       return lookupSymbol(SymbolTable::Int32_Eq);
     } else if (Val == SymbolTable::Int64) {
       return lookupSymbol(SymbolTable::Int64_Eq);
+    } else {
+      assert(false && "unimplemented case.\n");
     }
-
     break;
   }
   case clang::BO_NE:{
