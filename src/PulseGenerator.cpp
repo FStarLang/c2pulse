@@ -2040,12 +2040,69 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
 
       goto default_bin_op_case;
     }
+    case clang::BO_NE: {
+
+      // Check if either Lhs or Rhs is NULL.
+      // In case it is NULL we would like to generate is_null checks for pulse.
+      if (checkIfExprIsNullPtr(Lhs)) {
+       
+        //Generate null call
+        auto *IsNullCall = new AppE();
+        auto *CallName = new VarTerm();
+        CallName->setVarName("is_null");
+        IsNullCall->setCallName(CallName);
+        auto *RhsTerm = getTermFromCExpr(Rhs, MutAnalyzer, ExprsBefore, Parent,
+                                         BO->getType(), Module);
+        IsNullCall->pushArg(RhsTerm);
+
+        //Generate not call
+        auto *NotCall = new AppE();
+        auto *CallNameNot = new VarTerm();
+        CallNameNot->setVarName("not");
+        NotCall->setCallName(CallNameNot);
+        
+        //Wrap null call around parenthesis
+        auto *ParenNullCall = new Paren();
+        ParenNullCall->setInnerExpr(IsNullCall);
+
+        NotCall->pushArg(ParenNullCall);
+        return NotCall;
+      }
+
+      if (checkIfExprIsNullPtr(Rhs)) {
+        
+        //Generate null call
+        auto *IsNullCall = new AppE();
+        auto *CallName = new VarTerm();
+        CallName->setVarName("is_null");
+        IsNullCall->setCallName(CallName);
+        auto *LhsTerm = getTermFromCExpr(Lhs, MutAnalyzer, ExprsBefore, Parent,
+                                         BO->getType(), Module);
+        IsNullCall->pushArg(LhsTerm);
+        
+        //Generate not call
+        auto *NotCall = new AppE();
+        auto *CallNameNot = new VarTerm();
+        CallNameNot->setVarName("not");
+        NotCall->setCallName(CallNameNot);
+        
+        //Wrap null call around parenthesis
+        auto *ParenNullCall = new Paren();
+        ParenNullCall->setInnerExpr(IsNullCall);
+
+        NotCall->pushArg(ParenNullCall);
+        return NotCall;
+      }
+
+      goto default_bin_op_case;
+    }
     default_bin_op_case:
     default: {
 
       if (checkIfExprIsNullPtr(Lhs) || checkIfExprIsNullPtr(Rhs)){
         BO->dump();
-        assert(false && "Not implemented!: Null check if Operator is other than ==\n");
+        assert(false && "Null check not implemented for binary operator other "
+                        "that Eq and Neq!\n");
       }
 
       SymbolTable TypeKey = getSymbolKeyForCType(Lhs->getType(), Ctx);

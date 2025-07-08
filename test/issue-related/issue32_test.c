@@ -2,16 +2,12 @@
 #include <stdlib.h>
 
 REQUIRES(emp)
-RETURNS(i:int32)
+RETURNS(i : int32)
 ENSURES(emp)
-int check_null(int *r)
-{
-  if (r != NULL)
-  {
+int check_null(int *r) {
+  if (r != NULL) {
     return 1;
-  }
-  else
-  {
+  } else {
     return 0;
   }
 }

@@ -1,0 +1,24 @@
+module Issue32_test
+
+#lang-pulse
+
+open Pulse
+open Pulse.Lib.C
+
+
+
+fn check_null
+(r : ref Int32.t)
+requires emp
+returns i : int32
+ensures emp
+{
+if(not (is_null r))
+{
+1l;
+}
+else
+{
+0l;
+};
+}
