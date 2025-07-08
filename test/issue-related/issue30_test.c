@@ -17,12 +17,16 @@ int max_alt(int *x, int *y) {
   int vx = *x;
   int vy = *y;
   if (vx > vy)
-    ENSURES(exists* r. (x |->Frac px vx) ** (y |->Frac py vy) ** (result |->r) **
-            pure(as_int r == max_spec(as_int vx)(as_int vy))) {
+    ENSURES(exists* r. (x |->Frac px vx) ** 
+                       (y |->Frac py vy) **
+                       (result |->r) **
+                       pure (as_int r == max_spec (as_int vx) (as_int vy))
+           ) 
+    {
       result = vx;
     }
-  else {
-    result = vy;
-  };
+    else {
+        result = vy;
+    };
   return result;
 }

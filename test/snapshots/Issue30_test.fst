@@ -24,7 +24,7 @@ let mut result = 0l;
 let vx = (! x);
 let vy = (! y);
 if((Int32.gt vx vy))
-ensures exists* r. (x |->Frac px vx) ** (y |->Frac py vy) ** (result |->r) ** pure(as_int r == max_spec(as_int vx)(as_int vy))
+ensures exists* r. (x |->Frac px vx) ** (y |->Frac py vy) ** (result |->r) ** pure (as_int r == max_spec (as_int vx) (as_int vy))
 {
 result := vx;
 }

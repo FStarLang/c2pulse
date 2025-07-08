@@ -10,7 +10,7 @@ defaults:
 
 jobs:
   main:
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: [self-hosted, Linux, X64, c2pulse]
     steps:
     - name: Clean
       run: find . -delete

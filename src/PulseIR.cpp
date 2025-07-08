@@ -169,8 +169,14 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
                                     clang::BinaryOperatorKind &Op) {
 
   switch (Op) {
-  case clang::BO_PtrMemD:
-  case clang::BO_PtrMemI:
+  case clang::BO_PtrMemD:{
+    assert(false && "Did not implement operator!\n");
+    break;
+  }
+  case clang::BO_PtrMemI:{
+    assert(false && "Did not implement operator!\n");
+    break;
+  }
   case clang::BO_Mul: {
     if (Val == SymbolTable::Int8) {
       return lookupSymbol(SymbolTable::Int8_Mul);
@@ -180,6 +186,8 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
       return lookupSymbol(SymbolTable::Int32_Mul);
     } else if (Val == SymbolTable::Int64) {
       return lookupSymbol(SymbolTable::Int64_Mul);
+    } else {
+      assert(false && "unimplemented case.\n");
     }
 
     break;
@@ -202,7 +210,24 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
     }
     break;
   }
-  case clang::BO_Rem:
+  case clang::BO_Rem:{
+    if (Val == SymbolTable::Int8) {
+      return lookupSymbol(SymbolTable::Int8_Rem);
+    } else if (Val == SymbolTable::Int16) {
+      return lookupSymbol(SymbolTable::Int16_Rem);
+    } else if (Val == SymbolTable::Int32) {
+      return lookupSymbol(SymbolTable::Int32_Rem);
+    } else if (Val == SymbolTable::Int64) {
+      return lookupSymbol(SymbolTable::Int64_Rem);
+    } else if (Val == SymbolTable::SizeT) {
+      return lookupSymbol(SymbolTable::SizeT_Rem);
+    } else if (Val == SymbolTable::UInt64) {
+      return lookupSymbol(SymbolTable::UInt64_Rem);
+    } else {
+      assert(false && "unimplemented case.\n");
+    }
+    break;
+  }
   case clang::BO_Add: {
     if (Val == SymbolTable::Int8) {
       return lookupSymbol(SymbolTable::Int8_Add);
@@ -239,9 +264,18 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
 
     break;
   }
-  case clang::BO_Shl:
-  case clang::BO_Shr:
-  case clang::BO_Cmp:
+  case clang::BO_Shl:{
+    assert(false && "Did not implement operator!\n");
+    break;
+  }
+  case clang::BO_Shr:{
+    assert(false && "Did not implement operator!\n");
+    break;
+  }
+  case clang::BO_Cmp:{
+    assert(false && "Did not implement operator!\n");
+    break;
+  }
   case clang::BO_LT: {
     if (Val == SymbolTable::Int8) {
       return lookupSymbol(SymbolTable::Int8_Lt);
@@ -278,8 +312,24 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
     }
     break;
   }
-  case clang::BO_LE:
-  case clang::BO_GE:
+  case clang::BO_LE:{
+    assert(false && "Did not implement operator!\n");
+    break;
+  }
+  case clang::BO_GE:{
+    if (Val == SymbolTable::Int8) {
+      return lookupSymbol(SymbolTable::Int8_Ge);
+    } else if (Val == SymbolTable::Int16) {
+      return lookupSymbol(SymbolTable::Int16_Ge);
+    } else if (Val == SymbolTable::Int32) {
+      return lookupSymbol(SymbolTable::Int32_Ge);
+    } else if (Val == SymbolTable::Int64) {
+      return lookupSymbol(SymbolTable::Int64_Ge);
+    } else {
+      assert(false && "unimplemented case.\n");
+    }
+    break;
+  }
   case clang::BO_EQ: {
     if (Val == SymbolTable::Int8) {
       return lookupSymbol(SymbolTable::Int8_Eq);
@@ -289,28 +339,84 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
       return lookupSymbol(SymbolTable::Int32_Eq);
     } else if (Val == SymbolTable::Int64) {
       return lookupSymbol(SymbolTable::Int64_Eq);
+    } else {
+      assert(false && "unimplemented case.\n");
     }
-
     break;
   }
-  case clang::BO_NE:
-  case clang::BO_And:
-  case clang::BO_Xor:
-  case clang::BO_Or:
-  case clang::BO_LAnd:
-  case clang::BO_LOr:
-  case clang::BO_Assign:
-  case clang::BO_MulAssign:
-  case clang::BO_DivAssign:
-  case clang::BO_RemAssign:
-  case clang::BO_AddAssign:
-  case clang::BO_SubAssign:
-  case clang::BO_ShlAssign:
-  case clang::BO_ShrAssign:
-  case clang::BO_AndAssign:
-  case clang::BO_XorAssign:
-  case clang::BO_OrAssign:
-  case clang::BO_Comma:
+  case clang::BO_NE:{
+    assert(false && "Did not implement operator!\n");
+    break;
+  }
+  case clang::BO_And:{
+    assert(false && "Did not implement operator!\n");
+    break;
+  }
+  case clang::BO_Xor:{
+    assert(false && "Did not implement operator!\n");
+    break;
+  }
+  case clang::BO_Or:{
+    assert(false && "Did not implement operator!\n");
+    break;
+  }
+  case clang::BO_LAnd:{
+    assert(false && "Did not implement operator!\n");
+    break;
+  }
+  case clang::BO_LOr:{
+    assert(false && "Did not implement operator!\n");
+    break;
+  }
+  case clang::BO_Assign:{
+    assert(false && "Did not implement operator!\n");
+    break;
+  }
+  case clang::BO_MulAssign:{
+    assert(false && "Did not implement operator!\n");
+    break;
+  }
+  case clang::BO_DivAssign:{
+    assert(false && "Did not implement operator!\n");
+    break;
+  }
+  case clang::BO_RemAssign:{
+    assert(false && "Did not implement operator!\n");
+    break;
+  }
+  case clang::BO_AddAssign:{
+    assert(false && "Did not implement operator!\n");
+    break;
+  }
+  case clang::BO_SubAssign:{
+    assert(false && "Did not implement operator!\n");
+    break;
+  }
+  case clang::BO_ShlAssign:{
+    assert(false && "Did not implement operator!\n");
+    break;
+  }
+  case clang::BO_ShrAssign:{
+    assert(false && "Did not implement operator!\n");
+    break;
+  }
+  case clang::BO_AndAssign:{
+    assert(false && "Did not implement operator!\n");
+    break;
+  }
+  case clang::BO_XorAssign:{
+    assert(false && "Did not implement operator!\n");
+    break;
+  }
+  case clang::BO_OrAssign:{
+    assert(false && "Did not implement operator!\n");
+    break;
+  }
+  case clang::BO_Comma:{
+    assert(false && "Did not implement operator!\n");
+    break;
+  }
+  default:
     break;
   }
 }
