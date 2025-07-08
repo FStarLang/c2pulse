@@ -1934,6 +1934,24 @@ const clang::Stmt *getNextStatement(const clang::Expr *expr,
   return nullptr; // No next statement found
 }
 
+static bool checkIfExprIsNullPtr(Expr *E){
+
+  //Make sure we remove any parens and casts around the expr.
+  if (CastExpr *CE = dyn_cast<CastExpr>(E)) {
+    if (CE->getType()->isPointerType()) {
+        auto *IgnoreParenCasts = CE->getSubExpr()->IgnoreParens()->IgnoreCasts();
+        auto *IgnoreImpCasts = IgnoreParenCasts->IgnoreImpCasts();
+      if (const IntegerLiteral *IL = dyn_cast<IntegerLiteral>(IgnoreImpCasts)) {
+        if (IL->getValue() == 0) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
 Term *
 PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
                                llvm::SmallVector<PulseStmt *> &ExprsBefore,
@@ -1943,7 +1961,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
 
   if (auto *IL = dyn_cast<IntegerLiteral>(E)) {
 
-    auto NewConstTerm = new ConstTerm();
+    auto *NewConstTerm = new ConstTerm();
     NewConstTerm->setTag(TermTag::Const);
     NewConstTerm->ConstantValue = std::to_string(IL->getValue().getSExtValue());
 
@@ -1991,27 +2009,63 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
               Unsafe type casting now allowed in Pulse\n");
     }
 
-    SymbolTable TypeKey = getSymbolKeyForCType(Lhs->getType(), Ctx);
-    auto OpKey = getSymbolKeyForOperator(TypeKey, Op);
+    switch (Op) {
+    case clang::BO_EQ: {
+      
+      // Check if either Lhs or Rhs is NULL.
+      // In case it is NULL we would like to generate is_null checks for pulse.
+      if (checkIfExprIsNullPtr(Lhs)) {
 
-    auto *NewAppENode = new AppE();
-    NewAppENode->setTag(TermTag::AppE);
-    auto LhsTerm =
-        getTermFromCExpr(Lhs, MutAnalyzer, ExprsBefore, Parent, BO->getType(), Module);
-    auto RhsTerm =
-        getTermFromCExpr(Rhs, MutAnalyzer, ExprsBefore, Parent, BO->getType(), Module);
+        auto *IsNullCall = new AppE();
+        auto *CallName = new VarTerm();
+        CallName->setVarName("is_null");
+        IsNullCall->setCallName(CallName);
+        auto *RhsTerm = getTermFromCExpr(Rhs, MutAnalyzer, ExprsBefore, Parent,
+                                         BO->getType(), Module);
+        IsNullCall->pushArg(RhsTerm);
+        return IsNullCall;
+      }
 
-    auto *CallNameVar = new VarTerm();
-    CallNameVar->setVarName(OpKey);
-    CallNameVar->setTag(TermTag::Var);
-    NewAppENode->setCallName(CallNameVar);
-    NewAppENode->pushArg(LhsTerm);
-    NewAppENode->pushArg(RhsTerm);
+      if (checkIfExprIsNullPtr(Rhs)) {
 
-    // Wrap Call Expr into a Paren to be safe.
-    auto *NewParen = new Paren();
-    NewParen->setInnerExpr(NewAppENode);
-    return NewParen;
+        auto *IsNullCall = new AppE();
+        auto *CallName = new VarTerm();
+        CallName->setVarName("is_null");
+        IsNullCall->setCallName(CallName);
+        auto *LhsTerm = getTermFromCExpr(Lhs, MutAnalyzer, ExprsBefore, Parent,
+                                         BO->getType(), Module);
+        IsNullCall->pushArg(LhsTerm);
+        return IsNullCall;
+      }
+
+      goto default_bin_op_case;
+    }
+    default_bin_op_case:
+    default: {
+      SymbolTable TypeKey = getSymbolKeyForCType(Lhs->getType(), Ctx);
+      auto *OpKey = getSymbolKeyForOperator(TypeKey, Op);
+
+      auto *NewAppENode = new AppE();
+      NewAppENode->setTag(TermTag::AppE);
+      auto *LhsTerm = getTermFromCExpr(Lhs, MutAnalyzer, ExprsBefore, Parent,
+                                       BO->getType(), Module);
+      auto *RhsTerm = getTermFromCExpr(Rhs, MutAnalyzer, ExprsBefore, Parent,
+                                       BO->getType(), Module);
+
+      auto *CallNameVar = new VarTerm();
+      CallNameVar->setVarName(OpKey);
+      CallNameVar->setTag(TermTag::Var);
+      NewAppENode->setCallName(CallNameVar);
+      NewAppENode->pushArg(LhsTerm);
+      NewAppENode->pushArg(RhsTerm);
+
+      // Wrap Call Expr into a Paren to be safe.
+      auto *NewParen = new Paren();
+      NewParen->setInnerExpr(NewAppENode);
+      return NewParen;
+      break;
+    }
+    }
 
     llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "
                     "BinaryOperator\n";
