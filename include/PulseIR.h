@@ -342,6 +342,7 @@ public:
   AppE();
   virtual ~AppE() = default;
   virtual void dumpPretty() override;
+  void makeCallName(std::string CallName);
   void setCallName(VarTerm *Call);
   void pushArg(Term *Arg);
   static bool classof(const Term *T) { return T->Tag == TermTag::AppE; }

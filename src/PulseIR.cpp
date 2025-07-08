@@ -635,6 +635,12 @@ void AppE::dumpPretty() {
 
 void AppE::setCallName(VarTerm *Call) { CallName = Call; }
 
+void AppE::makeCallName(std::string CallName) {
+  VarTerm *Call = new VarTerm();
+  Call->setVarName(CallName);
+  this->setCallName(Call);
+}
+
 void AppE::pushArg(Term *Arg) { Args.push_back(Arg); }
 
 void PulseStmt::setTag(PulseStmtTag T) { Tag = T; }
