@@ -57,7 +57,7 @@ x;
 else
 {
 (sum 12l (recursiveFunction (Int32.add x 1l) limit));
-}
+};
 }
 
 fn complexComputation
@@ -82,5 +82,5 @@ if((Int32.eq (Int32.add ((Int32.mul x y)) 2l) 0l))
 else
 {
 (doubleValue (square (sum x y)));
-}
+};
 }

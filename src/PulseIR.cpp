@@ -260,7 +260,24 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
     }
     break;
   }
-  case clang::BO_GT:
+  case clang::BO_GT: {
+    if (Val == SymbolTable::Int8) {
+      return lookupSymbol(SymbolTable::Int8_Gt);
+    } else if (Val == SymbolTable::Int16) {
+      return lookupSymbol(SymbolTable::Int16_Gt);
+    } else if (Val == SymbolTable::Int32) {
+      return lookupSymbol(SymbolTable::Int32_Gt);
+    } else if (Val == SymbolTable::Int64) {
+      return lookupSymbol(SymbolTable::Int64_Gt);
+    } else if (Val == SymbolTable::SizeT) {
+      return lookupSymbol(SymbolTable::SizeT_Gt);
+    } else if (Val == SymbolTable::UInt64) {
+      return lookupSymbol(SymbolTable::UInt64_Gt);
+    } else {
+      assert(false && "unimplemented case.\n");
+    }
+    break;
+  }
   case clang::BO_LE:
   case clang::BO_GE:
   case clang::BO_EQ: {
@@ -553,6 +570,8 @@ void LetBinding::dumpPretty() {
 }
 
 void PulseIf::dumpPretty() {}
+
+PulseIf::PulseIf() { Tag = PulseStmtTag::If; }
 
 PulseSequence::PulseSequence() {
   Tag = PulseStmtTag::Sequence;

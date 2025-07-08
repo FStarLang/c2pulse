@@ -406,6 +406,11 @@ void PulseCodeGen::generateCodeFromPulseStmt(llvm::raw_string_ostream &OS,
     OS << PulseSyntax::ClosingParenthesis;
     OS << PulseSyntax::NewLine;
 
+    // Add all the if lemmas here
+    for (auto &Lemma : If->IfLemmas) {
+      OS << generateCodeFromTerm(OS, Lemma);
+    }
+
     OS << PulseSyntax::OpeningCurlyBrace;
     OS << PulseSyntax::NewLine;
     generateCodeFromPulseStmt(OS, PulseThen);
@@ -418,6 +423,10 @@ void PulseCodeGen::generateCodeFromPulseStmt(llvm::raw_string_ostream &OS,
     OS << PulseSyntax::NewLine;
     generateCodeFromPulseStmt(OS, PulseElse);
     OS << PulseSyntax::ClosingCurlyBrace;
+    // Seems like Pulse If statements need an semicolon at the end
+    //TODO: Vidush ensure this is correct?
+    //Maybe only needed when the if has some accompanying lemmas?
+    OS << PulseSyntax::Semicolon;
     OS << PulseSyntax::NewLine;
 
   } else if (PulseWhileStmt *While = dyn_cast<PulseWhileStmt>(T)) {
