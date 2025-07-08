@@ -260,7 +260,7 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
     }
     break;
   }
-  case clang::BO_GT:{
+  case clang::BO_GT: {
     if (Val == SymbolTable::Int8) {
       return lookupSymbol(SymbolTable::Int8_Gt);
     } else if (Val == SymbolTable::Int16) {
@@ -570,6 +570,8 @@ void LetBinding::dumpPretty() {
 }
 
 void PulseIf::dumpPretty() {}
+
+PulseIf::PulseIf() { Tag = PulseStmtTag::If; }
 
 PulseSequence::PulseSequence() {
   Tag = PulseStmtTag::Sequence;

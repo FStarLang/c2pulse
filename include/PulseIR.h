@@ -34,9 +34,9 @@ struct PulseAnnotation {
 
 /// Symbol Table to capture pulse specific types
 enum class SymbolTable {
-  Int8, 
-  Int16, 
-  Int32, 
+  Int8,
+  Int16,
+  Int32,
   Int64,
   UInt8,
   UInt16,
@@ -47,10 +47,10 @@ enum class SymbolTable {
   UInt64_Div,
   UInt64_Sub,
   UInt64_Add,
-  UInt128, 
+  UInt128,
   SizeT,
   SizeT_Add,
-  SizeT_Sub, 
+  SizeT_Sub,
   SizeT_Div,
   SizeT_Mul,
   SizeT_Eq,
@@ -94,45 +94,45 @@ const char* getSymbolKeyForOperator(SymbolTable Val, clang::BinaryOperatorKind &
 const char* lookupSymbol(SymbolTable Key);
 
 /// A map from symbol to its pulse specific string.
-static const llvm::SmallDenseMap<SymbolTable, const char*> SymbolToStringTable {
-  {SymbolTable::Int8, "Int8.t"},
-  {SymbolTable::Int16, "Int16.t"},
-  {SymbolTable::Int32, "Int32.t"},
-  {SymbolTable::Int64, "Int64.t"},
-  {SymbolTable::UInt8, "UInt8.t"},
-  {SymbolTable::UInt16, "UInt16.t"},
-  {SymbolTable::UInt32, "UInt32.t"},
-  {SymbolTable::UInt64, "UInt64.t"},
-  {SymbolTable::UInt64_Lt, "UInt64.lt"},
-  {SymbolTable::UInt64_Gt, "UInt64.gt"},
-  {SymbolTable::UInt64_Div, "UInt64.div"},
- {SymbolTable::UInt64_Sub, "UInt64.sub"},
- {SymbolTable::UInt64_Add, "UInt64.add"},
- {SymbolTable::UInt128, "UInt128.t"},
- {SymbolTable::SizeT, "SizeT.t"},
- {SymbolTable::SizeT_Add, "SizeT.add"},
- {SymbolTable::SizeT_Sub, "SizeT.sub"},
- {SymbolTable::SizeT_Div, "SizeT.div"},
- {SymbolTable::SizeT_Mul, "SizeT.mul"},
- {SymbolTable::SizeT_Eq, "SizeT.eq"},
- {SymbolTable::SizeT_Lt, "SizeT.lt"},
- {SymbolTable::SizeT_Gt, "SizeT.gt"},
- {SymbolTable::Int32_Add, "Int32.add"},
- {SymbolTable::Int32_Sub, "Int32.sub"},
- {SymbolTable::Int32_Div, "Int32.div"},
- {SymbolTable::Int32_Mul, "Int32.mul"},
- {SymbolTable::Int32_Eq, "Int32.eq"},
- {SymbolTable::Int32_Lt, "Int32.lt"},
- {SymbolTable::Int32_Gt, "Int32.gt"},
- {SymbolTable::Int64_Mul, "Int64.mul"},
- {SymbolTable::Int64_Add, "Int64.add"},
- {SymbolTable::Int64_Sub, "Int64.sub"},
- {SymbolTable::Int64_Div, "Int64.div"},
- {SymbolTable::Int64_Eq, "Int64.eq"},
- {SymbolTable::Int64_Lt, "Int64.lt"},
- {SymbolTable::Int64_Gt, "Int64.gt"},
- {SymbolTable::Array, "array"},
- {SymbolTable::Ref, "ref"},
+static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
+    {SymbolTable::Int8, "Int8.t"},
+    {SymbolTable::Int16, "Int16.t"},
+    {SymbolTable::Int32, "Int32.t"},
+    {SymbolTable::Int64, "Int64.t"},
+    {SymbolTable::UInt8, "UInt8.t"},
+    {SymbolTable::UInt16, "UInt16.t"},
+    {SymbolTable::UInt32, "UInt32.t"},
+    {SymbolTable::UInt64, "UInt64.t"},
+    {SymbolTable::UInt64_Lt, "UInt64.lt"},
+    {SymbolTable::UInt64_Gt, "UInt64.gt"},
+    {SymbolTable::UInt64_Div, "UInt64.div"},
+    {SymbolTable::UInt64_Sub, "UInt64.sub"},
+    {SymbolTable::UInt64_Add, "UInt64.add"},
+    {SymbolTable::UInt128, "UInt128.t"},
+    {SymbolTable::SizeT, "SizeT.t"},
+    {SymbolTable::SizeT_Add, "SizeT.add"},
+    {SymbolTable::SizeT_Sub, "SizeT.sub"},
+    {SymbolTable::SizeT_Div, "SizeT.div"},
+    {SymbolTable::SizeT_Mul, "SizeT.mul"},
+    {SymbolTable::SizeT_Eq, "SizeT.eq"},
+    {SymbolTable::SizeT_Lt, "SizeT.lt"},
+    {SymbolTable::SizeT_Gt, "SizeT.gt"},
+    {SymbolTable::Int32_Add, "Int32.add"},
+    {SymbolTable::Int32_Sub, "Int32.sub"},
+    {SymbolTable::Int32_Div, "Int32.div"},
+    {SymbolTable::Int32_Mul, "Int32.mul"},
+    {SymbolTable::Int32_Eq, "Int32.eq"},
+    {SymbolTable::Int32_Lt, "Int32.lt"},
+    {SymbolTable::Int32_Gt, "Int32.gt"},
+    {SymbolTable::Int64_Mul, "Int64.mul"},
+    {SymbolTable::Int64_Add, "Int64.add"},
+    {SymbolTable::Int64_Sub, "Int64.sub"},
+    {SymbolTable::Int64_Div, "Int64.div"},
+    {SymbolTable::Int64_Eq, "Int64.eq"},
+    {SymbolTable::Int64_Lt, "Int64.lt"},
+    {SymbolTable::Int64_Gt, "Int64.gt"},
+    {SymbolTable::Array, "array"},
+    {SymbolTable::Ref, "ref"},
 };
 
 /// Define F* IR Similar to type term
@@ -412,7 +412,9 @@ public:
 /// An IR node for representing a pulse if statement.
 class PulseIf : public PulseStmt {
 public:
+  PulseIf();
   Term *Head;
+  std::vector<Term *> IfLemmas;
   PulseStmt *Then;
   PulseStmt *Else = nullptr;
   virtual void dumpPretty() override;

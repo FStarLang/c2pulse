@@ -1587,19 +1587,52 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
     return PulseExpression;
   } else if (auto *IF = dyn_cast<IfStmt>(S)) {
 
+    auto *PulseIfStmt = new PulseIf();
+
     auto *Cond = IF->getCond();
-    auto *Else = IF->getElse();
     auto *Then = IF->getThen();
+    auto *Else = IF->getElse();
 
     SmallVector<PulseStmt *> ExprsBefore;
 
-    auto PulseCond =
-        getTermFromCExpr(Cond, Analyzer, ExprsBefore, Parent, Cond->getType(), Module);
-    auto *PulseElse = pulseFromStmt(Else, Analyzer, Parent, Module, CS);
-    auto *PulseThen = pulseFromStmt(Then, Analyzer, Parent, Module, CS);
+    auto *PulseCond = getTermFromCExpr(Cond, Analyzer, ExprsBefore, Parent,
+                                       Cond->getType(), Module);
 
-    auto PulseIfStmt = new PulseIf();
-    PulseIfStmt->setTag(PulseStmtTag::If);
+    PulseStmt *PulseThen;
+    if (auto *AttrStmt = dyn_cast<AttributedStmt>(Then)) {
+      auto *ThenBody = AttrStmt->getSubStmt();
+
+      auto Attributes = AttrStmt->getAttrs();
+      // auto *PulseWhile = new PulseWhileStmt();
+      for (auto *Attr : Attributes) {
+
+        if (auto *AnnAttr = dyn_cast<AnnotateAttr>(Attr)) {
+          if (AnnAttr->getAttrName()->getName() == "pulse") {
+
+            auto AnnotationData = AnnAttr->getAnnotation().str();
+
+            std::string Match;
+            auto AnnKind = getPulseAnnKindFromString(AnnotationData, Match);
+            switch (AnnKind) {
+            case PulseAnnKind::Ensures: {
+              auto *NewEnsures = new Ensures();
+              NewEnsures->Ann = Match;
+              PulseIfStmt->IfLemmas.push_back(NewEnsures);
+              break;
+            };
+            default:
+              assert(false && "case not implemented!!\n");
+            };
+          }
+        }
+      }
+      PulseThen = pulseFromStmt(ThenBody, Analyzer, Parent, Module, CS);
+    } else {
+      PulseThen = pulseFromStmt(Then, Analyzer, Parent, Module, CS);
+    }
+
+    auto *PulseElse = pulseFromStmt(Else, Analyzer, Parent, Module, CS);
+
     PulseIfStmt->Head = PulseCond;
     PulseIfStmt->Else = PulseElse;
     PulseIfStmt->Then = PulseThen;

@@ -1,7 +1,7 @@
 #ifdef C2PULSE
 #define STR(...) #__VA_ARGS__
-#define REQUIRES(s) [[clang::pulse("requires:" STR(s)"|END")]] 
-#define ENSURES(s) [[clang::pulse("ensures:" STR(s)"|END")]]
+#define REQUIRES(s) [[clang::pulse("requires:" STR(s) "|END")]]
+#define ENSURES(...) [[clang::pulse("ensures:" STR(__VA_ARGS__) "|END")]]
 #define RETURNS(s) [[clang::pulse("returns:" STR(s)"|END")]]
 #define ISARRAY(len) [[clang::pulse("array:" STR(len)"|END")]]
 #define INVARIANTS(...) [[clang::pulse("invariants:" STR(__VA_ARGS__)"|END")]]
@@ -18,7 +18,7 @@
 #else 
 #define STR(...)
 #define REQUIRES(s)
-#define ENSURES(s)
+#define ENSURES(...)
 #define RETURNS(s)
 #define ISARRAY(len)
 #define INVARIANTS(...)
