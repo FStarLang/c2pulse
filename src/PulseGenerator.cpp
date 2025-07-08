@@ -1399,8 +1399,6 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
         }
 
         return ArrayAssignExpr;
-        S->dumpPretty(Ctx);
-        assert(false && "Not implemented when Lhs is array sub expr");
       } else if (auto *ME = dyn_cast<MemberExpr>(Lhs)) {
 
         auto *LhsDecl = ME->getMemberDecl();
@@ -1450,7 +1448,6 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
             PulseCall->makeCallName("Mk" + StructName + "?." +
                                     MemberName.getAsString());
             PulseCall->pushArg(ParenthesisDeref);
-
             Assignment->Lhs = PulseCall;
           }
           else {
@@ -1516,7 +1513,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
         }
 
         ME->dump();
-        assert(false && "Did not expect to reach here!\n");
+        assert(false &&
+               "Could not cast member base expression to its declaration!\n");
 
       } else if (auto *ME = dyn_cast<MemberExpr>(Rhs)) {
 
@@ -1649,8 +1647,6 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
       assert(ExprsBefore.empty() && "Expected expressions to be released!");
       return PExpr;
-
-      assert(false && "Binary Operator not implemented in pulseFromStmt\n");
     }
 
   } else if (auto *E = dyn_cast<Expr>(S)) {
@@ -1714,7 +1710,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
               break;
             };
             default:
-              assert(false && "case not implemented!!\n");
+              assert(false && "Annotation not expected for IfStmt!\n");
             };
           }
         }
@@ -1784,10 +1780,9 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
     return nullptr;
   } else if (auto *FS = dyn_cast<ForStmt>(S)) {
-    llvm::outs() << "\n\nPrint in pulseFromStmt ForStmt\n";
     S->dumpPretty(Ctx);
-    llvm::outs() << "\nEnd in pulseFromStmt.\n";
-    assert(false && "Not implemented Clang expr in pulseFromStmt\n");
+    assert(false && "For loops not implemented since pulse does not support "
+                    "For expressions!\n");
   } else if (auto *WS = dyn_cast<WhileStmt>(S)) {
 
     auto *WhileCond = WS->getCond();
@@ -1858,10 +1853,9 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
       return PulseWhile;
     }
   } else if (auto *US = dyn_cast<UnaryOperator>(S)) {
-    llvm::outs() << "\n\nPrint in pulseFromStmt UnaryOperator\n";
     S->dumpPretty(Ctx);
-    llvm::outs() << "\nEnd in pulseFromStmt.\n";
-    assert(false && "Not implemented Clang expr in pulseFromStmt\n");
+    assert(false && "Did not implement translation from C unary expression to "
+                    "a PulseStmt!\n");
   } else if (auto *NS = dyn_cast<NullStmt>(S)) {
     return nullptr;
   } else if (auto *CS = dyn_cast<CompoundStmt>(S)) {
@@ -1900,10 +1894,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
     NewSequence->assignS2(pulseFromStmt(SubStmt, Analyzer, Parent, Module, CS));
     return NewSequence;
   } else {
-    llvm::outs() << "\n\nPrint in pulseFromStmt\n";
     S->dumpPretty(Ctx);
-    llvm::outs() << "\nEnd in pulseFromStmt.\n";
-    assert(false && "Not implemented Clang expr in pulseFromStmt\n");
+    assert(false && "Not implemented Clang expr in pulseFromStmt!\n");
   }
 
   return nullptr;
@@ -1968,30 +1960,15 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     NewConstTerm->Symbol = getSymbolKeyForCType(ParentType, Ctx);
 
     return NewConstTerm;
-
-    llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "
-                    "IntegerLiteral\n";
-    E->dumpPretty(Ctx);
-    llvm::outs() << "\nEnd printing term.\n\n";
-    assert(false && "Expression not implemeted in getTermFromCExpr\n");
   } else if (auto *FL = dyn_cast<FloatingLiteral>(E)) {
-    llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "
-                    "FloatingLiteral\n";
     E->dumpPretty(Ctx);
-    llvm::outs() << "\nEnd printing term.\n\n";
-    assert(false && "Expression not implemeted in getTermFromCExpr\n");
+    assert(false && "Floating Liternal not implemented!\n");
   } else if (auto *SL = dyn_cast<StringLiteral>(E)) {
-    llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "
-                    "StringLiteral\n";
     E->dumpPretty(Ctx);
-    llvm::outs() << "\nEnd printing term.\n\n";
-    assert(false && "Expression not implemeted in getTermFromCExpr\n");
+    assert(false && "String Literal not implemeted!\n");
   } else if (auto *CL = dyn_cast<CharacterLiteral>(E)) {
-    llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "
-                    "CharacterLiteral\n";
     E->dumpPretty(Ctx);
-    llvm::outs() << "\nEnd printing term.\n\n";
-    assert(false && "Expression not implemeted in getTermFromCExpr\n");
+    assert(false && "Character Liternal not implemeted!\n");
   } else if (auto *BO = dyn_cast<BinaryOperator>(E)) {
 
     auto *Lhs = BO->getLHS();
@@ -2116,11 +2093,6 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     }
     }
 
-    llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "
-                    "BinaryOperator\n";
-    E->dumpPretty(Ctx);
-    llvm::outs() << "\nEnd printing term.\n\n";
-    assert(false && "Expression not implemeted in getTermFromCExpr\n");
   } else if (auto *UO = dyn_cast<UnaryOperator>(E)) {
     if (UO->getOpcode() == UO_Deref) {
       auto *DerefAppE = new AppE();
@@ -2178,22 +2150,11 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
         Parenthesis->setInnerExpr(TermForBaseExpr);
         return Parenthesis;
       }
-    }
-    else {
-      llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "
-                      "UnaryOperator\n";
+    } else {
       E->dumpPretty(Ctx);
       E->dump();
-      llvm::outs() << E->getStmtClassName() << "\n";
-      llvm::outs() << "\nEnd printing term.\n\n";
-      assert(false && "Expression not implemeted in getTermFromCExpr\n");
+      assert(false && "Unhandeled case in UnaryOperator getTermFromCExpr!\n");
     }
-
-    llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "
-                    "UnaryOperator\n";
-    E->dumpPretty(Ctx);
-    llvm::outs() << "\nEnd printing term.\n\n";
-    assert(false && "Expression not implemeted in getTermFromCExpr\n");
   } else if (auto *CE = dyn_cast<CallExpr>(E)) {
 
     if (CE->getDirectCallee()->getNameAsString() == pulseProofTermFromC) {
@@ -2309,23 +2270,14 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     auto *NewParen = new Paren();
     NewParen->setInnerExpr(CallAppE);
     return NewParen;
-
-    llvm::outs()
-        << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr CallExpr\n";
-    E->dumpPretty(Ctx);
-    llvm::outs() << "\nEnd printing term.\n\n";
-    assert(false && "Expression not implemeted in getTermFromCExpr\n");
   } else if (auto *IC = dyn_cast<ImplicitCastExpr>(E)) {
 
+    // TODO: Check : Vidush
+    // Right now we basically ignore implicit cast expressions.
+    // However, since pulse is pure this may not be expected.
     auto *SubExpr = IC->getSubExpr();
-    return getTermFromCExpr(SubExpr, MutAnalyzer, ExprsBefore, Parent, ParentType,
-                            Module);
-
-    llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr "
-                    "ImplicitCastExpr\n";
-    SubExpr->dumpPretty(Ctx);
-    llvm::outs() << "\nEnd printing term.\n\n";
-    assert(false && "Expression not implemeted in getTermFromCExpr\n");
+    return getTermFromCExpr(SubExpr, MutAnalyzer, ExprsBefore, Parent,
+                            ParentType, Module);
   } else if (auto *DRE = dyn_cast<DeclRefExpr>(E)) {
 
     auto *DreDecl = DRE->getDecl();
@@ -2379,11 +2331,8 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     VarTerm *VTerm = new VarTerm();
     VTerm->setTag(TermTag::Var);
     VTerm->setVarName(DRE->getDecl()->getNameAsString());
-
-    // if (!Call)
-    //     return VTerm;
-
     return VTerm;
+
   } else if (auto *ArrSubExpr = dyn_cast<ArraySubscriptExpr>(E)) {
     auto *ArrBase = ArrSubExpr->getBase();
     auto *ArrIdx = ArrSubExpr->getIdx();
@@ -2454,10 +2403,9 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       }
     } else {
       CCastExpr->dumpPretty(Ctx);
-      assert(false && "Did not implement CStyle Cast Expression!\n");
+      assert(false && "Unimplemented case in CStyle Cast Expression!\n");
     }
-  }
-  else if (auto *RE = dyn_cast<clang::RecoveryExpr>(E)) {
+  } else if (auto *RE = dyn_cast<clang::RecoveryExpr>(E)) {
     if (Expr *SubExpr = RE->getExprStmt()) {
 
       assert(false && "Should not reach here!");
@@ -2471,7 +2419,6 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
   } else if (auto *ME = dyn_cast<MemberExpr>(E)) {
 
     auto *MemberExprDecl = ME->getMemberDecl();
-
     auto *BaseExpr = ME->getBase()->IgnoreParens()->IgnoreImpCasts();
 
     std::string NameOfDecl;
@@ -2510,12 +2457,10 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
 
     return nullptr;
   } else {
-    llvm::outs() << "\n\nPrint Expresion in PulseVisitor::getTermFromCExpr\n";
     E->dump();
-    llvm::outs() << "\nEnd printing term.\n\n";
     assert(false && "Expression not implemeted in getTermFromCExpr\n");
   }
-  
+
   E->dump();
   assert(false && "Should not reach here!");
   return nullptr;
