@@ -2011,7 +2011,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
 
     switch (Op) {
     case clang::BO_EQ: {
-      
+
       // Check if either Lhs or Rhs is NULL.
       // In case it is NULL we would like to generate is_null checks for pulse.
       if (checkIfExprIsNullPtr(Lhs)) {
@@ -2042,6 +2042,12 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     }
     default_bin_op_case:
     default: {
+
+      if (checkIfExprIsNullPtr(Lhs) || checkIfExprIsNullPtr(Rhs)){
+        BO->dump();
+        assert(false && "Not implemented!: Null check if Operator is other than ==\n");
+      }
+
       SymbolTable TypeKey = getSymbolKeyForCType(Lhs->getType(), Ctx);
       auto *OpKey = getSymbolKeyForOperator(TypeKey, Op);
 

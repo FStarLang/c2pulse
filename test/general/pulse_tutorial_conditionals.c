@@ -58,8 +58,6 @@ int max_alt(int *x, int *y)
   return result;
 }
 
-//mistranslation of null test
-EXPECT_FAILURE(189) 
 ERASED_ARG(#w:option int32)
 ERASED_ARG(#p:_)
 REQUIRES(r |->? Frac p w)
@@ -82,8 +80,6 @@ int read_nullable(int *r)
   }
 }
 
-//mistranslation of null test
-EXPECT_FAILURE(189)
 ERASED_ARG(#w:option int32)
 REQUIRES(r |->? w)
 ENSURES(exists* x. (r |->? x) ** pure (if Some? w then x == Some v else x == w))
