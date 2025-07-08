@@ -56,3 +56,47 @@ result := vy;
 };
 (! result);
 }
+
+[@@expect_failure [189]]
+fn read_nullable
+(r : ref Int32.t)
+(#w:option int32)
+(#p:_)
+requires r |->? Frac p w
+returns i:int32
+ensures r |->? Frac p w
+ensures pure (Some? w ==> Some?.v w == i)
+{
+if((Int64.eq r ()))
+{
+elim_intro_null r;
+0l;
+}
+else
+{
+elim_non_null r;
+let v = (! r);
+intro_non_null r;
+v;
+};
+}
+
+[@@expect_failure [189]]
+fn write_nullable
+(r : ref Int32.t)
+(v : Int32.t)
+(#w:option int32)
+requires r |->? w
+ensures exists* x. (r |->? x) ** pure (if Some? w then x == Some v else x == w)
+{
+if((Int64.eq r ()))
+{
+elim_intro_null r;
+}
+else
+{
+elim_non_null r;
+r := v;
+intro_non_null r;
+};
+}

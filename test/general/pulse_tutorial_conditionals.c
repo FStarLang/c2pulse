@@ -57,3 +57,46 @@ int max_alt(int *x, int *y)
   };
   return result;
 }
+
+//mistranslation of null test
+EXPECT_FAILURE(189) 
+ERASED_ARG(#w:option int32)
+ERASED_ARG(#p:_)
+REQUIRES(r |->? Frac p w)
+RETURNS(i:int32)
+ENSURES(r |->? Frac p w)
+ENSURES(pure (Some? w ==> Some?.v w == i))
+int read_nullable(int *r)
+{
+  if (r == NULL)
+  {
+    LEMMA(elim_intro_null r);
+    return 0;
+  }
+  else
+  {
+    LEMMA(elim_non_null r);
+    int v = *r;
+    LEMMA(intro_non_null r);
+    return v;
+  }
+}
+
+//mistranslation of null test
+EXPECT_FAILURE(189)
+ERASED_ARG(#w:option int32)
+REQUIRES(r |->? w)
+ENSURES(exists* x. (r |->? x) ** pure (if Some? w then x == Some v else x == w))
+void write_nullable(int *r, int v)
+{
+  if (r == NULL)
+  {
+    LEMMA(elim_intro_null r);
+  }
+  else
+  {
+    LEMMA(elim_non_null r);
+    *r = v;
+    LEMMA(intro_non_null r);
+  }
+}
