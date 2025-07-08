@@ -2012,6 +2012,11 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       // In case it is NULL we would like to generate is_null checks for pulse.
       if (checkIfExprIsNullPtr(Lhs)) {
 
+        // Vidush: REMARK: In general if we have a bunch of nested calls
+        //  or repeated applications of ! operator, we should just use a
+        // fall back generic ast node like Name to generate the call.
+        // Choosing a pulse Ast call node since its not a complicated call
+        // expression.
         auto *IsNullCall = new AppE();
         IsNullCall->makeCallName("is_null");
         auto *RhsTerm = getTermFromCExpr(Rhs, MutAnalyzer, ExprsBefore, Parent,
