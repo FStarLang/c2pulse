@@ -699,6 +699,10 @@ void PulseArrayAssignment::dumpPretty() {
   llvm::outs() << "\n";
 }
 
+PulseArrayAssignment::PulseArrayAssignment() {
+  Tag = PulseStmtTag::ArrayAssignment;
+}
+
 LetBinding::LetBinding() { Tag = PulseStmtTag::LetBinding; }
 
 LetBinding::LetBinding(std::string Lhs, Term *Rhs, MutOrRef Qual) {
@@ -753,6 +757,8 @@ void PulseWhileStmt::dumpPretty() {
   Body->dumpPretty();
   llvm::outs() << "}";
 }
+
+PulseWhileStmt::PulseWhileStmt() { Tag = PulseStmtTag::WhileStmt; }
 
 PulseDeclKind PulseDecl::getKind() { return Kind; }
 

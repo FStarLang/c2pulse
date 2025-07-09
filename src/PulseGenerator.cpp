@@ -1106,7 +1106,6 @@ FStarType *PulseVisitor::getPulseTyFromCTy(clang::QualType CType) {
     auto *PulsePointerTy = static_cast<FStarPointerType *>(PulseTy);
     auto BaseTy = CType->getPointeeType();
     PulsePointerTy->setName("ref " + BaseTy.getAsString());
-    PulsePointerTy->setTag(TermTag::FStarPointerType);
     auto UnderLyingType = CType->getPointeeType();
     auto *FStartUnderLyingType = getPulseTyFromCTy(UnderLyingType);
     PulsePointerTy->setPointerToTy(FStartUnderLyingType);
@@ -1134,8 +1133,7 @@ FStarType *PulseVisitor::getPulseTyFromCTy(clang::QualType CType) {
     }
   }
   PulseTy->setName(CTyKeyStr);
-  PulseTy->setTag(TermTag::FStarType);
-  
+
   return PulseTy;
 
 }
@@ -1348,7 +1346,6 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
         SmallVector<PulseStmt *> ExprsBef;
 
         auto *ArrayAssignExpr = new PulseArrayAssignment();
-        ArrayAssignExpr->setTag(PulseStmtTag::ArrayAssignment);
         ArrayAssignExpr->Arr = getTermFromCExpr(
             ArrSub->getBase(), Analyzer, ExprsBef, Parent, BO->getType(), Module);
         ArrayAssignExpr->Index = getTermFromCExpr(
@@ -1590,7 +1587,6 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
       SmallVector<PulseStmt *> ExprsBefore;
 
       auto *PExpr = new PulseExpr();
-      PExpr->setTag(PulseStmtTag::Expr);
       auto ExprTerm =
           getTermFromCExpr(BO, Analyzer, ExprsBefore, Parent, BO->getType(), Module);
       if (!ExprTerm)
@@ -1633,7 +1629,6 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
     SmallVector<PulseStmt *> ExprsBefore;
 
     auto *PulseExpression = new PulseExpr();
-    PulseExpression->setTag(PulseStmtTag::Expr);
 
     auto *PExprTerm =
         getTermFromCExpr(E, Analyzer, ExprsBefore, Parent, E->getType(), Module);
@@ -1713,7 +1708,6 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
     if (auto *RetVal = RS->getRetValue()) {
       SmallVector<PulseStmt *> ExprsBefore;
       auto *NewPulseExpr = new PulseExpr();
-      NewPulseExpr->setTag(PulseStmtTag::Expr);
       auto *RetTerm = getTermFromCExpr(RetVal, Analyzer, ExprsBefore,
                                        Parent, RetVal->getType(), Module);
 
@@ -1814,7 +1808,6 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
         }
       }
 
-      PulseWhile->setTag(PulseStmtTag::WhileStmt);
       PulseWhile->Guard =
           pulseFromStmt(WhileCond, Analyzer, Parent, Module, CS);
       PulseWhile->Body = pulseFromCompoundStmt(CompundBody, Analyzer, Module);
@@ -1823,8 +1816,6 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
     } else {
 
       auto *PulseWhile = new PulseWhileStmt();
-      PulseWhile->setTag(PulseStmtTag::WhileStmt);
-
       PulseWhile->Guard =
           pulseFromStmt(WhileCond, Analyzer, Parent, Module, CS);
       PulseWhile->Body = pulseFromCompoundStmt(WhileBody, Analyzer, Module);
@@ -1929,7 +1920,6 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
   if (auto *IL = dyn_cast<IntegerLiteral>(E)) {
 
     auto *NewConstTerm = new ConstTerm();
-    NewConstTerm->setTag(TermTag::Const);
     NewConstTerm->ConstantValue = std::to_string(IL->getValue().getSExtValue());
 
     llvm::outs() << "Found Integer Literal: " << NewConstTerm->ConstantValue

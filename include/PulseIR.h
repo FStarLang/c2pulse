@@ -428,6 +428,7 @@ public:
   Term *Arr;
   Term *Index;
   Term *Value;
+  PulseArrayAssignment();
   virtual void dumpPretty() override;
   static bool classof(const PulseStmt *S) {
     return S->Tag == PulseStmtTag::ArrayAssignment;
@@ -463,6 +464,7 @@ public:
 /// An IR node for representing a pulse while statement.
 class PulseWhileStmt : public PulseStmt {
 public:
+  PulseWhileStmt();
   PulseStmt *Guard;
   std::vector<Slprop *> Invariant;
   PulseStmt *Body;
@@ -532,9 +534,8 @@ class TyCon {
   public: 
     TyCon();
     TyConTag Tag;
-    std::string Ident; 
+    std::string Ident;
     std::vector<Binder*> Binders;
-
 };
 
 /// A class for representing a pulse tycon record type.
