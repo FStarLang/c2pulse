@@ -1187,7 +1187,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
     for (auto *D : DS->decls()) {
       if (auto *VD = dyn_cast<VarDecl>(D)) {
 
-        if (auto *Init = VD->getInit()) {
+        if (VD->hasInit()) {
+          auto *Init = VD->getInit();
           auto VarName = VD->getNameAsString();
           // Unsure if we really need the type here.
           // Though it may be usefuel checking invalid casting operations.
@@ -1293,7 +1294,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
           return AppendLet;
         }
-        
+
         if (const TypedefType *TT = VD->getType()->getAs<TypedefType>()) {
 
             auto *TypedefDecl = TT->getDecl();
@@ -1314,9 +1315,16 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
             assert(false && "Did not implemented case when struct allocation is not mutated!\n");
         }
 
+        // Any uninitialized declaration that is not a struct
+        auto CType = VD->getType();
+        auto PulseTySymbol = getSymbolKeyForCType(CType, Ctx);
+        auto *PulseTyStr = lookupSymbol(PulseTySymbol);
+        auto ClangVarName = VD->getNameAsString();
 
-        assert(false && "Hit unimplemented case in declaration statement!\n");
-      
+        auto *GenericDecl = new GenericStmt();
+        GenericDecl->body =
+            "let mut " + ClangVarName + ": " + PulseTyStr + " = witness #_ #_;";
+        return GenericDecl;
       }
       assert(false && "Declarations other than variable declarations not implemented!\n");
     }

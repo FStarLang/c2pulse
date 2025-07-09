@@ -10,7 +10,7 @@ DEFAULT_PATHS=(
 SHOULD_FAIL=(
  "./test/issue-related/issue27_test.c"
  "./test/issue-related/issue22_test.c"
- "./test/issue-related/issue32_test.c"
+ "./test/issue-related/issue_anon_1.c"
 )
 
 is_expected_to_fail() {
