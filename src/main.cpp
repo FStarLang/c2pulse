@@ -1,6 +1,7 @@
 #include "ExprLocationAnalyzer.h"
 #include "PulseGenerator.h"
-#include "clang/Frontend/FrontendActions.h"
+// #include "clang/Frontend/FrontendActions.h"
+#include "MacroFrontendAction.h"
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
 #include "llvm/Support/Debug.h"
@@ -49,7 +50,8 @@ int main(int argc, const char **argv) {
         OptionsParser->getCompilations(), SourceFiles
     );
 
-    int Result = Tool->run(newFrontendActionFactory<SyntaxOnlyAction>().get());
+    // int Result = Tool->run(newFrontendActionFactory<SyntaxOnlyAction>().get());
+    int Result =  Tool->run(newFrontendActionFactory<MacroFrontendAction>().get());
     if (Result != 0) {
         llvm::errs() << "c2pulse cannot compile the C files due to a syntax error!\n";
         llvm::errs() << "Exiting..." << "\n";
@@ -89,9 +91,9 @@ int main(int argc, const char **argv) {
             Analyzer.printNodeInfoMap();
         });
 
-        PulseTransformer Transformer(Ctx);
-        Transformer.transform();
-        Transformer.writeToFile();
+        // PulseTransformer Transformer(Ctx);
+        // Transformer.transform();
+        // Transformer.writeToFile();
     }
 
     if (failedASTs > 0) {

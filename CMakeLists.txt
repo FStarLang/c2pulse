@@ -16,6 +16,8 @@ set(SRC_FILES
   src/PulseCodeGen.cpp
   src/main.cpp
   src/Globals.cpp
+  src/MacroCommentTracker.cpp
+  src/MacroFrontendAction.cpp
 )
 
 
