@@ -471,10 +471,8 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
 
     auto *Tycon = new TyConDecl();
     auto *TyconRec = new TyConRecord();
-    auto *ErasableAttr = new Name();
-    ErasableAttr->NamedValue = "[@@erasable]";
-    auto *NoEqTerm = new Name();
-    NoEqTerm->NamedValue = "noeq";
+    auto *ErasableAttr = new Name("[@@erasable]");
+    auto *NoEqTerm = new Name("noeq");
     TyconRec->Ident = Def->getNameAsString() + "_spec";
     TyconRec->Attrs.push_back(ErasableAttr);
     TyconRec->Attrs.push_back(NoEqTerm);
@@ -1183,7 +1181,6 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
     return nullptr;
 
   if (auto *DS = dyn_cast<DeclStmt>(S)) {
-
     for (auto *D : DS->decls()) {
       if (auto *VD = dyn_cast<VarDecl>(D)) {
 
@@ -1338,10 +1335,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
               UO->getSubExpr(), Analyzer, ExprsBef, Parent, BO->getType(), Module);
           auto *PulseRhsTerm =
               getTermFromCExpr(Rhs, Analyzer, ExprsBef, Parent,BO->getType(), Module);
-          PulseAssignment *Assignment = new PulseAssignment();
-          Assignment->setTag(PulseStmtTag::Assignment);
-          Assignment->Lhs = PulseLhsTerm;
-          Assignment->Value = PulseRhsTerm;
+          PulseAssignment *Assignment =
+              new PulseAssignment(PulseLhsTerm, PulseRhsTerm);
 
           assert(ExprsBef.empty() && "Expected expressions to be released!");
 
@@ -1416,14 +1411,13 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           SmallVector<PulseStmt *> ExprsBef;
           auto *PulseRhsTerm =
               getTermFromCExpr(Rhs, Analyzer, ExprsBef, Parent,BO->getType(), Module);
-          PulseAssignment *Assignment = new PulseAssignment();
-          Assignment->Value = PulseRhsTerm;
+          PulseAssignment *Assignment;
 
           auto *DerefAppE = new AppE("!");
 
-          auto *InnerTermCallArg = new VarTerm();
-          InnerTermCallArg->setVarName(NameOfDecl);
+          auto *InnerTermCallArg = new VarTerm(NameOfDecl);
           DerefAppE->pushArg(InnerTermCallArg);
+
           // Wrap this deref in a parenthesis.
           auto *ParenthesisDeref = new Paren(DerefAppE);
 
@@ -1435,13 +1429,13 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
             auto *PulseCall =
                 new AppE("Mk" + StructName + "?." + MemberName.getAsString());
             PulseCall->pushArg(ParenthesisDeref);
-            Assignment->Lhs = PulseCall;
+            Assignment = new PulseAssignment(PulseCall, PulseRhsTerm);
           }
           else {
             auto *NewProjection = new Project();
             NewProjection->BaseTerm = ParenthesisDeref;
             NewProjection->MemberName = MemberName.getAsString();
-            Assignment->Lhs = NewProjection; 
+            Assignment = new PulseAssignment(NewProjection, PulseRhsTerm);
           }
 
           // auto It = TrackStructExplodeAndRecover.find(VD);
@@ -1522,16 +1516,15 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           auto MemberName = RhsDecl->getDeclName();
 
           //x->f translates to (!(!x).f)
-          auto *GenStmt = new Name();
-          GenStmt->NamedValue = "(!(!" +NameOfDecl+")."+MemberName.getAsString()+")";
+          auto *GenStmt = new Name("(!(!" + NameOfDecl + ")." +
+                                   MemberName.getAsString() + ")");
 
           SmallVector<PulseStmt *> ExprsBef;
           auto *PulseLhsTerm = getTermFromCExpr(Lhs, Analyzer, ExprsBef,
                                               Parent, BO->getType(), Module, true);
-           PulseAssignment *Assignment = new PulseAssignment();
-           Assignment->Lhs = PulseLhsTerm;
-           Assignment->Value = GenStmt;
-          
+
+          PulseAssignment *Assignment =
+              new PulseAssignment(PulseLhsTerm, GenStmt);
 
           // auto It = TrackStructExplodeAndRecover.find(VD);
           // if (It == TrackStructExplodeAndRecover.end()) {
@@ -1560,9 +1553,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
                                               Parent, BO->getType(), Module, true);
         auto *PulseRhsTerm =
             getTermFromCExpr(Rhs, Analyzer, ExprsBef, Parent, BO->getType(), Module);
-        PulseAssignment *Assignment = new PulseAssignment();
-        Assignment->Lhs = PulseLhsTerm;
-        Assignment->Value = PulseRhsTerm;
+        PulseAssignment *Assignment =
+            new PulseAssignment(PulseLhsTerm, PulseRhsTerm);
 
         // We need to make a sequence of pulse statements.
         PulseSequence *Start = nullptr;
@@ -2093,10 +2085,9 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
           auto VDTy = VD->getType();
           auto StructName = VDTy->getPointeeType().getAsString();
 
-          auto *GenStmt = new Name();
-          GenStmt->NamedValue =
-              "(!" + Dec->getDecl()->getNameAsString() + ")." +
-              Mem->getMemberDecl()->getDeclName().getAsString();
+          auto *GenStmt =
+              new Name("(!" + Dec->getDecl()->getNameAsString() + ")." +
+                       Mem->getMemberDecl()->getDeclName().getAsString());
 
           // auto It = TrackStructExplodeAndRecover.find(VD);
           // if (It == TrackStructExplodeAndRecover.end()) {
@@ -2199,10 +2190,9 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
             assert(Param->getType()->isPointerType() && "Expect to pass a reference since function param expects it!");
             auto *BaseExpr = UO_Arg->getSubExpr();
             if (auto *DeclSub = dyn_cast<DeclRefExpr>(BaseExpr)){
-                auto *NewVar = new  VarTerm(); 
-                NewVar->setVarName(DeclSub->getDecl()->getNameAsString());
-                CallAppE->pushArg(NewVar);
-                continue;
+              auto *NewVar = new VarTerm(DeclSub->getDecl()->getNameAsString());
+              CallAppE->pushArg(NewVar);
+              continue;
             }
           }
         }
@@ -2288,8 +2278,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       auto *InitAppE = new AppE("!");
 
       // The actual variable whose value we want
-      VarTerm *VTerm = new VarTerm();
-      VTerm->setVarName(DRE->getDecl()->getNameAsString());
+      VarTerm *VTerm = new VarTerm(DRE->getDecl()->getNameAsString());
       InitAppE->pushArg(VTerm);
 
       // Wrap this AppE in a Parenthesis.
@@ -2297,9 +2286,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       return PulseParenthesis;
     }
 
-    VarTerm *VTerm = new VarTerm();
-    VTerm->setTag(TermTag::Var);
-    VTerm->setVarName(DRE->getDecl()->getNameAsString());
+    VarTerm *VTerm = new VarTerm(DRE->getDecl()->getNameAsString());
     return VTerm;
 
   } else if (auto *ArrSubExpr = dyn_cast<ArraySubscriptExpr>(E)) {
@@ -2400,9 +2387,9 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
 
       auto MemberName = MemberExprDecl->getDeclName();
       assert(!isWrite && "expected isWrite to be false");
-      auto *GenStmt = new Name();
-      GenStmt->NamedValue = "(!(!" +NameOfDecl+")." +MemberName.getAsString()+")";
-      
+      auto *GenStmt =
+          new Name("(!(!" + NameOfDecl + ")." + MemberName.getAsString() + ")");
+
       //TODO: Vidush, ensure heuristic is correct.
       //check if we already added an explode for the struct here. 
       // auto It = TrackStructExplodeAndRecover.find(VD);

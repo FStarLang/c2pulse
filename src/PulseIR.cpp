@@ -561,6 +561,11 @@ void ConstTerm::dumpPretty() { llvm::outs() << ConstantValue; }
 
 VarTerm::VarTerm() { Tag = TermTag::Var; }
 
+VarTerm::VarTerm(std::string Name) {
+  Tag = TermTag::Var;
+  VarName = Name;
+}
+
 Name::Name() { Tag = TermTag::Name; }
 
 Name::Name(std::string Name) {
@@ -675,6 +680,12 @@ void PulseAssignment::dumpPretty() {
 
 PulseAssignment::PulseAssignment(){
   Tag = PulseStmtTag::Assignment;
+}
+
+PulseAssignment::PulseAssignment(Term *LhsTerm, Term *RhsTerm) {
+  Tag = PulseStmtTag::Assignment;
+  Lhs = LhsTerm;
+  Value = RhsTerm;
 }
 
 void PulseArrayAssignment::dumpPretty() {

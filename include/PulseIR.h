@@ -266,6 +266,7 @@ class VarTerm : public Term {
 public:
   std::string VarName;
   VarTerm();
+  VarTerm(std::string Name);
   void setVarName(std::string Name);
   virtual ~VarTerm() = default;
   virtual void dumpPretty() override;
@@ -412,8 +413,9 @@ public:
 class PulseAssignment : public PulseStmt {
 public:
   PulseAssignment();
-  Term *Lhs;
+  PulseAssignment(Term *LhsTerm, Term *RhsTerm);
   Term *Value;
+  Term *Lhs;
   virtual void dumpPretty() override;
   static bool classof(const PulseStmt *S) {
     return S->Tag == PulseStmtTag::Assignment;
