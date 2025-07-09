@@ -214,6 +214,7 @@ class LemmaStatement : public Term{
 class Paren : public Term {
   public: 
     Paren(); 
+    Paren(Term *InnerExpr);
     Term *InnerExpr;
     void setInnerExpr(Term *Inner);
     virtual void dumpPretty() override;
@@ -340,6 +341,7 @@ public:
   VarTerm *CallName;
   std::vector<Term *> Args;
   AppE();
+  AppE(std::string CallName);
   virtual ~AppE() = default;
   virtual void dumpPretty() override;
   void makeCallName(std::string CallName);

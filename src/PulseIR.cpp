@@ -518,6 +518,11 @@ Paren::Paren() {
   Tag = TermTag::Paren;
 }
 
+Paren::Paren(Term *Expr) {
+  Tag = TermTag::Paren;
+  InnerExpr = Expr;
+}
+
 void Paren::setInnerExpr(Term *Inner) { InnerExpr = Inner; }
 
 void Paren::dumpPretty() {
@@ -617,6 +622,11 @@ FStarPointerType::FStarPointerType() { Tag = TermTag::FStarPointerType; }
 AppE::AppE() {
   Tag = TermTag::AppE;
   Args.clear();
+}
+
+AppE::AppE(std::string CallName) {
+  Tag = TermTag::AppE;
+  makeCallName(CallName);
 }
 
 void AppE::dumpPretty() {

@@ -1429,24 +1429,21 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           PulseAssignment *Assignment = new PulseAssignment();
           Assignment->Value = PulseRhsTerm;
 
-          auto *DerefAppE = new AppE();
-          DerefAppE->makeCallName("!");
+          auto *DerefAppE = new AppE("!");
 
           auto *InnerTermCallArg = new VarTerm();
           InnerTermCallArg->setVarName(NameOfDecl);
           DerefAppE->pushArg(InnerTermCallArg);
           // Wrap this deref in a parenthesis.
-          auto *ParenthesisDeref = new Paren();
-          ParenthesisDeref->setInnerExpr(DerefAppE);
-          
+          auto *ParenthesisDeref = new Paren(DerefAppE);
+
           //Hack to check if the base type is a pointer. 
           //Leveraging the C syntax.
           bool BaseIsPointer = ME->isArrow() ? true : false;
 
           if (BaseIsPointer){
-            auto *PulseCall = new AppE();
-            PulseCall->makeCallName("Mk" + StructName + "?." +
-                                    MemberName.getAsString());
+            auto *PulseCall =
+                new AppE("Mk" + StructName + "?." + MemberName.getAsString());
             PulseCall->pushArg(ParenthesisDeref);
             Assignment->Lhs = PulseCall;
           }
@@ -1994,8 +1991,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
         // fall back generic ast node like Name to generate the call.
         // Choosing a pulse Ast call node since its not a complicated call
         // expression.
-        auto *IsNullCall = new AppE();
-        IsNullCall->makeCallName("is_null");
+        auto *IsNullCall = new AppE("is_null");
         auto *RhsTerm = getTermFromCExpr(Rhs, MutAnalyzer, ExprsBefore, Parent,
                                          BO->getType(), Module);
         IsNullCall->pushArg(RhsTerm);
@@ -2004,8 +2000,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
 
       if (checkIfExprIsNullPtr(Rhs)) {
 
-        auto *IsNullCall = new AppE();
-        IsNullCall->makeCallName("is_null");
+        auto *IsNullCall = new AppE("is_null");
         auto *LhsTerm = getTermFromCExpr(Lhs, MutAnalyzer, ExprsBefore, Parent,
                                          BO->getType(), Module);
         IsNullCall->pushArg(LhsTerm);
@@ -2021,19 +2016,16 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       if (checkIfExprIsNullPtr(Lhs)) {
        
         //Generate null call
-        auto *IsNullCall = new AppE();
-        IsNullCall->makeCallName("is_null");
+        auto *IsNullCall = new AppE("is_null");
         auto *RhsTerm = getTermFromCExpr(Rhs, MutAnalyzer, ExprsBefore, Parent,
                                          BO->getType(), Module);
         IsNullCall->pushArg(RhsTerm);
 
         //Generate not call
-        auto *NotCall = new AppE();
-        NotCall->makeCallName("not");
+        auto *NotCall = new AppE("not");
 
         //Wrap null call around parenthesis
-        auto *ParenNullCall = new Paren();
-        ParenNullCall->setInnerExpr(IsNullCall);
+        auto *ParenNullCall = new Paren(IsNullCall);
 
         NotCall->pushArg(ParenNullCall);
         return NotCall;
@@ -2042,19 +2034,16 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       if (checkIfExprIsNullPtr(Rhs)) {
         
         //Generate null call
-        auto *IsNullCall = new AppE();
-        IsNullCall->makeCallName("is_null");
+        auto *IsNullCall = new AppE("is_null");
         auto *LhsTerm = getTermFromCExpr(Lhs, MutAnalyzer, ExprsBefore, Parent,
                                          BO->getType(), Module);
         IsNullCall->pushArg(LhsTerm);
         
         //Generate not call
-        auto *NotCall = new AppE();
-        NotCall->makeCallName("not");
+        auto *NotCall = new AppE("not");
 
         //Wrap null call around parenthesis
-        auto *ParenNullCall = new Paren();
-        ParenNullCall->setInnerExpr(IsNullCall);
+        auto *ParenNullCall = new Paren(IsNullCall);
 
         NotCall->pushArg(ParenNullCall);
         return NotCall;
@@ -2074,20 +2063,16 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       SymbolTable TypeKey = getSymbolKeyForCType(Lhs->getType(), Ctx);
       auto *OpKey = getSymbolKeyForOperator(TypeKey, Op);
 
-      auto *NewAppENode = new AppE();
-      NewAppENode->setTag(TermTag::AppE);
+      auto *NewAppENode = new AppE(OpKey);
       auto *LhsTerm = getTermFromCExpr(Lhs, MutAnalyzer, ExprsBefore, Parent,
                                        BO->getType(), Module);
       auto *RhsTerm = getTermFromCExpr(Rhs, MutAnalyzer, ExprsBefore, Parent,
                                        BO->getType(), Module);
-
-      NewAppENode->makeCallName(OpKey);
       NewAppENode->pushArg(LhsTerm);
       NewAppENode->pushArg(RhsTerm);
 
       // Wrap Call Expr into a Paren to be safe.
-      auto *NewParen = new Paren();
-      NewParen->setInnerExpr(NewAppENode);
+      auto *NewParen = new Paren(NewAppENode);
       return NewParen;
       break;
     }
@@ -2095,16 +2080,14 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
 
   } else if (auto *UO = dyn_cast<UnaryOperator>(E)) {
     if (UO->getOpcode() == UO_Deref) {
-      auto *DerefAppE = new AppE();
-      DerefAppE->makeCallName("!");
+      auto *DerefAppE = new AppE("!");
 
       auto *TermForBaseExpr = getTermFromCExpr(UO->getSubExpr(), MutAnalyzer,
                                                ExprsBefore, Parent, ParentType, Module);
       DerefAppE->pushArg(TermForBaseExpr);
 
       // Wrap this deref in a parenthesis.
-      auto *Parenthesis = new Paren();
-      Parenthesis->setInnerExpr(DerefAppE);
+      auto *Parenthesis = new Paren(DerefAppE);
       return Parenthesis;
 
     } 
@@ -2146,8 +2129,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
                                                ExprsBefore, Parent, ParentType, Module);
 
         // Wrap address of in a parenthesis.
-        auto *Parenthesis = new Paren();
-        Parenthesis->setInnerExpr(TermForBaseExpr);
+        auto *Parenthesis = new Paren(TermForBaseExpr);
         return Parenthesis;
       }
     } else {
@@ -2267,8 +2249,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     }
 
     // Wrap Call expr in Paren Node
-    auto *NewParen = new Paren();
-    NewParen->setInnerExpr(CallAppE);
+    auto *NewParen = new Paren(CallAppE);
     return NewParen;
   } else if (auto *IC = dyn_cast<ImplicitCastExpr>(E)) {
 
@@ -2314,8 +2295,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       // Create a new variable to be returned.
       // TODO: Vidush create a gensym for to get variable name.
 
-      auto *InitAppE = new AppE();
-      InitAppE->makeCallName("!");
+      auto *InitAppE = new AppE("!");
 
       // The actual variable whose value we want
       VarTerm *VTerm = new VarTerm();
@@ -2323,8 +2303,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       InitAppE->pushArg(VTerm);
 
       // Wrap this AppE in a Parenthesis.
-      auto *PulseParenthesis = new Paren();
-      PulseParenthesis->setInnerExpr(InitAppE);
+      auto *PulseParenthesis = new Paren(InitAppE);
       return PulseParenthesis;
     }
 
@@ -2337,28 +2316,24 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     auto *ArrBase = ArrSubExpr->getBase();
     auto *ArrIdx = ArrSubExpr->getIdx();
 
-    auto *PulseCall = new AppE();
-    PulseCall->makeCallName("op_Array_Access");
-
+    auto *PulseCall = new AppE("op_Array_Access");
     PulseCall->pushArg(getTermFromCExpr(ArrBase, MutAnalyzer, ExprsBefore, Parent,
                                         ParentType, Module));
     PulseCall->pushArg(
         getTermFromCExpr(ArrIdx, MutAnalyzer, ExprsBefore, Parent, ParentType, Module));
 
     // wrap PulseCall in Paren
-    auto *NewParen = new Paren();
-    NewParen->setInnerExpr(PulseCall);
-
+    auto *NewParen = new Paren(PulseCall);
     return NewParen;
+
   } else if (auto *ParenExpr = dyn_cast<clang::ParenExpr>(E)) {
 
     auto *ClangSubExpr = ParenExpr->getSubExpr();
-    auto *PulseParenExpr = new Paren();
 
     auto *PulseSubExpr = getTermFromCExpr(ClangSubExpr, MutAnalyzer,
                                           ExprsBefore, Parent, ParentType, Module);
 
-    PulseParenExpr->setInnerExpr(PulseSubExpr);
+    auto *PulseParenExpr = new Paren(PulseSubExpr);
     return PulseParenExpr;
   } else if (auto *CCastExpr = dyn_cast<CStyleCastExpr>(E)) {
     if (const CallExpr *Call =
@@ -2373,8 +2348,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
             if (auto *RT = dyn_cast<RecordType>(DesugaredElemTy)) {
               // const RecordDecl *RD = RT->getDecl();
               auto RecordName = TT->getDecl()->getDeclName();
-              auto *NewCall = new AppE();
-              NewCall->makeCallName(RecordName.getAsString() + "_alloc");
+              auto *NewCall = new AppE(RecordName.getAsString() + "_alloc");
               return NewCall;
             }
             auto *CastType = CCastExpr->getType()
@@ -2392,9 +2366,8 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
           llvm::outs() << PulseTy->print() << "\n";
 
           if (auto *PulsePointerTy = dyn_cast<FStarPointerType>(PulseTy)){
-            auto *NewCall = new AppE();
-            NewCall->makeCallName("alloc_ref #" +
-                                  PulsePointerTy->PointerTo->print());
+            auto *NewCall =
+                new AppE("alloc_ref #" + PulsePointerTy->PointerTo->print());
             return NewCall;
           }
 
