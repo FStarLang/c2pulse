@@ -65,6 +65,7 @@ private:
   std::map<const clang::Stmt*, std::vector<Slprop*>> StmtToLemmas;
   std::set<const clang::Decl*> IsAllocatedOnHeap;
   std::map<clang::FunctionDecl*, PulseDecl*> DeclarationsMap;
+  std::set<const clang::Decl*> TrackScopeOfStackAllocatedStructs;
   std::map<const clang::Decl*, std::pair<bool, bool>> TrackStructExplodeAndRecover;
 };
 

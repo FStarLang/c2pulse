@@ -186,10 +186,19 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
       return lookupSymbol(SymbolTable::Int32_Mul);
     } else if (Val == SymbolTable::Int64) {
       return lookupSymbol(SymbolTable::Int64_Mul);
+    } else if (Val == SymbolTable::UInt8) {
+      return lookupSymbol(SymbolTable::UInt8_Mul);
+    } else if (Val == SymbolTable::UInt16) {
+      return lookupSymbol(SymbolTable::UInt16_Mul);
+    } else if (Val == SymbolTable::UInt32) {
+      return lookupSymbol(SymbolTable::UInt32_Mul);
+    } else if (Val == SymbolTable::UInt64) {
+      return lookupSymbol(SymbolTable::UInt64_Mul);
+    } else if (Val == SymbolTable::SizeT) {
+      return lookupSymbol(SymbolTable::SizeT_Mul);
     } else {
       assert(false && "unimplemented case.\n");
     }
-
     break;
   }
   case clang::BO_Div: {
@@ -201,10 +210,16 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
       return lookupSymbol(SymbolTable::Int32_Div);
     } else if (Val == SymbolTable::Int64) {
       return lookupSymbol(SymbolTable::Int64_Div);
-    } else if (Val == SymbolTable::SizeT) {
-      return lookupSymbol(SymbolTable::SizeT_Div);
+    } else if (Val == SymbolTable::UInt8) {
+      return lookupSymbol(SymbolTable::UInt8_Div);
+    } else if (Val == SymbolTable::UInt16) {
+      return lookupSymbol(SymbolTable::UInt16_Div);
+    } else if (Val == SymbolTable::UInt32) {
+      return lookupSymbol(SymbolTable::UInt32_Div);
     } else if (Val == SymbolTable::UInt64) {
       return lookupSymbol(SymbolTable::UInt64_Div);
+    } else if (Val == SymbolTable::SizeT) {
+      return lookupSymbol(SymbolTable::SizeT_Div);
     } else {
       assert(false && "unimplemented case.\n");
     }
@@ -219,10 +234,16 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
       return lookupSymbol(SymbolTable::Int32_Rem);
     } else if (Val == SymbolTable::Int64) {
       return lookupSymbol(SymbolTable::Int64_Rem);
-    } else if (Val == SymbolTable::SizeT) {
-      return lookupSymbol(SymbolTable::SizeT_Rem);
+    } else if (Val == SymbolTable::UInt8) {
+      return lookupSymbol(SymbolTable::UInt8_Rem);
+    } else if (Val == SymbolTable::UInt16) {
+      return lookupSymbol(SymbolTable::UInt16_Rem);
+    } else if (Val == SymbolTable::UInt32) {
+      return lookupSymbol(SymbolTable::UInt32_Rem);
     } else if (Val == SymbolTable::UInt64) {
       return lookupSymbol(SymbolTable::UInt64_Rem);
+    } else if (Val == SymbolTable::SizeT) {
+      return lookupSymbol(SymbolTable::SizeT_Rem);
     } else {
       assert(false && "unimplemented case.\n");
     }
@@ -237,6 +258,12 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
       return lookupSymbol(SymbolTable::Int32_Add);
     } else if (Val == SymbolTable::Int64) {
       return lookupSymbol(SymbolTable::Int64_Add);
+    } else if (Val == SymbolTable::UInt8) {
+      return lookupSymbol(SymbolTable::UInt8_Add);
+    } else if (Val == SymbolTable::UInt16) {
+      return lookupSymbol(SymbolTable::UInt16_Add);
+    } else if (Val == SymbolTable::UInt32) {
+      return lookupSymbol(SymbolTable::UInt32_Add);
     } else if (Val == SymbolTable::UInt64) {
       return lookupSymbol(SymbolTable::UInt64_Add);
     } else if (Val == SymbolTable::SizeT) {
@@ -256,6 +283,12 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
       return lookupSymbol(SymbolTable::Int32_Sub);
     } else if (Val == SymbolTable::Int64) {
       return lookupSymbol(SymbolTable::Int64_Sub);
+    } else if (Val == SymbolTable::UInt8) {
+      return lookupSymbol(SymbolTable::UInt8_Sub);
+    } else if (Val == SymbolTable::UInt16) {
+      return lookupSymbol(SymbolTable::UInt16_Sub);
+    } else if (Val == SymbolTable::UInt32) {
+      return lookupSymbol(SymbolTable::UInt32_Sub);
     } else if (Val == SymbolTable::UInt64) {
       return lookupSymbol(SymbolTable::UInt64_Sub);
     } else if (Val == SymbolTable::SizeT) {
@@ -285,10 +318,16 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
       return lookupSymbol(SymbolTable::Int32_Lt);
     } else if (Val == SymbolTable::Int64) {
       return lookupSymbol(SymbolTable::Int64_Lt);
-    } else if (Val == SymbolTable::SizeT) {
-      return lookupSymbol(SymbolTable::SizeT_Lt);
+    } else if (Val == SymbolTable::UInt8) {
+      return lookupSymbol(SymbolTable::UInt8_Lt);
+    } else if (Val == SymbolTable::UInt16) {
+      return lookupSymbol(SymbolTable::UInt16_Lt);
+    } else if (Val == SymbolTable::UInt32) {
+      return lookupSymbol(SymbolTable::UInt32_Lt);
     } else if (Val == SymbolTable::UInt64) {
       return lookupSymbol(SymbolTable::UInt64_Lt);
+    } else if (Val == SymbolTable::SizeT) {
+      return lookupSymbol(SymbolTable::SizeT_Lt);
     } else {
       assert(false && "unimplemented case.\n");
     }
@@ -303,10 +342,16 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
       return lookupSymbol(SymbolTable::Int32_Gt);
     } else if (Val == SymbolTable::Int64) {
       return lookupSymbol(SymbolTable::Int64_Gt);
-    } else if (Val == SymbolTable::SizeT) {
-      return lookupSymbol(SymbolTable::SizeT_Gt);
+    } else if (Val == SymbolTable::UInt8) {
+      return lookupSymbol(SymbolTable::UInt8_Gt);
+    } else if (Val == SymbolTable::UInt16) {
+      return lookupSymbol(SymbolTable::UInt16_Gt);
+    } else if (Val == SymbolTable::UInt32) {
+      return lookupSymbol(SymbolTable::UInt32_Gt);
     } else if (Val == SymbolTable::UInt64) {
       return lookupSymbol(SymbolTable::UInt64_Gt);
+    } else if (Val == SymbolTable::SizeT) {
+      return lookupSymbol(SymbolTable::SizeT_Gt);
     } else {
       assert(false && "unimplemented case.\n");
     }
@@ -325,6 +370,16 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
       return lookupSymbol(SymbolTable::Int32_Ge);
     } else if (Val == SymbolTable::Int64) {
       return lookupSymbol(SymbolTable::Int64_Ge);
+    } else if (Val == SymbolTable::UInt8) {
+      return lookupSymbol(SymbolTable::UInt8_Ge);
+    } else if (Val == SymbolTable::UInt16) {
+      return lookupSymbol(SymbolTable::UInt16_Ge);
+    } else if (Val == SymbolTable::UInt32) {
+      return lookupSymbol(SymbolTable::UInt32_Ge);
+    } else if (Val == SymbolTable::UInt64) {
+      return lookupSymbol(SymbolTable::UInt64_Ge);
+    } else if (Val == SymbolTable::SizeT) {
+      return lookupSymbol(SymbolTable::SizeT_Ge);
     } else {
       assert(false && "unimplemented case.\n");
     }
@@ -339,6 +394,16 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
       return lookupSymbol(SymbolTable::Int32_Eq);
     } else if (Val == SymbolTable::Int64) {
       return lookupSymbol(SymbolTable::Int64_Eq);
+    } else if (Val == SymbolTable::UInt8) {
+      return lookupSymbol(SymbolTable::UInt8_Eq);
+    } else if (Val == SymbolTable::UInt16) {
+      return lookupSymbol(SymbolTable::UInt16_Eq);
+    } else if (Val == SymbolTable::UInt32) {
+      return lookupSymbol(SymbolTable::UInt32_Eq);
+    } else if (Val == SymbolTable::UInt64) {
+      return lookupSymbol(SymbolTable::UInt64_Eq);
+    } else if (Val == SymbolTable::SizeT) {
+      return lookupSymbol(SymbolTable::SizeT_Eq);
     } else {
       assert(false && "unimplemented case.\n");
     }

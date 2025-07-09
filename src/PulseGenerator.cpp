@@ -81,10 +81,11 @@ bool checkIsSameStructInstance(Expr *A, Expr *B, ASTContext &Context) {
   B = B->IgnoreImpCasts();
 
   DeclRefExpr *DeclRefA = dyn_cast<DeclRefExpr>(A);
+  DeclRefExpr *DeclRefB = dyn_cast<DeclRefExpr>(B);
+
   if (!DeclRefA)
     return false;
 
-  DeclRefExpr *DeclRefB = dyn_cast<DeclRefExpr>(B);
   if (!DeclRefB)
     return false;
 
@@ -305,9 +306,8 @@ void PulseVisitor::inferArrayTypesExpr(Expr *ExprPtr) {
 bool PulseVisitor::checkIsRecursiveStmt(Stmt *InnerStmt,
                                         FunctionDecl *CurrFunction) {
 
-  if (!InnerStmt) {
+  if (!InnerStmt)
     return false;
-  }
 
   if (auto *N = dyn_cast<NullStmt>(InnerStmt)) {
     return false;
@@ -377,7 +377,6 @@ bool PulseVisitor::checkIsRecursiveExpr(Expr *ExprPtr,
 
   } else if (auto *UOp = dyn_cast<clang::UnaryOperator>(ExprPtr)) {
     return checkIsRecursiveExpr(UOp->getSubExpr(), CurrFunction);
-
   } else if (auto *Call = dyn_cast<clang::CallExpr>(ExprPtr)) {
     auto NumArgs = Call->getNumArgs();
     bool isRec = false;
@@ -1146,6 +1145,10 @@ PulseStmt *PulseVisitor::pulseFromCompoundStmt(Stmt *S,
   PulseSequence *Head = nullptr;
   if (auto *CS = dyn_cast<CompoundStmt>(S)) {
 
+    // //This only works on Structs for now.
+    // //For any struct declaration,
+    // TrackScopeOfStackAllocatedStructs.clear();
+
     for (auto *InnerStmt : CS->body()) {
 
       auto *NextPulseStmt =
@@ -1166,6 +1169,8 @@ PulseStmt *PulseVisitor::pulseFromCompoundStmt(Stmt *S,
       Stmt->assignS2(NewSeq);
       Stmt = NewSeq;
     }
+
+    /// Check what variables are defined in the Compound statement.
   }
 
   return Head;
@@ -1624,7 +1629,18 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
       return PExpr;
     }
 
-  } else if (auto *E = dyn_cast<Expr>(S)) {
+  }
+  // else if (auto *ParenExpr = dyn_cast<clang::ParenExpr>(S)) {
+
+  //   auto *ClangSubExpr = ParenExpr->getSubExpr();
+
+  //   auto *PulseSubExpr = pulseFromStmt(ClangSubExpr, Analyzer,
+  //                                         Parent, Module, CS);
+
+  //   auto *PulseParenExpr = new Paren(PulseSubExpr);
+  //   return PulseParenExpr;
+  // }
+  else if (auto *E = dyn_cast<Expr>(S)) {
 
     SmallVector<PulseStmt *> ExprsBefore;
 
@@ -1706,49 +1722,61 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
   } else if (auto *RS = dyn_cast<ReturnStmt>(S)) {
 
     if (auto *RetVal = RS->getRetValue()) {
+
+      // if (auto *CastToStmt = dyn_cast<Stmt>(RS->getRetValue())){
+      //  auto *RetStmt = pulseFromStmt(RetVal, Analyzer,
+      //                                 RetVal, Module, CS);
+
+      // return RetStmt;
+      //}
+      // else{
+
       SmallVector<PulseStmt *> ExprsBefore;
-      auto *NewPulseExpr = new PulseExpr();
-      auto *RetTerm = getTermFromCExpr(RetVal, Analyzer, ExprsBefore,
-                                       Parent, RetVal->getType(), Module);
-
-    //   if (auto *DeclRef = dyn_cast<DeclRefExpr>(RetVal->IgnoreParenImpCasts()->IgnoreImpCasts())){
-    //     auto It = TrackStructExplodeAndRecover.find(DeclRef->getDecl());
-    //     if (It != TrackStructExplodeAndRecover.end()){
-    //       auto Info = It->second; 
-    //       if (!Info.second){
-
-    //         //Get struct name from declration.
-    //           const auto *VD = DeclRef->getDecl();
-    //           auto *PSeq = new PulseSequence();
-    //           auto StructName = VD->getType()->getPointeeType().getAsString(); 
-    //           if (RetTerm){
-    //              NewPulseExpr->E = RetTerm;
-    //              PSeq->assignS2(NewPulseExpr);
-    //              auto *FallBack  = new GenericStmt(); 
-    //              FallBack->body += StructName + "_recover " +  DeclRef->getDecl()->getNameAsString() + ";";
-    //              PSeq->assignS1(FallBack);
-    //              // update element in map.
-    //              TrackStructExplodeAndRecover.erase(It);
-    //              return PSeq;
-    //          }
-
-    //         auto *FallBack  = new GenericStmt(); 
-    //         FallBack->body += StructName + "_recover " +  DeclRef->getDecl()->getNameAsString() + ";";
-
-    //         // update element in map.
-    //         TrackStructExplodeAndRecover.erase(It);
-    //         return FallBack;
-    //     }
-    //   }
-    // }
+      auto *RetTerm = getTermFromCExpr(RetVal, Analyzer, ExprsBefore, Parent,
+                                       RetVal->getType(), Module);
 
       if (RetTerm == nullptr)
         return nullptr;
-      
+
+      auto *NewPulseExpr = new PulseExpr();
       NewPulseExpr->E = RetTerm;
 
       assert(ExprsBefore.empty() && "Expected expressions to be released!");
       return NewPulseExpr;
+      //}
+      //   if (auto *DeclRef =
+      //   dyn_cast<DeclRefExpr>(RetVal->IgnoreParenImpCasts()->IgnoreImpCasts())){
+      //     auto It = TrackStructExplodeAndRecover.find(DeclRef->getDecl());
+      //     if (It != TrackStructExplodeAndRecover.end()){
+      //       auto Info = It->second;
+      //       if (!Info.second){
+
+      //         //Get struct name from declration.
+      //           const auto *VD = DeclRef->getDecl();
+      //           auto *PSeq = new PulseSequence();
+      //           auto StructName =
+      //           VD->getType()->getPointeeType().getAsString(); if (RetTerm){
+      //              NewPulseExpr->E = RetTerm;
+      //              PSeq->assignS2(NewPulseExpr);
+      //              auto *FallBack  = new GenericStmt();
+      //              FallBack->body += StructName + "_recover " +
+      //              DeclRef->getDecl()->getNameAsString() + ";";
+      //              PSeq->assignS1(FallBack);
+      //              // update element in map.
+      //              TrackStructExplodeAndRecover.erase(It);
+      //              return PSeq;
+      //          }
+
+      //         auto *FallBack  = new GenericStmt();
+      //         FallBack->body += StructName + "_recover " +
+      //         DeclRef->getDecl()->getNameAsString() + ";";
+
+      //         // update element in map.
+      //         TrackStructExplodeAndRecover.erase(It);
+      //         return FallBack;
+      //     }
+      //   }
+      // }
     }
 
     return nullptr;
@@ -2037,9 +2065,9 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
 
       auto *NewAppENode = new AppE(OpKey);
       auto *LhsTerm = getTermFromCExpr(Lhs, MutAnalyzer, ExprsBefore, Parent,
-                                       BO->getType(), Module);
+                                       Lhs->getType(), Module);
       auto *RhsTerm = getTermFromCExpr(Rhs, MutAnalyzer, ExprsBefore, Parent,
-                                       BO->getType(), Module);
+                                       Rhs->getType(), Module);
       NewAppENode->pushArg(LhsTerm);
       NewAppENode->pushArg(RhsTerm);
 

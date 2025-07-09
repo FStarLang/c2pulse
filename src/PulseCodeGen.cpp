@@ -253,10 +253,18 @@ std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
       TermString += CT->ConstantValue + "L";
       break;
     }
-    case SymbolTable::Int8:
-    case SymbolTable::Int16:
-    case SymbolTable::UInt8:
-    case SymbolTable::UInt16:
+    case SymbolTable::Int8: {
+      assert(false && "Not implemented integer literal for Int8\n");
+    }
+    case SymbolTable::Int16: {
+      assert(false && "Not implemented integer literal for Int8\n");
+    }
+    case SymbolTable::UInt8: {
+      assert(false && "Not implemented integer literal for Int8\n");
+    }
+    case SymbolTable::UInt16: {
+      assert(false && "Not implemented integer literal for Int8\n");
+    }
     case SymbolTable::UInt32: {
       TermString += CT->ConstantValue + "ul";
       break;
@@ -265,7 +273,9 @@ std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
       TermString += CT->ConstantValue + "UL";
       break;
     }
-    case SymbolTable::UInt128:
+    case SymbolTable::UInt128: {
+      assert(false && "Not implemented integer literal for Int8\n");
+    }
     case SymbolTable::SizeT: {
       TermString += CT->ConstantValue + "sz";
       break;
