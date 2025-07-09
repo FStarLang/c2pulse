@@ -35,9 +35,40 @@ bool ExprLocationAnalyzer::TraverseFunctionDecl(FunctionDecl *FD){
   return RecursiveASTVisitor::TraverseFunctionDecl(FD);
 }
 
+void ExprLocationAnalyzer::dumpTokens(SourceRange Range) {
+  SourceLocation B = Range.getBegin();
+  SourceLocation E = Range.getEnd();
+  if (B.isMacroID()) B = SM.getExpansionLoc(B);
+  if (E.isMacroID()) E = SM.getExpansionLoc(E);
+
+  bool invalid = false;
+  StringRef Buffer = Lexer::getSourceText(CharSourceRange::getTokenRange(B, E), SM, Context.getLangOpts(), &invalid);
+  if (invalid) {
+    llvm::errs() << "Failed to get source text.\n";
+    return;
+  }
+
+  Lexer lexer(SM.getSpellingLoc(B), Context.getLangOpts(), Buffer.begin(), Buffer.begin(), Buffer.end());
+  Token tok;
+  while (!lexer.LexFromRawLexer(tok)) {
+    if (tok.is(tok::eof)) break;
+    SourceLocation loc = tok.getLocation();
+    if (loc.isMacroID()) loc = SM.getExpansionLoc(loc);
+    unsigned line = SM.getSpellingLineNumber(loc);
+    unsigned col = SM.getSpellingColumnNumber(loc);
+    llvm::outs() << "Token: " << tok.getName() << " (" << Lexer::getSpelling(tok, SM, Context.getLangOpts())
+                 << ") at Line: " << line << ", Col: " << col << "\n";
+  }
+}
+
 bool ExprLocationAnalyzer::VisitFunctionDecl(FunctionDecl *FD) {
   unsigned startLine = SM.getSpellingLineNumber(FD->getBeginLoc());
   unsigned endLine = SM.getSpellingLineNumber(FD->getEndLoc());
+
+  // if (Stmt *Body = FD->getBody()) {
+  //   SourceRange Range = Body->getSourceRange();
+  //   dumpTokens(Range);
+  // }
 
   llvm::outs() << "Function: " << CurrentFunctionName
                << " StartLine: " << startLine

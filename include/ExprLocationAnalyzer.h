@@ -2,7 +2,9 @@
 
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Frontend/ASTUnit.h"
+// #include "clang/Lex/PPCallbacks.h"
 #include "clang/Lex/Lexer.h"
+#include "clang/Lex/Token.h"
 
 #include "llvm/Support/CommandLine.h"
 
@@ -33,6 +35,9 @@ public:
 
   const clang::FunctionDecl *getContainingFunction(const clang::Stmt *S) const;
 
+  // Dumps the tokens in the specified source range to the output
+  void dumpTokens(clang::SourceRange Range);
+
   // Needed for controling whether we descend into the body
   bool TraverseFunctionDecl(clang::FunctionDecl *FD);
 
@@ -60,3 +65,45 @@ private:
   std::optional<std::string>  getSourceLine(clang::SourceLocation loc);
   void recordSourceInfo(const std::string &role, const clang::Expr *E, const std::string &op);
 };
+
+// class MacroTracker : public clang::PPCallbacks {
+// public:
+//   MacroTracker(const SourceManager &SM) : SM(SM) {}
+
+//   void MacroExpands(const clang::Token &MacroNameTok,
+//                     const clang::MacroDefinition &MD,
+//                     clang::SourceRange Range,
+//                     const clang::MacroArgs *Args) override {
+//     SourceLocation Loc = MacroNameTok.getLocation();
+//     if (Loc.isMacroID()) Loc = SM.getExpansionLoc(Loc);
+//     unsigned Line = SM.getSpellingLineNumber(Loc);
+//     unsigned Col = SM.getSpellingColumnNumber(Loc);
+//     llvm::outs() << "[MacroExpand] "
+//                  << MacroNameTok.getIdentifierInfo()->getName()
+//                  << " at Line " << Line << ", Col " << Col << "\n";
+//   }
+
+// private:
+//   const clang::SourceManager &SM;
+// };
+
+// class CommentCapture : public clang::CommentHandler {
+// public:
+//   CommentCapture(const SourceManager &SM) : SM(SM) {}
+
+//   bool HandleComment(Preprocessor &PP, SourceRange CommentRange) override {
+//     SourceLocation Loc = CommentRange.getBegin();
+//     if (Loc.isMacroID()) Loc = SM.getExpansionLoc(Loc);
+//     unsigned Line = SM.getSpellingLineNumber(Loc);
+//     unsigned Col = SM.getSpellingColumnNumber(Loc);
+//     llvm::StringRef CommentText = Lexer::getSourceText(CharSourceRange::getCharRange(CommentRange),
+//                                                        SM, PP.getLangOpts());
+//     llvm::outs() << "[Comment] at Line " << Line << ", Col " << Col
+//                  << ": " << CommentText << "\n";
+//     return false; // allow normal handling
+//   }
+
+// private:
+//   const SourceManager &SM;
+// };
+
