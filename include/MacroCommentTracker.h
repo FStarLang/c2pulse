@@ -1,23 +1,49 @@
 #pragma once
 
 #include "clang/Lex/PPCallbacks.h"
-#include "clang/Basic/SourceManager.h"
-#include "clang/Basic/LangOptions.h"
 #include "clang/Lex/Preprocessor.h"
-#include <vector>
+#include "clang/Basic/SourceManager.h"
+#include "clang/Basic/SourceLocation.h"
+#include "clang/Lex/Token.h"
+#include "clang/Basic/LangOptions.h"
+#include "llvm/Support/raw_ostream.h"
+
 #include <string>
+#include <vector>
 
 class MacroCommentTracker : public clang::PPCallbacks, public clang::CommentHandler {
 public:
-    MacroCommentTracker(clang::Preprocessor &PP, clang::SourceManager &SM, const clang::LangOptions &LangOpts);
+    MacroCommentTracker(clang::Preprocessor &PP,
+                        clang::SourceManager &SM,
+                        const clang::LangOptions &LangOpts);
 
-    void MacroDefined(const clang::Token &MacroNameTok, const clang::MacroDirective *MD) override;
-    void MacroExpands(const clang::Token &MacroNameTok, const clang::MacroDefinition &MD,
-                      clang::SourceRange Range, const clang::MacroArgs *Args) override;
+    // PPCallbacks overrides
+    void MacroDefined(const clang::Token &MacroNameTok,
+                      const clang::MacroDirective *MD) override;
 
-    void Comment(clang::SourceLocation Loc, clang::StringRef CommentText);
+    void MacroUndefined(const clang::Token &MacroNameTok,
+                        const clang::MacroDefinition &MD,
+                        const clang::MacroDirective *Undef) override;
 
-    bool HandleComment(clang::Preprocessor &PP, clang::SourceRange CommentRange) override;
+    void MacroExpands(const clang::Token &MacroNameTok,
+                      const clang::MacroDefinition &MD,
+                      clang::SourceRange Range,
+                      const clang::MacroArgs *Args) override;
+
+    void Ifdef(clang::SourceLocation Loc,
+               const clang::Token &MacroNameTok,
+               const clang::MacroDefinition &MD) override;
+
+    void Ifndef(clang::SourceLocation Loc,
+                const clang::Token &MacroNameTok,
+                const clang::MacroDefinition &MD) override;
+
+    void Defined(const clang::Token &MacroNameTok,
+                 const clang::MacroDefinition &MD,
+                 clang::SourceRange Range) override;
+
+    bool HandleComment(clang::Preprocessor &PP,
+                       clang::SourceRange Comment) override;
 
     void printCollectedInfo() const;
 
@@ -29,5 +55,3 @@ private:
     std::vector<std::string> MacroExpansions;
     std::vector<std::string> Comments;
 };
-
-

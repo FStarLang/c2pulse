@@ -91,9 +91,9 @@ int main(int argc, const char **argv) {
             Analyzer.printNodeInfoMap();
         });
 
-        // PulseTransformer Transformer(Ctx);
-        // Transformer.transform();
-        // Transformer.writeToFile();
+        PulseTransformer Transformer(Ctx);
+        Transformer.transform();
+        Transformer.writeToFile();
     }
 
     if (failedASTs > 0) {
