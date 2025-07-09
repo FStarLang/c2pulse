@@ -212,14 +212,14 @@ class LemmaStatement : public Term{
 
 /// An IR node for representing a pulse parenthesis.
 class Paren : public Term {
-  public: 
-    Paren(); 
-    Paren(Term *InnerExpr);
-    Term *InnerExpr;
-    void setInnerExpr(Term *Inner);
-    virtual void dumpPretty() override;
-    virtual ~Paren() = default;
-    static bool classof(const Term *T) { return T->Tag == TermTag::Paren; }
+public:
+  Paren();
+  Paren(Term *InnerExpr);
+  Term *InnerExpr;
+  void setInnerExpr(Term *Inner);
+  virtual void dumpPretty() override;
+  virtual ~Paren() = default;
+  static bool classof(const Term *T) { return T->Tag == TermTag::Paren; }
 };
 
 /// An IR node for representing a pulse ensures.
@@ -437,6 +437,7 @@ class LetBinding : public PulseStmt {
 public:
   std::string VarName;
   LetBinding();
+  LetBinding(std::string Lhs, Term *Rhs, MutOrRef Qual);
   Term *LetInit;
   MutOrRef Qualifier;
   virtual void dumpPretty() override;

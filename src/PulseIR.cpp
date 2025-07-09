@@ -690,6 +690,13 @@ void PulseArrayAssignment::dumpPretty() {
 
 LetBinding::LetBinding() { Tag = PulseStmtTag::LetBinding; }
 
+LetBinding::LetBinding(std::string Lhs, Term *Rhs, MutOrRef Qual) {
+  Tag = PulseStmtTag::LetBinding;
+  VarName = Lhs;
+  LetInit = Rhs;
+  Qualifier = Qual;
+}
+
 void LetBinding::dumpPretty() {
   llvm::outs() << "let ";
   if (Qualifier == MutOrRef::MUT) {

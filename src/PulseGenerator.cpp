@@ -1193,20 +1193,16 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           // Though it may be usefuel checking invalid casting operations.
           // auto VarType = VD->getType();
 
-          // This gets converted to the pulse let expression.
-          // Vidush : It is probably good to make a setter / pass arguments to
-          // the constructor.
-          auto *PulseLet = new LetBinding();
-          PulseLet->VarName = VarName;
-
           // Don't forget to release these exprs.
           SmallVector<PulseStmt *> NewExprs;
+          Term *LetInit = getTermFromCExpr(Init, Analyzer, NewExprs, Parent,
+                                           VD->getType(), Module);
 
-          PulseLet->LetInit =
-              getTermFromCExpr(Init, Analyzer, NewExprs, Parent, VD->getType(), Module);
-          PulseLet->setTag(PulseStmtTag::LetBinding);
+          LetBinding *PulseLet;
           if (Analyzer->isMutated(D)) {
-            PulseLet->Qualifier = MutOrRef::MUT;
+            PulseLet = new LetBinding(VarName, LetInit, MutOrRef::MUT);
+          } else {
+            PulseLet = new LetBinding(VarName, LetInit, MutOrRef::NOTMUT);
           }
 
           // We need to make a sequence of pulse statements.
@@ -1306,16 +1302,10 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
             if (Analyzer->isMutated(VD)){
 
-              auto *NewMutLet = new LetBinding(); 
-              NewMutLet->Qualifier = MutOrRef::MUT;
-
-              NewMutLet->VarName = VD->getNameAsString();
-
-              auto *Rhs = new Name(); 
-              Rhs->setName(StructName.getAsString() + "_default " + StructName.getAsString() + "_spec_default");
-
-              NewMutLet->LetInit = Rhs;
-
+              auto *Rhs = new Name(StructName.getAsString() + "_default " +
+                                   StructName.getAsString() + "_spec_default");
+              auto *NewMutLet =
+                  new LetBinding(VD->getNameAsString(), Rhs, MutOrRef::MUT);
               return NewMutLet;
             }
             
