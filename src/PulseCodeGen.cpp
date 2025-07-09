@@ -461,7 +461,7 @@ void PulseCodeGen::generateCodeFromPulseStmt(llvm::raw_string_ostream &OS,
     OS << PulseSyntax::NewLine;
     generateCodeFromPulseStmt(OS, WBod);
     OS << PulseSyntax::ClosingCurlyBrace;
-
+    OS << PulseSyntax::Semicolon;
   } else if (PulseSequence *Seq = dyn_cast<PulseSequence>(T)) {
     auto *S1 = Seq->S1;
     auto *S2 = Seq->S2;
