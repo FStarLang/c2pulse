@@ -4,6 +4,7 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include <cstddef>
 #include <cstdio>
 
 using namespace clang;
@@ -431,6 +432,11 @@ void PulseCodeGen::generateCodeFromPulseStmt(llvm::raw_string_ostream &OS,
 
     OS << PulseSyntax::OpeningCurlyBrace;
     OS << PulseSyntax::NewLine;
+    if (PulseThen == nullptr){
+      OS << PulseSyntax::OpeningParenthesis;
+      OS << PulseSyntax::ClosingParenthesis;
+      OS << PulseSyntax::NewLine;
+    }
     generateCodeFromPulseStmt(OS, PulseThen);
     OS << PulseSyntax::ClosingCurlyBrace;
     OS << PulseSyntax::NewLine;
@@ -439,6 +445,11 @@ void PulseCodeGen::generateCodeFromPulseStmt(llvm::raw_string_ostream &OS,
     OS << PulseSyntax::NewLine;
     OS << PulseSyntax::OpeningCurlyBrace;
     OS << PulseSyntax::NewLine;
+    if (PulseElse == nullptr){
+      OS << PulseSyntax::OpeningParenthesis;
+      OS << PulseSyntax::ClosingParenthesis;
+      OS << PulseSyntax::NewLine;
+    }
     generateCodeFromPulseStmt(OS, PulseElse);
     OS << PulseSyntax::ClosingCurlyBrace;
     // Seems like Pulse If statements need an semicolon at the end
