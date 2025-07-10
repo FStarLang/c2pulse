@@ -260,16 +260,16 @@ std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
       break;
     }
     case SymbolTable::Int8: {
-      assert(false && "Not implemented integer literal for Int8\n");
+      emitError("ConstTerm: did not implement case for Int8!\n");
     }
     case SymbolTable::Int16: {
-      assert(false && "Not implemented integer literal for Int8\n");
+      emitError("ConstTerm: did not implement case for Int16!\n");
     }
     case SymbolTable::UInt8: {
-      assert(false && "Not implemented integer literal for Int8\n");
+      emitError("ConstTerm: did not implement case for UInt8!\n");
     }
     case SymbolTable::UInt16: {
-      assert(false && "Not implemented integer literal for Int8\n");
+      emitError("ConstTerm: did not implement case for UInt16!\n");
     }
     case SymbolTable::UInt32: {
       TermString += CT->ConstantValue + "ul";
@@ -280,17 +280,15 @@ std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
       break;
     }
     case SymbolTable::UInt128: {
-      assert(false && "Not implemented integer literal for Int8\n");
+      emitError("ConstTerm: did not implement case for UInt128!\n");
     }
     case SymbolTable::SizeT: {
       TermString += CT->ConstantValue + "sz";
       break;
     }
     default: {
-      llvm::outs() << lookupSymbol(CT->Symbol) << "\n\n";
       CT->dumpPretty();
-      llvm::outs() << "\n\n";
-      assert(false && "Did not expect type in switch!");
+      emitError("Did not expect pulse type!");
       break;
     }
     }
@@ -359,8 +357,7 @@ std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
   
   else {
     T->dumpPretty();
-    llvm::outs() << "\n\n";
-    assert(false && "Did not expect Term node in generateCodeFromTerm");
+    emitError("Did not expect Pulse AST Node!");
   }
 
   return TermString;
@@ -500,6 +497,6 @@ void PulseCodeGen::generateCodeFromPulseStmt(llvm::raw_string_ostream &OS,
   }
   
   else {
-    assert(false && "Did not expect pulse statement type");
+    emitError("Did not Expect Pulse AST Node!");
   }
 }
