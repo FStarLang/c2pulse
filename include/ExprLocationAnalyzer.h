@@ -37,6 +37,7 @@ public:
 
   // Dumps the tokens in the specified source range to the output
   void dumpTokens(clang::SourceRange Range);
+  void dumpTokens2(clang::SourceRange Range);
 
   // Needed for controling whether we descend into the body
   bool TraverseFunctionDecl(clang::FunctionDecl *FD);

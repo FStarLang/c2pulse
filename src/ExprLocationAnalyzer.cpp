@@ -49,42 +49,85 @@ void ExprLocationAnalyzer::dumpTokens(SourceRange Range) {
   }
 
   Lexer lexer(SM.getSpellingLoc(B), Context.getLangOpts(), Buffer.begin(), Buffer.begin(), Buffer.end());
+
   Token tok;
+  std::map<unsigned, std::vector<std::string>> tokensByLine;
+
   while (!lexer.LexFromRawLexer(tok)) {
     if (tok.is(tok::eof)) break;
+
     SourceLocation loc = tok.getLocation();
     if (loc.isMacroID()) loc = SM.getExpansionLoc(loc);
     unsigned line = SM.getSpellingLineNumber(loc);
     unsigned col = SM.getSpellingColumnNumber(loc);
-    llvm::outs() << "Token: " << tok.getName() << " (" << Lexer::getSpelling(tok, SM, Context.getLangOpts())
-                 << ") at Line: " << line << ", Col: " << col << "\n";
+    std::string spelling = Lexer::getSpelling(tok, SM, Context.getLangOpts());
+    std::string tokenInfo = "Token: " + std::string(tok.getName()) + " (" + spelling + ") at line " + std::to_string(line) + ", col " + std::to_string(col);
+    tokensByLine[line].emplace_back(std::move(tokenInfo));
+  }
+
+  for (const auto &[line, tokens] : tokensByLine) {
+    // Create a SourceLocation for the beginning of the line
+    SourceLocation lineLoc = SM.translateLineCol(SM.getMainFileID(), line, 1);
+
+    // Get the whole source line text
+    bool invalidLine = false;
+    StringRef lineText = Lexer::getSourceText(CharSourceRange::getCharRange(lineLoc, SM.getLocForEndOfFile(SM.getMainFileID())), SM, Context.getLangOpts(), &invalidLine);
+    if (!invalidLine) {
+      // Extract only the line content until newline
+      std::string::size_type pos = lineText.find_first_of("\n\r");
+      std::string singleLine = (pos == std::string::npos) ? std::string(lineText) : std::string(lineText.substr(0, pos));
+
+      llvm::outs() << "Line " << line << ": " << singleLine << "\n";
+    } else {
+      llvm::outs() << "Line " << line << ": [Could not retrieve source line]\n";
+    }
+
+    for (const std::string &tok : tokens) {
+      llvm::outs() << "  " << tok << "\n";
+    }
   }
 }
+
 
 bool ExprLocationAnalyzer::VisitFunctionDecl(FunctionDecl *FD) {
   unsigned startLine = SM.getSpellingLineNumber(FD->getBeginLoc());
   unsigned endLine = SM.getSpellingLineNumber(FD->getEndLoc());
 
-  // if (Stmt *Body = FD->getBody()) {
-  //   SourceRange Range = Body->getSourceRange();
-  //   dumpTokens(Range);
-  // }
-
+  DEBUG_WITH_TYPE(DEBUG_TYPE, { 
   llvm::outs() << "Function: " << CurrentFunctionName
                << " StartLine: " << startLine
                << " EndLine: " << endLine << "\n";
 
   llvm::outs() << "Params:";
+  });
+  
   for (unsigned i = 0; i < FD->getNumParams(); ++i) {
     ParmVarDecl *Param = FD->getParamDecl(i);
     QualType QT = Param->getType();
+    
+    DEBUG_WITH_TYPE(DEBUG_TYPE, { 
     llvm::outs() << " " << QT.getAsString() << " " << Param->getNameAsString();
     if (i != FD->getNumParams() - 1)
       llvm::outs() << ",";
+    });
   }
+  DEBUG_WITH_TYPE(DEBUG_TYPE, { 
   llvm::outs() << "\n";
 
   llvm::outs() << "Body:\n";
+  
+
+  if (Stmt *Body = FD->getBody()) {
+    // SourceRange Range = Body->getSourceRange();
+    SourceLocation startLoc = Body->getBeginLoc();
+    SourceLocation endLoc = Body->getEndLoc();
+
+    endLoc = Lexer::getLocForEndOfToken(endLoc, 0, SM, Context.getLangOpts());
+
+    SourceRange fullRange(startLoc, endLoc);
+    dumpTokens(fullRange);
+  }
+  });
 
   return true;
 }
@@ -156,7 +199,10 @@ bool ExprLocationAnalyzer::VisitBinaryOperator(BinaryOperator *BO) {
   if (!FunctionNameToProcess.empty() && FuncName != FunctionNameToProcess)
     return true; // skipping if function name doesn't match
 
-  LLVM_DEBUG(llvm::outs() << "Function: " << FuncName << "\n";);
+
+    DEBUG_WITH_TYPE(DEBUG_TYPE, {   
+    llvm::outs() << "Function: " << FuncName << "\n";
+    });
 
   unsigned line = SM.getSpellingLineNumber(BO->getBeginLoc());
 
@@ -207,6 +253,7 @@ void ExprLocationAnalyzer::printExprInfo(const std::string &label, const Expr *E
   unsigned colNo = SM.getSpellingColumnNumber(loc);
 
   QualType QT = Expr->getType();
+  DEBUG_WITH_TYPE(DEBUG_TYPE, { 
   llvm::outs() << label << ": line " << lineNo
                << ", column " << colNo
                << ", type: " << QT.getAsString() << "\n";
@@ -217,6 +264,7 @@ void ExprLocationAnalyzer::printExprInfo(const std::string &label, const Expr *E
   } else {
     llvm::outs() << "    [Could not get source line]\n";
   }
+ });
 }
 
 std::optional<std::string> ExprLocationAnalyzer::getSourceLine(SourceLocation loc) {
@@ -286,7 +334,7 @@ const  std::map<const clang::Stmt*, SourceInfo>  &ExprLocationAnalyzer::getNodeI
 }
 
 void ExprLocationAnalyzer::printNodeInfoMap() const {
-  LLVM_DEBUG({
+  DEBUG_WITH_TYPE(DEBUG_TYPE, {
   for (const auto &entry : NodeInfoMap) {
     const SourceInfo &info = entry.second;
     llvm::outs() << "-------------------------------\n";
