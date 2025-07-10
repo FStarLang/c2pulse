@@ -1,9 +1,11 @@
 #include "PulseCodeGen.h"
+#include "Globals.h"
 #include "PulseIR.h"
 
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include <cstddef>
 #include <cstdio>
 
 #define DEBUG_TYPE "pulse-code-gen"
@@ -60,7 +62,9 @@ std::string PulseCodeGen::getGeneratedCodeForModule(std::string ModuleName) {
   if (It != emittedModules.end()) {
     return It->second->str();
   }
-  assert(false && "Could not find a output stream for Module!\n");
+  emitError("(getGeneratedCodeForModule): Could not find a output stream for "
+            "Module: " +
+            ModuleName + "\n");
 }
 
 void PulseCodeGen::generateCodeFromModule(const std::string ModuleName,
@@ -231,9 +235,11 @@ void PulseCodeGen::generateCodeFromPulseAST(llvm::raw_string_ostream &OS,
     OS << FallBackDeclaration->Ident;
   } 
   else if (auto PulseFunDecl = dyn_cast<PulseFnDecl>(FD)) {
-    assert(false && "Not implemented Pulse Fun Decl\n");
+    emitError("(generateCodeFromPulseAST): Codegen not implemented for "
+              "PulseFunDecl!\n");
   } else {
-    assert(false && "Not implemented function kind");
+    emitError("(generateCodeFromPulseAST): Encountered an unknown pulse "
+              "declaration type!\n");
   }
 }
 
@@ -260,10 +266,18 @@ std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
       TermString += CT->ConstantValue + "L";
       break;
     }
-    case SymbolTable::Int8:
-    case SymbolTable::Int16:
-    case SymbolTable::UInt8:
-    case SymbolTable::UInt16:
+    case SymbolTable::Int8: {
+      emitError("ConstTerm: did not implement case for Int8!\n");
+    }
+    case SymbolTable::Int16: {
+      emitError("ConstTerm: did not implement case for Int16!\n");
+    }
+    case SymbolTable::UInt8: {
+      emitError("ConstTerm: did not implement case for UInt8!\n");
+    }
+    case SymbolTable::UInt16: {
+      emitError("ConstTerm: did not implement case for UInt16!\n");
+    }
     case SymbolTable::UInt32: {
       TermString += CT->ConstantValue + "ul";
       break;
@@ -272,16 +286,16 @@ std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
       TermString += CT->ConstantValue + "UL";
       break;
     }
-    case SymbolTable::UInt128:
+    case SymbolTable::UInt128: {
+      emitError("ConstTerm: did not implement case for UInt128!\n");
+    }
     case SymbolTable::SizeT: {
       TermString += CT->ConstantValue + "sz";
       break;
     }
     default: {
-      llvm::outs() << lookupSymbol(CT->Symbol) << "\n\n";
       CT->dumpPretty();
-      llvm::outs() << "\n\n";
-      assert(false && "Did not expect type in switch!");
+      emitError("Did not expect pulse type!");
       break;
     }
     }
@@ -350,8 +364,7 @@ std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
   
   else {
     T->dumpPretty();
-    llvm::outs() << "\n\n";
-    assert(false && "Did not expect Term node in generateCodeFromTerm");
+    emitError("Did not expect Pulse AST Node!");
   }
 
   return TermString;
@@ -428,6 +441,11 @@ void PulseCodeGen::generateCodeFromPulseStmt(llvm::raw_string_ostream &OS,
 
     OS << PulseSyntax::OpeningCurlyBrace;
     OS << PulseSyntax::NewLine;
+    if (PulseThen == nullptr){
+      OS << PulseSyntax::OpeningParenthesis;
+      OS << PulseSyntax::ClosingParenthesis;
+      OS << PulseSyntax::NewLine;
+    }
     generateCodeFromPulseStmt(OS, PulseThen);
     OS << PulseSyntax::ClosingCurlyBrace;
     OS << PulseSyntax::NewLine;
@@ -436,6 +454,11 @@ void PulseCodeGen::generateCodeFromPulseStmt(llvm::raw_string_ostream &OS,
     OS << PulseSyntax::NewLine;
     OS << PulseSyntax::OpeningCurlyBrace;
     OS << PulseSyntax::NewLine;
+    if (PulseElse == nullptr){
+      OS << PulseSyntax::OpeningParenthesis;
+      OS << PulseSyntax::ClosingParenthesis;
+      OS << PulseSyntax::NewLine;
+    }
     generateCodeFromPulseStmt(OS, PulseElse);
     OS << PulseSyntax::ClosingCurlyBrace;
     // Seems like Pulse If statements need an semicolon at the end
@@ -468,7 +491,7 @@ void PulseCodeGen::generateCodeFromPulseStmt(llvm::raw_string_ostream &OS,
     OS << PulseSyntax::NewLine;
     generateCodeFromPulseStmt(OS, WBod);
     OS << PulseSyntax::ClosingCurlyBrace;
-
+    OS << PulseSyntax::Semicolon;
   } else if (PulseSequence *Seq = dyn_cast<PulseSequence>(T)) {
     auto *S1 = Seq->S1;
     auto *S2 = Seq->S2;
@@ -481,6 +504,6 @@ void PulseCodeGen::generateCodeFromPulseStmt(llvm::raw_string_ostream &OS,
   }
   
   else {
-    assert(false && "Did not expect pulse statement type");
+    emitError("Did not Expect Pulse AST Node!");
   }
 }

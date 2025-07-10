@@ -83,10 +83,11 @@ bool checkIsSameStructInstance(Expr *A, Expr *B, ASTContext &Context) {
   B = B->IgnoreImpCasts();
 
   DeclRefExpr *DeclRefA = dyn_cast<DeclRefExpr>(A);
+  DeclRefExpr *DeclRefB = dyn_cast<DeclRefExpr>(B);
+
   if (!DeclRefA)
     return false;
 
-  DeclRefExpr *DeclRefB = dyn_cast<DeclRefExpr>(B);
   if (!DeclRefB)
     return false;
 
@@ -194,8 +195,6 @@ void PulseVisitor::inferDeclType(Decl *Dec, Stmt *InnerStmt) {
   }
   else {
     // TODO: Vidush see if we want to handle any other statement.
-    // InnerStmt->dump();
-    // assert(false && "Did not handle statement in inferArrayTypesStmt\n");
     return;
   }
 }
@@ -246,8 +245,6 @@ void PulseVisitor::inferArrayTypesStmt(Stmt *InnerStmt) {
   }
   else{
     // TODO: Vidush see if we want to handle any other statement.
-    // InnerStmt->dump();
-    // assert(false && "Did not handle statement in inferArrayTypesStmt\n");
     return;
   }
 }
@@ -307,9 +304,8 @@ void PulseVisitor::inferArrayTypesExpr(Expr *ExprPtr) {
 bool PulseVisitor::checkIsRecursiveStmt(Stmt *InnerStmt,
                                         FunctionDecl *CurrFunction) {
 
-  if (!InnerStmt) {
+  if (!InnerStmt)
     return false;
-  }
 
   if (auto *N = dyn_cast<NullStmt>(InnerStmt)) {
     return false;
@@ -356,7 +352,8 @@ bool PulseVisitor::checkIsRecursiveStmt(Stmt *InnerStmt,
   } else {
     /// TODO: Vidush see if we want to handle any other statement.
     InnerStmt->dump();
-    assert(false && "Did not handle statement in inferArrayTypesStmt\n");
+    emitErrorWithLocation("Encountered an unhandled case!", &SM,
+                          InnerStmt->getEndLoc());
   }
 }
 
@@ -379,7 +376,6 @@ bool PulseVisitor::checkIsRecursiveExpr(Expr *ExprPtr,
 
   } else if (auto *UOp = dyn_cast<clang::UnaryOperator>(ExprPtr)) {
     return checkIsRecursiveExpr(UOp->getSubExpr(), CurrFunction);
-
   } else if (auto *Call = dyn_cast<clang::CallExpr>(ExprPtr)) {
     auto NumArgs = Call->getNumArgs();
     bool isRec = false;
@@ -917,55 +913,55 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
           auto PulseAnnotKind =
               getPulseAnnKindFromString(AnnotationData, Match);
 
-          if (PulseAnnotKind == PulseAnnKind::IsArray){
-          assert(PulseAnnotKind == PulseAnnKind::IsArray &&
-                 "Only expect is array annotations for param decl atm.!\n");
-          // Add type to map.
-          // Make a clang Array Type
-          // Try to get element type
-          if (!Param->getType()->isPointerType() &&
-              !Param->getType()->isArrayType()) {
-            assert(false && "Expected parameter to be a ref or array!\n");
-          }
+          if (PulseAnnotKind == PulseAnnKind::IsArray) {
+            // Add type to map.
+            // Make a clang Array Type
+            // Try to get element type
+            if (!Param->getType()->isPointerType() &&
+                !Param->getType()->isArrayType()) {
+              emitErrorWithLocation(
+                  "Expected parameter to be a ref or an array!", &SM,
+                  Param->getLocation());
+            }
 
-          QualType ElementType = Param->getType()->getPointeeType();
+            QualType ElementType = Param->getType()->getPointeeType();
 
-          if (!std::regex_match(Match, std::regex("[-+]?[0-9]+"))) {
+            if (!std::regex_match(Match, std::regex("[-+]?[0-9]+"))) {
 
-            // Step 2: Create a VarDecl for the size variable 'n'
-            // We should check here is the length is a constant or of variable
-            // array type.
-            IdentifierInfo &Id = Ctx.Idents.get(Match);
-            VarDecl *SizeVar = VarDecl::Create(
-                Ctx, Ctx.getTranslationUnitDecl(), SourceLocation(),
-                SourceLocation(), &Id, Ctx.IntTy, nullptr, SC_Auto);
+              // Step 2: Create a VarDecl for the size variable 'n'
+              // We should check here is the length is a constant or of variable
+              // array type.
+              IdentifierInfo &Id = Ctx.Idents.get(Match);
+              VarDecl *SizeVar = VarDecl::Create(
+                  Ctx, Ctx.getTranslationUnitDecl(), SourceLocation(),
+                  SourceLocation(), &Id, Ctx.IntTy, nullptr, SC_Auto);
 
-            // Step 3: Create a DeclRefExpr to refer to 'n'
-            DeclRefExpr *SizeExpr = DeclRefExpr::Create(
-                Ctx, NestedNameSpecifierLoc(), SourceLocation(), SizeVar, false,
-                SourceLocation(), Ctx.IntTy,
-                clang::Expr::getValueKindForType(ElementType));
+              // Step 3: Create a DeclRefExpr to refer to 'n'
+              DeclRefExpr *SizeExpr = DeclRefExpr::Create(
+                  Ctx, NestedNameSpecifierLoc(), SourceLocation(), SizeVar,
+                  false, SourceLocation(), Ctx.IntTy,
+                  clang::Expr::getValueKindForType(ElementType));
 
-            // Step 4: Create the VLA type
-            QualType VLAType = Ctx.getVariableArrayType(
-                ElementType, SizeExpr, ArraySizeModifier::Normal, 0);
-            // llvm::outs() << "Print the element type here!!!\n";
-            // llvm::outs() << QualType(VLAType->getPointeeOrArrayElementType(),
-            // 0); llvm::outs() << "End of element type!" << "\n"; exit(1);
-            DeclTyMap.insert(std::make_pair(Param, VLAType));
+              // Step 4: Create the VLA type
+              QualType VLAType = Ctx.getVariableArrayType(
+                  ElementType, SizeExpr, ArraySizeModifier::Normal, 0);
+              // llvm::outs() << "Print the element type here!!!\n";
+              // llvm::outs() <<
+              // QualType(VLAType->getPointeeOrArrayElementType(), 0);
+              // llvm::outs() << "End of element type!" << "\n"; exit(1);
+              DeclTyMap.insert(std::make_pair(Param, VLAType));
+            } else {
+              clang::QualType ConstArrayTy = Ctx.getConstantArrayType(
+                  ElementType, llvm::APInt(32, std::stoi(Match)), nullptr,
+                  ArraySizeModifier::Normal, 0);
+              DeclTyMap.insert(std::make_pair(Param, ConstArrayTy));
+            }
+          } else if (PulseAnnotKind == PulseAnnKind::HeapAllocated) {
+            IsAllocatedOnHeap.insert(Param);
           } else {
-            clang::QualType ConstArrayTy = Ctx.getConstantArrayType(
-                ElementType, llvm::APInt(32, std::stoi(Match)), nullptr,
-                ArraySizeModifier::Normal, 0);
-            DeclTyMap.insert(std::make_pair(Param, ConstArrayTy));
+            emitErrorWithLocation("Pulse annotation kind not implemented yet!",
+                                  &SM, FD->getLocation());
           }
-        }
-        else if (PulseAnnotKind == PulseAnnKind::HeapAllocated){
-          IsAllocatedOnHeap.insert(Param);
-        }
-        else {
-          assert(false && "Pulse annotation kind not implemented yet!\n");
-        } 
         }
       }
     }
@@ -1104,7 +1100,7 @@ FStarType *PulseVisitor::getPulseTyFromCTy(clang::QualType CType) {
   if (CType->isPointerType()) {
 
     if (CType->isArrayType()) {
-      assert(false && "PulseVisitor: Did not implement array type in clang.\n");
+      emitError("PulseVisitor: Did not implement array type in clang");
     }
 
     PulseTy = new FStarPointerType();
@@ -1151,6 +1147,10 @@ PulseStmt *PulseVisitor::pulseFromCompoundStmt(Stmt *S,
   PulseSequence *Head = nullptr;
   if (auto *CS = dyn_cast<CompoundStmt>(S)) {
 
+    // //This only works on Structs for now.
+    // //For any struct declaration,
+    // TrackScopeOfStackAllocatedStructs.clear();
+
     for (auto *InnerStmt : CS->body()) {
 
       auto *NextPulseStmt =
@@ -1171,6 +1171,8 @@ PulseStmt *PulseVisitor::pulseFromCompoundStmt(Stmt *S,
       Stmt->assignS2(NewSeq);
       Stmt = NewSeq;
     }
+
+    /// Check what variables are defined in the Compound statement.
   }
 
   return Head;
@@ -1187,7 +1189,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
     for (auto *D : DS->decls()) {
       if (auto *VD = dyn_cast<VarDecl>(D)) {
 
-        if (auto *Init = VD->getInit()) {
+        if (VD->hasInit()) {
+          auto *Init = VD->getInit();
           auto VarName = VD->getNameAsString();
           // Unsure if we really need the type here.
           // Though it may be usefuel checking invalid casting operations.
@@ -1284,7 +1287,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
                 } else if (AnnKind == PulseAnnKind::HeapAllocated) {
                   IsAllocatedOnHeap.insert(VD);
                 } else {
-                  assert(false && "Did not expect pulse annotation kind!\n");
+                  emitErrorWithLocation("Did not expect pulse annotation kind!",
+                                        &SM, VD->getLocation());
                 }
               }
             }
@@ -1296,7 +1300,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
           return AppendLet;
         }
-        
+
         if (const TypedefType *TT = VD->getType()->getAs<TypedefType>()) {
 
             auto *TypedefDecl = TT->getDecl();
@@ -1315,14 +1319,25 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
             
             //Implement case when the allocation is not mutated.
             // A normal let bind
-            assert(false && "Did not implemented case when struct allocation is not mutated!\n");
+            emitErrorWithLocation(
+                "Did not implement case when struct allocation is not mutated!",
+                &SM, VD->getLocation());
         }
 
+        // Any uninitialized declaration that is not a struct
+        auto CType = VD->getType();
+        auto PulseTySymbol = getSymbolKeyForCType(CType, Ctx);
+        auto *PulseTyStr = lookupSymbol(PulseTySymbol);
+        auto ClangVarName = VD->getNameAsString();
 
-        assert(false && "Hit unimplemented case in declaration statement!\n");
-      
+        auto *GenericDecl = new GenericStmt();
+        GenericDecl->body =
+            "let mut " + ClangVarName + ": " + PulseTyStr + " = witness #_ #_;";
+        return GenericDecl;
       }
-      assert(false && "Declarations other than variable declarations not implemented!\n");
+      emitErrorWithLocation(
+          "Declarations other than variable declarations not implemented!", &SM,
+          D->getLocation());
     }
 
   } else if (auto *BO = dyn_cast<BinaryOperator>(S)) {
@@ -1506,8 +1521,9 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
         }
 
         ME->dump();
-        assert(false &&
-               "Could not cast member base expression to its declaration!\n");
+        emitErrorWithLocation(
+            "Could not cast member base expression to its declaration!", &SM,
+            ME->getBeginLoc());
 
       } else if (auto *ME = dyn_cast<MemberExpr>(Rhs)) {
 
@@ -1639,7 +1655,18 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
       return PExpr;
     }
 
-  } else if (auto *E = dyn_cast<Expr>(S)) {
+  }
+  // else if (auto *ParenExpr = dyn_cast<clang::ParenExpr>(S)) {
+
+  //   auto *ClangSubExpr = ParenExpr->getSubExpr();
+
+  //   auto *PulseSubExpr = pulseFromStmt(ClangSubExpr, Analyzer,
+  //                                         Parent, Module, CS);
+
+  //   auto *PulseParenExpr = new Paren(PulseSubExpr);
+  //   return PulseParenExpr;
+  // }
+  else if (auto *E = dyn_cast<Expr>(S)) {
 
     SmallVector<PulseStmt *> ExprsBefore;
 
@@ -1699,7 +1726,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
               break;
             };
             default:
-              assert(false && "Annotation not expected for IfStmt!\n");
+              emitErrorWithLocation("Annotation not expected for IfStmt", &SM,
+                                    IF->getBeginLoc());
             };
           }
         }
@@ -1721,56 +1749,69 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
   } else if (auto *RS = dyn_cast<ReturnStmt>(S)) {
 
     if (auto *RetVal = RS->getRetValue()) {
+
+      // if (auto *CastToStmt = dyn_cast<Stmt>(RS->getRetValue())){
+      //  auto *RetStmt = pulseFromStmt(RetVal, Analyzer,
+      //                                 RetVal, Module, CS);
+
+      // return RetStmt;
+      //}
+      // else{
+
       SmallVector<PulseStmt *> ExprsBefore;
-      auto *NewPulseExpr = new PulseExpr();
-      auto *RetTerm = getTermFromCExpr(RetVal, Analyzer, ExprsBefore,
-                                       Parent, RetVal->getType(), Module);
-
-    //   if (auto *DeclRef = dyn_cast<DeclRefExpr>(RetVal->IgnoreParenImpCasts()->IgnoreImpCasts())){
-    //     auto It = TrackStructExplodeAndRecover.find(DeclRef->getDecl());
-    //     if (It != TrackStructExplodeAndRecover.end()){
-    //       auto Info = It->second; 
-    //       if (!Info.second){
-
-    //         //Get struct name from declration.
-    //           const auto *VD = DeclRef->getDecl();
-    //           auto *PSeq = new PulseSequence();
-    //           auto StructName = VD->getType()->getPointeeType().getAsString(); 
-    //           if (RetTerm){
-    //              NewPulseExpr->E = RetTerm;
-    //              PSeq->assignS2(NewPulseExpr);
-    //              auto *FallBack  = new GenericStmt(); 
-    //              FallBack->body += StructName + "_recover " +  DeclRef->getDecl()->getNameAsString() + ";";
-    //              PSeq->assignS1(FallBack);
-    //              // update element in map.
-    //              TrackStructExplodeAndRecover.erase(It);
-    //              return PSeq;
-    //          }
-
-    //         auto *FallBack  = new GenericStmt(); 
-    //         FallBack->body += StructName + "_recover " +  DeclRef->getDecl()->getNameAsString() + ";";
-
-    //         // update element in map.
-    //         TrackStructExplodeAndRecover.erase(It);
-    //         return FallBack;
-    //     }
-    //   }
-    // }
+      auto *RetTerm = getTermFromCExpr(RetVal, Analyzer, ExprsBefore, Parent,
+                                       RetVal->getType(), Module);
 
       if (RetTerm == nullptr)
         return nullptr;
-      
+
+      auto *NewPulseExpr = new PulseExpr();
       NewPulseExpr->E = RetTerm;
 
       assert(ExprsBefore.empty() && "Expected expressions to be released!");
       return NewPulseExpr;
+      //}
+      //   if (auto *DeclRef =
+      //   dyn_cast<DeclRefExpr>(RetVal->IgnoreParenImpCasts()->IgnoreImpCasts())){
+      //     auto It = TrackStructExplodeAndRecover.find(DeclRef->getDecl());
+      //     if (It != TrackStructExplodeAndRecover.end()){
+      //       auto Info = It->second;
+      //       if (!Info.second){
+
+      //         //Get struct name from declration.
+      //           const auto *VD = DeclRef->getDecl();
+      //           auto *PSeq = new PulseSequence();
+      //           auto StructName =
+      //           VD->getType()->getPointeeType().getAsString(); if (RetTerm){
+      //              NewPulseExpr->E = RetTerm;
+      //              PSeq->assignS2(NewPulseExpr);
+      //              auto *FallBack  = new GenericStmt();
+      //              FallBack->body += StructName + "_recover " +
+      //              DeclRef->getDecl()->getNameAsString() + ";";
+      //              PSeq->assignS1(FallBack);
+      //              // update element in map.
+      //              TrackStructExplodeAndRecover.erase(It);
+      //              return PSeq;
+      //          }
+
+      //         auto *FallBack  = new GenericStmt();
+      //         FallBack->body += StructName + "_recover " +
+      //         DeclRef->getDecl()->getNameAsString() + ";";
+
+      //         // update element in map.
+      //         TrackStructExplodeAndRecover.erase(It);
+      //         return FallBack;
+      //     }
+      //   }
+      // }
     }
 
     return nullptr;
   } else if (auto *FS = dyn_cast<ForStmt>(S)) {
     S->dumpPretty(Ctx);
-    assert(false && "For loops not implemented since pulse does not support "
-                    "For expressions!\n");
+    emitErrorWithLocation("For loops not implemented since pulse does not "
+                          "support for expressions",
+                          &SM, FS->getBeginLoc());
   } else if (auto *WS = dyn_cast<WhileStmt>(S)) {
 
     auto *WhileCond = WS->getCond();
@@ -1839,8 +1880,9 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
     }
   } else if (auto *US = dyn_cast<UnaryOperator>(S)) {
     S->dumpPretty(Ctx);
-    assert(false && "Did not implement translation from C unary expression to "
-                    "a PulseStmt!\n");
+    emitErrorWithLocation(
+        "Did not implement translation from C unary expression to PulseStmt!",
+        &SM, US->getBeginLoc());
   } else if (auto *NS = dyn_cast<NullStmt>(S)) {
     return nullptr;
   } else if (auto *CS = dyn_cast<CompoundStmt>(S)) {
@@ -1871,7 +1913,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
               return GenStmt;
             }
             else {
-              assert(false && "Unhandled Attr in Attributed Stmt!\n");
+              emitErrorWithLocation("Unhandled Attr in Attributed Stmt!", &SM,
+                                    AttrStmt->getAttrLoc());
             }
         }
       }
@@ -1880,7 +1923,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
     return NewSequence;
   } else {
     S->dumpPretty(Ctx);
-    assert(false && "Not implemented Clang expr in pulseFromStmt!\n");
+    emitErrorWithLocation("Not implemented Clang expr!", &SM, S->getBeginLoc());
   }
 
   return nullptr;
@@ -1948,13 +1991,16 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     return NewConstTerm;
   } else if (auto *FL = dyn_cast<FloatingLiteral>(E)) {
     E->dumpPretty(Ctx);
-    assert(false && "Floating Liternal not implemented!\n");
+    emitErrorWithLocation("Floating Literal not implemented!", &SM,
+                          E->getExprLoc());
   } else if (auto *SL = dyn_cast<StringLiteral>(E)) {
     E->dumpPretty(Ctx);
-    assert(false && "String Literal not implemeted!\n");
+    emitErrorWithLocation("String Literal not implemented!", &SM,
+                          E->getExprLoc());
   } else if (auto *CL = dyn_cast<CharacterLiteral>(E)) {
     E->dumpPretty(Ctx);
-    assert(false && "Character Liternal not implemeted!\n");
+    emitErrorWithLocation("Character Liternal not implemented!", &SM,
+                          E->getExprLoc());
   } else if (auto *BO = dyn_cast<BinaryOperator>(E)) {
 
     auto *Lhs = BO->getLHS();
@@ -1964,8 +2010,9 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     if (Lhs->getType() != Rhs->getType()) {
       E->dumpPretty(Ctx);
       LLVM_DEBUG(llvm::dbgs() << "\n");
-      assert(false && "Expected types of Lhs and Rhs to be the same. \
-              Unsafe type casting now allowed in Pulse\n");
+      emitErrorWithLocation("Expected types of Lhs and Rhs to be the same, "
+                            "unsafe type casting now allowed in pulse!",
+                            &SM, E->getExprLoc());
     }
 
     switch (Op) {
@@ -2045,8 +2092,9 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
 
       if (checkIfExprIsNullPtr(Lhs) || checkIfExprIsNullPtr(Rhs)){
         BO->dump();
-        assert(false && "Null check not implemented for binary operator other "
-                        "that Eq and Neq!\n");
+        emitErrorWithLocation("Null check not implemented for binary operator "
+                              "other that Eq and Neq!",
+                              &SM, BO->getExprLoc());
       }
 
       SymbolTable TypeKey = getSymbolKeyForCType(Lhs->getType(), Ctx);
@@ -2054,9 +2102,9 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
 
       auto *NewAppENode = new AppE(OpKey);
       auto *LhsTerm = getTermFromCExpr(Lhs, MutAnalyzer, ExprsBefore, Parent,
-                                       BO->getType(), Module);
+                                       Lhs->getType(), Module);
       auto *RhsTerm = getTermFromCExpr(Rhs, MutAnalyzer, ExprsBefore, Parent,
-                                       BO->getType(), Module);
+                                       Rhs->getType(), Module);
       NewAppENode->pushArg(LhsTerm);
       NewAppENode->pushArg(RhsTerm);
 
@@ -2123,7 +2171,9 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     } else {
       E->dumpPretty(Ctx);
       E->dump();
-      assert(false && "Unhandeled case in UnaryOperator getTermFromCExpr!\n");
+      emitErrorWithLocation(
+          "Unhandeled case in UnaryOperator getTermFromCExpr!", &SM,
+          E->getExprLoc());
     }
   } else if (auto *CE = dyn_cast<CallExpr>(E)) {
 
@@ -2137,8 +2187,9 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
         auto ArgString = ArgToString->getString();
         UserLemma->lemmas.push_back(ArgString.str());
       } else {
-        assert(false &&
-               "Expected pulse while to have arguments as string literals");
+        emitErrorWithLocation(
+            "Expected pulse while to have arguments as string literals", &SM,
+            CE->getBeginLoc());
       }
 
       return UserLemma;
@@ -2159,8 +2210,9 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
           VectorLemmas.push_back(Prop);
           // assert that next statement is a while loop
         } else {
-          assert(false &&
-                 "Expected pulse while to have arguments as string literals");
+          emitErrorWithLocation(
+              "Expected pulse while to have arguments as string literals", &SM,
+              E->getExprLoc());
         }
       }
 
@@ -2170,8 +2222,9 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
         StmtToLemmas.insert(std::make_pair(While, VectorLemmas));
         return nullptr;
       }
-      assert(false &&
-             "Expected next statement after pulse invariant to be a while!\n");
+      emitErrorWithLocation(
+          "Expected next statement after pulse invariant to be a while!", &SM,
+          CE->getBeginLoc());
     }
 
     auto CallName = CE->getDirectCallee()->getNameAsString();
@@ -2341,8 +2394,9 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
                                  ->getPointeeOrArrayElementType()
                                  ->getUnqualifiedDesugaredType();
             CastType->dump();
-            assert(false &&
-                   "Not implemented a non record type in malloc call!\n");
+            emitErrorWithLocation(
+                "Not implemented a non record type in malloc call", &SM,
+                FD->getLocation());
           }
           DEBUG_WITH_TYPE(DEBUG_TYPE , {
           llvm::outs() << "Print the type of cast!" << "\n";
@@ -2362,23 +2416,24 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
             return NewCall;
           }
 
-          assert(false && "Expected allocated type for malloc to be a reference but found a pulse type that's not a reference!\n");
+          emitErrorWithLocation(
+              "Expected allocated type for malloc to be a reference but found "
+              "a pulse type that's not a reference!",
+              &SM, FD->getBeginLoc());
         }
       }
     } else {
       CCastExpr->dumpPretty(Ctx);
-      assert(false && "Unimplemented case in CStyle Cast Expression!\n");
+      emitErrorWithLocation("Unimplemented case in CStyle Cast Expression!",
+                            &SM, CCastExpr->getExprLoc());
     }
   } else if (auto *RE = dyn_cast<clang::RecoveryExpr>(E)) {
     if (Expr *SubExpr = RE->getExprStmt()) {
-
-      assert(false && "Should not reach here!");
       return getTermFromCExpr(SubExpr, MutAnalyzer, ExprsBefore, Parent, ParentType,
                               Module);
     }
     RE->dump();
     llvm::errs() << "RecoveryExpr without sub-expression, returning nullptr.\n";
-    assert(false && "Should not reach here!");
     return nullptr;
   } else if (auto *ME = dyn_cast<MemberExpr>(E)) {
 
@@ -2428,12 +2483,9 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     return nullptr;
   } else {
     E->dump();
-    assert(false && "Expression not implemeted in getTermFromCExpr\n");
+    emitErrorWithLocation("Expression not implemented in getTermFromCExpr!",
+                          &SM, E->getExprLoc());
   }
-
-  E->dump();
-  assert(false && "Should not reach here!");
-  return nullptr;
 }
 
 

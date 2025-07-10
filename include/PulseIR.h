@@ -6,6 +6,7 @@
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/StringRef.h"
 
+#include <cstdint>
 #include <set>
 #include <string>
 #include <vector>
@@ -42,15 +43,10 @@ enum class SymbolTable {
   UInt16,
   UInt32,
   UInt64,
-  UInt64_Lt,
-  UInt64_Gt,
-  UInt64_Ge,
-  UInt64_Div,
-  UInt64_Rem,
-  UInt64_Sub,
-  UInt64_Add,
   UInt128,
   SizeT,
+  
+  //size t
   SizeT_Add,
   SizeT_Sub,
   SizeT_Div,
@@ -60,6 +56,8 @@ enum class SymbolTable {
   SizeT_Lt,
   SizeT_Gt,
   SizeT_Ge,
+  
+  // int 8
   Int8_Add,
   Int8_Sub,
   Int8_Div,
@@ -69,6 +67,19 @@ enum class SymbolTable {
   Int8_Lt,
   Int8_Gt,
   Int8_Ge,
+  
+  //U int 8
+  UInt8_Add,
+  UInt8_Sub,
+  UInt8_Div,
+  UInt8_Rem,
+  UInt8_Mul,
+  UInt8_Eq,
+  UInt8_Lt,
+  UInt8_Gt,
+  UInt8_Ge,
+
+  // int 16 
   Int16_Add,
   Int16_Sub,
   Int16_Div,
@@ -78,6 +89,19 @@ enum class SymbolTable {
   Int16_Lt,
   Int16_Gt,
   Int16_Ge,
+
+  // uint 16 
+  UInt16_Add,
+  UInt16_Sub,
+  UInt16_Div,
+  UInt16_Rem,
+  UInt16_Mul,
+  UInt16_Eq,
+  UInt16_Lt,
+  UInt16_Gt,
+  UInt16_Ge,
+  
+  //int 32
   Int32_Add,
   Int32_Sub,
   Int32_Div,
@@ -87,6 +111,19 @@ enum class SymbolTable {
   Int32_Lt,
   Int32_Gt,
   Int32_Ge,
+
+  //uint 32
+  UInt32_Add,
+  UInt32_Sub,
+  UInt32_Div,
+  UInt32_Rem,
+  UInt32_Mul,
+  UInt32_Eq,
+  UInt32_Lt,
+  UInt32_Gt,
+  UInt32_Ge,
+  
+  //int 64
   Int64_Add,
   Int64_Sub,
   Int64_Div,
@@ -96,6 +133,18 @@ enum class SymbolTable {
   Int64_Lt,
   Int64_Gt,
   Int64_Ge,
+
+  //uint 64
+  UInt64_Add,
+  UInt64_Sub,
+  UInt64_Div,
+  UInt64_Rem,
+  UInt64_Mul,
+  UInt64_Eq,
+  UInt64_Lt,
+  UInt64_Gt,
+  UInt64_Ge,
+
   Array,
   Ref,
   UNKNOWN,
@@ -115,15 +164,10 @@ static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
     {SymbolTable::UInt16, "UInt16.t"},
     {SymbolTable::UInt32, "UInt32.t"},
     {SymbolTable::UInt64, "UInt64.t"},
-    {SymbolTable::UInt64_Lt, "UInt64.lt"},
-    {SymbolTable::UInt64_Gt, "UInt64.gt"},
-    {SymbolTable::UInt64_Ge, "UInt64.gte"},
-    {SymbolTable::UInt64_Div, "UInt64.div"},
-    {SymbolTable::UInt64_Rem, "UInt64.rem"},
-    {SymbolTable::UInt64_Sub, "UInt64.sub"},
-    {SymbolTable::UInt64_Add, "UInt64.add"},
     {SymbolTable::UInt128, "UInt128.t"},
     {SymbolTable::SizeT, "SizeT.t"},
+
+    
     {SymbolTable::SizeT_Add, "SizeT.add"},
     {SymbolTable::SizeT_Sub, "SizeT.sub"},
     {SymbolTable::SizeT_Div, "SizeT.div"},
@@ -133,6 +177,53 @@ static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
     {SymbolTable::SizeT_Lt, "SizeT.lt"},
     {SymbolTable::SizeT_Gt, "SizeT.gt"},
     {SymbolTable::SizeT_Ge, "SizeT.gte"},
+
+     //int 8
+    {SymbolTable::Int8_Add, "Int8.add"},
+    {SymbolTable::Int8_Sub, "Int8.sub"},
+    {SymbolTable::Int8_Div, "Int8.div"},
+    {SymbolTable::Int8_Rem, "Int8.rem"},
+    {SymbolTable::Int8_Mul, "Int8.mul"},
+    {SymbolTable::Int8_Eq, "Int8.eq"},
+    {SymbolTable::Int8_Lt, "Int8.lt"},
+    {SymbolTable::Int8_Gt, "Int8.gt"},
+    {SymbolTable::Int8_Ge, "Int8.gte"},
+        
+         //uint 8
+    {SymbolTable::UInt8_Add, "UInt8.add"},
+    {SymbolTable::UInt8_Sub, "UInt8.sub"},
+    {SymbolTable::UInt8_Div, "UInt8.div"},
+    {SymbolTable::UInt8_Rem, "UInt8.rem"},
+    {SymbolTable::UInt8_Mul, "UInt8.mul"},
+    {SymbolTable::UInt8_Eq, "UInt8.eq"},
+    {SymbolTable::UInt8_Lt, "UInt8.lt"},
+    {SymbolTable::UInt8_Gt, "UInt8.gt"},
+    {SymbolTable::UInt8_Ge, "UInt8.gte"},
+
+        //int 16
+    {SymbolTable::Int16_Add, "Int16.add"},
+    {SymbolTable::Int16_Sub, "Int16.sub"},
+    {SymbolTable::Int16_Div, "Int16.div"},
+    {SymbolTable::Int16_Rem, "Int16.rem"},
+    {SymbolTable::Int16_Mul, "Int16.mul"},
+    {SymbolTable::Int16_Eq, "Int16.eq"},
+    {SymbolTable::Int16_Lt, "Int16.lt"},
+    {SymbolTable::Int16_Gt, "Int16.gt"},
+    {SymbolTable::Int16_Ge, "Int16.gte"},
+        
+         //uint 16
+    {SymbolTable::UInt16_Add, "UInt16.add"},
+    {SymbolTable::UInt16_Sub, "UInt16.sub"},
+    {SymbolTable::UInt16_Div, "UInt16.div"},
+    {SymbolTable::UInt16_Rem, "UInt16.rem"},
+    {SymbolTable::UInt16_Mul, "UInt16.mul"},
+    {SymbolTable::UInt16_Eq, "UInt16.eq"},
+    {SymbolTable::UInt16_Lt, "UInt16.lt"},
+    {SymbolTable::UInt16_Gt, "UInt16.gt"},
+    {SymbolTable::UInt16_Ge, "UInt16.gte"},
+
+
+         //int 32
     {SymbolTable::Int32_Add, "Int32.add"},
     {SymbolTable::Int32_Sub, "Int32.sub"},
     {SymbolTable::Int32_Div, "Int32.div"},
@@ -142,6 +233,19 @@ static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
     {SymbolTable::Int32_Lt, "Int32.lt"},
     {SymbolTable::Int32_Gt, "Int32.gt"},
     {SymbolTable::Int32_Ge, "Int32.gte"},
+        
+         //uint 32
+    {SymbolTable::UInt32_Add, "UInt32.add"},
+    {SymbolTable::UInt32_Sub, "UInt32.sub"},
+    {SymbolTable::UInt32_Div, "UInt32.div"},
+    {SymbolTable::UInt32_Rem, "UInt32.rem"},
+    {SymbolTable::UInt32_Mul, "UInt32.mul"},
+    {SymbolTable::UInt32_Eq, "UInt32.eq"},
+    {SymbolTable::UInt32_Lt, "UInt32.lt"},
+    {SymbolTable::UInt32_Gt, "UInt32.gt"},
+    {SymbolTable::UInt32_Ge, "UInt32.gte"},
+
+    //int 64
     {SymbolTable::Int64_Mul, "Int64.mul"},
     {SymbolTable::Int64_Add, "Int64.add"},
     {SymbolTable::Int64_Sub, "Int64.sub"},
@@ -151,6 +255,18 @@ static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
     {SymbolTable::Int64_Lt, "Int64.lt"},
     {SymbolTable::Int64_Gt, "Int64.gt"},
     {SymbolTable::Int64_Ge, "Int64.gte"},
+
+         //U int 64  
+    {SymbolTable::UInt64_Mul, "UInt64.mul"},
+    {SymbolTable::UInt64_Add, "UInt64.add"},
+    {SymbolTable::UInt64_Sub, "UInt64.sub"},
+    {SymbolTable::UInt64_Div, "UInt64.div"},
+    {SymbolTable::UInt64_Rem, "UInt64.rem"},
+    {SymbolTable::UInt64_Eq, "UInt64.eq"},
+    {SymbolTable::UInt64_Lt, "UInt64.lt"},
+    {SymbolTable::UInt64_Gt, "UInt64.gt"},
+    {SymbolTable::UInt64_Ge, "UInt64.gte"},
+
     {SymbolTable::Array, "array"},
     {SymbolTable::Ref, "ref"},
 };
@@ -174,6 +290,9 @@ public:
   virtual void dumpPretty() = 0;
   virtual ~Term() = default;
 };
+
+/// Slprop in pulse can be a term.
+typedef Term Slprop;
 
 /// An Ast node for projections. 
 /// This is meant to use for a member acces.
@@ -350,9 +469,6 @@ public:
   void pushArg(Term *Arg);
   static bool classof(const Term *T) { return T->Tag == TermTag::AppE; }
 };
-
-/// Slprop in pulse can be a term.
-typedef Term Slprop;
 
 /// An enum class for a pulse statements types.
 enum class PulseStmtTag {
