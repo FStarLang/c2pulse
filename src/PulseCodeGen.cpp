@@ -6,6 +6,8 @@
 
 #include <cstdio>
 
+#define DEBUG_TYPE "pulse-code-gen"
+
 using namespace clang;
 using namespace llvm;
 
@@ -82,7 +84,12 @@ void PulseCodeGen::generateCodeFromModule(const std::string ModuleName,
     auto OS = std::make_unique<llvm::raw_string_ostream>(*Str);
     writeHeaders(pulseModule, *OS);
     for (auto *F : pulseModule->Decls) {
-      llvm::outs() << "Trying to generate code for Function.\n";
+    DEBUG_WITH_TYPE(DEBUG_TYPE, {
+      if (PulseFnDefn *PF = dyn_cast<PulseFnDefn>(F)) {
+        llvm::outs() << "Trying to generate code for Function: " << PF->Defn->Name << "\n";
+      }
+    });
+
 
       generateCodeFromPulseAST(*OS, F);
     }
