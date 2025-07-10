@@ -115,7 +115,7 @@ int main(int argc, const char **argv) {
         if (mode == TransformModeEnum::PulseOnly || mode == TransformModeEnum::Both) {
             PulseTransformer Transformer(Ctx);
             Transformer.transform();
-            // Transformer.writeToFile();
+            Transformer.writeToFile();
         }
     }
 

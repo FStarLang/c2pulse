@@ -351,7 +351,9 @@ bool PulseVisitor::checkIsRecursiveStmt(Stmt *InnerStmt,
 
   } else {
     /// TODO: Vidush see if we want to handle any other statement.
+    DEBUG_WITH_TYPE(DEBUG_TYPE, {
     InnerStmt->dump();
+    });
     emitErrorWithLocation("Encountered an unhandled case!", &SM,
                           InnerStmt->getEndLoc());
   }
@@ -1068,10 +1070,14 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
       // assert(TrackStructExplodeAndRecover.empty() && "Failed to recover all structure types in the function!\n");
 
       if (Head != nullptr) {
+        DEBUG_WITH_TYPE(DEBUG_TYPE, {
         Head->dumpPretty();
+        });
         FDefn->Body = Head;
       } else if (PulseBody != nullptr) {
+        DEBUG_WITH_TYPE(DEBUG_TYPE, {
         PulseBody->dumpPretty();
+        });
         FDefn->Body = PulseBody;
       }
     }
@@ -1409,7 +1415,9 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
         auto *LhsDecl = ME->getMemberDecl();
         auto *BaseExpr = ME->getBase()->IgnoreParens()->IgnoreImpCasts();
+        DEBUG_WITH_TYPE(DEBUG_TYPE, {
         BaseExpr->dump();
+        });
 
         std::string NameOfDecl;
         QualType TyOfDecl;
@@ -1520,7 +1528,9 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           return Assignment;
         }
 
+        DEBUG_WITH_TYPE(DEBUG_TYPE, {
         ME->dump();
+        });
         emitErrorWithLocation(
             "Could not cast member base expression to its declaration!", &SM,
             ME->getBeginLoc());
@@ -1529,7 +1539,9 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
         auto *RhsDecl = ME->getMemberDecl();
         auto *BaseExpr = ME->getBase()->IgnoreParens()->IgnoreImpCasts();
+        DEBUG_WITH_TYPE(DEBUG_TYPE, {
         BaseExpr->dump();
+        });
 
         std::string NameOfDecl;
         QualType TyOfDecl;
@@ -2091,7 +2103,9 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     default: {
 
       if (checkIfExprIsNullPtr(Lhs) || checkIfExprIsNullPtr(Rhs)){
+        DEBUG_WITH_TYPE(DEBUG_TYPE, {
         BO->dump();
+        });
         emitErrorWithLocation("Null check not implemented for binary operator "
                               "other that Eq and Neq!",
                               &SM, BO->getExprLoc());
@@ -2169,8 +2183,10 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
         return Parenthesis;
       }
     } else {
+      DEBUG_WITH_TYPE(DEBUG_TYPE, {
       E->dumpPretty(Ctx);
       E->dump();
+      });
       emitErrorWithLocation(
           "Unhandeled case in UnaryOperator getTermFromCExpr!", &SM,
           E->getExprLoc());
@@ -2393,7 +2409,9 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
             auto *CastType = CCastExpr->getType()
                                  ->getPointeeOrArrayElementType()
                                  ->getUnqualifiedDesugaredType();
+            DEBUG_WITH_TYPE(DEBUG_TYPE, {
             CastType->dump();
+            });
             emitErrorWithLocation(
                 "Not implemented a non record type in malloc call", &SM,
                 FD->getLocation());
@@ -2432,7 +2450,9 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       return getTermFromCExpr(SubExpr, MutAnalyzer, ExprsBefore, Parent, ParentType,
                               Module);
     }
+    DEBUG_WITH_TYPE(DEBUG_TYPE, {
     RE->dump();
+    });
     llvm::errs() << "RecoveryExpr without sub-expression, returning nullptr.\n";
     return nullptr;
   } else if (auto *ME = dyn_cast<MemberExpr>(E)) {
@@ -2482,7 +2502,9 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
 
     return nullptr;
   } else {
+    DEBUG_WITH_TYPE(DEBUG_TYPE, {
     E->dump();
+    });
     emitErrorWithLocation("Expression not implemented in getTermFromCExpr!",
                           &SM, E->getExprLoc());
   }
@@ -2529,13 +2551,11 @@ std::string PulseTransformer::writeToFile() {
 
     // Calculate path and then add NewFileName
     auto FilePath = NewPath.string() + ModuleName;
-    //Vidush: Don't remove these since the run.sh script
-    //depends on printing the output path of the filename.
-    DEBUG_WITH_TYPE(DEBUG_TYPE , {
+    // Don't remove these since the run.sh script
+    // depends on printing the output path of the filename.
     llvm::outs() << "Print the filename!\n";
     llvm::outs() << FilePath << "\n";
     llvm::outs() << "End printing the filename!\n";
-    });
     std::ofstream OutFile(FilePath);
     if (!OutFile.is_open()) {
       llvm::errs()
