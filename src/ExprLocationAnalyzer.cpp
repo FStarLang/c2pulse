@@ -7,7 +7,7 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 
-#define DEBUG_TYPE "source-loc-map"
+#define DEBUG_TYPE "ast-loc-info"
 
 using namespace clang;
 
@@ -286,6 +286,7 @@ const  std::map<const clang::Stmt*, SourceInfo>  &ExprLocationAnalyzer::getNodeI
 }
 
 void ExprLocationAnalyzer::printNodeInfoMap() const {
+  LLVM_DEBUG({
   for (const auto &entry : NodeInfoMap) {
     const SourceInfo &info = entry.second;
     llvm::outs() << "-------------------------------\n";
@@ -295,6 +296,6 @@ void ExprLocationAnalyzer::printNodeInfoMap() const {
     llvm::outs() << "Source:    " << info.SourceLine << "\n";
     llvm::outs() << "Context:   " << info.Context << "\n";
     llvm::outs() << "Operation: " << info.Operation << "\n";
-  }
+  }});
 }
 
