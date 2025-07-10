@@ -1,4 +1,5 @@
 #include "PulseIR.h"
+#include "Globals.h"
 #include "clang/AST/Type.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/Support/Casting.h"
@@ -63,7 +64,8 @@ PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data,
                                        std::string &Match) {
 
   if (Data.empty()) {
-    assert(false && "Expected Data to be non empty!\n");
+    emitErrorWithLocation(
+        "(getPulseAnnKindFromString) Expected data to be non empty!\n");
   }
 
   std::string CleanedString;
@@ -98,8 +100,8 @@ PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data,
     }
   }
 
-  llvm::errs() << "Found an unknown pulse annotation: \n";
-  llvm::errs() << Match << "\n";
+  emitErrorWithLocation(
+      "getPulseAnnKindFromString: Encountered an unknown annotation!\n");
   return PulseAnnKind::Unknown;
 }
 
@@ -116,8 +118,8 @@ SymbolTable getSymbolKeyForCType(clang::QualType Ty, clang::ASTContext &Ctx) {
     } else if (Ctx.getTypeSize(Ty) == 64) {
       return SymbolTable::Int64;
     } else {
-      assert(false &&
-             "getSymbolKeyForType: did not expect signed integer size");
+      emitErrorWithLocation(
+          "(getSymbolKeyForType): did not expect Clang type!\n");
     }
 
   } else if (Ty->isUnsignedIntegerType()) {
@@ -138,8 +140,7 @@ SymbolTable getSymbolKeyForCType(clang::QualType Ty, clang::ASTContext &Ctx) {
     } else if (Ctx.getTypeSize(Ty) == 128) {
       return SymbolTable::UInt128;
     } else {
-      assert(false &&
-             "getSymbolKeyForType: did not expect signed integer size");
+      emitErrorWithLocation("(getSymbolKeyForType): did not expect C type!\n");
     }
 
   } else if (Ty.getAsString() == "size_t") {
@@ -150,19 +151,15 @@ SymbolTable getSymbolKeyForCType(clang::QualType Ty, clang::ASTContext &Ctx) {
   // What about structs
   else if (Ty->isStructureType() || Ty->isUnionType()) {
     // We do not handle structs and unions in this function.
-    // This is a placeholder for future implementation.
-    // Return a reference type for now.
+    // We return UNKNOWN type from this function.
     return SymbolTable::UNKNOWN;
-    llvm::outs() << "getSymbolKeyForType: Struct or Union type encountered.\n";
-    Ty->dump();
-    assert(false &&
-           "getSymbolKeyForType: Struct or Union type not implemented.");
+
   } else if (Ty->isPointerType()) {
     return SymbolTable::Ref;
   }
 
   Ty->dump();
-  assert(false && "getSymbolKeyForType: did not expect type.");
+  emitErrorWithLocation("(getSymbolKeyForCType): Did not expect C type!\n");
 }
 
 const char *getSymbolKeyForOperator(SymbolTable Val,
@@ -170,11 +167,13 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
 
   switch (Op) {
   case clang::BO_PtrMemD:{
-    assert(false && "Did not implement operator!\n");
+    emitErrorWithLocation(
+        "(getSymbolKeyForOperator): Not implemented BO_PtrMemD!\n");
     break;
   }
   case clang::BO_PtrMemI:{
-    assert(false && "Did not implement operator!\n");
+    emitErrorWithLocation(
+        "(getSymbolKeyForOperator): Not implemented BO_PtrMemI!\n");
     break;
   }
   case clang::BO_Mul: {
@@ -197,7 +196,8 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
     } else if (Val == SymbolTable::SizeT) {
       return lookupSymbol(SymbolTable::SizeT_Mul);
     } else {
-      assert(false && "unimplemented case.\n");
+      emitErrorWithLocation(
+          "(getSymbolKeyForOperator): Unknown case in BO_Mul!\n");
     }
     break;
   }
@@ -221,7 +221,8 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
     } else if (Val == SymbolTable::SizeT) {
       return lookupSymbol(SymbolTable::SizeT_Div);
     } else {
-      assert(false && "unimplemented case.\n");
+      emitErrorWithLocation(
+          "(getSymbolKeyForOperator): Unknown case in BO_Div!\n");
     }
     break;
   }
@@ -245,7 +246,8 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
     } else if (Val == SymbolTable::SizeT) {
       return lookupSymbol(SymbolTable::SizeT_Rem);
     } else {
-      assert(false && "unimplemented case.\n");
+      emitErrorWithLocation(
+          "(getSymbolKeyForOperator): Not implemented BO_Rem!\n");
     }
     break;
   }
@@ -269,7 +271,8 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
     } else if (Val == SymbolTable::SizeT) {
       return lookupSymbol(SymbolTable::SizeT_Add);
     } else {
-      assert(false && "Did not expect case.");
+      emitErrorWithLocation(
+          "(getSymbolKeyForOperator): Not implemented BO_Add!\n");
     }
 
     break;
@@ -298,15 +301,18 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
     break;
   }
   case clang::BO_Shl:{
-    assert(false && "Did not implement operator!\n");
+    emitErrorWithLocation(
+        "(getSymbolKeyForOperator): Not implemented BO_Shl!\n");
     break;
   }
   case clang::BO_Shr:{
-    assert(false && "Did not implement operator!\n");
+    emitErrorWithLocation(
+        "(getSymbolKeyForOperator): Not implemented BO_Shr!\n");
     break;
   }
   case clang::BO_Cmp:{
-    assert(false && "Did not implement operator!\n");
+    emitErrorWithLocation(
+        "(getSymbolKeyForOperator): Not implemented BO_Cmp!\n");
     break;
   }
   case clang::BO_LT: {
@@ -329,7 +335,8 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
     } else if (Val == SymbolTable::SizeT) {
       return lookupSymbol(SymbolTable::SizeT_Lt);
     } else {
-      assert(false && "unimplemented case.\n");
+      emitErrorWithLocation(
+          "(getSymbolKeyForOperator): Unknown case in BO_LT!\n");
     }
     break;
   }
@@ -353,12 +360,14 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
     } else if (Val == SymbolTable::SizeT) {
       return lookupSymbol(SymbolTable::SizeT_Gt);
     } else {
-      assert(false && "unimplemented case.\n");
+      emitErrorWithLocation(
+          "(getSymbolKeyForOperator): Unknown case in BO_GT!\n");
     }
     break;
   }
   case clang::BO_LE:{
-    assert(false && "Did not implement operator!\n");
+    emitErrorWithLocation(
+        "(getSymbolKeyForOperator): Unknown case in BO_LE!\n");
     break;
   }
   case clang::BO_GE:{
@@ -381,7 +390,9 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
     } else if (Val == SymbolTable::SizeT) {
       return lookupSymbol(SymbolTable::SizeT_Ge);
     } else {
-      assert(false && "unimplemented case.\n");
+      emitErrorWithLocation(
+          "(getSymbolKeyForOperator): Unknown case in BO_GE!\n");
+      ;
     }
     break;
   }
@@ -405,80 +416,99 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
     } else if (Val == SymbolTable::SizeT) {
       return lookupSymbol(SymbolTable::SizeT_Eq);
     } else {
-      assert(false && "unimplemented case.\n");
+      emitErrorWithLocation(
+          "(getSymbolKeyForOperator): Unknown case in BO_EQ!\n");
     }
     break;
   }
   case clang::BO_NE:{
-    assert(false && "Did not implement operator!\n");
+    emitErrorWithLocation(
+        "(getSymbolKeyForOperator): Not implemented BO_NE!\n");
     break;
   }
   case clang::BO_And:{
-    assert(false && "Did not implement operator!\n");
+    emitErrorWithLocation(
+        "(getSymbolKeyForOperator): Not implemented BO_And!\n");
     break;
   }
   case clang::BO_Xor:{
-    assert(false && "Did not implement operator!\n");
+    emitErrorWithLocation(
+        "(getSymbolKeyForOperator): Not implemented BO_Xor!\n");
     break;
   }
   case clang::BO_Or:{
-    assert(false && "Did not implement operator!\n");
+    emitErrorWithLocation(
+        "(getSymbolKeyForOperator): Not implemented BO_Or!\n");
     break;
   }
   case clang::BO_LAnd:{
-    assert(false && "Did not implement operator!\n");
+    emitErrorWithLocation(
+        "(getSymbolKeyForOperator): Not implemented BO_LAnd!\n");
     break;
   }
   case clang::BO_LOr:{
-    assert(false && "Did not implement operator!\n");
+    emitErrorWithLocation(
+        "(getSymbolKeyForOperator): Not implemented BO_LOr!\n");
     break;
   }
   case clang::BO_Assign:{
-    assert(false && "Did not implement operator!\n");
+    emitErrorWithLocation(
+        "(getSymbolKeyForOperator): Not implemented BO_Assign!\n");
     break;
   }
   case clang::BO_MulAssign:{
-    assert(false && "Did not implement operator!\n");
+    emitErrorWithLocation(
+        "(getSymbolKeyForOperator): Not implemented BO_MulAssign!\n");
     break;
   }
   case clang::BO_DivAssign:{
-    assert(false && "Did not implement operator!\n");
+    emitErrorWithLocation(
+        "(getSymbolKeyForOperator): Not implemented BO_DivAssign!\n");
     break;
   }
   case clang::BO_RemAssign:{
-    assert(false && "Did not implement operator!\n");
+    emitErrorWithLocation(
+        "(getSymbolKeyForOperator): Not implemented BO_RemAssign!\n");
     break;
   }
   case clang::BO_AddAssign:{
-    assert(false && "Did not implement operator!\n");
+    emitErrorWithLocation(
+        "(getSymbolKeyForOperator): Not implemented BO_AddAssign!\n");
     break;
   }
   case clang::BO_SubAssign:{
-    assert(false && "Did not implement operator!\n");
+    emitErrorWithLocation(
+        "(getSymbolKeyForOperator): Not implemented BO_SubAssign!\n");
     break;
   }
   case clang::BO_ShlAssign:{
-    assert(false && "Did not implement operator!\n");
+    emitErrorWithLocation(
+        "(getSymbolKeyForOperator): Not implemented BO_ShlAssign!\n");
     break;
   }
   case clang::BO_ShrAssign:{
-    assert(false && "Did not implement operator!\n");
+    emitErrorWithLocation(
+        "(getSymbolKeyForOperator): Not implemented BO_ShrAssign!\n");
     break;
   }
   case clang::BO_AndAssign:{
-    assert(false && "Did not implement operator!\n");
+    emitErrorWithLocation(
+        "(getSymbolKeyForOperator): Not implemented BO_AndAssign!\n");
     break;
   }
   case clang::BO_XorAssign:{
-    assert(false && "Did not implement operator!\n");
+    emitErrorWithLocation(
+        "(getSymbolKeyForOperator): Not implemented BO_XorAssign!\n");
     break;
   }
   case clang::BO_OrAssign:{
-    assert(false && "Did not implement operator!\n");
+    emitErrorWithLocation(
+        "(getSymbolKeyForOperator): Not implemented BO_OrAssign!\n");
     break;
   }
   case clang::BO_Comma:{
-    assert(false && "Did not implement operator!\n");
+    emitErrorWithLocation(
+        "(getSymbolKeyForOperator): Not implemented BO_Comma!\n");
     break;
   }
   default:
