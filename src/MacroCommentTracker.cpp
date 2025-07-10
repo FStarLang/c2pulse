@@ -4,6 +4,8 @@
 #include "clang/Basic/SourceManager.h"
 #include "llvm/Support/raw_ostream.h"
 
+#define DEBUG_TYPE "macro-comment-tracker"
+
 using namespace clang;
 
 MacroCommentTracker::MacroCommentTracker(Preprocessor &PP, SourceManager &SM, const LangOptions &LangOpts)
@@ -21,10 +23,13 @@ void MacroCommentTracker::MacroDefined(const Token &MacroNameTok, const MacroDir
     SourceLocation ExpansionLoc = SM.getExpansionLoc(MacroNameTok.getLocation());
     if (!SM.isWrittenInMainFile(ExpansionLoc)) return;
 
-    std::string Info = "Macro defined: " + MacroNameTok.getIdentifierInfo()->getName().str() +
+    std::string info = "Macro defined: " + MacroNameTok.getIdentifierInfo()->getName().str() +
                        " at " + locToStr(SM, MacroNameTok.getLocation());
-    llvm::outs() << Info << "\n";
-    MacroDefs.push_back(Info);
+    
+    DEBUG_WITH_TYPE(DEBUG_TYPE, {                   
+    llvm::outs() << info << "\n";
+    });
+    MacroDefs.push_back(info);
 }
 
 void MacroCommentTracker::MacroUndefined(const Token &MacroNameTok,
@@ -34,10 +39,12 @@ void MacroCommentTracker::MacroUndefined(const Token &MacroNameTok,
     SourceLocation ExpansionLoc = SM.getExpansionLoc(MacroNameTok.getLocation());
     if (!SM.isWrittenInMainFile(ExpansionLoc)) return;       
 
-    std::string Info = "Macro undefined: " + MacroNameTok.getIdentifierInfo()->getName().str() +
+    std::string info = "Macro undefined: " + MacroNameTok.getIdentifierInfo()->getName().str() +
                        " at " + locToStr(SM, MacroNameTok.getLocation());
-    llvm::outs() << Info << "\n";
-    MacroDefs.push_back(Info);
+    DEBUG_WITH_TYPE(DEBUG_TYPE, {                   
+    llvm::outs() << info << "\n";
+    });
+    MacroDefs.push_back(info);
 }
 
 void MacroCommentTracker::MacroExpands(const Token &MacroNameTok,
@@ -95,7 +102,9 @@ void MacroCommentTracker::MacroExpands(const Token &MacroNameTok,
                        "\n  Expansion: " + expansionText +
                        "\n  Parameters: " + paramsText;
 
+    DEBUG_WITH_TYPE(DEBUG_TYPE, {                   
     llvm::outs() << info << "\n";
+    });
     MacroExpansions.push_back(info);
 }
 
@@ -107,8 +116,13 @@ void MacroCommentTracker::Ifdef(SourceLocation Loc,
     if (!SM.isWrittenInMainFile(ExpansionLoc)) return;
 
     std::string macro = MacroNameTok.getIdentifierInfo()->getName().str();
-    llvm::outs() << "#ifdef: " << macro << " at " << locToStr(SM, Loc) << "\n";
-    MacroDefs.push_back("#ifdef: " + macro + " at " + locToStr(SM, Loc));
+    std::string info = "#ifdef: " + macro + " at " + locToStr(SM, Loc);
+
+    DEBUG_WITH_TYPE(DEBUG_TYPE, {
+    llvm::outs() << info << "\n";
+    });
+
+    MacroDefs.push_back(info);
 }
 
 void MacroCommentTracker::Ifndef(SourceLocation Loc,
@@ -119,7 +133,11 @@ void MacroCommentTracker::Ifndef(SourceLocation Loc,
 
     std::string macro = MacroNameTok.getIdentifierInfo()->getName().str();
     std::string ifndefInfo = "#ifndef: " + macro + " at " + locToStr(SM, Loc);
+
+    DEBUG_WITH_TYPE(DEBUG_TYPE, {
     llvm::outs() << ifndefInfo << "\n";
+    });
+
     MacroDefs.push_back(ifndefInfo);
 }
 
@@ -133,7 +151,11 @@ void MacroCommentTracker::Defined(const clang::Token &MacroNameTok,
     std::string macro = MacroNameTok.getIdentifierInfo()->getName().str();
     std::string locInfo = locToStr(SM, Range.getBegin());
     std::string macroDefinition = "defined(" + macro + ") at " + locInfo;
+    
+    DEBUG_WITH_TYPE(DEBUG_TYPE, {
     llvm::outs() << macroDefinition << "\n";
+    });
+
     MacroDefs.push_back(macroDefinition);
 }
 
@@ -148,8 +170,13 @@ bool MacroCommentTracker::HandleComment(Preprocessor &PP, SourceRange CommentRan
     if (invalid) return false;
 
     std::string CommentText(startData, endData - startData + 1);
-    llvm::outs() << "Comment at " << locToStr(SM, Loc) << ": " << CommentText << "\n";
-    Comments.push_back("Comment at " + locToStr(SM, Loc) + ": " + CommentText);
+    std::string info = "Comment at " + locToStr(SM, Loc) + ": " + CommentText;
+
+    DEBUG_WITH_TYPE(DEBUG_TYPE, {                   
+    llvm::outs() << info << "\n";
+    });
+
+    Comments.push_back(info);
     return false;  // allow others to see it
 }
 
