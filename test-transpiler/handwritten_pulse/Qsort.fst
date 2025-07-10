@@ -76,9 +76,7 @@ fn rec qsort (arr: array Int32.t) (len: SizeT.t)
 {
   if (SizeT.v len > 1) {
     let pivot_idx = qsort_partition arr len;
-    with varr1. assert (arr |-> varr1);
     to_mask arr;
-    assert pure (SizeT.v pivot_idx < Seq.length varr1);
     qsort (array_sub arr 0sz pivot_idx) pivot_idx; return_array_sub arr _;
     qsort (array_sub arr (SizeT.add pivot_idx 1sz) len)
       (SizeT.sub len (SizeT.add pivot_idx 1sz)); return_array_sub arr _;
