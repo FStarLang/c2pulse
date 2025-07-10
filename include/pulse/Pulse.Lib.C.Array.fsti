@@ -13,17 +13,39 @@ ghost fn from_mask #t (arr: array t) #f #v #mask
   requires pure (forall i. mask i)
   ensures arr |-> Frac f v
 
+ghost fn mask_vext #t (arr: array t) #f #v v' #mask
+  requires pts_to_mask arr #f v mask
+  requires pure (Seq.length v' == Seq.length v /\
+    (forall (i: nat). mask i /\ i < Seq.length v ==> Seq.index v i == Seq.index v' i))
+  ensures pts_to_mask arr #f v' mask
+
 ghost fn split_mask #t (arr: array t) #f #v #mask (pred: nat -> prop)
   requires pts_to_mask arr #f v mask
   ensures pts_to_mask arr #f v (fun i -> mask i /\ pred i)
   ensures pts_to_mask arr #f v (fun i -> mask i /\ ~(pred i))
 
 [@@allow_ambiguous]
-ghost fn join_mask #t (arr: array t) #f #v #mask1 #mask2
+ghost fn join_mask #t (arr: array t) #f #v1 #v2 #mask1 #mask2
+  requires pts_to_mask arr #f v1 mask1
+  requires pts_to_mask arr #f v2 mask2
+  requires pure (forall i. ~(mask1 i /\ mask2 i))
+  ensures exists* (v: Seq.seq t).
+    pts_to_mask arr #f v (fun i -> mask1 i \/ mask2 i) **
+    pure (Seq.length v == Seq.length v1 /\ Seq.length v == Seq.length v2 /\
+      (forall (i: nat). i < Seq.length v ==>
+        (mask1 i ==> Seq.index v i == Seq.index v1 i) /\
+        (mask2 i ==> Seq.index v i == Seq.index v2 i)))
+
+[@@allow_ambiguous]
+ghost fn join_mask' #t (arr: array t) #f (#v: erased (Seq.seq t)) #mask1 #mask2
   requires pts_to_mask arr #f v mask1
   requires pts_to_mask arr #f v mask2
   requires pure (forall i. ~(mask1 i /\ mask2 i))
   ensures pts_to_mask arr #f v (fun i -> mask1 i \/ mask2 i)
+{
+  join_mask arr #f #v #v #mask1 #mask2;
+  mask_vext arr v;
+}
 
 val array_base_t : Type0
 val array_base #t (arr: array t) : GTot array_base_t
