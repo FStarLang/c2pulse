@@ -11,6 +11,8 @@
 
 #include "Globals.h"
 
+#define DEBUG_TYPE "expr-analyzer"
+
 using namespace clang;
 using namespace clang::tooling;
 
@@ -19,7 +21,7 @@ int GlobalGenSymCounter = 0;
 const char* pulseProofTermFromC = "__pulseproofterm";
 const char* pulseWhileInvariantFromC = "__pulsewhileinvariant";
 
-llvm::cl::OptionCategory ToolCategory("anf-pulse-tool options");
+llvm::cl::OptionCategory ToolCategory("c2pulse options");
 
 llvm::cl::opt<std::string>
     FunctionNameToProcess("func",
@@ -29,11 +31,23 @@ llvm::cl::opt<std::string>
 
 llvm::cl::opt<std::string>
     TransformMode("mode",
-      llvm::cl::desc("Select transformation mode: anf, pulse, or both"),
+      llvm::cl::desc("Select transformation mode: loc, pulse, or both"),
       llvm::cl::value_desc("mode"),
       llvm::cl::init("both"),
       llvm::cl::cat(ToolCategory));
 
+
+enum class TransformModeEnum {
+    LocOnly,
+    PulseOnly,
+    Both,
+};
+
+TransformModeEnum parseTransformMode(const std::string &modeStr) {
+    if (modeStr.compare("loc") == 0) return TransformModeEnum::LocOnly;
+    if (modeStr.compare("pulse") == 0) return TransformModeEnum::PulseOnly;
+    return TransformModeEnum::Both;
+}
 
 int main(int argc, const char **argv) {
     
@@ -57,6 +71,7 @@ int main(int argc, const char **argv) {
         llvm::errs() << "Exiting..." << "\n";
         return Result;
     }
+    llvm::outs() << "Success: Syntax validated.\n";
 
     LLVM_DEBUG({
         for (const auto &file : SourceFiles) {
@@ -72,6 +87,9 @@ int main(int argc, const char **argv) {
                                         << "Number of parsed ASTs: " 
                                         << ASTList.size() << "\n"); 
 
+
+    TransformModeEnum mode = parseTransformMode(TransformMode);
+
     int fileIndex = 0;
     size_t failedASTs = 0;
     for (const auto &AST : ASTList) {
@@ -84,23 +102,38 @@ int main(int argc, const char **argv) {
         }
 
         clang::ASTContext &Ctx = AST->getASTContext();
+        DEBUG_WITH_TYPE(DEBUG_TYPE, llvm::dbgs()
+                                        << "Processing AST for file: " 
+                                        << fileName << "\n");
 
-        LLVM_DEBUG({
+        if (mode == TransformModeEnum::LocOnly || mode == TransformModeEnum::Both) {
             ExprLocationAnalyzer Analyzer(Ctx);
             Analyzer.analyze(Ctx.getTranslationUnitDecl());
             Analyzer.printNodeInfoMap();
-        });
+        }
 
-        PulseTransformer Transformer(Ctx);
-        Transformer.transform();
-        Transformer.writeToFile();
+        if (mode == TransformModeEnum::PulseOnly || mode == TransformModeEnum::Both) {
+            PulseTransformer Transformer(Ctx);
+            Transformer.transform();
+            // Transformer.writeToFile();
+        }
     }
 
     if (failedASTs > 0) {
         llvm::errs() << failedASTs << " file(s) failed to compile.\n";
+        llvm::outs() << "Exiting...\n";
         return 1;
     }
 
-    llvm::outs() << "Success: Code transformed and syntax validated.\n";
+    if(mode == TransformModeEnum::LocOnly || mode == TransformModeEnum::Both) {
+        llvm::outs() << "Success: Location analysis completed.\n";
+    } 
+    
+    if (mode == TransformModeEnum::PulseOnly || mode == TransformModeEnum::Both) {
+        llvm::outs() << "Success: Pulse transformation completed.\n";
+        llvm::outs() << "Generated Pulse code for " << ASTList.size() << " file(s).\n";
+    }
+    
+    llvm::outs() << "Exiting...\n";
     return 0;
 }
