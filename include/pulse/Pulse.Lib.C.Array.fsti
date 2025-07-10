@@ -47,6 +47,20 @@ ghost fn join_mask' #t (arr: array t) #f (#v: erased (Seq.seq t)) #mask1 #mask2
   mask_vext arr v;
 }
 
+ghost fn share_mask #t (arr: array t) #f #v #mask
+  requires pts_to_mask arr #f v mask
+  ensures pts_to_mask arr #(f /. 2.0R) v mask
+  ensures pts_to_mask arr #(f /. 2.0R) v mask
+
+[@@allow_ambiguous]
+ghost fn gather_mask #t (arr: array t) #f1 #f2 #v1 #v2 #mask1 #mask2
+  requires pts_to_mask arr #f1 v1 mask1
+  requires pts_to_mask arr #f2 v2 mask2
+  requires pure (forall i. mask1 i <==> mask2 i)
+  ensures exists* (v: Seq.seq t). pts_to_mask arr #(f1 +. f2) v mask1 **
+    pure ((Seq.length v == Seq.length v1 /\ Seq.length v == Seq.length v2) /\
+      (forall (i: nat). i < Seq.length v /\ mask1 i ==> Seq.index v i == Seq.index v1 i /\ Seq.index v i == Seq.index v2 i))
+
 val array_base_t : Type0
 val array_base #t (arr: array t) : GTot array_base_t
 val array_offset #t (arr: array t) : GTot nat
