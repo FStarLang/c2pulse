@@ -48,7 +48,12 @@ void ExprLocationAnalyzer::dumpTokens(SourceRange Range) {
     return;
   }
 
-  Lexer lexer(SM.getSpellingLoc(B), Context.getLangOpts(), Buffer.begin(), Buffer.begin(), Buffer.end());
+  // Ensure null-terminated buffer for Lexer constructor
+  std::string NullTerminatedBuffer = Buffer.str(); 
+
+  Lexer lexer(SM.getSpellingLoc(B), Context.getLangOpts(),
+              NullTerminatedBuffer.c_str(), NullTerminatedBuffer.c_str(),
+              NullTerminatedBuffer.c_str() + NullTerminatedBuffer.size());
 
   Token tok;
   std::map<unsigned, std::vector<std::string>> tokensByLine;
@@ -62,6 +67,7 @@ void ExprLocationAnalyzer::dumpTokens(SourceRange Range) {
     unsigned col = SM.getSpellingColumnNumber(loc);
     std::string spelling = Lexer::getSpelling(tok, SM, Context.getLangOpts());
     std::string tokenInfo = "Token: " + std::string(tok.getName()) + " (" + spelling + ") at line " + std::to_string(line) + ", col " + std::to_string(col);
+    // llvm::outs() << tokenInfo << "\n";
     tokensByLine[line].emplace_back(std::move(tokenInfo));
   }
 
