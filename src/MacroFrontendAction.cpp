@@ -4,6 +4,8 @@
 #include "clang/Lex/Preprocessor.h"
 #include "clang/Basic/SourceManager.h"
 
+#define DEBUG_TYPE "macro-frontend-action"
+
 using namespace clang;
 
 bool MacroFrontendAction::BeginSourceFileAction(CompilerInstance &CI) {
