@@ -27,6 +27,8 @@
 #include <string>
 #include <utility>
 
+#define DEBUG_TYPE "pulse-gen"
+
 using namespace clang;
 
 void PulseConsumer::setNewModules(
@@ -1081,11 +1083,14 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
 
   PulseFnDefn *PulseFn = new PulseFnDefn(FDefn);
 
-  llvm::outs() << "=================================================";
-  llvm::outs() << "\nPrint the Pulse function Definition:\n\n";
-  PulseFn->dumpPretty();
-  llvm::outs() << "\nEnd printing the function Definition\n\n";
-  llvm::outs() << "=================================================\n";
+  DEBUG_WITH_TYPE(DEBUG_TYPE, {
+    llvm::outs() << "=================================================";
+    llvm::outs() << "\nPrint the Pulse function Definition:\n\n";
+    PulseFn->dumpPretty();
+    llvm::outs() << "\nEnd printing the function Definition\n\n";
+    llvm::outs() << "=================================================\n";
+  });
+
   PulseFn->Kind = PulseDeclKind::FnDefn;
   Module->Decls.push_back(PulseFn);
   DeclarationsMap.insert(std::make_pair(FD, PulseFn));
@@ -1262,9 +1267,12 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
                 if (AnnKind == PulseAnnKind::LemmaStatement) {
                   auto *LS = new LemmaStatement();
                   LS->Lemma = Match;
+                  DEBUG_WITH_TYPE(DEBUG_TYPE , {
                   llvm::outs() << "Found Lemma: " << "\n";
                   llvm::outs() << Match << "\n";
                   llvm::outs() << "End.\n";
+                  });
+
                   auto *LSE = new PulseExpr();
                   LSE->E = LS;
                   if (Start == nullptr) {
@@ -1293,8 +1301,9 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
             auto *TypedefDecl = TT->getDecl();
             auto StructName = TypedefDecl->getDeclName();
+            DEBUG_WITH_TYPE(DEBUG_TYPE , {
             llvm::outs() << "Typedef name: " << StructName << "\n";
-
+            });
             if (Analyzer->isMutated(VD)){
 
               auto *Rhs = new Name(StructName.getAsString() + "_default " +
@@ -1394,11 +1403,17 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
                 llvm::dyn_cast<clang::DeclRefExpr>(BaseExpr)) {
           const clang::ValueDecl *VD = DRE->getDecl();
           // Now you can safely cast VD to a more specific Decl type if needed
+          DEBUG_WITH_TYPE(DEBUG_TYPE , {
           VD->dump();
           llvm::outs() << VD->getDeclName() << "End\n";
+          });
           NameOfDecl = VD->getDeclName().getAsString();
           TyOfDecl = VD->getType();
+          
+          DEBUG_WITH_TYPE(DEBUG_TYPE , {
           llvm::outs() << TyOfDecl->getPointeeType().getAsString() << "\n";
+          });
+
           StructName = TyOfDecl->getPointeeType().getAsString();
 
           auto MemberName = LhsDecl->getDeclName();
@@ -1922,9 +1937,11 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     auto *NewConstTerm = new ConstTerm();
     NewConstTerm->ConstantValue = std::to_string(IL->getValue().getSExtValue());
 
+    DEBUG_WITH_TYPE(DEBUG_TYPE , {
     llvm::outs() << "Found Integer Literal: " << NewConstTerm->ConstantValue
                  << "\n";
     llvm::outs() << ParentType.getAsString() << "\n";
+    });
 
     NewConstTerm->Symbol = getSymbolKeyForCType(ParentType, Ctx);
 
@@ -2307,7 +2324,9 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
             dyn_cast<CallExpr>(E->IgnoreParenImpCasts()->IgnoreCasts())) {
       if (const FunctionDecl *FD = Call->getDirectCallee()) {
         if (FD->getName() == "malloc") {
+          DEBUG_WITH_TYPE(DEBUG_TYPE , {
           llvm::outs() << "Found a malloc call inside CStyleCastExpr!\n";
+          });
           auto *ElementTy =
               CCastExpr->getType()->getPointeeOrArrayElementType();
           auto *DesugaredElemTy = ElementTy->getUnqualifiedDesugaredType();
@@ -2325,13 +2344,18 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
             assert(false &&
                    "Not implemented a non record type in malloc call!\n");
           }
-          llvm::outs() << "Print the type of cast!" << "\n"; 
+          DEBUG_WITH_TYPE(DEBUG_TYPE , {
+          llvm::outs() << "Print the type of cast!" << "\n";
+          }); 
           auto CastType = CCastExpr->getType();
+          DEBUG_WITH_TYPE(DEBUG_TYPE , {
           CastType->dump();
           llvm::outs() << "The corresponding pulse type is: ";
+          });
           auto *PulseTy = getPulseTyFromCTy(CastType);
+          DEBUG_WITH_TYPE(DEBUG_TYPE , {
           llvm::outs() << PulseTy->print() << "\n";
-
+          });
           if (auto *PulsePointerTy = dyn_cast<FStarPointerType>(PulseTy)){
             auto *NewCall =
                 new AppE("alloc_ref #" + PulsePointerTy->PointerTo->print());
@@ -2368,11 +2392,17 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
             llvm::dyn_cast<clang::DeclRefExpr>(BaseExpr)) {
       const ValueDecl *VD = DRE->getDecl();
       // Now you can safely cast VD to a more specific Decl type if needed
+      DEBUG_WITH_TYPE(DEBUG_TYPE , {
       VD->dump();
       llvm::outs() << VD->getDeclName() << "End\n";
+      });
+
       NameOfDecl = VD->getDeclName().getAsString();
       TyOfDecl = VD->getType();
+      
+      DEBUG_WITH_TYPE(DEBUG_TYPE , {
       llvm::outs() << TyOfDecl->getPointeeType().getAsString() << "\n";
+      });
       StructName = TyOfDecl->getPointeeType().getAsString();
 
       auto MemberName = MemberExprDecl->getDeclName();
@@ -2449,9 +2479,11 @@ std::string PulseTransformer::writeToFile() {
     auto FilePath = NewPath.string() + ModuleName;
     //Vidush: Don't remove these since the run.sh script
     //depends on printing the output path of the filename.
+    DEBUG_WITH_TYPE(DEBUG_TYPE , {
     llvm::outs() << "Print the filename!\n";
     llvm::outs() << FilePath << "\n";
     llvm::outs() << "End printing the filename!\n";
+    });
     std::ofstream OutFile(FilePath);
     if (!OutFile.is_open()) {
       llvm::errs()
@@ -2473,9 +2505,11 @@ void PulseTransformer::transform() {
 
   auto &Modules = Consumer.getNewModules();
   for (auto &Pair : Modules) {
+    DEBUG_WITH_TYPE(DEBUG_TYPE , {
     llvm::outs() << "Generating code for Module: ";
     llvm::outs() << Pair.first;
     llvm::outs() << "End generating code for Module.\n";
+    });
     auto ModuleName = Pair.first;
     auto *Module = Pair.second;
     std::string Extension = ".fst";
