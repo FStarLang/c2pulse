@@ -1,4 +1,5 @@
 #include "PulseCodeGen.h"
+#include "Globals.h"
 #include "PulseIR.h"
 
 #include "llvm/Support/Debug.h"
@@ -59,7 +60,9 @@ std::string PulseCodeGen::getGeneratedCodeForModule(std::string ModuleName) {
   if (It != emittedModules.end()) {
     return It->second->str();
   }
-  assert(false && "Could not find a output stream for Module!\n");
+  emitError("(getGeneratedCodeForModule): Could not find a output stream for "
+            "Module: " +
+            ModuleName + "\n");
 }
 
 void PulseCodeGen::generateCodeFromModule(const std::string ModuleName,
@@ -225,9 +228,11 @@ void PulseCodeGen::generateCodeFromPulseAST(llvm::raw_string_ostream &OS,
     OS << FallBackDeclaration->Ident;
   } 
   else if (auto PulseFunDecl = dyn_cast<PulseFnDecl>(FD)) {
-    assert(false && "Not implemented Pulse Fun Decl\n");
+    emitError("(generateCodeFromPulseAST): Codegen not implemented for "
+              "PulseFunDecl!\n");
   } else {
-    assert(false && "Not implemented function kind");
+    emitError("(generateCodeFromPulseAST): Encountered an unknown pulse "
+              "declaration type!\n");
   }
 }
 

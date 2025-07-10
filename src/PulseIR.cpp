@@ -64,8 +64,7 @@ PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data,
                                        std::string &Match) {
 
   if (Data.empty()) {
-    emitErrorWithLocation(
-        "(getPulseAnnKindFromString) Expected data to be non empty!\n");
+    emitError("(getPulseAnnKindFromString) Expected data to be non empty!\n");
   }
 
   std::string CleanedString;
@@ -100,8 +99,7 @@ PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data,
     }
   }
 
-  emitErrorWithLocation(
-      "getPulseAnnKindFromString: Encountered an unknown annotation!\n");
+  emitError("getPulseAnnKindFromString: Encountered an unknown annotation!\n");
   return PulseAnnKind::Unknown;
 }
 
@@ -118,8 +116,7 @@ SymbolTable getSymbolKeyForCType(clang::QualType Ty, clang::ASTContext &Ctx) {
     } else if (Ctx.getTypeSize(Ty) == 64) {
       return SymbolTable::Int64;
     } else {
-      emitErrorWithLocation(
-          "(getSymbolKeyForType): did not expect Clang type!\n");
+      emitError("(getSymbolKeyForType): did not expect Clang type!\n");
     }
 
   } else if (Ty->isUnsignedIntegerType()) {
@@ -140,7 +137,7 @@ SymbolTable getSymbolKeyForCType(clang::QualType Ty, clang::ASTContext &Ctx) {
     } else if (Ctx.getTypeSize(Ty) == 128) {
       return SymbolTable::UInt128;
     } else {
-      emitErrorWithLocation("(getSymbolKeyForType): did not expect C type!\n");
+      emitError("(getSymbolKeyForType): did not expect C type!\n");
     }
 
   } else if (Ty.getAsString() == "size_t") {
@@ -159,7 +156,7 @@ SymbolTable getSymbolKeyForCType(clang::QualType Ty, clang::ASTContext &Ctx) {
   }
 
   Ty->dump();
-  emitErrorWithLocation("(getSymbolKeyForCType): Did not expect C type!\n");
+  emitError("(getSymbolKeyForCType): Did not expect C type!\n");
 }
 
 const char *getSymbolKeyForOperator(SymbolTable Val,
@@ -167,13 +164,11 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
 
   switch (Op) {
   case clang::BO_PtrMemD:{
-    emitErrorWithLocation(
-        "(getSymbolKeyForOperator): Not implemented BO_PtrMemD!\n");
+    emitError("(getSymbolKeyForOperator): Not implemented BO_PtrMemD!\n");
     break;
   }
   case clang::BO_PtrMemI:{
-    emitErrorWithLocation(
-        "(getSymbolKeyForOperator): Not implemented BO_PtrMemI!\n");
+    emitError("(getSymbolKeyForOperator): Not implemented BO_PtrMemI!\n");
     break;
   }
   case clang::BO_Mul: {
@@ -196,8 +191,7 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
     } else if (Val == SymbolTable::SizeT) {
       return lookupSymbol(SymbolTable::SizeT_Mul);
     } else {
-      emitErrorWithLocation(
-          "(getSymbolKeyForOperator): Unknown case in BO_Mul!\n");
+      emitError("(getSymbolKeyForOperator): Unknown case in BO_Mul!\n");
     }
     break;
   }
@@ -221,8 +215,7 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
     } else if (Val == SymbolTable::SizeT) {
       return lookupSymbol(SymbolTable::SizeT_Div);
     } else {
-      emitErrorWithLocation(
-          "(getSymbolKeyForOperator): Unknown case in BO_Div!\n");
+      emitError("(getSymbolKeyForOperator): Unknown case in BO_Div!\n");
     }
     break;
   }
@@ -246,8 +239,7 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
     } else if (Val == SymbolTable::SizeT) {
       return lookupSymbol(SymbolTable::SizeT_Rem);
     } else {
-      emitErrorWithLocation(
-          "(getSymbolKeyForOperator): Not implemented BO_Rem!\n");
+      emitError("(getSymbolKeyForOperator): Not implemented BO_Rem!\n");
     }
     break;
   }
@@ -271,8 +263,7 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
     } else if (Val == SymbolTable::SizeT) {
       return lookupSymbol(SymbolTable::SizeT_Add);
     } else {
-      emitErrorWithLocation(
-          "(getSymbolKeyForOperator): Not implemented BO_Add!\n");
+      emitError("(getSymbolKeyForOperator): Not implemented BO_Add!\n");
     }
 
     break;
@@ -301,18 +292,15 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
     break;
   }
   case clang::BO_Shl:{
-    emitErrorWithLocation(
-        "(getSymbolKeyForOperator): Not implemented BO_Shl!\n");
+    emitError("(getSymbolKeyForOperator): Not implemented BO_Shl!\n");
     break;
   }
   case clang::BO_Shr:{
-    emitErrorWithLocation(
-        "(getSymbolKeyForOperator): Not implemented BO_Shr!\n");
+    emitError("(getSymbolKeyForOperator): Not implemented BO_Shr!\n");
     break;
   }
   case clang::BO_Cmp:{
-    emitErrorWithLocation(
-        "(getSymbolKeyForOperator): Not implemented BO_Cmp!\n");
+    emitError("(getSymbolKeyForOperator): Not implemented BO_Cmp!\n");
     break;
   }
   case clang::BO_LT: {
@@ -335,8 +323,7 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
     } else if (Val == SymbolTable::SizeT) {
       return lookupSymbol(SymbolTable::SizeT_Lt);
     } else {
-      emitErrorWithLocation(
-          "(getSymbolKeyForOperator): Unknown case in BO_LT!\n");
+      emitError("(getSymbolKeyForOperator): Unknown case in BO_LT!\n");
     }
     break;
   }
@@ -360,14 +347,12 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
     } else if (Val == SymbolTable::SizeT) {
       return lookupSymbol(SymbolTable::SizeT_Gt);
     } else {
-      emitErrorWithLocation(
-          "(getSymbolKeyForOperator): Unknown case in BO_GT!\n");
+      emitError("(getSymbolKeyForOperator): Unknown case in BO_GT!\n");
     }
     break;
   }
   case clang::BO_LE:{
-    emitErrorWithLocation(
-        "(getSymbolKeyForOperator): Unknown case in BO_LE!\n");
+    emitError("(getSymbolKeyForOperator): Unknown case in BO_LE!\n");
     break;
   }
   case clang::BO_GE:{
@@ -390,8 +375,7 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
     } else if (Val == SymbolTable::SizeT) {
       return lookupSymbol(SymbolTable::SizeT_Ge);
     } else {
-      emitErrorWithLocation(
-          "(getSymbolKeyForOperator): Unknown case in BO_GE!\n");
+      emitError("(getSymbolKeyForOperator): Unknown case in BO_GE!\n");
       ;
     }
     break;
@@ -416,99 +400,80 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
     } else if (Val == SymbolTable::SizeT) {
       return lookupSymbol(SymbolTable::SizeT_Eq);
     } else {
-      emitErrorWithLocation(
-          "(getSymbolKeyForOperator): Unknown case in BO_EQ!\n");
+      emitError("(getSymbolKeyForOperator): Unknown case in BO_EQ!\n");
     }
     break;
   }
   case clang::BO_NE:{
-    emitErrorWithLocation(
-        "(getSymbolKeyForOperator): Not implemented BO_NE!\n");
+    emitError("(getSymbolKeyForOperator): Not implemented BO_NE!\n");
     break;
   }
   case clang::BO_And:{
-    emitErrorWithLocation(
-        "(getSymbolKeyForOperator): Not implemented BO_And!\n");
+    emitError("(getSymbolKeyForOperator): Not implemented BO_And!\n");
     break;
   }
   case clang::BO_Xor:{
-    emitErrorWithLocation(
-        "(getSymbolKeyForOperator): Not implemented BO_Xor!\n");
+    emitError("(getSymbolKeyForOperator): Not implemented BO_Xor!\n");
     break;
   }
   case clang::BO_Or:{
-    emitErrorWithLocation(
-        "(getSymbolKeyForOperator): Not implemented BO_Or!\n");
+    emitError("(getSymbolKeyForOperator): Not implemented BO_Or!\n");
     break;
   }
   case clang::BO_LAnd:{
-    emitErrorWithLocation(
-        "(getSymbolKeyForOperator): Not implemented BO_LAnd!\n");
+    emitError("(getSymbolKeyForOperator): Not implemented BO_LAnd!\n");
     break;
   }
   case clang::BO_LOr:{
-    emitErrorWithLocation(
-        "(getSymbolKeyForOperator): Not implemented BO_LOr!\n");
+    emitError("(getSymbolKeyForOperator): Not implemented BO_LOr!\n");
     break;
   }
   case clang::BO_Assign:{
-    emitErrorWithLocation(
-        "(getSymbolKeyForOperator): Not implemented BO_Assign!\n");
+    emitError("(getSymbolKeyForOperator): Not implemented BO_Assign!\n");
     break;
   }
   case clang::BO_MulAssign:{
-    emitErrorWithLocation(
-        "(getSymbolKeyForOperator): Not implemented BO_MulAssign!\n");
+    emitError("(getSymbolKeyForOperator): Not implemented BO_MulAssign!\n");
     break;
   }
   case clang::BO_DivAssign:{
-    emitErrorWithLocation(
-        "(getSymbolKeyForOperator): Not implemented BO_DivAssign!\n");
+    emitError("(getSymbolKeyForOperator): Not implemented BO_DivAssign!\n");
     break;
   }
   case clang::BO_RemAssign:{
-    emitErrorWithLocation(
-        "(getSymbolKeyForOperator): Not implemented BO_RemAssign!\n");
+    emitError("(getSymbolKeyForOperator): Not implemented BO_RemAssign!\n");
     break;
   }
   case clang::BO_AddAssign:{
-    emitErrorWithLocation(
-        "(getSymbolKeyForOperator): Not implemented BO_AddAssign!\n");
+    emitError("(getSymbolKeyForOperator): Not implemented BO_AddAssign!\n");
     break;
   }
   case clang::BO_SubAssign:{
-    emitErrorWithLocation(
-        "(getSymbolKeyForOperator): Not implemented BO_SubAssign!\n");
+    emitError("(getSymbolKeyForOperator): Not implemented BO_SubAssign!\n");
     break;
   }
   case clang::BO_ShlAssign:{
-    emitErrorWithLocation(
-        "(getSymbolKeyForOperator): Not implemented BO_ShlAssign!\n");
+    emitError("(getSymbolKeyForOperator): Not implemented BO_ShlAssign!\n");
     break;
   }
   case clang::BO_ShrAssign:{
-    emitErrorWithLocation(
-        "(getSymbolKeyForOperator): Not implemented BO_ShrAssign!\n");
+    emitError("(getSymbolKeyForOperator): Not implemented BO_ShrAssign!\n");
     break;
   }
   case clang::BO_AndAssign:{
-    emitErrorWithLocation(
-        "(getSymbolKeyForOperator): Not implemented BO_AndAssign!\n");
+    emitError("(getSymbolKeyForOperator): Not implemented BO_AndAssign!\n");
     break;
   }
   case clang::BO_XorAssign:{
-    emitErrorWithLocation(
-        "(getSymbolKeyForOperator): Not implemented BO_XorAssign!\n");
+    emitError("(getSymbolKeyForOperator): Not implemented BO_XorAssign!\n");
     break;
   }
   case clang::BO_OrAssign:{
-    emitErrorWithLocation(
-        "(getSymbolKeyForOperator): Not implemented BO_OrAssign!\n");
+    emitError("(getSymbolKeyForOperator): Not implemented BO_OrAssign!\n");
     break;
   }
   case clang::BO_Comma:{
-    emitErrorWithLocation(
-        "(getSymbolKeyForOperator): Not implemented BO_Comma!\n");
+    emitError("(getSymbolKeyForOperator): Not implemented BO_Comma!\n");
     break;
   }
   default:
