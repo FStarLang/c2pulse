@@ -27,7 +27,8 @@ bool MacroFrontendAction::BeginSourceFileAction(CompilerInstance &CI) {
 
 void MacroFrontendAction::EndSourceFileAction() {
     if (Tracker) {
-        Tracker->printCollectedInfo();
+        Tracker->printMacroEventMap();
+        // Tracker->printCollectedInfo();
     }
 
     SyntaxOnlyAction::EndSourceFileAction();
