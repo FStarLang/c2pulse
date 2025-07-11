@@ -15,7 +15,8 @@ extern llvm::cl::opt<std::string> FunctionNameToProcess;
 extern llvm::cl::opt<std::string> TransformMode;
 
 /// Struct that captures detailed source information for an AST node.
-struct SourceInfo {
+class SourceInfo {
+  public:
   std::string PrettyString;  // Formatted string representation of the AST node or expression
   unsigned Line;             // Line number in the source code where the node/expression appears
   unsigned Column;           // Column number in the source code for precise location

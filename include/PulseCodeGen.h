@@ -11,7 +11,7 @@
 #include <set>
 #include <string>
 
-using CodegenStrTy = const char *;
+using CodegenStrTy = const char*;
 using CodegenPyTy = std::unique_ptr<llvm::raw_string_ostream>;
 class PulseCodeGen {
 
@@ -33,11 +33,12 @@ public:
   std::map<std::string, CodegenPyTy> &getEmittedModules();
   std::string getGeneratedCodeForModule(std::string ModuleName);
   void generateCodeFromModule(const std::string ModuleName, PulseModul *Modul);
-  void generateCodeFromPulseAST(llvm::raw_string_ostream &S, PulseDecl *FD);
-  std::string generateCodeFromTerm(llvm::raw_string_ostream &OS, Term *T);
-  void generateCodeFromPulseStmt(llvm::raw_string_ostream &S, PulseStmt *T);
+  void generateCodeFromPulseAST(llvm::raw_string_ostream &S, PulseDecl *FD, unsigned *RowCounter, unsigned *ColCounter);
+  std::string generateCodeFromTerm(llvm::raw_string_ostream &OS, Term *T, unsigned *RowCounter, unsigned *ColCounter);
+  void generateCodeFromPulseStmt(llvm::raw_string_ostream &S, PulseStmt *T, unsigned *RowCounter, unsigned *ColCounter);
   std::string formatAsComments(PulseDecl *Decl);
-  void writeHeaders(PulseModul *pulseModule, llvm::raw_string_ostream &Stream);
+  void writeHeaders(PulseModul *pulseModule, llvm::raw_string_ostream &Stream, 
+    unsigned *RowIdx);
 
 private:
   std::map<std::string, CodegenPyTy> emittedModules;
