@@ -65,9 +65,10 @@ int main(int argc, const char **argv) {
         OptionsParser->getCompilations(), SourceFiles
     );
 
+    std::vector<MacroEventInfo> macroEventsVec;
     // int Result = Tool->run(newFrontendActionFactory<SyntaxOnlyAction>().get());
     // int Result =  Tool->run(newFrontendActionFactory<MacroFrontendAction>().get());
-    auto Factory = std::make_unique<MacroFrontendActionFactory>();
+    auto Factory = std::make_unique<MacroFrontendActionFactory>(macroEventsVec);
     int Result = Tool->run(Factory.get());
 
     if (Result != 0) {
@@ -79,10 +80,28 @@ int main(int argc, const char **argv) {
 
     auto *Action = Factory->getAction();
     if (Action) {
-        MacroCommentTracker* Tracker = Action->getTracker();
-        if (Tracker) {
+        int macroEventCount = macroEventsVec.size();
+        if (macroEventCount > 0) {
             llvm::outs() << "Printing Macro Events from Main:\n";
-            // Tracker->printMacroEventMap(); // or call any other method you need
+            llvm::outs() << "Number of macro events collected: "
+                        << macroEventCount << "\n";
+
+            for (const auto &event : macroEventsVec) {
+                llvm::outs() << "Kind: " << toString(event.Kind) << "\n";
+                llvm::outs() << "Macro: " << event.MacroName << "\n";
+                llvm::outs() << "Expansion: " << event.ExpansionText << "\n";
+                llvm::outs() << "Location: Line: " << event.Line << ", Column: " << event.Column << "\n";
+                llvm::outs() << "Filename: " << event.FileName << "\n";
+                llvm::outs() << "Tokens:\n";
+                for (const auto &token : event.Tokens) {
+                    llvm::outs() << "  " << (token.IsParam ? "[param] " : "[macro] ")
+                                 << token.TokenText << " at Line "
+                                 << token.Line << ", Column "
+                                 << token.Column << "\n";
+                }
+                llvm::outs() << "----------------------\n";
+            }
+            
         } else {
             llvm::errs() << "No tracker available from MacroFrontendAction.\n";
         }

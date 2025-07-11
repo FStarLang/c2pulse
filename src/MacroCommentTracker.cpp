@@ -8,8 +8,11 @@
 
 using namespace clang;
 
-MacroCommentTracker::MacroCommentTracker(Preprocessor &PP, SourceManager &SM, const LangOptions &LangOpts)
-    : SM(SM), LangOpts(LangOpts) {}
+MacroCommentTracker::MacroCommentTracker(Preprocessor &PP,
+                                         SourceManager &SM,
+                                         const LangOptions &LangOpts,
+                                         std::vector<MacroEventInfo> &macroEventsVecRef)
+    : SM(SM), LangOpts(LangOpts), macroEventsVec(macroEventsVecRef) {}
 
 static std::string locToStr(const SourceManager &SM, SourceLocation Loc) {
     SourceLocation ExpansionLoc = SM.getExpansionLoc(Loc);
@@ -31,7 +34,8 @@ void MacroCommentTracker::MacroDefined(const Token &MacroNameTok, const MacroDir
     event.FileName = filename;
     event.Kind = MacroEventKind::Define;
     event.MacroName = macroName;
-    event.Location = Loc;
+    event.Line = SM.getSpellingLineNumber(Loc);
+    event.Column = SM.getSpellingColumnNumber(Loc);
     event.ExpansionText = "";  // No expansion text for #define event here
 
     MacroTokenInfo tokInfo;
@@ -44,7 +48,7 @@ void MacroCommentTracker::MacroDefined(const Token &MacroNameTok, const MacroDir
 
     macroEventsVec.push_back(event);
 
-    macroEventMap[filename].push_back(event);
+    //macroEventMap[filename].push_back(event);
     
     DEBUG_WITH_TYPE(DEBUG_TYPE, { 
     // std::string info = "Macro defined: " + MacroNameTok.getIdentifierInfo()->getName().str() +
@@ -70,7 +74,8 @@ void MacroCommentTracker::MacroUndefined(const Token &MacroNameTok,
     event.FileName = filename;
     event.Kind = MacroEventKind::Undefine;
     event.MacroName = macroName;
-    event.Location = Loc;
+    event.Line = SM.getSpellingLineNumber(Loc);
+    event.Column = SM.getSpellingColumnNumber(Loc);
     event.ExpansionText = ""; // Not applicable for undef
 
     MacroTokenInfo tokInfo;
@@ -82,7 +87,7 @@ void MacroCommentTracker::MacroUndefined(const Token &MacroNameTok,
     event.Tokens.push_back(tokInfo);
 
     macroEventsVec.push_back(event);
-    macroEventMap[filename].push_back(event);
+    //macroEventMap[filename].push_back(event);
 
     DEBUG_WITH_TYPE(DEBUG_TYPE, { 
     // std::string info = "Macro undefined: " + MacroNameTok.getIdentifierInfo()->getName().str() +
@@ -131,8 +136,9 @@ void MacroCommentTracker::MacroExpands(const Token &MacroNameTok,
     MacroEventInfo event;
     event.Kind = MacroEventKind::Expand;
     event.MacroName = macroName;
-    event.Location = Loc;
-    event.ExpansionText = expansionText;
+    event.Line = SM.getSpellingLineNumber(Loc);
+    event.Column = SM.getSpellingColumnNumber(Loc);
+    event.ExpansionText = std::string(expansionText);
     event.FileName = filename;
 
     // Extract macro parameters (with token locations)
@@ -172,7 +178,7 @@ void MacroCommentTracker::MacroExpands(const Token &MacroNameTok,
     }
 
     macroEventsVec.push_back(event);
-    macroEventMap[filename].push_back(event);
+    //macroEventMap[filename].push_back(event);
 
     DEBUG_WITH_TYPE(DEBUG_TYPE, {   
     // Final formatted info
@@ -200,7 +206,8 @@ void MacroCommentTracker::Ifdef(SourceLocation Loc,
     event.FileName = filename;
     event.Kind = MacroEventKind::Ifdef;
     event.MacroName = macro;
-    event.Location = Loc;
+    event.Line = SM.getSpellingLineNumber(Loc);
+    event.Column = SM.getSpellingColumnNumber(Loc);
     event.ExpansionText = ""; // No expansion in #ifdef
     
     //WE MIGHT NEED TO TOKENIZE THE MACRO LINE
@@ -213,7 +220,7 @@ void MacroCommentTracker::Ifdef(SourceLocation Loc,
     event.Tokens.push_back(tokInfo);
     
     macroEventsVec.push_back(event);
-    macroEventMap[filename].push_back(event);
+    //macroEventMap[filename].push_back(event);
 
     DEBUG_WITH_TYPE(DEBUG_TYPE, {
     // std::string info = "#ifdef: " + macro + " at " + locToStr(SM, Loc);
@@ -237,7 +244,8 @@ void MacroCommentTracker::Ifndef(SourceLocation Loc,
     event.FileName = filename;
     event.Kind = MacroEventKind::Ifndef;
     event.MacroName = macro;
-    event.Location = Loc;
+    event.Line = SM.getSpellingLineNumber(Loc);
+    event.Column = SM.getSpellingColumnNumber(Loc);
     event.ExpansionText = ""; // No expansion in #ifndef
 
     //WE MIGHT NEED TO TOKENIZE THE MACRO LINE
@@ -250,7 +258,7 @@ void MacroCommentTracker::Ifndef(SourceLocation Loc,
     event.Tokens.push_back(tokInfo);
 
     macroEventsVec.push_back(event);
-    macroEventMap[filename].push_back(event);    
+    //macroEventMap[filename].push_back(event);    
 
     DEBUG_WITH_TYPE(DEBUG_TYPE, {
     // std::string ifndefInfo = "#ifndef: " + macro + " at " + locToStr(SM, Loc);
@@ -276,7 +284,8 @@ void MacroCommentTracker::Defined(const clang::Token &MacroNameTok,
     event.FileName = filename;
     event.Kind = MacroEventKind::Defined;
     event.MacroName = macro;
-    event.Location = Loc;
+    event.Line = SM.getSpellingLineNumber(Loc);
+    event.Column = SM.getSpellingColumnNumber(Loc);
     event.ExpansionText = ""; // No expansion text for `defined()` usage
 
     //WE MIGHT NEED TO TOKENIZE THE MACRO LINE
@@ -288,7 +297,7 @@ void MacroCommentTracker::Defined(const clang::Token &MacroNameTok,
 
     event.Tokens.push_back(tokInfo);
 
-    macroEventMap[filename].push_back(event);
+    //macroEventMap[filename].push_back(event);
     macroEventsVec.push_back(event);
     
     DEBUG_WITH_TYPE(DEBUG_TYPE, {
@@ -326,7 +335,7 @@ void MacroCommentTracker::printMacroInfo(std::string filename, const MacroEventI
         llvm::outs() << "Kind: " << toString(e.Kind) << "\n";
         llvm::outs() << "Macro: " << e.MacroName << "\n";
         llvm::outs() << "Expansion: " << e.ExpansionText << "\n";
-        llvm::outs() << "Location: " << locToStr(SM, e.Location) << "\n";
+        llvm::outs() << "Location: Line: " << e.Line << ", Column: " << e.Column << "\n";
         llvm::outs() << "Filename: " << e.FileName << "\n";
         llvm::outs() << "Tokens:\n";
         for (const auto &t : e.Tokens) {
@@ -345,7 +354,7 @@ void MacroCommentTracker::printMacroCollectedInfo() const {
         llvm::outs() << "Kind: " << toString(event.Kind) << "\n";
         llvm::outs() << "Macro: " << event.MacroName << "\n";
         llvm::outs() << "Expansion: " << event.ExpansionText << "\n";
-        llvm::outs() << "Location: " << locToStr(SM, event.Location) << "\n";
+        llvm::outs() << "Location: Line: " << event.Line << ", Column: " << event.Column << "\n";
         llvm::outs() << "Tokens:\n";
         for (const auto &token : event.Tokens) {
             llvm::outs() << "  " << (token.IsParam ? "[param] " : "[macro] ")
@@ -357,28 +366,28 @@ void MacroCommentTracker::printMacroCollectedInfo() const {
     }
 }
 
-void MacroCommentTracker::printMacroEventMap() const {
-    for (const auto &pair : macroEventMap) {
-        const std::string &filename = pair.first;
-        const std::vector<MacroEventInfo> &events = pair.second;
+// void MacroCommentTracker::printMacroEventMap() const {
+//     for (const auto &pair : macroEventMap) {
+//         const std::string &filename = pair.first;
+//         const std::vector<MacroEventInfo> &events = pair.second;
 
-        llvm::outs() << "=== Macros in file: " << filename << " ===\n";
-        for (const auto &e : events) {
-            llvm::outs() << "Kind: " << toString(e.Kind) << "\n";
-            llvm::outs() << "Macro: " << e.MacroName << "\n";
-            llvm::outs() << "Expansion: " << e.ExpansionText << "\n";
-            llvm::outs() << "Location: " << locToStr(SM, e.Location) << "\n";
-            llvm::outs() << "Filename: " << e.FileName << "\n";
-            llvm::outs() << "Tokens:\n";
-            for (const auto &t : e.Tokens) {
-                llvm::outs() << "  " << (t.IsParam ? "[param] " : "[macro] ")
-                             << t.TokenText << " at Line " << t.Line
-                             << ", Column " << t.Column << "\n";
-            }
-            llvm::outs() << "----------------------\n";
-        }
-    }
-}
+//         llvm::outs() << "=== Macros in file: " << filename << " ===\n";
+//         for (const auto &e : events) {
+//             llvm::outs() << "Kind: " << toString(e.Kind) << "\n";
+//             llvm::outs() << "Macro: " << e.MacroName << "\n";
+//             llvm::outs() << "Expansion: " << e.ExpansionText << "\n";
+//             llvm::outs() << "Location: Line: " << e.Line << ", Column: " << e.Column << "\n";
+//             llvm::outs() << "Filename: " << e.FileName << "\n";
+//             llvm::outs() << "Tokens:\n";
+//             for (const auto &t : e.Tokens) {
+//                 llvm::outs() << "  " << (t.IsParam ? "[param] " : "[macro] ")
+//                              << t.TokenText << " at Line " << t.Line
+//                              << ", Column " << t.Column << "\n";
+//             }
+//             llvm::outs() << "----------------------\n";
+//         }
+//     }
+// }
 
 // void MacroCommentTracker::printCollectedInfo() const {
 //     llvm::outs() << "=== Macro Definitions ===\n";
