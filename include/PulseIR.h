@@ -2,7 +2,7 @@
 
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/OperationKinds.h"
-
+#include "ExprLocationAnalyzer.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/StringRef.h"
 
@@ -271,6 +271,31 @@ static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
     {SymbolTable::Ref, "ref"},
 };
 
+/// Classes to Store Location Information for AST Nodes. 
+class RegionRange {
+  public:
+  //CLASS DYN_CAST TO A RANGE OR A SINGLE LOC
+  SourceInfo Start; 
+  //SourceInfo End;
+  void setStartLine(unsigned Line);
+  void setEndLine(unsigned Line);
+  void setStartColumn(unsigned Col);
+  void setEndColumn(unsigned Col);
+
+};
+
+class RegionMapping {
+  public:
+  //use SourceInfo.
+  RegionRange CInfo;
+  RegionRange PulseInfo;
+
+  RegionRange &getCInfo();
+  RegionRange &getPulseInfo();
+
+
+};
+
 /// Define F* IR Similar to type term
 /// https://github.com/FStarLang/FStar/blob/3ff998c60bb0efe9925fc94e8fb8b785b9485af0/src/parser/FStarC.Parser.AST.fsti#L40
 enum class TermTag {Const, Paren, Var, Name, AppE, FStarType, FStarPointerType, FStarArrType, 
@@ -284,6 +309,8 @@ enum class TermTag {Const, Paren, Var, Name, AppE, FStarType, FStarPointerType, 
 /// A base class for term.                    
 class Term {
 public:
+  RegionMapping RegInfo;
+  RegionMapping &getRegInfoMapping();
   TermTag Tag;
   void setTag(TermTag T);
   void printTag();
@@ -492,6 +519,8 @@ enum class MutOrRef {
 /// The base class for a pulse statement.
 class PulseStmt {
 public:
+  RegionMapping RegInfo;
+  RegionMapping &getRegInfoMapping();
   PulseStmtTag Tag;
   void setTag(PulseStmtTag T);
   void printTag();
@@ -607,6 +636,8 @@ public:
 /// An IR node for representing a Function Argument.
 struct Binder {
 public:
+  RegionMapping RegInfo;
+  RegionMapping &getRegInfoMapping();
   Binder(std::string ident, Term *type) : Ident(std::move(ident)), Type(type) {}
   Binder(std::string fallback);
   std::string Ident;
@@ -678,6 +709,8 @@ enum class PulseDeclKind {
 /// An enum class to represent what kind of a pulse declaration it is.
 class PulseDecl {
 public:
+  RegionMapping RegInfo;
+  RegionMapping &getRegInfoMapping();
   PulseDeclKind Kind;
   PulseDeclKind getKind();
 };

@@ -9,6 +9,30 @@
 
 // define functions for F* classes.
 
+void RegionRange::setStartLine(unsigned Line){
+  Start.Line = Line;
+}
+
+void RegionRange::setEndLine(unsigned Line){
+  End.Line = Line;
+}
+
+void RegionRange::setStartColumn(unsigned Col){
+  Start.Column = Col;
+}
+
+void RegionRange::setEndColumn(unsigned Col){
+  End.Column = Col;
+}
+
+RegionRange &RegionMapping::getCInfo(){
+  return CInfo;
+}
+
+RegionRange &RegionMapping::getPulseInfo(){
+  return PulseInfo;
+}
+
 // enum class TermTag { Const, Var, Name, AppE, FStarType, FStarPointerType };
 llvm::raw_ostream &operator<<(llvm::raw_ostream &os, TermTag T) {
   switch (T) {
@@ -493,6 +517,10 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
 
 Binder::Binder(std::string FallBack) { Ident = FallBack; }
 
+RegionMapping &Binder::getRegInfoMapping(){
+  return RegInfo;
+}
+
 llvm::raw_ostream &operator<<(llvm::raw_ostream &os, PulseStmtTag T) {
   switch (T) {
   case PulseStmtTag::Expr:
@@ -546,6 +574,11 @@ void Term::setTag(TermTag T) { Tag = T; }
 void Term::printTag() { llvm::outs() << Tag << "\n"; }
 
 void Term::dumpPretty() { printTag(); }
+
+
+RegionMapping &Term::getRegInfoMapping(){
+  return RegInfo;
+}
 
 
 Project::Project(){
@@ -675,6 +708,10 @@ std::string FStarPointerType::print() {
   Out += PointerTo->print();
   Out += ")";
   return Out;
+}
+
+RegionMapping &PulseStmt::getRegInfoMapping(){
+  return RegInfo;
 }
 
 FStarArrType::FStarArrType() { Tag = TermTag::FStarArrType; }
@@ -821,6 +858,10 @@ void PulseWhileStmt::dumpPretty() {
 PulseWhileStmt::PulseWhileStmt() { Tag = PulseStmtTag::WhileStmt; }
 
 PulseDeclKind PulseDecl::getKind() { return Kind; }
+
+RegionMapping &PulseDecl::getRegInfoMapping(){
+  return RegInfo;
+}
 
 PulseFnDefn::PulseFnDefn(_PulseFnDefn *Defn) : Defn(Defn) {
   Kind = PulseDeclKind::FnDefn;

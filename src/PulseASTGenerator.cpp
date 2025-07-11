@@ -1214,6 +1214,10 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
             PulseLet = new LetBinding(VarName, LetInit, MutOrRef::NOTMUT);
           }
 
+          //Set the corresponding source location for the C ast node. 
+          //PulseLet->RegInfo = new RegionMapping();
+          //PulseLet->RegInfo->CInfo = 
+
           // We need to make a sequence of pulse statements.
           PulseSequence *Start = nullptr;
           if (!NewExprs.empty()) {
