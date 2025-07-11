@@ -27,7 +27,7 @@
 #include <string>
 #include <utility>
 
-#define DEBUG_TYPE "pulse-gen"
+#define DEBUG_TYPE "pulse-ast-gen"
 
 using namespace clang;
 
