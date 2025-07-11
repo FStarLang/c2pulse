@@ -13,6 +13,47 @@ if [ "$#" -lt 1 ]; then
   exit 1
 fi
 
+# Check if F* binary exists and works
+if [[ ! -x "$FSTAR_BIN" ]]; then
+  echo "❌ Error: F* binary not found or not executable at: $FSTAR_BIN"
+  exit 1
+fi
+
+if ! FSTAR_VERSION_OUTPUT=$("$FSTAR_BIN" --version 2>/dev/null); then
+  echo "❌ Error: F* failed to run '--version'. Make sure it is correctly installed."
+  exit 1
+else
+  echo "✔ F* version:"
+  echo "$FSTAR_VERSION_OUTPUT"
+fi
+
+# Check if c2pulse exists and works
+if [[ ! -x "$C2PULSE" ]]; then
+  echo "❌ Error: c2pulse binary not found or not executable at: $C2PULSE"
+  exit 1
+fi
+
+if ! C2PULSE_VERSION_OUTPUT=$("$C2PULSE" --version 2>/dev/null); then
+  echo "❌ Error: c2pulse failed to run '--version'. Check the build."
+  exit 1
+else
+  echo "✔ c2pulse is using LLVM version:"
+  echo "$C2PULSE_VERSION_OUTPUT"
+fi
+
+# Check Pulse include dir
+if [[ ! -d "$PULSE_DIR" ]]; then
+  echo "❌ Error: Pulse directory not found: $PULSE_DIR"
+  exit 1
+fi
+
+# Check Pulse C lib dir
+if [[ ! -d "$PULSE_LIB_C_DIR" ]]; then
+  echo "❌ Error: Pulse C library directory not found: $PULSE_LIB_C_DIR"
+  exit 1
+fi
+
+
 echo "Processing input: $@"
 
 # Optional --log argument
@@ -59,12 +100,15 @@ if [ ${#C_FILES[@]} -eq 0 ]; then
   exit 1
 fi
 
+echo "Found the following C source files:"
+for file in "${C_FILES[@]}"; do
+  echo "  $file"
+done
+
 # Prepare C2Pulse command as a variable for reuse
 CMD=(
   $C2PULSE "${C_FILES[@]}" \
   --extra-arg-before=-DC2PULSE
-  #--extra-arg-before=-include \
-  #--extra-arg-before=$(realpath "$HERE/test/include/PulseMacros.h") \
 )
 
 # Run command, capture output and optionally save to log
@@ -89,9 +133,8 @@ for file in "${SRC_FILES[@]}"; do
   echo "  $file"
 done
 
-echo "${SRC_FILES[@]}"
-
 echo "Running F* on generated files..."
+
 fstar_output=$("$FSTAR_BIN" \
   --include "$PULSE_DIR" \
   --include "$PULSE_LIB_C_DIR" \

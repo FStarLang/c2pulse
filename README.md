@@ -9,15 +9,22 @@ c2pulse/
 ├── README.md
 ├── build.sh                            # Build c2pulse and create a symlink in llvm-project
 ├── run.sh                              # Run the transpiler C2Pulse and checks the output with Fstar
-├── run_c2pulse.sh                      # Runs only the transpiler and generates the Pulse files from the input C     
-├── run_fstar.sh                        # Runs Fstart on top of the generated files to check them   
-├── run-lit.sh                          # Run the lit test-suite
-├── test/                               # Lit-based test suite
-│   ├── CMakeLists.txt                  # Includes test files in the build
-│   ├── lit.cfg.py                      # LIT configuration for test execution
-│   └── complex_test.c
-│   └── reverse_test.c
-│   └── swap_test.c
+├── test_runner.sh
+├── scripts/ 
+│   ├── run_c2pulse.sh                  # Runs only the transpiler and generates the Pulse files from the input C     
+│   ├── run_fstar.sh                    # Runs Fstart on top of the generated files to check them   
+│   ├── run_test.sh                     # Run the test-suite
+│   ├── build_snapdb.sh                 # Build the snapshot database
+│   ├── check_file.sh                   # Helper for testing against snapshop
+├── test/                               # C2Pulse test suite
+│   ├── Cfg.fst.config.json              
+│   ├── lit.cfg.py                      
+│   └── general
+|   |   └── swap_test.c
+|   |   └── ...
+│   └── include
+|   |   └── PulseMacros.h
+│   └── snapshots
 │   └── ...
 ├── include/                            # Header files for Pulse logic           
 |   ├── ExprLocationAnalyzer.h          
@@ -61,14 +68,21 @@ Alternatively, please find a `run_c2pulse.sh` scipt in the root directory.
 
 ---
 
-## Run the C2Pulse Lit Test Suite
-To verify the correctness of the tool, you can run the included semantic test cases using LLVM's lit infrastructure. From the root of the project, run:
+## Run the C2Pulse Test Suite
+
+To verify the correctness of the tool, run the semantic test suite from the root of the project:
 
 ```bash
-./run-lit.sh ./test/
+./scripts/run_test.sh ./test/general
 ```
 
-This will run all test cases located in the `test/` directory using the LLVM testing infrastructure and check expected outputs and diagnostics.
+This will execute all test cases under the `test/general` directory, checking both the generated outputs and expected diagnostics.
+
+You can also run the test suite on a specific input file:
+
+```bash
+./scripts/run_test.sh ./test/general/swap_test.c
+```
 
 ---
 
@@ -116,3 +130,54 @@ ensures (r1 `pts_to` 'w2) ** (r2 `pts_to` 'w1)
 * Generates Pulse code that can be compiled with Fstar.
 ---
 
+## Debug Modes (Developer Feature)
+
+C2Pulse leverages LLVM’s internal debugging infrastructure. To help developers trace internal transformations and behavior, several components include debug output guarded by `DEBUG_TYPE`.
+
+> Note: This feature is intended for developers and contributors who want to inspect or debug the internal behavior of the tool.
+
+### Enabling Debug Output for Specific Components
+
+Each major part of C2Pulse defines its own `DEBUG_TYPE`. You can enable debug output for a specific component using:
+
+```bash
+./external/llvm-project/build/bin/c2pulse test.c -debug --debug-only=ast-loc-info
+```
+
+Available `DEBUG_TYPE`'s include:
+
+| `DEBUG_TYPE`            | Component                  |
+| ----------------------- | -------------------------- |
+| `ast-loc-info`          | `ExprLocationAnalyzer.cpp` |
+| `macro-comment-tracker` | `MacroCommentTracker.cpp`  |
+| `macro-frontend-action` | `MacroFrontendAction.cpp`  |
+| `pulse-gen`             | `PulseGenerator.cpp`       |
+| `pulse-code-gen`        | `PulseCodeGen.cpp`         |
+
+To add debug output in code, use:
+
+```cpp
+#define DEBUG_TYPE "ast-loc-info"
+DEBUG_WITH_TYPE("ast-loc-info", {
+  llvm::dbgs() << "Debug message here\n";
+});
+```
+
+### Enabling All Debug Output
+
+To see all debug output, from every `DEBUG_TYPE`, pass the `-debug` flag alone:
+
+```bash
+./external/llvm-project/build/bin/c2pulse test.c -debug
+```
+
+Or set the environment variable:
+
+```bash
+export LLVM_DEBUG=1
+./external/llvm-project/build/bin/c2pulse test.c
+```
+
+> Note: The environment variable disables all filtering, and outputs everything inside `LLVM_DEBUG(...)` and `DEBUG_WITH_TYPE(...)` blocks. 
+
+---
