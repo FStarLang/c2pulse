@@ -18,7 +18,8 @@ class MacroCommentTracker : public clang::PPCallbacks, public clang::CommentHand
 public:
     MacroCommentTracker(clang::Preprocessor &PP,
                         clang::SourceManager &SM,
-                        const clang::LangOptions &LangOpts);
+                        const clang::LangOptions &LangOpts,
+                        std::vector<MacroEventInfo> &macroEventsVecRef);
 
     // PPCallbacks overrides
     void MacroDefined(const clang::Token &MacroNameTok,
@@ -52,17 +53,17 @@ public:
     void printMacroEventMap() const;
     void printMacroCollectedInfo() const;
 
-    const std::vector<MacroEventInfo>& getEvents() const { return macroEventsVec; }
-    const std::unordered_map<std::string, std::vector<MacroEventInfo>>& getMacroEventMap() const {
-        return macroEventMap;
-    }
+    // const std::vector<MacroEventInfo>& getEvents() const { return macroEventsVec; }
+    // const std::unordered_map<std::string, std::vector<MacroEventInfo>>& getMacroEventMap() const {
+    //     return macroEventMap;
+    // }
 
 private:
     clang::SourceManager &SM;
     const clang::LangOptions &LangOpts;
 
-    std::vector<MacroEventInfo> macroEventsVec;
-    std::unordered_map<std::string, std::vector<MacroEventInfo>> macroEventMap;
+    std::vector<MacroEventInfo> &macroEventsVec;
+    // std::unordered_map<std::string, std::vector<MacroEventInfo>> macroEventMap;
 
     // std::vector<std::string> MacroDefs;
     // std::vector<std::string> MacroExpansions;
