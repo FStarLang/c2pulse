@@ -15,27 +15,31 @@ c2pulse/
 │   ├── run_fstar.sh                    # Runs Fstart on top of the generated files to check them   
 │   ├── run_test.sh                     # Run the test-suite
 │   ├── build_snapdb.sh                 # Build the snapshot database
-│   ├── check_file.sh                   # Helper for testing against snapshop
+│   └── check_file.sh                   # Helper for testing against snapshop
 ├── test/                               # C2Pulse test suite
 │   ├── Cfg.fst.config.json              
 │   ├── lit.cfg.py                      
-│   └── general
-|   |   └── swap_test.c
-|   |   └── ...
-│   └── include
+│   ├── general
+|   |   ├── swap_test.c
+|   |   ├── ...
+│   ├── include
 |   |   └── PulseMacros.h
-│   └── snapshots
-│   └── ...
+│   ├── snapshots
+│   └──  ...
 ├── include/                            # Header files for Pulse logic           
 |   ├── ExprLocationAnalyzer.h          
-|   ├── Globals.h                       
+|   ├── Globals.h  
+│   ├── MacroCommentTracker.h
+│   ├── MacroFrontendAction.h                      
 │   ├── PulseGenerator.h                
 │   ├── PulseCodeGen.h                  
-│   └── PulseIR.h                       
+│   └── PulseIR.h                      
 └── src/                              
     ├── ExprLocationAnalyzer.cpp        # Utility to locate expressions in source
     ├── Globals.cpp                     # Global utilities and shared state
-    ├── PulseGenerator.cpp              # Pulse IR builder from standard C or C in ANF-like form
+    ├── MacroCommentTracker.cpp
+    ├── MacroFrontendAction.cpp  
+    ├── PulseASTGenerator.cpp           # Pulse AST builder from standard C
     ├── PulseCodeGen.cpp                # Emits Pulse code from Pulse IR
     ├── PulseIR.cpp                     # Pulse IR utility methods and definitions
     └── main.cpp                        # Tool entry point and Clang integration
