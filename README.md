@@ -77,12 +77,18 @@ Alternatively, please find a `run_c2pulse.sh` scipt in the root directory.
 To verify the correctness of the tool, run the semantic test suite from the root of the project:
 
 ```bash
-./scripts/run_test.sh ./test/general
+./scripts/test_runner.sh 
 ```
 
-This will execute all test cases under the `test/general` directory, checking both the generated outputs and expected diagnostics.
+This will execute all test cases under the `test/` directory, checking both the generated outputs and expected diagnostics.
 
-You can also run the test suite on a specific input file:
+You can also run the test suite on a specific directory:
+
+```bash
+./scripts/run_test.sh ./test/general/
+```
+
+Or file:
 
 ```bash
 ./scripts/run_test.sh ./test/general/swap_test.c
