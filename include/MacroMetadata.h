@@ -39,6 +39,7 @@ struct MacroEventInfo {
     MacroEventKind Kind;
     std::string MacroName;
     std::string ExpansionText; // if any
-    clang::SourceLocation Location;
+    unsigned Line;
+    unsigned Column;
     std::vector<MacroTokenInfo> Tokens;
 };
