@@ -42,7 +42,9 @@ void MacroCommentTracker::MacroDefined(const Token &MacroNameTok, const MacroDir
 
     event.Tokens.push_back(tokInfo);
 
-    MacroEventMap[filename].push_back(event);
+    macroEventsVec.push_back(event);
+
+    macroEventMap[filename].push_back(event);
     
     DEBUG_WITH_TYPE(DEBUG_TYPE, { 
     // std::string info = "Macro defined: " + MacroNameTok.getIdentifierInfo()->getName().str() +
@@ -79,7 +81,8 @@ void MacroCommentTracker::MacroUndefined(const Token &MacroNameTok,
 
     event.Tokens.push_back(tokInfo);
 
-    MacroEventMap[filename].push_back(event);
+    macroEventsVec.push_back(event);
+    macroEventMap[filename].push_back(event);
 
     DEBUG_WITH_TYPE(DEBUG_TYPE, { 
     // std::string info = "Macro undefined: " + MacroNameTok.getIdentifierInfo()->getName().str() +
@@ -168,7 +171,8 @@ void MacroCommentTracker::MacroExpands(const Token &MacroNameTok,
         paramsText = "[None]";
     }
 
-    MacroEventMap[filename].push_back(event);
+    macroEventsVec.push_back(event);
+    macroEventMap[filename].push_back(event);
 
     DEBUG_WITH_TYPE(DEBUG_TYPE, {   
     // Final formatted info
@@ -207,8 +211,9 @@ void MacroCommentTracker::Ifdef(SourceLocation Loc,
     tokInfo.IsParam = false;
 
     event.Tokens.push_back(tokInfo);
-
-    MacroEventMap[filename].push_back(event);
+    
+    macroEventsVec.push_back(event);
+    macroEventMap[filename].push_back(event);
 
     DEBUG_WITH_TYPE(DEBUG_TYPE, {
     // std::string info = "#ifdef: " + macro + " at " + locToStr(SM, Loc);
@@ -244,9 +249,8 @@ void MacroCommentTracker::Ifndef(SourceLocation Loc,
 
     event.Tokens.push_back(tokInfo);
 
-    MacroEventMap[filename].push_back(event);
-
-    
+    macroEventsVec.push_back(event);
+    macroEventMap[filename].push_back(event);    
 
     DEBUG_WITH_TYPE(DEBUG_TYPE, {
     // std::string ifndefInfo = "#ifndef: " + macro + " at " + locToStr(SM, Loc);
@@ -284,7 +288,8 @@ void MacroCommentTracker::Defined(const clang::Token &MacroNameTok,
 
     event.Tokens.push_back(tokInfo);
 
-    MacroEventMap[filename].push_back(event);
+    macroEventMap[filename].push_back(event);
+    macroEventsVec.push_back(event);
     
     DEBUG_WITH_TYPE(DEBUG_TYPE, {
     // std::string locInfo = locToStr(SM, Range.getBegin());
@@ -333,8 +338,27 @@ void MacroCommentTracker::printMacroInfo(std::string filename, const MacroEventI
     
 }
 
+void MacroCommentTracker::printMacroCollectedInfo() const {
+    llvm::outs() << "=== Macro Info Collected ===\n";
+    for (const auto &event : macroEventsVec) {
+        llvm::outs() << "File: " << event.FileName << "\n";
+        llvm::outs() << "Kind: " << toString(event.Kind) << "\n";
+        llvm::outs() << "Macro: " << event.MacroName << "\n";
+        llvm::outs() << "Expansion: " << event.ExpansionText << "\n";
+        llvm::outs() << "Location: " << locToStr(SM, event.Location) << "\n";
+        llvm::outs() << "Tokens:\n";
+        for (const auto &token : event.Tokens) {
+            llvm::outs() << "  " << (token.IsParam ? "[param] " : "[macro] ")
+                         << token.TokenText << " at Line "
+                         << token.Line << ", Column "
+                         << token.Column << "\n";
+        }
+        llvm::outs() << "----------------------\n";
+    }
+}
+
 void MacroCommentTracker::printMacroEventMap() const {
-    for (const auto &pair : MacroEventMap) {
+    for (const auto &pair : macroEventMap) {
         const std::string &filename = pair.first;
         const std::vector<MacroEventInfo> &events = pair.second;
 

@@ -1,6 +1,7 @@
 #include "ExprLocationAnalyzer.h"
 // #include "clang/Frontend/FrontendActions.h"
-#include "MacroFrontendAction.h"
+// #include "MacroFrontendAction.h"
+#include "MacroFrontendActionFactory.h"
 #include "PulseASTGenerator.h"
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
@@ -65,13 +66,29 @@ int main(int argc, const char **argv) {
     );
 
     // int Result = Tool->run(newFrontendActionFactory<SyntaxOnlyAction>().get());
-    int Result =  Tool->run(newFrontendActionFactory<MacroFrontendAction>().get());
+    // int Result =  Tool->run(newFrontendActionFactory<MacroFrontendAction>().get());
+    auto Factory = std::make_unique<MacroFrontendActionFactory>();
+    int Result = Tool->run(Factory.get());
+
     if (Result != 0) {
         llvm::errs() << "c2pulse cannot compile the C files due to a syntax error!\n";
         llvm::errs() << "Exiting..." << "\n";
         return Result;
     }
     llvm::outs() << "Success: Syntax validated.\n";
+
+    auto *Action = Factory->getAction();
+    if (Action) {
+        MacroCommentTracker* Tracker = Action->getTracker();
+        if (Tracker) {
+            llvm::outs() << "Printing Macro Events from Main:\n";
+            // Tracker->printMacroEventMap(); // or call any other method you need
+        } else {
+            llvm::errs() << "No tracker available from MacroFrontendAction.\n";
+        }
+    } else {
+        llvm::errs() << "MacroFrontendAction not available.\n";
+    }
 
     LLVM_DEBUG({
         for (const auto &file : SourceFiles) {

@@ -50,18 +50,19 @@ public:
 
     // void printCollectedInfo() const;
     void printMacroEventMap() const;
+    void printMacroCollectedInfo() const;
 
-    const std::vector<MacroEventInfo>& getEvents() const { return Events; }
+    const std::vector<MacroEventInfo>& getEvents() const { return macroEventsVec; }
     const std::unordered_map<std::string, std::vector<MacroEventInfo>>& getMacroEventMap() const {
-        return MacroEventMap;
+        return macroEventMap;
     }
 
 private:
     clang::SourceManager &SM;
     const clang::LangOptions &LangOpts;
 
-    std::vector<MacroEventInfo> Events;
-    std::unordered_map<std::string, std::vector<MacroEventInfo>> MacroEventMap;
+    std::vector<MacroEventInfo> macroEventsVec;
+    std::unordered_map<std::string, std::vector<MacroEventInfo>> macroEventMap;
 
     // std::vector<std::string> MacroDefs;
     // std::vector<std::string> MacroExpansions;
