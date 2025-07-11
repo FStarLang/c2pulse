@@ -11,7 +11,7 @@ llvm_map_components_to_libnames(LLVM_LIBS
 # Gather source files
 set(SRC_FILES
   src/ExprLocationAnalyzer.cpp
-  src/PulseGenerator.cpp
+  src/PulseASTGenerator.cpp
   src/PulseIR.cpp
   src/PulseCodeGen.cpp
   src/main.cpp

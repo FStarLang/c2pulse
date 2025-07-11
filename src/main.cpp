@@ -2,6 +2,7 @@
 #include "PulseGenerator.h"
 // #include "clang/Frontend/FrontendActions.h"
 #include "MacroFrontendAction.h"
+#include "PulseASTGenerator.h"
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
 #include "llvm/Support/Debug.h"
