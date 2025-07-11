@@ -8,8 +8,11 @@
 #include "clang/Basic/LangOptions.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include "MacroMetadata.h"
+
 #include <string>
 #include <vector>
+
 
 class MacroCommentTracker : public clang::PPCallbacks, public clang::CommentHandler {
 public:
@@ -45,13 +48,25 @@ public:
     bool HandleComment(clang::Preprocessor &PP,
                        clang::SourceRange Comment) override;
 
-    void printCollectedInfo() const;
+    // void printCollectedInfo() const;
+    void printMacroEventMap() const;
+
+    const std::vector<MacroEventInfo>& getEvents() const { return Events; }
+    const std::unordered_map<std::string, std::vector<MacroEventInfo>>& getMacroEventMap() const {
+        return MacroEventMap;
+    }
 
 private:
     clang::SourceManager &SM;
     const clang::LangOptions &LangOpts;
 
-    std::vector<std::string> MacroDefs;
-    std::vector<std::string> MacroExpansions;
-    std::vector<std::string> Comments;
+    std::vector<MacroEventInfo> Events;
+    std::unordered_map<std::string, std::vector<MacroEventInfo>> MacroEventMap;
+
+    // std::vector<std::string> MacroDefs;
+    // std::vector<std::string> MacroExpansions;
+    // std::vector<std::string> Comments;
+
+    void printMacroEvent() const;
+    void printMacroInfo(std::string filename, const MacroEventInfo &e) const;
 };
