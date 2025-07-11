@@ -271,29 +271,27 @@ static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
     {SymbolTable::Ref, "ref"},
 };
 
-/// Classes to Store Location Information for AST Nodes. 
-class RegionRange {
-  public:
-  //CLASS DYN_CAST TO A RANGE OR A SINGLE LOC
-  SourceInfo Start; 
-  //SourceInfo End;
-  void setStartLine(unsigned Line);
-  void setEndLine(unsigned Line);
-  void setStartColumn(unsigned Col);
-  void setEndColumn(unsigned Col);
+/// Classes to Store Location Information for AST Nodes.
+// class RegionRange {
+//   public:
+//   //CLASS DYN_CAST TO A RANGE OR A SINGLE LOC
+//   SourceInfo Start;
+//   //SourceInfo End;
+//   void setStartLine(unsigned Line);
+//   void setEndLine(unsigned Line);
+//   void setStartColumn(unsigned Col);
+//   void setEndColumn(unsigned Col);
 
-};
+// };
 
 class RegionMapping {
   public:
   //use SourceInfo.
-  RegionRange CInfo;
-  RegionRange PulseInfo;
+    SourceInfo CInfo;
+    SourceInfo PulseInfo;
 
-  RegionRange &getCInfo();
-  RegionRange &getPulseInfo();
-
-
+    SourceInfo &getCInfo();
+    SourceInfo &getPulseInfo();
 };
 
 /// Define F* IR Similar to type term

@@ -117,8 +117,8 @@ void PulseCodeGen::generateCodeFromPulseAST(llvm::raw_string_ostream &OS,
   if (PulseFnDefn *F = dyn_cast<PulseFnDefn>(FD)) {
 
     auto &PulseInfo = F->getRegInfoMapping().getPulseInfo();
-    PulseInfo.setStartLine(*RowCounter);
-    PulseInfo.setStartColumn(*ColCounter);
+    PulseInfo.setLine(*RowCounter);
+    PulseInfo.setColumn(*ColCounter);
 
     auto *FuncDef = F->Defn;
     auto Args = FuncDef->Args;
@@ -181,9 +181,6 @@ void PulseCodeGen::generateCodeFromPulseAST(llvm::raw_string_ostream &OS,
       OS << PulseSyntax::NewLine;
       OS << PulseSyntax::ClosingCurlyBrace << PulseSyntax::NewLine;
     }
-
-    PulseInfo.setEndLine(*RowCounter);
-    PulseInfo.setEndColumn(*ColCounter);
 
   } else if (auto *ValD = dyn_cast<ValDecl>(FD)) {
     OS << PulseSyntax::Val;
@@ -273,21 +270,18 @@ std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
   if (Paren *P = dyn_cast<Paren>(T)) {
 
     auto &PulseRegInfo = P->getRegInfoMapping().getPulseInfo();
-    PulseRegInfo.setStartLine(*RowCounter);
-    PulseRegInfo.setStartColumn(*ColCounter);
+    PulseRegInfo.setLine(*RowCounter);
+    PulseRegInfo.setColumn(*ColCounter);
 
     TermString += PulseSyntax::OpeningParenthesis;
     TermString += generateCodeFromTerm(OS, P->InnerExpr, RowCounter, ColCounter);
     TermString += PulseSyntax::ClosingParenthesis;
 
-    PulseRegInfo.setEndLine(*RowCounter);
-    PulseRegInfo.setEndColumn(*ColCounter);
-
   } else if (ConstTerm *CT = dyn_cast<ConstTerm>(T)) {
     auto &PulseInfo = T->getRegInfoMapping().getPulseInfo();
-    PulseInfo.setStartColumn(*RowCounter);
-    PulseInfo.setStartColumn(*ColCounter);
-    
+    PulseInfo.setLine(*RowCounter);
+    PulseInfo.setColumn(*ColCounter);
+
     switch (CT->Symbol) {
     case SymbolTable::Int32: {
       TermString += CT->ConstantValue + "l";
@@ -331,37 +325,31 @@ std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
     }
     }
   } else if (VarTerm *VT = dyn_cast<VarTerm>(T)) {
-    
-    auto *PulseInfo = T->RegInfo->PulseInfo;
-    PulseInfo->Start->Line = *RowCounter;
-    PulseInfo->Start->Column = *ColCounter;
 
-    //End can be computed from the length of the string perhaps?
-    PulseInfo->End = nullptr;
+    auto &PulseInfo = T->getRegInfoMapping().getPulseInfo();
+    PulseInfo.setLine(*RowCounter);
+    PulseInfo.setColumn(*ColCounter);
 
     TermString += VT->VarName;
   } else if (Name *N = dyn_cast<Name>(T)) {
 
-    auto *PulseInfo = T->RegInfo->PulseInfo;
-    PulseInfo->Start->Line = *RowCounter;
-    PulseInfo->Start->Column = *ColCounter;
-    PulseInfo->End = nullptr;
+    auto &PulseInfo = T->getRegInfoMapping().getPulseInfo();
+    PulseInfo.setLine(*RowCounter);
+    PulseInfo.setColumn(*ColCounter);
 
     TermString += N->NamedValue;
   } else if (FStarType *FT = dyn_cast<FStarType>(T)) {
 
-    auto *PulseInfo = T->RegInfo->PulseInfo;
-    PulseInfo->Start->Line = *RowCounter;
-    PulseInfo->Start->Column = *ColCounter;
-    PulseInfo->End = nullptr;
+    auto &PulseInfo = T->getRegInfoMapping().getPulseInfo();
+    PulseInfo.setLine(*RowCounter);
+    PulseInfo.setColumn(*ColCounter);
 
     TermString += FT->NamedValue;
   } else if (FStarPointerType *FPT = dyn_cast<FStarPointerType>(T)) {
 
-    auto *PulseInfo = T->RegInfo->PulseInfo;
-    PulseInfo->Start->Line = *RowCounter;
-    PulseInfo->Start->Column = *ColCounter;
-    PulseInfo->End = nullptr;
+    auto &PulseInfo = T->getRegInfoMapping().getPulseInfo();
+    PulseInfo.setColumn(*RowCounter);
+    PulseInfo.setLine(*ColCounter);
 
     auto StrBase = generateCodeFromTerm(OS, FPT->PointerTo, RowCounter, ColCounter);
     TermString += PulseSyntax::Reference;
@@ -374,19 +362,18 @@ std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
     }
   } else if (FStarArrType *FAT = dyn_cast<FStarArrType>(T)) {
 
-    auto *PulseInfo = T->RegInfo->PulseInfo;
-    PulseInfo->Start->Line = *RowCounter;
-    PulseInfo->Start->Column = *ColCounter;
-    PulseInfo->End = nullptr;
+    auto &PulseInfo = T->getRegInfoMapping().getPulseInfo();
+    PulseInfo.setLine(*RowCounter);
+    PulseInfo.setColumn(*ColCounter);
 
     auto StrBase = generateCodeFromTerm(OS, FAT->ElementType, RowCounter, ColCounter);
     TermString += PulseSyntax::Array;
     TermString += " " + StrBase;
   } else if (AppE *App = dyn_cast<AppE>(T)) {
 
-    auto *PulseInfo = T->RegInfo->PulseInfo;
-    PulseInfo->Start->Line = *RowCounter;
-    PulseInfo->Start->Column = *ColCounter;
+    auto &PulseInfo = T->getRegInfoMapping().getPulseInfo();
+    PulseInfo.setLine(*RowCounter);
+    PulseInfo.setColumn(*ColCounter);
 
     TermString += generateCodeFromTerm(OS, App->CallName, RowCounter, ColCounter);
     TermString += " ";
@@ -401,9 +388,6 @@ std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
       TermString += PulseSyntax::OpeningParenthesis;
       TermString += PulseSyntax::ClosingParenthesis;
     }
-
-    PulseInfo->End->Line = *RowCounter;
-    PulseInfo->End->Column = *ColCounter;
 
   } else if (Ensures *Ensure = dyn_cast<Ensures>(T)) {
     OS << PulseSyntax::Ensures;
@@ -426,13 +410,12 @@ std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
       OS << Lemma;
   } else if (LemmaStatement *S = dyn_cast<LemmaStatement>(T)) {
     OS << S->Lemma;
-  }
-  else if (Project *P = dyn_cast<Project>(T)){
+  } else if (Project *P = dyn_cast<Project>(T)) {
     OS << generateCodeFromTerm(OS, P->BaseTerm, RowCounter, ColCounter);
     OS << PulseSyntax::Dot;
     OS << P->MemberName;
-  } 
-  
+  }
+
   else {
     T->dumpPretty();
     emitError("Did not expect Pulse AST Node!");
@@ -451,14 +434,11 @@ void PulseCodeGen::generateCodeFromPulseStmt(llvm::raw_string_ostream &OS,
 
   if (PulseExpr *S = dyn_cast<PulseExpr>(T)) {
 
-    auto &PulseInfo = T->RegInfo->PulseInfo;
-    PulseInfo.setStartLine(*RowCounter); 
-    PulseInfo.setStartColumn(*ColCounter);
+    auto &PulseInfo = T->getRegInfoMapping().getPulseInfo();
+    PulseInfo.setLine(*RowCounter);
+    PulseInfo.setColumn(*ColCounter);
 
     OS << generateCodeFromTerm(OS, S->E, RowCounter, ColCounter);
-
-    PulseInfo.setEndLine(*RowCounter);
-    PulseInfo.setEndColumn(*ColCounter);
 
     OS << PulseSyntax::Semicolon;
     OS << PulseSyntax::NewLine;
@@ -466,9 +446,9 @@ void PulseCodeGen::generateCodeFromPulseStmt(llvm::raw_string_ostream &OS,
     *ColCounter = 0;
   } else if (PulseAssignment *A = dyn_cast<PulseAssignment>(T)) {
 
-    auto &PulseInfo = T->RegInfo->PulseInfo;
-    PulseInfo.setStartLine(*RowCounter); 
-    PulseInfo.setStartColumn(*ColCounter);
+    auto &PulseInfo = T->getRegInfoMapping().getPulseInfo();
+    PulseInfo.setLine(*RowCounter);
+    PulseInfo.setColumn(*ColCounter);
 
     OS << generateCodeFromTerm(OS, A->Lhs, RowCounter, ColCounter);
     OS << PulseSyntax::Space;
@@ -478,19 +458,16 @@ void PulseCodeGen::generateCodeFromPulseStmt(llvm::raw_string_ostream &OS,
     OS << PulseSyntax::Space;
     *ColCounter += strlen(PulseSyntax::Space);
     OS << generateCodeFromTerm(OS, A->Value, RowCounter, ColCounter);
-    
-    //Write the end locations too. 
-    PulseInfo.setEndLine(*RowCounter);
-    PulseInfo.setEndColumn(*ColCounter);
+
     OS << PulseSyntax::Semicolon;
     OS << PulseSyntax::NewLine;
     *RowCounter += 1; 
     *ColCounter = 0;
   } else if (PulseArrayAssignment *AS = dyn_cast<PulseArrayAssignment>(T)) {
 
-    auto &PulseInfo = T->RegInfo->PulseInfo;
-    PulseInfo.setStartLine(*RowCounter); 
-    PulseInfo.setStartColumn(*ColCounter);
+    auto &PulseInfo = T->getRegInfoMapping().getPulseInfo();
+    PulseInfo.setLine(*RowCounter);
+    PulseInfo.setColumn(*ColCounter);
 
     auto *Base = AS->Arr;
     auto *Idx = AS->Index;
@@ -520,10 +497,6 @@ void PulseCodeGen::generateCodeFromPulseStmt(llvm::raw_string_ostream &OS,
 
     OS << generateCodeFromTerm(OS, LVal, RowCounter, ColCounter);
 
-    //Write end location 
-    PulseInfo.setEndLine(*RowCounter);
-    PulseInfo.setEndColumn(*ColCounter);
-
     OS << PulseSyntax::Semicolon;
     OS << PulseSyntax::NewLine;
     *RowCounter += 1;
@@ -531,9 +504,9 @@ void PulseCodeGen::generateCodeFromPulseStmt(llvm::raw_string_ostream &OS,
 
   } else if (LetBinding *Let = dyn_cast<LetBinding>(T)) {
 
-    auto &PulseInfo = T->RegInfo->PulseInfo;
-    PulseInfo.setStartLine(*RowCounter);
-    PulseInfo.setStartColumn(*ColCounter);
+    auto &PulseInfo = T->getRegInfoMapping().getPulseInfo();
+    PulseInfo.setLine(*RowCounter);
+    PulseInfo.setColumn(*ColCounter);
 
     if (Let->Qualifier == MutOrRef::MUT) {
       OS << PulseSyntax::LetMut;
@@ -560,15 +533,12 @@ void PulseCodeGen::generateCodeFromPulseStmt(llvm::raw_string_ostream &OS,
     OS << PulseSyntax::NewLine;
     *RowCounter += 1;
 
-    PulseInfo.setEndLine(*RowCounter);
-    PulseInfo.setEndColumn(*ColCounter);
-
   } else if (PulseIf *If = dyn_cast<PulseIf>(T)) {
 
-    auto &PulseRegInfo = If->RegInfo->PulseInfo;
-    PulseRegInfo.setStartLine(*RowCounter);
-    PulseRegInfo.setStartColumn(*ColCounter);
-   
+    auto &PulseRegInfo = If->getRegInfoMapping().PulseInfo;
+    PulseRegInfo.setLine(*RowCounter);
+    PulseRegInfo.setColumn(*ColCounter);
+
     OS << PulseSyntax::PulseIf;
     *ColCounter += strlen(PulseSyntax::PulseIf);
 

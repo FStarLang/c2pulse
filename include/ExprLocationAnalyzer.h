@@ -26,6 +26,9 @@ class SourceInfo {
   std::string SourceLine;    // The full source code line text where the node/expression is located
   std::string Context;       // Semantic or syntactic context describing the node's role (e.g., "RHS")
   std::string Operation;     // Operation or operator associated with the node (e.g., "+", "=")
+
+  void setLine(unsigned Line);
+  void setColumn(unsigned Column);
 };
 
 class ExprLocationAnalyzer : public clang::RecursiveASTVisitor<ExprLocationAnalyzer> {

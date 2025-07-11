@@ -9,29 +9,25 @@
 
 // define functions for F* classes.
 
-void RegionRange::setStartLine(unsigned Line){
-  Start.Line = Line;
-}
+// void RegionRange::setStartLine(unsigned Line){
+//   Start.Line = Line;
+// }
 
-void RegionRange::setEndLine(unsigned Line){
-  End.Line = Line;
-}
+// void RegionRange::setEndLine(unsigned Line){
+//   End.Line = Line;
+// }
 
-void RegionRange::setStartColumn(unsigned Col){
-  Start.Column = Col;
-}
+// void RegionRange::setStartColumn(unsigned Col){
+//   Start.Column = Col;
+// }
 
-void RegionRange::setEndColumn(unsigned Col){
-  End.Column = Col;
-}
+// void RegionRange::setEndColumn(unsigned Col){
+//   End.Column = Col;
+// }
 
-RegionRange &RegionMapping::getCInfo(){
-  return CInfo;
-}
+SourceInfo &RegionMapping::getCInfo() { return CInfo; }
 
-RegionRange &RegionMapping::getPulseInfo(){
-  return PulseInfo;
-}
+SourceInfo &RegionMapping::getPulseInfo() { return PulseInfo; }
 
 // enum class TermTag { Const, Var, Name, AppE, FStarType, FStarPointerType };
 llvm::raw_ostream &operator<<(llvm::raw_ostream &os, TermTag T) {

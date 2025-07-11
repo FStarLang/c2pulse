@@ -35,6 +35,10 @@ bool ExprLocationAnalyzer::TraverseFunctionDecl(FunctionDecl *FD){
   return RecursiveASTVisitor::TraverseFunctionDecl(FD);
 }
 
+void SourceInfo::setLine(unsigned LineNum) { Line = LineNum; }
+
+void SourceInfo::setColumn(unsigned ColumnNum) { Column = ColumnNum; }
+
 void ExprLocationAnalyzer::dumpTokens(SourceRange Range) {
   SourceLocation B = Range.getBegin();
   SourceLocation E = Range.getEnd();
