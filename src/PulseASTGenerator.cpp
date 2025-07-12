@@ -1504,6 +1504,113 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
           return Assignment;
         }
+        else {
+
+          //assert base expression to typedef type.
+          ValueDecl *MemberDecl = ME->getMemberDecl();
+          if (FieldDecl *FieldDecl = llvm::dyn_cast<clang::FieldDecl>(MemberDecl)) {
+            const RecordDecl *RecordDecl = FieldDecl->getParent();
+            std::string StructName = RecordDecl->getNameAsString();
+            llvm::outs() << "Print the structname: " << StructName << "\n";
+          }
+
+
+          
+          SmallVector<PulseStmt*> ExprsBef;
+          auto *ReturnedExpr = getTermFromCExpr(BaseExpr, Analyzer, ExprsBef,
+                                              Parent, BaseExpr->getType(), Module, false);
+
+           // Now you can safely cast VD to a more specific Decl type if needed
+          //StructName = TyOfDecl->getPointeeType().getAsString();
+
+          auto MemberName = LhsDecl->getDeclName();
+
+          auto *PulseRhsTerm =
+              getTermFromCExpr(Rhs, Analyzer, ExprsBef, Parent,BO->getType(), Module);
+          PulseAssignment *Assignment;
+
+          auto *DerefAppE = new AppE("!");
+
+          auto *InnerTermCallArg = new Paren(ReturnedExpr);
+          DerefAppE->pushArg(InnerTermCallArg);
+
+          // Wrap this deref in a parenthesis.
+          auto *ParenthesisDeref = new Paren(DerefAppE);
+
+          //Hack to check if the base type is a pointer. 
+          //Leveraging the C syntax.
+          bool BaseIsPointer = ME->isArrow() ? true : false;
+
+          if (BaseIsPointer){
+            auto *PulseCall =
+                new AppE("Mk" + StructName + "?." + MemberName.getAsString());
+            PulseCall->pushArg(ParenthesisDeref);
+            Assignment = new PulseAssignment(PulseCall, PulseRhsTerm);
+          }
+          else {
+            auto *NewProjection = new Project();
+            NewProjection->BaseTerm = ParenthesisDeref;
+            NewProjection->MemberName = MemberName.getAsString();
+            Assignment = new PulseAssignment(NewProjection, PulseRhsTerm);
+          }
+
+          // auto It = TrackStructExplodeAndRecover.find(VD);
+          // if (It == TrackStructExplodeAndRecover.end()){
+          //   auto *NewSeq = new PulseSequence();
+          //   NewSeq->assignS2(Assignment);
+          //   auto *ExplodeStmt = new GenericStmt();
+          //   ExplodeStmt->body = StructName + "_explode " + VD->getNameAsString() + ";";
+          //   NewSeq->assignS1(ExplodeStmt);
+          //   TrackStructExplodeAndRecover.insert(std::make_pair(VD, std::make_pair(true, false)));
+          //   return NewSeq;
+          // }
+
+          auto *RetSeq = releaseExprs(ExprsBef);
+
+          assert(ExprsBef.empty() && "Expected ExprsBefore to be empty!\n");
+
+          // if (checkIfLastStructAccess(ME, CS, Ctx)) {
+
+          //   auto It = TrackStructExplodeAndRecover.find(VD);
+          //   auto ItElem = *It;
+          //   auto &Decl = ItElem.first;
+          //   auto &Info = ItElem.second;
+          //   // recover not released.
+          //   // In fact assert that a recover should not be released before.
+          //   assert(!Info.second && "A recover was released for the struct when "
+          //                          "there are accesses remaining!\n");
+          //   if (auto *ParamD = dyn_cast<ParmVarDecl>(Decl)) {
+
+          //     auto StructName =
+          //         ParamD->getType()->getPointeeType().getAsString();
+
+          //     auto *RecoverStatememt = new GenericStmt();
+          //     RecoverStatememt->body =
+          //         StructName + "_recover " + ParamD->getNameAsString() + ";";
+          //     TrackStructExplodeAndRecover.erase(It);
+
+          //     auto *NewSeq = new PulseSequence();
+          //     NewSeq->assignS1(Assignment);
+          //     NewSeq->assignS2(RecoverStatememt);
+          //     if (RetSeq) {
+          //       RetSeq->assignS2(NewSeq);
+          //       return RetSeq;
+          //     }
+
+          //     return NewSeq;
+          //   }
+          // }
+
+          if (RetSeq) {
+            RetSeq->assignS2(Assignment);
+            return RetSeq;
+          }
+
+          return Assignment;
+
+
+
+        }
 
         ME->dump();
         emitErrorWithLocation(
