@@ -1,13 +1,12 @@
 #pragma once
 
+#include "ExprLocationAnalyzer.h"
+
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/OperationKinds.h"
-#include "ExprLocationAnalyzer.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/StringRef.h"
 
-#include <cstdint>
-#include <set>
 #include <string>
 #include <vector>
 #include <utility>
