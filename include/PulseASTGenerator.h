@@ -31,6 +31,7 @@ public:
   bool VisitFunctionDecl(clang::FunctionDecl *FD);
   // bool VisitTypedefDecl(clang::TypedefDecl *TypeDefDec);
   bool VisitRecordDecl(clang::RecordDecl *RecordDecl);
+  bool VisitVarDecl(clang::VarDecl *VD);
 
   PulseStmt *pulseFromCompoundStmt(clang::Stmt *S, clang::ExprMutationAnalyzer *A, PulseModul *Module);
   PulseStmt *pulseFromStmt(clang::Stmt *S, clang::ExprMutationAnalyzer *A,
