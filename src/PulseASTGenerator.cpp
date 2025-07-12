@@ -2939,6 +2939,9 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
               &SM, FD->getBeginLoc());
         }
       }
+    } else if (checkIfExprIsNullPtr(CCastExpr)) {
+      auto NullValue = new Name("null");
+      return NullValue;
     } else {
       CCastExpr->dumpPretty(Ctx);
       emitErrorWithLocation("Unimplemented case in CStyle Cast Expression!",
