@@ -29,7 +29,8 @@ public:
       : TheRewriter(R), Ctx(Ctx), SM(Ctx.getSourceManager()) {}
 
   bool VisitFunctionDecl(clang::FunctionDecl *FD);
-  bool VisitTypedefDecl(clang::TypedefDecl *TypeDefDec);
+  // bool VisitTypedefDecl(clang::TypedefDecl *TypeDefDec);
+  bool VisitRecordDecl(clang::RecordDecl *RecordDecl);
 
   PulseStmt *pulseFromCompoundStmt(clang::Stmt *S, clang::ExprMutationAnalyzer *A, PulseModul *Module);
   PulseStmt *pulseFromStmt(clang::Stmt *S, clang::ExprMutationAnalyzer *A,
@@ -67,6 +68,9 @@ private:
   std::map<clang::FunctionDecl*, PulseDecl*> DeclarationsMap;
   std::set<const clang::Decl*> TrackScopeOfStackAllocatedStructs;
   std::map<const clang::Decl*, std::pair<bool, bool>> TrackStructExplodeAndRecover;
+  std::map<const clang::Decl *, const clang::Decl *>
+      MapRecordDeclsToTypedefDecls;
+  std::map<const clang::Decl *, std::string> RecordToRecordName;
 };
 
 } // end of anonymous namespace
