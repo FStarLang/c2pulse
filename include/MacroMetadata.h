@@ -3,6 +3,9 @@
 #include <string>
 #include <vector>
 #include "clang/Basic/SourceLocation.h"
+#include <vector>
+// #include <unordered_map>
+// #include <map>
 
 enum class MacroEventKind {
     Define,
@@ -38,7 +41,8 @@ struct MacroEventInfo {
     std::string FileName; 
     MacroEventKind Kind;
     std::string MacroName;
-    std::string ExpansionText; // if any
+    std::string ExpansionText; // if any, I am planning  to use StringRef here
+    clang::SourceRange range; 
     unsigned Line;
     unsigned Column;
     std::vector<MacroTokenInfo> Tokens;
