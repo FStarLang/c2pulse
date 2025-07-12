@@ -1,4 +1,5 @@
 #include "MacroFrontendAction.h"
+
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Basic/LangOptions.h"
 #include "clang/Lex/Preprocessor.h"
@@ -16,27 +17,17 @@ bool MacroFrontendAction::BeginSourceFileAction(CompilerInstance &CI) {
     SourceManager &SM = CI.getSourceManager();
     const LangOptions &LangOpts = CI.getLangOpts();
 
-    std::unique_ptr<MacroCommentTracker> Tracker = std::make_unique<MacroCommentTracker>(PP, SM, LangOpts, macroEventsVec);
+    // std::unique_ptr<MacroCommentTracker> Tracker = std::make_unique<MacroCommentTracker>(PP, SM, LangOpts, macroEventsVec);
+    std::unique_ptr<MacroCommentTracker> Tracker = std::make_unique<MacroCommentTracker>(PP, SM, LangOpts, macroInfoMap);
     TrackerRaw = Tracker.get();
 
     PP.addPPCallbacks(std::move(Tracker));
     PP.addCommentHandler(TrackerRaw);
-
     
     return SyntaxOnlyAction::BeginSourceFileAction(CI);
 }
 
 void MacroFrontendAction::EndSourceFileAction() {
-    llvm::outs() << "=== End of Macro Frontend Action ===\n";
-    if (TrackerRaw) {
-        
-        // TrackerRaw->printMacroCollectedInfo();
-        // TrackerRaw->printMacroEventMap();
-        llvm::outs() << "=== Printing Collected Info ===\n";
-    } else {
-        llvm::outs() << "No MacroCommentTracker available.\n";
-    }
-
     SyntaxOnlyAction::EndSourceFileAction();
 }
 

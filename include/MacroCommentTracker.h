@@ -1,25 +1,30 @@
 #pragma once
 
+#include "MacroMetadata.h"
+#include "FileIDHash.h"
+
 #include "clang/Lex/PPCallbacks.h"
 #include "clang/Lex/Preprocessor.h"
 #include "clang/Basic/SourceManager.h"
 #include "clang/Basic/SourceLocation.h"
 #include "clang/Lex/Token.h"
 #include "clang/Basic/LangOptions.h"
-#include "llvm/Support/raw_ostream.h"
 
-#include "MacroMetadata.h"
-
-#include <string>
-#include <vector>
-
+// #include <vector>
+#include <unordered_map>
+#include <map>
 
 class MacroCommentTracker : public clang::PPCallbacks, public clang::CommentHandler {
 public:
+    // MacroCommentTracker(clang::Preprocessor &PP,
+    //                     clang::SourceManager &SM,
+    //                     const clang::LangOptions &LangOpts,
+    //                     std::vector<MacroEventInfo> &macroEventsVecRef);
+
     MacroCommentTracker(clang::Preprocessor &PP,
                         clang::SourceManager &SM,
                         const clang::LangOptions &LangOpts,
-                        std::vector<MacroEventInfo> &macroEventsVecRef);
+                        std::unordered_map<clang::FileID, std::map<unsigned, MacroEventInfo>> &macroInfoMap);
 
     // PPCallbacks overrides
     void MacroDefined(const clang::Token &MacroNameTok,
@@ -46,29 +51,20 @@ public:
                  const clang::MacroDefinition &MD,
                  clang::SourceRange Range) override;
 
+    // TO-DO: I need to add #endif and #else
+
     bool HandleComment(clang::Preprocessor &PP,
                        clang::SourceRange Comment) override;
 
-    // void printCollectedInfo() const;
     void printMacroEventMap() const;
     void printMacroCollectedInfo() const;
-
-    // const std::vector<MacroEventInfo>& getEvents() const { return macroEventsVec; }
-    // const std::unordered_map<std::string, std::vector<MacroEventInfo>>& getMacroEventMap() const {
-    //     return macroEventMap;
-    // }
 
 private:
     clang::SourceManager &SM;
     const clang::LangOptions &LangOpts;
 
-    std::vector<MacroEventInfo> &macroEventsVec;
+    // std::vector<std::string> &commentsVec;
+    // std::vector<MacroEventInfo> &macroEventsVec;
     // std::unordered_map<std::string, std::vector<MacroEventInfo>> macroEventMap;
-
-    // std::vector<std::string> MacroDefs;
-    // std::vector<std::string> MacroExpansions;
-    // std::vector<std::string> Comments;
-
-    void printMacroEvent() const;
-    void printMacroInfo(std::string filename, const MacroEventInfo &e) const;
+    std::unordered_map<clang::FileID, std::map<unsigned, MacroEventInfo>> &macroInfoMap;
 };
