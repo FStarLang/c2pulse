@@ -2,9 +2,7 @@
 
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Frontend/ASTUnit.h"
-// #include "clang/Lex/PPCallbacks.h"
 #include "clang/Lex/Lexer.h"
-#include "clang/Lex/Token.h"
 
 #include "llvm/Support/CommandLine.h"
 
@@ -30,6 +28,8 @@ class SourceInfo {
   void setLine(unsigned Line);
   void setColumn(unsigned Column);
 };
+
+
 
 class ExprLocationAnalyzer : public clang::RecursiveASTVisitor<ExprLocationAnalyzer> {
 public:

@@ -1,4 +1,5 @@
 #include "ExprLocationAnalyzer.h"
+
 #include "clang/AST/Expr.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/PrettyPrinter.h"
@@ -344,16 +345,20 @@ const  std::map<const clang::Stmt*, SourceInfo>  &ExprLocationAnalyzer::getNodeI
 }
 
 void ExprLocationAnalyzer::printNodeInfoMap() const {
-  DEBUG_WITH_TYPE(DEBUG_TYPE, {
+  
+  llvm::outs() << "-------------------------------\n";
+  llvm::outs() << "Total nodes: " << NodeInfoMap.size() << "\n";
+  llvm::outs() << "-------------------------------\n";
   for (const auto &entry : NodeInfoMap) {
     const SourceInfo &info = entry.second;
-    llvm::outs() << "-------------------------------\n";
     llvm::outs() << "Pretty:    " << info.PrettyString << "\n";
     llvm::outs() << "Location:  Line " << info.Line << ", Column " << info.Column << "\n";
     llvm::outs() << "Type:      " << info.Type << "\n";
     llvm::outs() << "Source:    " << info.SourceLine << "\n";
     llvm::outs() << "Context:   " << info.Context << "\n";
-    llvm::outs() << "Operation: " << info.Operation << "\n";
-  }});
+    if (!info.Operation.empty())
+      llvm::outs() << "Operation: " << info.Operation << "\n";
+    llvm::outs() << "----------------------\n";
+  }
 }
 
