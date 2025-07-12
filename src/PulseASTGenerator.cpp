@@ -398,28 +398,71 @@ bool PulseVisitor::checkIsRecursiveExpr(Expr *ExprPtr,
   }
 }
 
-bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
+bool PulseVisitor::VisitRecordDecl(RecordDecl *RD) {
 
-  /// TODO: Angelica: This might fail for analyzing programs that use
-  /// struct definitions from system libraries or C standard libraries.
-  auto SourceLoc = TypeDefDec->getLocation();
+  auto SourceLoc = RD->getLocation();
   if (SM.isInSystemHeader(SourceLoc))
     return true;
 
-  auto *Def = TypeDefDec->getUnderlyingDecl();
+  std::string StructName;
+  clang::DeclContext *context = RD->getDeclContext();
+
+  if (context == nullptr) {
+    llvm::outs() << "Cannot get typedefs for record, using record name for "
+                    "generating pulse code\n";
+    return true;
+  }
+
+  if (context->decls_empty()) {
+    llvm::outs() << "Declarations empty for record\n";
+    return true;
+  }
+
+  StructName = RD->getDeclName().getAsString();
+
+  for (auto *Decl : context->decls()) {
+    if (const auto *TypedefDecl = llvm::dyn_cast<clang::TypedefDecl>(Decl)) {
+      clang::QualType TypedefQT = TypedefDecl->getUnderlyingType();
+      if (const auto *RecordType = TypedefQT->getAs<clang::RecordType>()) {
+        if (RecordType->getDecl() == RD) {
+
+          if (TypedefDecl->getIdentifier() == NULL) {
+            // No typedef name was given
+            llvm::outs() << "No typedef name — fallback to struct tag\n";
+            StructName = RD->getNameAsString();
+          } else {
+            llvm::outs() << "Typedef found: " << TypedefDecl->getNameAsString()
+                         << "\n";
+            llvm::outs() << TypedefDecl->getIdentifier() << "\n";
+            /// The record type has an Associated Typedef so we should use that!
+            StructName = TypedefDecl->getNameAsString();
+            MapRecordDeclsToTypedefDecls.insert(
+                std::make_pair(RD, TypedefDecl));
+          }
+        }
+      }
+    }
+  }
+
+  RecordToRecordName.insert(std::make_pair(RD, StructName));
+
+  // auto *Def = TypeDefDec->getUnderlyingDecl();
 
   /// Check if we have a record declaration associated with the typedefDecl.
   ///  For every record type we create a new Module.
-  if (const auto *RT = TypeDefDec->getUnderlyingType()->getAs<RecordType>()) {
-    const RecordDecl *RD = RT->getDecl();
+  /// if (const auto *RT = TypeDefDec->getUnderlyingType()->getAs<RecordType>())
+  /// { RecordDecl *RD = RecordDecl;
 
-    auto StructName = Def->getNameAsString();
-    auto *FileEnt = SM.getFileEntryForID(SM.getMainFileID());
-    if (!FileEnt) {
-      llvm::errs() << "Error: Main file entry not found in source manager.\n";
-      exit(1);
-    }
-    
+  // Map record declaration to typedef declaration.
+  /// MapRecordDeclsToTypedefDecls.insert(std::make_pair(RD, TypeDefDec));
+
+  ////auto StructName = Def->getNameAsString();
+  auto *FileEnt = SM.getFileEntryForID(SM.getMainFileID());
+  if (!FileEnt) {
+    llvm::errs() << "Error: Main file entry not found in source manager.\n";
+    exit(1);
+  }
+
     /// Parse the file name. 
     /// The filename is same as module.
     auto FilePath = FileEnt->tryGetRealPathName();
@@ -473,7 +516,7 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
     auto *TyconRec = new TyConRecord();
     auto *ErasableAttr = new Name("[@@erasable]");
     auto *NoEqTerm = new Name("noeq");
-    TyconRec->Ident = Def->getNameAsString() + "_spec";
+    TyconRec->Ident = StructName + "_spec";
     TyconRec->Attrs.push_back(ErasableAttr);
     TyconRec->Attrs.push_back(NoEqTerm);
 
@@ -674,10 +717,303 @@ bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
     NewGhostFunction->Ident += TempStr + "}) }\n";
 
     NewModul->Decls.push_back(NewGhostFunction);
-  }
+    //}
 
-  return true;
+    return true;
 }
+
+// bool PulseVisitor::VisitTypedefDecl(TypedefDecl *TypeDefDec) {
+
+//   /// TODO: Angelica: This might fail for analyzing programs that use
+//   /// struct definitions from system libraries or C standard libraries.
+//   auto SourceLoc = TypeDefDec->getLocation();
+//   if (SM.isInSystemHeader(SourceLoc))
+//     return true;
+
+//   auto *Def = TypeDefDec->getUnderlyingDecl();
+
+//   /// Check if we have a record declaration associated with the typedefDecl.
+//   ///  For every record type we create a new Module.
+//   if (const auto *RT = TypeDefDec->getUnderlyingType()->getAs<RecordType>())
+//   {
+//     const RecordDecl *RD = RT->getDecl();
+
+//     //Map record declaration to typedef declaration.
+//     MapRecordDeclsToTypedefDecls.insert(std::make_pair(RD, TypeDefDec));
+
+//     auto StructName = Def->getNameAsString();
+//     auto *FileEnt = SM.getFileEntryForID(SM.getMainFileID());
+//     if (!FileEnt) {
+//       llvm::errs() << "Error: Main file entry not found in source
+//       manager.\n"; exit(1);
+//     }
+
+//     /// Parse the file name.
+//     /// The filename is same as module.
+//     auto FilePath = FileEnt->tryGetRealPathName();
+//     std::filesystem::path FilePathSys = FilePath.str();
+//     auto Extension = FilePathSys.extension().string();
+//     auto TempFilePathWithoutExtension = FilePathSys.replace_extension("");
+//     auto FileName = TempFilePathWithoutExtension.filename();
+//     auto FileNameStr = FileName.string();
+//     if (!FileNameStr.empty()) {
+//       FileNameStr[0] = std::toupper(FileNameStr[0]);
+//     }
+
+//     // change dots to _ since . is reserved for nested modules.
+//     std::replace(FileNameStr.begin(), FileNameStr.end(), '.', '_');
+
+//     auto It = Modules.find(FileNameStr);
+//     PulseModul *NewModul = nullptr;
+//     if (It != Modules.end()) {
+//       NewModul = It->second;
+//     }
+//     else {
+//       NewModul = new PulseModul();
+//       NewModul->includePulsePrelude = true;
+//       NewModul->ModuleName = FileNameStr;
+//       Modules.insert(std::make_pair(NewModul->ModuleName, NewModul));
+//     }
+
+//     auto *AbstractType = new GenericDecl();
+//     AbstractType->Ident = "noeq\n";
+//     AbstractType->Ident += "type ";
+//     AbstractType->Ident += StructName + " = {\n";
+//     for (const FieldDecl *FD : RD->fields()) {
+//       auto *PulseTy = getPulseTyFromCTy(FD->getType());
+//       AbstractType->Ident += FD->getNameAsString() + ": ref ";
+//       AbstractType->Ident += PulseTy->print() + ";";
+//       AbstractType->Ident += "\n";
+
+//     }
+//     AbstractType->Ident += "}\n";
+//     NewModul->Decls.push_back(AbstractType);
+
+//     //2. A purely functional specification type for the struct
+//     // [@@erasable]
+//     // noeq
+//     // type u32_pair_struct_spec = {
+//     //   first: FStar.UInt32.t;
+//     //   second: FStar.UInt32.t;
+//     // }
+
+//     auto *Tycon = new TyConDecl();
+//     auto *TyconRec = new TyConRecord();
+//     auto *ErasableAttr = new Name("[@@erasable]");
+//     auto *NoEqTerm = new Name("noeq");
+//     TyconRec->Ident = Def->getNameAsString() + "_spec";
+//     TyconRec->Attrs.push_back(ErasableAttr);
+//     TyconRec->Attrs.push_back(NoEqTerm);
+
+//     std::vector<RecordElement *> Fields;
+//     for (const FieldDecl *FD : RD->fields()) {
+//       auto *Element = new RecordElement();
+//       Element->ElementTerm = getPulseTyFromCTy(FD->getType());
+//       Element->Ident = FD->getNameAsString();
+//       Fields.push_back(Element);
+//     }
+//     auto NumRecordFields = Fields.size();
+//     TyconRec->RecordFields = Fields;
+//     Tycon->TyCons.push_back(TyconRec);
+//     NewModul->Decls.push_back(Tycon);
+
+//     // Generate predicate
+//     // 3. A predicate that relates a u32_pair_struct to its specification
+//     // let u32_pair_struct_pred (x:ref u32_pair_struct)
+//     (s:u32_pair_struct_spec) : slprop =
+//     //     exists* (y: u32_pair_struct). (x |-> y) **
+//     //     (y.first |-> s.first) **
+//     //     (y.second |-> s.second)
+
+//     auto *GenericPredicate = new GenericDecl();
+//     GenericPredicate->Ident = "let ";
+//     GenericPredicate->Ident += StructName + "_pred (x:ref " +  StructName +
+//     ") (s:" + StructName + "_spec) : slprop =\n"; GenericPredicate->Ident +=
+//     "exists* (y: " + StructName + "). (x |-> y) **\n"; size_t Counter = 0;
+//     for (auto *Fld : RD->fields()){
+//         GenericPredicate->Ident += "(y.";
+//         GenericPredicate->Ident += Fld->getNameAsString();
+//         GenericPredicate->Ident += " |-> ";
+//         GenericPredicate->Ident += "s." + Fld->getNameAsString() + ")";
+//         if (Counter < NumRecordFields - 1){
+//           GenericPredicate->Ident += " **";
+//         }
+//         Counter++;
+//         GenericPredicate->Ident += "\n";
+//     }
+//     NewModul->Decls.push_back(GenericPredicate);
+
+//     // Auto Generated functions for Stack Allocated Structs.
+//     // assume val point_spec_default : point_spec
+
+//     auto StructPrefix = StructName + "_var";
+//     auto StructPrefixSpec = StructPrefix + "_spec";
+
+//     auto *StructSpecDefault = new GenericDecl();
+//     StructSpecDefault->Ident = "assume val " + StructName +
+//                                "_spec_default : " + StructName + "_spec\n";
+//     NewModul->Decls.push_back(StructSpecDefault);
+
+//     // assume val point_default (ps:point_spec) : point
+
+//     auto *StructDefault = new GenericDecl();
+//     StructDefault->Ident = "assume val " + StructName + "_default ";
+//     StructDefault->Ident += "(" + StructPrefixSpec + ":" + StructName +
+//                             "_spec)" + " : " + StructName + "\n";
+//     NewModul->Decls.push_back(StructDefault);
+
+//     // ghost
+//     // fn point_pack (p:ref point) (#ps:point_spec)
+//     // requires p |-> point_default ps
+//     // ensures exists* v. point_pred p v ** pure (v == ps)
+//     // { admit() }
+
+//     auto *GhostPack = new GenericDecl();
+//     GhostPack->Ident = "ghost\n";
+//     GhostPack->Ident += "fn " + StructName + "_pack (" + StructPrefix +
+//                         ":ref " + StructName + ") " + "(#" + StructPrefixSpec
+//                         +
+//                         ":" + StructName + "_spec)\n";
+//     GhostPack->Ident += "requires " + StructPrefix + "|-> " + StructName +
+//                         "_default " + StructPrefixSpec + "\n";
+//     GhostPack->Ident += "ensures exists* v. " + StructName + "_pred " +
+//                         StructPrefix + " v ** pure (v == " + StructPrefixSpec
+//                         +
+//                         ")\n";
+//     GhostPack->Ident += "{ admit() }\n";
+//     NewModul->Decls.push_back(GhostPack);
+
+//     // ghost
+//     // fn point_unpack (p:ref point)
+//     // requires exists* v. point_pred p v
+//     // ensures exists* u. p |-> u
+//     // { admit() }
+
+//     auto *GhostUnpack = new GenericDecl();
+//     GhostUnpack->Ident = "ghost\n";
+//     GhostUnpack->Ident += "fn " + StructName + "_unpack " + "(" +
+//     StructPrefix +
+//                           ":ref " + StructName + ")\n";
+//     GhostUnpack->Ident +=
+//         "requires exists* v. " + StructName + "_pred " + StructPrefix + " v
+//         \n";
+//     GhostUnpack->Ident += "ensures exists* u. " + StructPrefix + " |-> u\n";
+//     GhostUnpack->Ident += "{ admit() }\n";
+//     NewModul->Decls.push_back(GhostUnpack);
+
+//     auto *UtilityFunctionHeap = new GenericDecl();
+//     UtilityFunctionHeap->Ident += "fn " + StructName + "_alloc ()\n";
+//     UtilityFunctionHeap->Ident += "returns x:ref " + StructName + "\n";
+//     UtilityFunctionHeap->Ident += "ensures freeable x\n";
+//     UtilityFunctionHeap->Ident += "ensures exists* v. " + StructName + "_pred
+//     x v\n"; UtilityFunctionHeap->Ident += "{ admit () }\n\n";
+
+//     // fn u32_pair_struct_free (x:ref u32_pair_struct)
+//     // requires freeable x
+//     // requires exists* v. u32_pair_struct_pred x v
+//     // { admit () }
+
+//     UtilityFunctionHeap->Ident += "fn " + StructName + "_free " + "(x:ref " +
+//     StructName + ")\n"; UtilityFunctionHeap->Ident += "requires freeable
+//     x\n"; UtilityFunctionHeap->Ident += "requires exists* v. " + StructName +
+//     "_pred x v\n"; UtilityFunctionHeap->Ident += "{ admit() }\n\n";
+
+//     NewModul->Decls.push_back(UtilityFunctionHeap);
+
+//     //5. A ghost function that unfolds the predicate for u32_pair_struct_refs
+//     // ghost fn u32_pair_struct_explode (x:ref u32_pair_struct)
+//     (#s:u32_pair_struct_spec)
+//     // requires u32_pair_struct_pred x s
+//     // ensures exists* (v: u32_pair_struct). (x |-> v)
+//     //   ** (v.first |-> s.first) ** (v.second |-> s.second)
+//     // { unfold u32_pair_struct_pred }
+
+//     auto *GhostExplode = new GenericDecl();
+//     GhostExplode->Ident = "ghost fn " + StructName + "_explode (x:ref " +
+//     StructName + ") " + "(#s:" + StructName + "_spec)\n"; GhostExplode->Ident
+//     += "requires " + StructName + "_pred x s\n"; GhostExplode->Ident +=
+//     "ensures exists* (v: " + StructName + "). " + "(x |-> v)";
+//     GhostExplode->Ident += " ** ";
+//     Counter = 0;
+//     for (auto *Fld : RD->fields()){
+//       GhostExplode->Ident += "(v." + Fld->getNameAsString() + " |-> " + "s."
+//       + Fld->getNameAsString() + ")"; if (Counter < NumRecordFields - 1){
+//         GhostExplode->Ident += " ** ";
+//       }
+//       Counter++;
+//     }
+//     GhostExplode->Ident += "\n";
+//     GhostExplode->Ident += "{unfold " + StructName + "_pred" + "}\n\n";
+//     NewModul->Decls.push_back(GhostExplode);
+
+//     //8. A ghost function that folds the predicate for u32_pair_struct_refs
+//     // ghost
+//     // fn u32_pair_struct_recover (x:ref u32_pair_struct) (#a0 #a1 :erased
+//     U32.t)
+//     // requires exists* (y: u32_pair_struct). (x |-> y) ** (y.first |-> a0)
+//     ** (y.second |-> a1)
+//     // ensures exists* w. u32_pair_struct_pred x w ** pure (w == {first = a0;
+//     second = a1})
+//     // { fold u32_pair_struct_pred x ({first = a0; second = a1}) }
+
+//     std::string FieldPrefix = "a";
+//     auto *NewGhostFunction = new GenericDecl();
+//     NewGhostFunction->Ident = "ghost\n";
+//     NewGhostFunction->Ident += "fn " + StructName + "_recover ";
+//     NewGhostFunction->Ident += "(x:ref " + StructName + ") ";
+
+//     Counter = 0;
+//     for (auto *Fld : RD->fields()) {
+//       auto Ty = Fld->getType();
+//       auto *PulseTy = getPulseTyFromCTy(Ty);
+//       NewGhostFunction->Ident += "(";
+//       NewGhostFunction->Ident += "#" + FieldPrefix + std::to_string(Counter)
+//       + " : "; NewGhostFunction->Ident += PulseTy->print();
+//       NewGhostFunction->Ident += ") ";
+//       Counter++;
+//     }
+//     NewGhostFunction->Ident += "\n";
+
+//     NewGhostFunction->Ident += "requires exists* (y: " + StructName + "). (x
+//     |-> y) ** "; Counter = 0; for (auto *Fld : RD->fields()){
+//       NewGhostFunction->Ident += "(";
+//       NewGhostFunction->Ident += "y.";
+//       NewGhostFunction->Ident += Fld->getNameAsString() + " ";
+//       NewGhostFunction->Ident += "|-> ";
+//       NewGhostFunction->Ident += FieldPrefix + std::to_string(Counter);
+//       NewGhostFunction->Ident += ")";
+
+//       if (Counter < NumRecordFields - 1){
+//         NewGhostFunction->Ident += " ** ";
+//       }
+//       Counter++;
+//     }
+//     NewGhostFunction->Ident += "\n";
+
+//     NewGhostFunction->Ident += "ensures exists* w. " + StructName + "_pred x
+//     w ** pure (w == {"; Counter = 0; std::string TempStr = ""; for (auto *Fld
+//     : RD->fields()){
+//       TempStr += Fld->getNameAsString();
+//       TempStr += " = ";
+//       TempStr += FieldPrefix;
+//       TempStr += std::to_string(Counter);
+
+//       if (Counter < NumRecordFields - 1){
+//         TempStr += "; ";
+//       }
+//       Counter++;
+//     }
+//     NewGhostFunction->Ident += TempStr;
+//     NewGhostFunction->Ident += "})\n";
+
+//     NewGhostFunction->Ident += "{fold " + StructName + "_pred x ({";
+//     NewGhostFunction->Ident += TempStr + "}) }\n";
+
+//     NewModul->Decls.push_back(NewGhostFunction);
+//   }
+
+//   return true;
+// }
 
 /// A helper function to generate a pulse sequence from expressions that
 /// need to be released.
@@ -1109,6 +1445,26 @@ FStarType *PulseVisitor::getPulseTyFromCTy(clang::QualType CType) {
       emitError("PulseVisitor: Did not implement array type in clang");
     }
 
+    if (CType->getPointeeType()->isStructureType()) {
+      auto PointeeTy = CType->getPointeeType();
+      auto *RecordTy = PointeeTy->getAs<RecordType>();
+      auto *RD = RecordTy->getDecl();
+      auto It = RecordToRecordName.find(RD);
+
+      if (It == RecordToRecordName.end()) {
+        emitError("Could not find Record Name!");
+      }
+
+      PulseTy = new FStarPointerType();
+      auto *PulsePointerTy = static_cast<FStarPointerType *>(PulseTy);
+      auto BaseTy = It->second;
+      PulsePointerTy->setName("ref " + It->second);
+      auto UnderLyingType = CType->getPointeeType();
+      auto *FStartUnderLyingType = getPulseTyFromCTy(UnderLyingType);
+      PulsePointerTy->setPointerToTy(FStartUnderLyingType);
+      return PulsePointerTy;
+    }
+
     PulseTy = new FStarPointerType();
     auto *PulsePointerTy = static_cast<FStarPointerType *>(PulseTy);
     auto BaseTy = CType->getPointeeType();
@@ -1126,14 +1482,15 @@ FStarType *PulseVisitor::getPulseTyFromCTy(clang::QualType CType) {
     CTyKeyStr = lookupSymbol(CTyKey);
   else{
     if (CType->isStructureType()){
-      if (auto *TD = dyn_cast<TypedefType>(CType.getTypePtr())) {
-        TypedefNameDecl *TyD = TD->getDecl();
-        std::string TypedefName = TyD->getNameAsString();
-        CTyKeyStr = "ref " + TypedefName;
+
+      auto RT = CType->getAs<RecordType>();
+      auto RD = RT->getDecl();
+      auto It = RecordToRecordName.find(RD);
+      if (It == RecordToRecordName.end()) {
+        emitError("Did not find name for Record Type!");
       }
-      else {
-        CTyKeyStr = CType.getAsString();
-      }
+      CTyKeyStr = It->second;
+
     }
     else{
       CTyKeyStr = CType.getAsString();
@@ -1311,6 +1668,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           return AppendLet;
         }
 
+        // TODO: Vidush: Handle if for record without typedefs
+        // Also handle when typedef don't have a name defined.
         if (const TypedefType *TT = VD->getType()->getAs<TypedefType>()) {
 
             auto *TypedefDecl = TT->getDecl();
@@ -1420,11 +1779,11 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
         auto *LhsDecl = ME->getMemberDecl();
         auto *BaseExpr = ME->getBase()->IgnoreParens()->IgnoreImpCasts();
         DEBUG_WITH_TYPE(DEBUG_TYPE, {
+        ME->dump();
         BaseExpr->dump();
         });
 
         std::string NameOfDecl;
-        QualType TyOfDecl;
         std::string StructName;
         if (const clang::DeclRefExpr *DRE =
                 llvm::dyn_cast<clang::DeclRefExpr>(BaseExpr)) {
@@ -1435,14 +1794,43 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           llvm::outs() << VD->getDeclName() << "End\n";
           });
           NameOfDecl = VD->getDeclName().getAsString();
-          TyOfDecl = VD->getType();
-          
+
+          auto TyOfDecl = VD->getType();
+          QualType StructTy;
+          // Step 1: If it's a pointer, unwrap it
+          if (TyOfDecl->isPointerType()) {
+            StructTy = TyOfDecl->getPointeeType();
+          } else {
+            StructTy = TyOfDecl;
+          }
+
           DEBUG_WITH_TYPE(DEBUG_TYPE , {
-          llvm::outs() << TyOfDecl->getPointeeType().getAsString() << "\n";
+          llvm::outs() << StructTy.getAsString() << "\n";
           });
 
-          StructName = TyOfDecl->getPointeeType().getAsString();
+          // Step 2: Desugar the type (handles typedefs, elaborated types, etc.)
+          clang::QualType StrucTyDesugared = StructTy.getDesugaredType(Ctx);
 
+          // Step 3: Try to get the RecordType
+          const auto *recordType = StrucTyDesugared->getAs<clang::RecordType>();
+
+          const clang::RecordDecl *RecordDec = recordType->getDecl();
+          llvm::outs() << "Struct name: " << RecordDec->getNameAsString()
+                       << "\n";
+
+          if (!RecordDec) {
+            emitErrorWithLocation("Could not find record declaration!", &SM,
+                                  ME->getBeginLoc());
+          }
+
+          // auto It = MapRecordDeclsToTypedefDecls.find(RecordDec);
+          // if (It == MapRecordDeclsToTypedefDecls)
+          auto It = RecordToRecordName.find(RecordDec);
+          if (It == RecordToRecordName.end()) {
+            emitErrorWithLocation("Could not find name of record!", &SM,
+                                  BO->getBeginLoc());
+          }
+          StructName = It->second;
           auto MemberName = LhsDecl->getDeclName();
 
           // UPDATE: Vidush: Releasing expresssions may be required in certain cases. 
@@ -1530,6 +1918,122 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           }
 
           return Assignment;
+        }
+        else {
+
+          //assert base expression to typedef type.
+          ValueDecl *MemberDecl = ME->getMemberDecl();
+          std::string StructName;
+          if (FieldDecl *FieldDecl = llvm::dyn_cast<clang::FieldDecl>(MemberDecl)) {
+            const RecordDecl *RecordDecl = FieldDecl->getParent();
+            // Check if there is a typedef declaration existsing from the record
+            // decl.
+            auto It = MapRecordDeclsToTypedefDecls.find(RecordDecl);
+            if (It == MapRecordDeclsToTypedefDecls.end()) {
+              emitErrorWithLocation(
+                  "Not implemented record type without typedef decl!", &SM,
+                  ME->getBeginLoc());
+            }
+
+            auto *Typedef = llvm::cast<TypedefDecl>(It->second);
+            StructName = Typedef->getNameAsString();
+            llvm::outs() << "Print the structname: " << StructName << "\n";
+            // make a map here to retieve the typedef if any avaiable.
+          }
+
+          SmallVector<PulseStmt*> ExprsBef;
+          auto *PulseBaseExpr =
+              getTermFromCExpr(BaseExpr, Analyzer, ExprsBef, Parent,
+                               BaseExpr->getType(), Module, false);
+
+          auto MemberName = LhsDecl->getDeclName();
+
+          auto *PulseRhsTerm =
+              getTermFromCExpr(Rhs, Analyzer, ExprsBef, Parent,BO->getType(), Module);
+
+          PulseAssignment *Assignment;
+
+          auto *DerefAppE = new AppE("!");
+
+          auto *InnerTermCallArg = new Paren(PulseBaseExpr);
+          DerefAppE->pushArg(InnerTermCallArg);
+
+          // Wrap this deref in a parenthesis.
+          auto *ParenthesisDeref = new Paren(DerefAppE);
+
+          //Hack to check if the base type is a pointer. 
+          //Leveraging the C syntax.
+          bool BaseIsPointer = ME->isArrow() ? true : false;
+
+          if (BaseIsPointer){
+            auto *PulseCall =
+                new AppE("Mk" + StructName + "?." + MemberName.getAsString());
+            PulseCall->pushArg(ParenthesisDeref);
+            Assignment = new PulseAssignment(PulseCall, PulseRhsTerm);
+          }
+          else {
+            auto *NewProjection = new Project();
+            NewProjection->BaseTerm = ParenthesisDeref;
+            NewProjection->MemberName = MemberName.getAsString();
+            Assignment = new PulseAssignment(NewProjection, PulseRhsTerm);
+          }
+
+          // auto It = TrackStructExplodeAndRecover.find(VD);
+          // if (It == TrackStructExplodeAndRecover.end()){
+          //   auto *NewSeq = new PulseSequence();
+          //   NewSeq->assignS2(Assignment);
+          //   auto *ExplodeStmt = new GenericStmt();
+          //   ExplodeStmt->body = StructName + "_explode " + VD->getNameAsString() + ";";
+          //   NewSeq->assignS1(ExplodeStmt);
+          //   TrackStructExplodeAndRecover.insert(std::make_pair(VD, std::make_pair(true, false)));
+          //   return NewSeq;
+          // }
+
+          auto *RetSeq = releaseExprs(ExprsBef);
+
+          assert(ExprsBef.empty() && "Expected ExprsBefore to be empty!\n");
+
+          // if (checkIfLastStructAccess(ME, CS, Ctx)) {
+
+          //   auto It = TrackStructExplodeAndRecover.find(VD);
+          //   auto ItElem = *It;
+          //   auto &Decl = ItElem.first;
+          //   auto &Info = ItElem.second;
+          //   // recover not released.
+          //   // In fact assert that a recover should not be released before.
+          //   assert(!Info.second && "A recover was released for the struct when "
+          //                          "there are accesses remaining!\n");
+          //   if (auto *ParamD = dyn_cast<ParmVarDecl>(Decl)) {
+
+          //     auto StructName =
+          //         ParamD->getType()->getPointeeType().getAsString();
+
+          //     auto *RecoverStatememt = new GenericStmt();
+          //     RecoverStatememt->body =
+          //         StructName + "_recover " + ParamD->getNameAsString() + ";";
+          //     TrackStructExplodeAndRecover.erase(It);
+
+          //     auto *NewSeq = new PulseSequence();
+          //     NewSeq->assignS1(Assignment);
+          //     NewSeq->assignS2(RecoverStatememt);
+          //     if (RetSeq) {
+          //       RetSeq->assignS2(NewSeq);
+          //       return RetSeq;
+          //     }
+
+          //     return NewSeq;
+          //   }
+          // }
+
+          if (RetSeq) {
+            RetSeq->assignS2(Assignment);
+            return RetSeq;
+          }
+
+          return Assignment;
+
+
+
         }
 
         DEBUG_WITH_TYPE(DEBUG_TYPE, {
@@ -2293,7 +2797,13 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
         auto Ty = ArgDecl->getType();
         auto PointeeType = Ty->getPointeeType();
         if (Ty->isPointerType() && PointeeType->isStructureType()) {
-          auto StructName = PointeeType.getAsString();
+          auto *RecordTy = PointeeType->getAsStructureType();
+          auto *RecDec = RecordTy->getDecl();
+          auto It = RecordToRecordName.find(RecDec);
+          if (It == RecordToRecordName.end()) {
+            emitError("Could not find type name for Record!");
+          }
+          auto StructName = It->second;
           auto NewCallName = StructName + "_free";
           CallAppE->makeCallName(NewCallName);
           auto *ArgTerm = getTermFromCExpr(Arg, MutAnalyzer, ExprsBefore, CE,
@@ -2403,22 +2913,22 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
           auto *ElementTy =
               CCastExpr->getType()->getPointeeOrArrayElementType();
           auto *DesugaredElemTy = ElementTy->getUnqualifiedDesugaredType();
-          if (const TypedefType *TT = ElementTy->getAs<TypedefType>()) {
-            if (auto *RT = dyn_cast<RecordType>(DesugaredElemTy)) {
-              // const RecordDecl *RD = RT->getDecl();
-              auto RecordName = TT->getDecl()->getDeclName();
-              auto *NewCall = new AppE(RecordName.getAsString() + "_alloc");
-              return NewCall;
+          if (const RecordType *TT = ElementTy->getAs<RecordType>()) {
+            const RecordDecl *RD = TT->getDecl();
+            auto It = RecordToRecordName.find(RD);
+            if (!RD || It == RecordToRecordName.end()) {
+              auto *CastType = CCastExpr->getType()
+                                   ->getPointeeOrArrayElementType()
+                                   ->getUnqualifiedDesugaredType();
+              CastType->dump();
+              emitErrorWithLocation(
+                  "Could not find Record Declaration or Corresponding Name!",
+                  &SM, FD->getLocation());
             }
-            auto *CastType = CCastExpr->getType()
-                                 ->getPointeeOrArrayElementType()
-                                 ->getUnqualifiedDesugaredType();
-            DEBUG_WITH_TYPE(DEBUG_TYPE, {
-            CastType->dump();
-            });
-            emitErrorWithLocation(
-                "Not implemented a non record type in malloc call", &SM,
-                FD->getLocation());
+
+            auto RecordName = It->second;
+            auto *NewCall = new AppE(RecordName + "_alloc");
+            return NewCall;
           }
           DEBUG_WITH_TYPE(DEBUG_TYPE , {
           llvm::outs() << "Print the type of cast!" << "\n";
