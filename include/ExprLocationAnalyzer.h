@@ -1,6 +1,7 @@
 #pragma once
 
 #include "clang/AST/RecursiveASTVisitor.h"
+#include "clang/Basic/SourceLocation.h"
 #include "clang/Frontend/ASTUnit.h"
 #include "clang/Lex/Lexer.h"
 
@@ -24,6 +25,13 @@ class SourceInfo {
   std::string SourceLine;    // The full source code line text where the node/expression is located
   std::string Context;       // Semantic or syntactic context describing the node's role (e.g., "RHS")
   std::string Operation;     // Operation or operator associated with the node (e.g., "+", "=")
+
+  clang::SourceRange range; // please refer to MacroCommentTracker.h 
+                            // for details how I envision persisting the source location.
+                            // I think it is easier to get the begin and end, we know the nodes that
+                            // do not have a range, so you will get the range.start() only
+                            // I agree with other design decision but I think it is 
+                            // easier to persist only the range.
 
   void setLine(unsigned Line);
   void setColumn(unsigned Column);
