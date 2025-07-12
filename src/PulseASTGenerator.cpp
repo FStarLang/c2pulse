@@ -1700,8 +1700,14 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
         auto ClangVarName = VD->getNameAsString();
 
         auto *GenericDecl = new GenericStmt();
+        if (Analyzer->isMutated(VD)){
         GenericDecl->body =
             "let mut " + ClangVarName + ": " + PulseTyStr + " = witness #_ #_;";
+        }
+        else {
+          GenericDecl->body =
+            "let " + ClangVarName + ": " + PulseTyStr + " = witness #_ #_;";
+        }
         return GenericDecl;
       }
       emitErrorWithLocation(
@@ -1928,15 +1934,14 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
             const RecordDecl *RecordDecl = FieldDecl->getParent();
             // Check if there is a typedef declaration existsing from the record
             // decl.
-            auto It = MapRecordDeclsToTypedefDecls.find(RecordDecl);
-            if (It == MapRecordDeclsToTypedefDecls.end()) {
+            auto It = RecordToRecordName.find(RecordDecl);
+            if (It == RecordToRecordName.end()) {
               emitErrorWithLocation(
                   "Not implemented record type without typedef decl!", &SM,
                   ME->getBeginLoc());
             }
 
-            auto *Typedef = llvm::cast<TypedefDecl>(It->second);
-            StructName = Typedef->getNameAsString();
+            StructName = It->second;
             llvm::outs() << "Print the structname: " << StructName << "\n";
             // make a map here to retieve the typedef if any avaiable.
           }

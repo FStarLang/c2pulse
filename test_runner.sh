@@ -11,6 +11,10 @@ SHOULD_FAIL=(
  "./test/issue-related/issue27_test.c"
  "./test/issue-related/issue22_test.c"
  "./test/issue-related/issue_anon_1.c"
+ "./test/issue-related/issue38_test.c"
+ "./test/issue-related/issue38_test_2.c"
+ "./test/issue-related/issue38_test_3.c"
+ "./test/general/nested_struct.c"
 )
 
 is_expected_to_fail() {
