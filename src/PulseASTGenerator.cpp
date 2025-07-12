@@ -1036,26 +1036,29 @@ static PulseSequence *releaseExprs(SmallVector<PulseStmt *> &ExprsBefore) {
   return Start;
 }
 
-
 bool PulseVisitor::VisitVarDecl(VarDecl *VD) {
-    
-    llvm::outs() << "\n===============================================" << "\n";
-    llvm::outs() << "Print Var: ";
-    llvm::outs() << VD->getNameAsString() << "\n";
-    llvm::outs() << "===============================================" << "\n";
 
-    if (VD->hasGlobalStorage()) {
-        emitErrorWithLocation("Globals are not implemented yet in Pulse!", &SM, VD->getLocation());
-    }
-
-    ////Vidush: 
-    ///Assuming that all other local variables are part of a function body. 
-    ///In which case they should be handled when handling the function body.
-    ///They don't need handling here
-
+  auto SourceLoc = VD->getLocation();
+  if (SM.isInSystemHeader(SourceLoc))
     return true;
-}
 
+  llvm::outs() << "\n===============================================" << "\n";
+  llvm::outs() << "Print Var: ";
+  llvm::outs() << VD->getNameAsString() << "\n";
+  llvm::outs() << "===============================================" << "\n";
+
+  if (VD->hasGlobalStorage()) {
+    emitErrorWithLocation("Globals are not implemented yet in Pulse!", &SM,
+                          VD->getLocation());
+  }
+
+  ////Vidush:
+  /// Assuming that all other local variables are part of a function body.
+  /// In which case they should be handled when handling the function body.
+  /// They don't need handling here
+
+  return true;
+}
 
 bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
 
