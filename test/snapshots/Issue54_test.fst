@@ -1,0 +1,33 @@
+module Issue54_test
+
+#lang-pulse
+
+open Pulse
+open Pulse.Lib.C
+
+
+
+fn compare_elt
+(a1 : array Int32.t)
+(a2 : array Int32.t)
+(i : SizeT.t)
+(len : SizeT.t)
+requires pure (length a2 == SizeT.v len)
+requires pure (length a1 == SizeT.v len)
+requires exists* v. (a1 |-> v)
+requires exists* v. (a2 |-> v)
+returns b:_Bool
+ensures exists* v. (a1 |-> v)
+ensures exists* v. (a2 |-> v)
+{
+if((SizeT.lt i len))
+{
+pts_to_len a1;
+pts_to_len a2;
+((Int32.eq (op_Array_Access a1 i) (op_Array_Access a2 i)));
+}
+else
+{
+false;
+};
+}
