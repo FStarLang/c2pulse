@@ -1046,10 +1046,12 @@ bool PulseVisitor::VisitVarDecl(VarDecl *VD) {
   if (SM.isInSystemHeader(SourceLoc))
     return true;
 
+  DEBUG_WITH_TYPE(DEBUG_TYPE, {
   llvm::outs() << "\n===============================================" << "\n";
   llvm::outs() << "Print Var: ";
   llvm::outs() << VD->getNameAsString() << "\n";
   llvm::outs() << "===============================================" << "\n";
+  });
 
   if (VD->hasGlobalStorage()) {
     emitErrorWithLocation("Globals are not implemented yet in Pulse!", &SM,
