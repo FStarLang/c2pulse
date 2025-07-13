@@ -82,29 +82,6 @@ int main(int argc, const char **argv) {
     }
     llvm::outs() << "Success: Syntax validated.\n";
 
-    // LLVM_DEBUG({
-    // int macroEventCount = macroEventsVec.size();
-    // if (macroEventCount > 0) {
-    //     llvm::outs() << "Printing Macro Events from Main:\n";
-    //     llvm::outs() << "Number of macro events collected: "
-    //                 << macroEventCount << "\n";
-
-    //     for (const auto &event : macroEventsVec) {
-    //         llvm::outs() << "Kind: " << toString(event.Kind) << "\n";
-    //         llvm::outs() << "Macro: " << event.MacroName << "\n";
-    //         llvm::outs() << "Expansion: " << event.ExpansionText << "\n";
-    //         llvm::outs() << "Location: Line: " << event.Line << ", Column: " << event.Column << "\n";
-    //         llvm::outs() << "Filename: " << event.FileName << "\n";
-    //         llvm::outs() << "Tokens:\n";
-    //         for (const auto &token : event.Tokens) {
-    //             llvm::outs() << "  " << (token.IsParam ? "[param] " : "[macro] ")
-    //                             << token.TokenText << " at Line "
-    //                             << token.Line << ", Column "
-    //                             << token.Column << "\n";
-    //         }
-    //         llvm::outs() << "----------------------\n";
-    //     } 
-    // }});
 
     LLVM_DEBUG({
         for (const auto &file : SourceFiles) {
