@@ -18,7 +18,7 @@ using namespace clang;
 MacroCommentTracker::MacroCommentTracker(clang::Preprocessor &PP,
                         clang::SourceManager &SM,
                         const clang::LangOptions &LangOpts,
-                        std::unordered_map<clang::FileID, std::map<unsigned, MacroEventInfo>> &macroInfoMap)
+                        std::unordered_map<clang::FileID, std::map<std::string, MacroEventInfo>> &macroInfoMap)
     : SM(SM), LangOpts(LangOpts), macroInfoMap(macroInfoMap) {}
 
 static std::string locToStr(const SourceManager &SM, SourceLocation Loc) {
@@ -64,8 +64,20 @@ void MacroCommentTracker::MacroDefined(const Token &MacroNameTok, const MacroDir
     event.Tokens.push_back(tokInfo);
 
     //macroEventsVec.push_back(event);
+    // I am not adding line as a key here because I am afraid it will colide with other events.
+    // I have not checked if I could do that, because for example we might have multiple macros 
+    // defined on the same line.
+    //macroInfoMap[SM.getFileID(Loc)][event.Line] = event;
+    
+    // Get byte offsets within the source file
+    FileID fileID = SM.getFileID(Loc);
+    unsigned startOffset = SM.getFileOffset(startLoc);
+    unsigned endOffset = SM.getFileOffset(endLoc);
+    // Create a unique key for the macro event
+    std::string key = std::to_string(fileID.getHashValue()) + ":" +
+                    std::to_string(startOffset) + "-" + std::to_string(endOffset);
 
-    macroInfoMap[SM.getFileID(Loc)][event.Line] = event;
+    macroInfoMap[fileID][key] = event;
     
     DEBUG_WITH_TYPE(DEBUG_TYPE, { 
     std::string info = "Macro defined: " + MacroNameTok.getIdentifierInfo()->getName().str() +
@@ -112,7 +124,16 @@ void MacroCommentTracker::MacroUndefined(const Token &MacroNameTok,
     event.Tokens.push_back(tokInfo);
 
     //macroEventsVec.push_back(event);
-    macroInfoMap[SM.getFileID(Loc)][event.Line] = event;
+
+    // Get byte offsets within the source file
+    FileID fileID = SM.getFileID(Loc);
+    unsigned startOffset = SM.getFileOffset(startLoc);
+    unsigned endOffset = SM.getFileOffset(endLoc);
+    // Create a unique key for the macro event
+    std::string key = std::to_string(fileID.getHashValue()) + ":" +
+                    std::to_string(startOffset) + "-" + std::to_string(endOffset);
+
+    macroInfoMap[fileID][key] = event;
 
     DEBUG_WITH_TYPE(DEBUG_TYPE, { 
     std::string info = "Macro undefined: " + MacroNameTok.getIdentifierInfo()->getName().str() +
@@ -202,7 +223,15 @@ void MacroCommentTracker::MacroExpands(const Token &MacroNameTok,
     }
 
     //macroEventsVec.push_back(event);
-    macroInfoMap[SM.getFileID(Loc)][event.Line] = event;
+    // Get byte offsets within the source file
+    FileID fileID = SM.getFileID(Loc);
+    unsigned startOffset = SM.getFileOffset(Range.getBegin());
+    unsigned endOffset = SM.getFileOffset(Range.getEnd());
+    // Create a unique key for the macro event
+    std::string key = std::to_string(fileID.getHashValue()) + ":" +
+                    std::to_string(startOffset) + "-" + std::to_string(endOffset);
+
+    macroInfoMap[fileID][key] = event;
 
     DEBUG_WITH_TYPE(DEBUG_TYPE, {  
     std::string info = "Macro expanded: " + macroName +
@@ -251,7 +280,16 @@ void MacroCommentTracker::Ifdef(SourceLocation Loc,
     event.Tokens.push_back(tokInfo);
     
     //macroEventsVec.push_back(event);
-    macroInfoMap[SM.getFileID(Loc)][event.Line] = event;
+
+    // Get byte offsets within the source file
+    FileID fileID = SM.getFileID(Loc);
+    unsigned startOffset = SM.getFileOffset(startLoc);
+    unsigned endOffset = SM.getFileOffset(endLoc);
+    // Create a unique key for the macro event
+    std::string key = std::to_string(fileID.getHashValue()) + ":" +
+                    std::to_string(startOffset) + "-" + std::to_string(endOffset);
+
+    macroInfoMap[fileID][key] = event;
 
     DEBUG_WITH_TYPE(DEBUG_TYPE, {
     std::string info = "#ifdef: " + macro + " at " + locToStr(SM, Loc);
@@ -296,7 +334,16 @@ void MacroCommentTracker::Ifndef(SourceLocation Loc,
     event.Tokens.push_back(tokInfo);
 
     //macroEventsVec.push_back(event);
-    macroInfoMap[SM.getFileID(Loc)][event.Line] = event;    
+  
+    // Get byte offsets within the source file
+    FileID fileID = SM.getFileID(Loc);
+    unsigned startOffset = SM.getFileOffset(startLoc);
+    unsigned endOffset = SM.getFileOffset(endLoc);
+    // Create a unique key for the macro event
+    std::string key = std::to_string(fileID.getHashValue()) + ":" +
+                    std::to_string(startOffset) + "-" + std::to_string(endOffset);
+
+    macroInfoMap[fileID][key] = event;
 
     DEBUG_WITH_TYPE(DEBUG_TYPE, {
     std::string ifndefInfo = "#ifndef: " + macro + " at " + locToStr(SM, Loc);
@@ -332,9 +379,16 @@ void MacroCommentTracker::Defined(const clang::Token &MacroNameTok,
     tokInfo.IsParam = false;
 
     event.Tokens.push_back(tokInfo);
+  
+    // Get byte offsets within the source file
+    FileID fileID = SM.getFileID(Loc);
+    unsigned startOffset = SM.getFileOffset(Range.getBegin());
+    unsigned endOffset = SM.getFileOffset(Range.getEnd());
+    // Create a unique key for the macro event
+    std::string key = std::to_string(fileID.getHashValue()) + ":" +
+                    std::to_string(startOffset) + "-" + std::to_string(endOffset);
 
-     macroInfoMap[SM.getFileID(Loc)][event.Line] = event; 
-    //macroEventsVec.push_back(event);
+    macroInfoMap[fileID][key] = event;
     
     DEBUG_WITH_TYPE(DEBUG_TYPE, {
     std::string locInfo = locToStr(SM, Range.getBegin());
@@ -385,7 +439,7 @@ bool MacroCommentTracker::HandleComment(Preprocessor &PP, SourceRange CommentRan
 
 void MacroCommentTracker::printMacroEventMap() const {
     for (const auto &pair : macroInfoMap) {
-        const std::map<unsigned, MacroEventInfo> &events = pair.second;
+        const std::map<std::string, MacroEventInfo> &events = pair.second;
         if (events.empty()) {
             llvm::outs() << "  [No macro events found]\n";
             continue;
