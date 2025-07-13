@@ -350,7 +350,7 @@ bool PulseVisitor::checkIsRecursiveStmt(Stmt *InnerStmt,
   } else {
     /// TODO: Vidush see if we want to handle any other statement.
     InnerStmt->dump();
-    emitErrorWithLocation("Encountered an unhandled case!", &SM,
+    emitErrorWithLocation("Encountered an unhandled case!", &Ctx,
                           InnerStmt->getEndLoc());
   }
 }
@@ -1051,7 +1051,7 @@ bool PulseVisitor::VisitVarDecl(VarDecl *VD) {
   llvm::outs() << "===============================================" << "\n";
 
   if (VD->hasGlobalStorage()) {
-    emitErrorWithLocation("Globals are not implemented yet in Pulse!", &SM,
+    emitErrorWithLocation("Globals are not implemented yet in Pulse!", &Ctx,
                           VD->getLocation());
   }
 
@@ -1281,7 +1281,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
             if (!Param->getType()->isPointerType() &&
                 !Param->getType()->isArrayType()) {
               emitErrorWithLocation(
-                  "Expected parameter to be a ref or an array!", &SM,
+                  "Expected parameter to be a ref or an array!", &Ctx,
                   Param->getLocation());
             }
 
@@ -1337,7 +1337,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
             IsAllocatedOnHeap.insert(Param);
           } else {
             emitErrorWithLocation("Pulse annotation kind not implemented yet!",
-                                  &SM, FD->getLocation());
+                                  &Ctx, FD->getLocation());
           }
         }
       }
@@ -1688,7 +1688,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
                   IsAllocatedOnHeap.insert(VD);
                 } else {
                   emitErrorWithLocation("Did not expect pulse annotation kind!",
-                                        &SM, VD->getLocation());
+                                        &Ctx, VD->getLocation());
                 }
               }
             }
@@ -1722,7 +1722,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
             // A normal let bind
             emitErrorWithLocation(
                 "Did not implement case when struct allocation is not mutated!",
-                &SM, VD->getLocation());
+                &Ctx, VD->getLocation());
         }
 
         // Any uninitialized declaration that is not a struct
@@ -1743,8 +1743,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
         return GenericDecl;
       }
       emitErrorWithLocation(
-          "Declarations other than variable declarations not implemented!", &SM,
-          D->getLocation());
+          "Declarations other than variable declarations not implemented!",
+          &Ctx, D->getLocation());
     }
 
   } else if (auto *BO = dyn_cast<BinaryOperator>(S)) {
@@ -1853,7 +1853,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
                        << "\n";
 
           if (!RecordDec) {
-            emitErrorWithLocation("Could not find record declaration!", &SM,
+            emitErrorWithLocation("Could not find record declaration!", &Ctx,
                                   ME->getBeginLoc());
           }
 
@@ -1861,7 +1861,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           // if (It == MapRecordDeclsToTypedefDecls)
           auto It = RecordToRecordName.find(RecordDec);
           if (It == RecordToRecordName.end()) {
-            emitErrorWithLocation("Could not find name of record!", &SM,
+            emitErrorWithLocation("Could not find name of record!", &Ctx,
                                   BO->getBeginLoc());
           }
           StructName = It->second;
@@ -1965,7 +1965,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
             auto It = RecordToRecordName.find(RecordDecl);
             if (It == RecordToRecordName.end()) {
               emitErrorWithLocation(
-                  "Not implemented record type without typedef decl!", &SM,
+                  "Not implemented record type without typedef decl!", &Ctx,
                   ME->getBeginLoc());
             }
 
@@ -2071,7 +2071,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
         ME->dump();
         emitErrorWithLocation(
-            "Could not cast member base expression to its declaration!", &SM,
+            "Could not cast member base expression to its declaration!", &Ctx,
             ME->getBeginLoc());
 
       } else if (auto *ME = dyn_cast<MemberExpr>(Rhs)) {
@@ -2276,7 +2276,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
               break;
             };
             default:
-              emitErrorWithLocation("Annotation not expected for IfStmt", &SM,
+              emitErrorWithLocation("Annotation not expected for IfStmt", &Ctx,
                                     IF->getBeginLoc());
             };
           }
@@ -2361,7 +2361,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
     S->dumpPretty(Ctx);
     emitErrorWithLocation("For loops not implemented since pulse does not "
                           "support for expressions",
-                          &SM, FS->getBeginLoc());
+                          &Ctx, FS->getBeginLoc());
   } else if (auto *WS = dyn_cast<WhileStmt>(S)) {
 
     auto *WhileCond = WS->getCond();
@@ -2432,7 +2432,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
     S->dumpPretty(Ctx);
     emitErrorWithLocation(
         "Did not implement translation from C unary expression to PulseStmt!",
-        &SM, US->getBeginLoc());
+        &Ctx, US->getBeginLoc());
   } else if (auto *NS = dyn_cast<NullStmt>(S)) {
     return nullptr;
   } else if (auto *CS = dyn_cast<CompoundStmt>(S)) {
@@ -2463,7 +2463,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
               return GenStmt;
             }
             else {
-              emitErrorWithLocation("Unhandled Attr in Attributed Stmt!", &SM,
+              emitErrorWithLocation("Unhandled Attr in Attributed Stmt!", &Ctx,
                                     AttrStmt->getAttrLoc());
             }
         }
@@ -2473,7 +2473,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
     return NewSequence;
   } else {
     S->dumpPretty(Ctx);
-    emitErrorWithLocation("Not implemented Clang expr!", &SM, S->getBeginLoc());
+    emitErrorWithLocation("Not implemented Clang expr!", &Ctx,
+                          S->getBeginLoc());
   }
 
   return nullptr;
@@ -2539,15 +2540,15 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     return NewConstTerm;
   } else if (auto *FL = dyn_cast<FloatingLiteral>(E)) {
     E->dumpPretty(Ctx);
-    emitErrorWithLocation("Floating Literal not implemented!", &SM,
+    emitErrorWithLocation("Floating Literal not implemented!", &Ctx,
                           E->getExprLoc());
   } else if (auto *SL = dyn_cast<StringLiteral>(E)) {
     E->dumpPretty(Ctx);
-    emitErrorWithLocation("String Literal not implemented!", &SM,
+    emitErrorWithLocation("String Literal not implemented!", &Ctx,
                           E->getExprLoc());
   } else if (auto *CL = dyn_cast<CharacterLiteral>(E)) {
     E->dumpPretty(Ctx);
-    emitErrorWithLocation("Character Liternal not implemented!", &SM,
+    emitErrorWithLocation("Character Liternal not implemented!", &Ctx,
                           E->getExprLoc());
   } else if (auto *BO = dyn_cast<BinaryOperator>(E)) {
 
@@ -2560,7 +2561,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       LLVM_DEBUG(llvm::dbgs() << "\n");
       emitErrorWithLocation("Expected types of Lhs and Rhs to be the same, "
                             "unsafe type casting now allowed in pulse!",
-                            &SM, E->getExprLoc());
+                            &Ctx, E->getExprLoc());
     }
 
     switch (Op) {
@@ -2642,7 +2643,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
         BO->dump();
         emitErrorWithLocation("Null check not implemented for binary operator "
                               "other that Eq and Neq!",
-                              &SM, BO->getExprLoc());
+                              &Ctx, BO->getExprLoc());
       }
 
       SymbolTable TypeKey = getSymbolKeyForCType(Lhs->getType(), Ctx);
@@ -2722,7 +2723,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       E->dumpPretty(Ctx);
       E->dump();
       emitErrorWithLocation(
-          "Unhandeled case in UnaryOperator getTermFromCExpr!", &SM,
+          "Unhandeled case in UnaryOperator getTermFromCExpr!", &Ctx,
           E->getExprLoc());
     }
   } else if (auto *CE = dyn_cast<CallExpr>(E)) {
@@ -2963,7 +2964,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
               CastType->dump();
               emitErrorWithLocation(
                   "Could not find Record Declaration or Corresponding Name!",
-                  &SM, FD->getLocation());
+                  &Ctx, FD->getLocation());
             }
 
             auto RecordName = It->second;
@@ -2986,7 +2987,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
           emitErrorWithLocation(
               "Expected allocated type for malloc to be a reference but found "
               "a pulse type that's not a reference!",
-              &SM, FD->getBeginLoc());
+              &Ctx, FD->getBeginLoc());
         }
       }
     } else if (checkIfExprIsNullPtr(CCastExpr)) {
@@ -2995,7 +2996,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     } else {
       CCastExpr->dumpPretty(Ctx);
       emitErrorWithLocation("Unimplemented case in CStyle Cast Expression!",
-                            &SM, CCastExpr->getExprLoc());
+                            &Ctx, CCastExpr->getExprLoc());
     }
   } else if (auto *RE = dyn_cast<clang::RecoveryExpr>(E)) {
     if (Expr *SubExpr = RE->getExprStmt()) {
@@ -3051,7 +3052,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
   } else {
     E->dump();
     emitErrorWithLocation("Expression not implemented in getTermFromCExpr!",
-                          &SM, E->getExprLoc());
+                          &Ctx, E->getExprLoc());
   }
 }
 
