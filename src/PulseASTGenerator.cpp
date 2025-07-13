@@ -1308,11 +1308,27 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
               // QualType(VLAType->getPointeeOrArrayElementType(), 0);
               // llvm::outs() << "End of element type!" << "\n"; exit(1);
               DeclTyMap.insert(std::make_pair(Param, VLAType));
+
+              auto *NewRequires = new Requires();
+              if (!Match.empty()) {
+                NewRequires->Ann = "pure (length " + Param->getNameAsString() +
+                                   " == SizeT.v " + Match + ")";
+                auto &Arr = FDefn->Annotation;
+                Arr.insert(Arr.begin(), NewRequires);
+              }
+
             } else {
               clang::QualType ConstArrayTy = Ctx.getConstantArrayType(
                   ElementType, llvm::APInt(32, std::stoi(Match)), nullptr,
                   ArraySizeModifier::Normal, 0);
               DeclTyMap.insert(std::make_pair(Param, ConstArrayTy));
+              if (!Match.empty()) {
+                auto *NewRequires = new Requires();
+                NewRequires->Ann = "pure (length " + Param->getNameAsString() +
+                                   " == SizeT.v " + Match + "sz)";
+                auto &Arr = FDefn->Annotation;
+                Arr.insert(Arr.begin(), NewRequires);
+              }
             }
           } else if (PulseAnnotKind == PulseAnnKind::HeapAllocated) {
             IsAllocatedOnHeap.insert(Param);
@@ -1788,6 +1804,10 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
       } else if (auto *ME = dyn_cast<MemberExpr>(Lhs)) {
 
         auto *LhsDecl = ME->getMemberDecl();
+        // TODO: Vidush
+        // We are ignoring implicit casts here
+        // However, we should check if that' the right approach.
+        //  casts may need to be handled and translated into !
         auto *BaseExpr = ME->getBase()->IgnoreParens()->IgnoreImpCasts();
         ME->dump();
         BaseExpr->dump();
@@ -2046,6 +2066,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
       } else if (auto *ME = dyn_cast<MemberExpr>(Rhs)) {
 
         auto *RhsDecl = ME->getMemberDecl();
+        /// TODO: Vidush, handle casts and check if it is safe to ignore them
         auto *BaseExpr = ME->getBase()->IgnoreParens()->IgnoreImpCasts();
         BaseExpr->dump();
 
@@ -2650,6 +2671,8 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       if (auto *Mem = dyn_cast<MemberExpr>(SubExpr)) {
 
         auto *BaseExpr = Mem->getBase();
+        // TODO: Vidush, I am ignoring casts here.
+        // But the ! is added in GenStmt which comes because of the imp cast.
         if (auto *Dec = dyn_cast<DeclRefExpr>(
                 BaseExpr->IgnoreParenImpCasts()->IgnoreImpCasts())) {
           auto *VD = Dec->getDecl();
@@ -2693,55 +2716,56 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     }
   } else if (auto *CE = dyn_cast<CallExpr>(E)) {
 
-    if (CE->getDirectCallee()->getNameAsString() == pulseProofTermFromC) {
-      auto NumArgs = CE->getNumArgs();
-      assert(NumArgs == 1 &&
-             "Expected number of arguments for Pulse Proof Term to be 1!");
-      auto *UserLemma = new Lemma();
-      if (auto *ArgToString =
-              dyn_cast<StringLiteral>(CE->getArg(0)->IgnoreCasts())) {
-        auto ArgString = ArgToString->getString();
-        UserLemma->lemmas.push_back(ArgString.str());
-      } else {
-        emitErrorWithLocation(
-            "Expected pulse while to have arguments as string literals", &SM,
-            CE->getBeginLoc());
-      }
+    // if (CE->getDirectCallee()->getNameAsString() == pulseProofTermFromC) {
+    //   auto NumArgs = CE->getNumArgs();
+    //   assert(NumArgs == 1 &&
+    //          "Expected number of arguments for Pulse Proof Term to be 1!");
+    //   auto *UserLemma = new Lemma();
+    //   if (auto *ArgToString =
+    //           dyn_cast<StringLiteral>(CE->getArg(0)->IgnoreCasts())) {
+    //     auto ArgString = ArgToString->getString();
+    //     UserLemma->lemmas.push_back(ArgString.str());
+    //   } else {
+    //     emitErrorWithLocation(
+    //         "Expected pulse while to have arguments as string literals", &SM,
+    //         CE->getBeginLoc());
+    //   }
 
-      return UserLemma;
-    } else if (CE->getDirectCallee()->getNameAsString() ==
-               pulseWhileInvariantFromC) {
+    //   return UserLemma;
+    // } else if (CE->getDirectCallee()->getNameAsString() ==
+    //            pulseWhileInvariantFromC) {
 
-      auto NumArgs = CE->getNumArgs();
+    //   auto NumArgs = CE->getNumArgs();
 
-      std::vector<Slprop *> VectorLemmas;
-      for (size_t Idx = 0; Idx < NumArgs; Idx++) {
-        auto *UserLemma = new Lemma();
-        auto *Arg = CE->getArg(Idx);
-        // assert that each argument is actually a string literal
-        if (auto *ArgToString = dyn_cast<StringLiteral>(Arg->IgnoreCasts())) {
-          auto ArgString = ArgToString->getString();
-          UserLemma->lemmas.push_back(ArgString.str());
-          Slprop *Prop = UserLemma;
-          VectorLemmas.push_back(Prop);
-          // assert that next statement is a while loop
-        } else {
-          emitErrorWithLocation(
-              "Expected pulse while to have arguments as string literals", &SM,
-              E->getExprLoc());
-        }
-      }
+    //   std::vector<Slprop *> VectorLemmas;
+    //   for (size_t Idx = 0; Idx < NumArgs; Idx++) {
+    //     auto *UserLemma = new Lemma();
+    //     auto *Arg = CE->getArg(Idx);
+    //     // assert that each argument is actually a string literal
+    //     if (auto *ArgToString = dyn_cast<StringLiteral>(Arg->IgnoreCasts()))
+    //     {
+    //       auto ArgString = ArgToString->getString();
+    //       UserLemma->lemmas.push_back(ArgString.str());
+    //       Slprop *Prop = UserLemma;
+    //       VectorLemmas.push_back(Prop);
+    //       // assert that next statement is a while loop
+    //     } else {
+    //       emitErrorWithLocation(
+    //           "Expected pulse while to have arguments as string literals",
+    //           &SM, E->getExprLoc());
+    //     }
+    //   }
 
-      auto *Next = getNextStatement(E, Ctx);
-      if (auto *While = dyn_cast<WhileStmt>(Next)) {
-        // Add corresponding while invariant.
-        StmtToLemmas.insert(std::make_pair(While, VectorLemmas));
-        return nullptr;
-      }
-      emitErrorWithLocation(
-          "Expected next statement after pulse invariant to be a while!", &SM,
-          CE->getBeginLoc());
-    }
+    //   auto *Next = getNextStatement(E, Ctx);
+    //   if (auto *While = dyn_cast<WhileStmt>(Next)) {
+    //     // Add corresponding while invariant.
+    //     StmtToLemmas.insert(std::make_pair(While, VectorLemmas));
+    //     return nullptr;
+    //   }
+    //   emitErrorWithLocation(
+    //       "Expected next statement after pulse invariant to be a while!",
+    //       &SM, CE->getBeginLoc());
+    // }
 
     auto CallName = CE->getDirectCallee()->getNameAsString();
     auto *CallAppE = new AppE();
@@ -2783,6 +2807,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       assert(CE->getNumArgs() == 1 &&
              "Did not expect free to have more than one argument!");
       auto *Arg = CE->getArg(0);
+      // Vidush: TODO, check if we should ignore implicit casts here!
       if (auto *ArgDeclR =
               dyn_cast<DeclRefExpr>(Arg->IgnoreParens()->IgnoreImpCasts())) {
         auto *ArgDecl = ArgDeclR->getDecl();
@@ -2875,12 +2900,25 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     auto *ArrBase = ArrSubExpr->getBase();
     auto *ArrIdx = ArrSubExpr->getIdx();
 
-    auto *PulseCall = new AppE("op_Array_Access");
-    PulseCall->pushArg(getTermFromCExpr(ArrBase, MutAnalyzer, ExprsBefore, Parent,
-                                        ParentType, Module));
-    PulseCall->pushArg(
-        getTermFromCExpr(ArrIdx, MutAnalyzer, ExprsBefore, Parent, ParentType, Module));
+    llvm::outs() << "Dump arr sub expression!\n";
+    ArrSubExpr->dump();
+    llvm::outs() << "End dump arr sub expression.\n";
 
+    auto *PulseCall = new AppE("op_Array_Access");
+    PulseCall->pushArg(getTermFromCExpr(ArrBase, MutAnalyzer, ExprsBefore,
+                                        Parent, ParentType, Module));
+
+    if (ArrIdx->isIntegerConstantExpr(Ctx)) {
+      auto IntegerExprFromArrIdx = ArrIdx->getIntegerConstantExpr(Ctx);
+      auto *NewConstTerm = new ConstTerm();
+      NewConstTerm->ConstantValue =
+          std::to_string(IntegerExprFromArrIdx->getSExtValue());
+      NewConstTerm->Symbol = SymbolTable::SizeT;
+      PulseCall->pushArg(NewConstTerm);
+    } else {
+      PulseCall->pushArg(getTermFromCExpr(ArrIdx, MutAnalyzer, ExprsBefore,
+                                          Parent, ArrIdx->getType(), Module));
+    }
     // wrap PulseCall in Paren
     auto *NewParen = new Paren(PulseCall);
     return NewParen;
@@ -2895,6 +2933,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     auto *PulseParenExpr = new Paren(PulseSubExpr);
     return PulseParenExpr;
   } else if (auto *CCastExpr = dyn_cast<CStyleCastExpr>(E)) {
+    // Vidush::TODO We're ignore casts here, Check if we should?
     if (const CallExpr *Call =
             dyn_cast<CallExpr>(E->IgnoreParenImpCasts()->IgnoreCasts())) {
       if (const FunctionDecl *FD = Call->getDirectCallee()) {
@@ -2958,6 +2997,9 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
   } else if (auto *ME = dyn_cast<MemberExpr>(E)) {
 
     auto *MemberExprDecl = ME->getMemberDecl();
+    // TODO: check if we should ignore cases here
+    // Casts may need to be translated to !.
+    // But we need a principled approach for this.
     auto *BaseExpr = ME->getBase()->IgnoreParens()->IgnoreImpCasts();
 
     std::string NameOfDecl;
