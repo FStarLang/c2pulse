@@ -1308,9 +1308,9 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
               // QualType(VLAType->getPointeeOrArrayElementType(), 0);
               // llvm::outs() << "End of element type!" << "\n"; exit(1);
               DeclTyMap.insert(std::make_pair(Param, VLAType));
-
-              auto *NewRequires = new Requires();
+              
               if (!Match.empty()) {
+                auto *NewRequires = new Requires();
                 NewRequires->Ann = "pure (length " + Param->getNameAsString() +
                                    " == SizeT.v " + Match + ")";
                 auto &Arr = FDefn->Annotation;
