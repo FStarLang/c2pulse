@@ -394,27 +394,20 @@ bool PulseVisitor::checkIsRecursiveExpr(Expr *ExprPtr,
   }
 }
 
-bool PulseVisitor::VisitRecordDecl(RecordDecl *RD) {
 
-  auto SourceLoc = RD->getLocation();
-  if (SM.isInSystemHeader(SourceLoc))
-    return true;
+std::string getNameForRecordDecl(RecordDecl *RD){
 
-  std::string StructName;
+  std::string StructName = RD->getDeclName().getAsString();
   clang::DeclContext *context = RD->getDeclContext();
 
   if (context == nullptr) {
     llvm::outs() << "Cannot get typedefs for record, using record name for "
                     "generating pulse code\n";
-    return true;
   }
 
   if (context->decls_empty()) {
     llvm::outs() << "Declarations empty for record\n";
-    return true;
   }
-
-  StructName = RD->getDeclName().getAsString();
 
   for (auto *Decl : context->decls()) {
     if (const auto *TypedefDecl = llvm::dyn_cast<clang::TypedefDecl>(Decl)) {
@@ -432,13 +425,23 @@ bool PulseVisitor::VisitRecordDecl(RecordDecl *RD) {
             llvm::outs() << TypedefDecl->getIdentifier() << "\n";
             /// The record type has an Associated Typedef so we should use that!
             StructName = TypedefDecl->getNameAsString();
-            MapRecordDeclsToTypedefDecls.insert(
-                std::make_pair(RD, TypedefDecl));
           }
         }
       }
     }
   }
+
+  return StructName;
+
+}
+
+bool PulseVisitor::VisitRecordDecl(RecordDecl *RD) {
+
+  auto SourceLoc = RD->getLocation();
+  if (SM.isInSystemHeader(SourceLoc))
+    return true;
+
+  std::string StructName = getNameForRecordDecl(RD);
 
   RecordToRecordName.insert(std::make_pair(RD, StructName));
 
@@ -1479,15 +1482,19 @@ FStarType *PulseVisitor::getPulseTyFromCTy(clang::QualType CType) {
       auto *RecordTy = PointeeTy->getAs<RecordType>();
       auto *RD = RecordTy->getDecl();
       auto It = RecordToRecordName.find(RD);
-
+      
+      std::string StructName;
       if (It == RecordToRecordName.end()) {
-        emitError("Could not find Record Name!");
+        StructName = getNameForRecordDecl(RD);
+      }
+      else {
+        StructName = It->second;
       }
 
       PulseTy = new FStarPointerType();
       auto *PulsePointerTy = static_cast<FStarPointerType *>(PulseTy);
-      auto BaseTy = It->second;
-      PulsePointerTy->setName("ref " + It->second);
+      auto BaseTy = StructName;
+      PulsePointerTy->setName("ref " + StructName);
       auto UnderLyingType = CType->getPointeeType();
       auto *FStartUnderLyingType = getPulseTyFromCTy(UnderLyingType);
       PulsePointerTy->setPointerToTy(FStartUnderLyingType);
@@ -1515,10 +1522,14 @@ FStarType *PulseVisitor::getPulseTyFromCTy(clang::QualType CType) {
       auto RT = CType->getAs<RecordType>();
       auto RD = RT->getDecl();
       auto It = RecordToRecordName.find(RD);
+      std::string StructName;
       if (It == RecordToRecordName.end()) {
-        emitError("Did not find name for Record Type!");
+        StructName = getNameForRecordDecl(RD);
       }
-      CTyKeyStr = It->second;
+      else {
+        StructName = It->second;
+      }
+      CTyKeyStr = StructName;
 
     }
     else{
