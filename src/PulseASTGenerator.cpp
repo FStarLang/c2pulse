@@ -17,6 +17,7 @@
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/Casting.h"
+#include "llvm/Support/ConvertUTF.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cstddef>
@@ -190,8 +191,18 @@ void PulseVisitor::inferDeclType(Decl *Dec, Stmt *InnerStmt) {
   } else if (auto *AttrStmt = dyn_cast<AttributedStmt>(InnerStmt)) {
     auto *SubExpr = AttrStmt->getSubStmt();
     inferArrayTypesStmt(SubExpr);
-  }
-  else {
+  } else if (auto *IfStm = dyn_cast<IfStmt>(InnerStmt)) {
+    auto *Cond = IfStm->getCond();
+    auto *Then = IfStm->getThen();
+    auto *Else = IfStm->getElse();
+    inferArrayTypesExpr(Cond);
+    inferArrayTypesStmt(Then);
+    inferArrayTypesStmt(Else);
+  } else if (auto *RetStmt = dyn_cast<ReturnStmt>(InnerStmt)) {
+    if (auto *RetVal = RetStmt->getRetValue()) {
+      inferArrayTypesExpr(RetVal);
+    }
+  } else {
     // TODO: Vidush see if we want to handle any other statement.
     return;
   }
@@ -240,9 +251,22 @@ void PulseVisitor::inferArrayTypesStmt(Stmt *InnerStmt) {
   } else if (auto *AttrStmt = dyn_cast<AttributedStmt>(InnerStmt)) {
     auto *SubExpr = AttrStmt->getSubStmt();
     inferArrayTypesStmt(SubExpr);
-  }
-  else{
+  } else if (auto *IfStm = dyn_cast<IfStmt>(InnerStmt)) {
+    auto *Cond = IfStm->getCond();
+    auto *Then = IfStm->getThen();
+    auto *Else = IfStm->getElse();
+    inferArrayTypesExpr(Cond);
+    inferArrayTypesStmt(Then);
+    inferArrayTypesStmt(Else);
+  } else if (auto *RetStmt = dyn_cast<ReturnStmt>(InnerStmt)) {
+    if (auto *RetVal = RetStmt->getRetValue()) {
+      inferArrayTypesExpr(RetVal);
+    }
+  } else {
     // TODO: Vidush see if we want to handle any other statement.
+    InnerStmt->dump();
+    // emitErrorWithLocation("uimplemented case!", &Ctx,
+    // InnerStmt->getBeginLoc());
     return;
   }
 }
@@ -292,10 +316,24 @@ void PulseVisitor::inferArrayTypesExpr(Expr *ExprPtr) {
                                        clang::ArraySizeModifier::Normal, 0);
 
         DeclTyMap.insert(std::make_pair(BaseDecl, IncompleteArrayTy));
+        llvm::outs() << "Found array type!\n";
+      } else {
+        BaseDecl->dump();
+        emitErrorWithLocation("could not case to VD!", &Ctx,
+                              ExprPtr->getExprLoc());
       }
     }
-  } else {
+  } else if (auto *Paren = dyn_cast<clang::ParenExpr>(ExprPtr)) {
+    inferArrayTypesExpr(Paren->getSubExpr());
+  } else if (auto *IC = dyn_cast<clang::ImplicitCastExpr>(ExprPtr)) {
+    inferArrayTypesExpr(IC->getSubExpr());
+  } else if (auto *DRE = dyn_cast<clang::DeclRefExpr>(ExprPtr)) {
     return;
+  } else if (auto *IL = dyn_cast<IntegerLiteral>(ExprPtr)) {
+    return;
+  } else {
+    ExprPtr->dump();
+    // emitErrorWithLocation("uimplemented case!", &Ctx, ExprPtr->getExprLoc());
   }
 }
 
