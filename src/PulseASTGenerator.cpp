@@ -17,6 +17,7 @@
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/Casting.h"
+#include "llvm/Support/ConvertUTF.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cstddef>
@@ -192,8 +193,18 @@ void PulseVisitor::inferDeclType(Decl *Dec, Stmt *InnerStmt) {
   } else if (auto *AttrStmt = dyn_cast<AttributedStmt>(InnerStmt)) {
     auto *SubExpr = AttrStmt->getSubStmt();
     inferArrayTypesStmt(SubExpr);
-  }
-  else {
+  } else if (auto *IfStm = dyn_cast<IfStmt>(InnerStmt)) {
+    auto *Cond = IfStm->getCond();
+    auto *Then = IfStm->getThen();
+    auto *Else = IfStm->getElse();
+    inferArrayTypesExpr(Cond);
+    inferArrayTypesStmt(Then);
+    inferArrayTypesStmt(Else);
+  } else if (auto *RetStmt = dyn_cast<ReturnStmt>(InnerStmt)) {
+    if (auto *RetVal = RetStmt->getRetValue()) {
+      inferArrayTypesExpr(RetVal);
+    }
+  } else {
     // TODO: Vidush see if we want to handle any other statement.
     return;
   }
@@ -242,9 +253,22 @@ void PulseVisitor::inferArrayTypesStmt(Stmt *InnerStmt) {
   } else if (auto *AttrStmt = dyn_cast<AttributedStmt>(InnerStmt)) {
     auto *SubExpr = AttrStmt->getSubStmt();
     inferArrayTypesStmt(SubExpr);
-  }
-  else{
+  } else if (auto *IfStm = dyn_cast<IfStmt>(InnerStmt)) {
+    auto *Cond = IfStm->getCond();
+    auto *Then = IfStm->getThen();
+    auto *Else = IfStm->getElse();
+    inferArrayTypesExpr(Cond);
+    inferArrayTypesStmt(Then);
+    inferArrayTypesStmt(Else);
+  } else if (auto *RetStmt = dyn_cast<ReturnStmt>(InnerStmt)) {
+    if (auto *RetVal = RetStmt->getRetValue()) {
+      inferArrayTypesExpr(RetVal);
+    }
+  } else {
     // TODO: Vidush see if we want to handle any other statement.
+    InnerStmt->dump();
+    // emitErrorWithLocation("uimplemented case!", &Ctx,
+    // InnerStmt->getBeginLoc());
     return;
   }
 }
@@ -294,10 +318,24 @@ void PulseVisitor::inferArrayTypesExpr(Expr *ExprPtr) {
                                        clang::ArraySizeModifier::Normal, 0);
 
         DeclTyMap.insert(std::make_pair(BaseDecl, IncompleteArrayTy));
+        llvm::outs() << "Found array type!\n";
+      } else {
+        BaseDecl->dump();
+        emitErrorWithLocation("could not case to VD!", &Ctx,
+                              ExprPtr->getExprLoc());
       }
     }
-  } else {
+  } else if (auto *Paren = dyn_cast<clang::ParenExpr>(ExprPtr)) {
+    inferArrayTypesExpr(Paren->getSubExpr());
+  } else if (auto *IC = dyn_cast<clang::ImplicitCastExpr>(ExprPtr)) {
+    inferArrayTypesExpr(IC->getSubExpr());
+  } else if (auto *DRE = dyn_cast<clang::DeclRefExpr>(ExprPtr)) {
     return;
+  } else if (auto *IL = dyn_cast<IntegerLiteral>(ExprPtr)) {
+    return;
+  } else {
+    ExprPtr->dump();
+    // emitErrorWithLocation("uimplemented case!", &Ctx, ExprPtr->getExprLoc());
   }
 }
 
@@ -354,7 +392,7 @@ bool PulseVisitor::checkIsRecursiveStmt(Stmt *InnerStmt,
     DEBUG_WITH_TYPE(DEBUG_TYPE, {
     InnerStmt->dump();
     });
-    emitErrorWithLocation("Encountered an unhandled case!", &SM,
+    emitErrorWithLocation("Encountered an unhandled case!", &Ctx,
                           InnerStmt->getEndLoc());
   }
 }
@@ -398,27 +436,20 @@ bool PulseVisitor::checkIsRecursiveExpr(Expr *ExprPtr,
   }
 }
 
-bool PulseVisitor::VisitRecordDecl(RecordDecl *RD) {
 
-  auto SourceLoc = RD->getLocation();
-  if (SM.isInSystemHeader(SourceLoc))
-    return true;
+std::string getNameForRecordDecl(RecordDecl *RD){
 
-  std::string StructName;
+  std::string StructName = RD->getDeclName().getAsString();
   clang::DeclContext *context = RD->getDeclContext();
 
   if (context == nullptr) {
     llvm::outs() << "Cannot get typedefs for record, using record name for "
                     "generating pulse code\n";
-    return true;
   }
 
   if (context->decls_empty()) {
     llvm::outs() << "Declarations empty for record\n";
-    return true;
   }
-
-  StructName = RD->getDeclName().getAsString();
 
   for (auto *Decl : context->decls()) {
     if (const auto *TypedefDecl = llvm::dyn_cast<clang::TypedefDecl>(Decl)) {
@@ -436,13 +467,23 @@ bool PulseVisitor::VisitRecordDecl(RecordDecl *RD) {
             llvm::outs() << TypedefDecl->getIdentifier() << "\n";
             /// The record type has an Associated Typedef so we should use that!
             StructName = TypedefDecl->getNameAsString();
-            MapRecordDeclsToTypedefDecls.insert(
-                std::make_pair(RD, TypedefDecl));
           }
         }
       }
     }
   }
+
+  return StructName;
+
+}
+
+bool PulseVisitor::VisitRecordDecl(RecordDecl *RD) {
+
+  auto SourceLoc = RD->getLocation();
+  if (SM.isInSystemHeader(SourceLoc))
+    return true;
+
+  std::string StructName = getNameForRecordDecl(RD);
 
   RecordToRecordName.insert(std::make_pair(RD, StructName));
 
@@ -1054,7 +1095,7 @@ bool PulseVisitor::VisitVarDecl(VarDecl *VD) {
   });
 
   if (VD->hasGlobalStorage()) {
-    emitErrorWithLocation("Globals are not implemented yet in Pulse!", &SM,
+    emitErrorWithLocation("Globals are not implemented yet in Pulse!", &Ctx,
                           VD->getLocation());
   }
 
@@ -1284,7 +1325,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
             if (!Param->getType()->isPointerType() &&
                 !Param->getType()->isArrayType()) {
               emitErrorWithLocation(
-                  "Expected parameter to be a ref or an array!", &SM,
+                  "Expected parameter to be a ref or an array!", &Ctx,
                   Param->getLocation());
             }
 
@@ -1314,17 +1355,33 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
               // QualType(VLAType->getPointeeOrArrayElementType(), 0);
               // llvm::outs() << "End of element type!" << "\n"; exit(1);
               DeclTyMap.insert(std::make_pair(Param, VLAType));
+              
+              if (!Match.empty()) {
+                auto *NewRequires = new Requires();
+                NewRequires->Ann = "pure (length " + Param->getNameAsString() +
+                                   " == SizeT.v " + Match + ")";
+                auto &Arr = FDefn->Annotation;
+                Arr.insert(Arr.begin(), NewRequires);
+              }
+
             } else {
               clang::QualType ConstArrayTy = Ctx.getConstantArrayType(
                   ElementType, llvm::APInt(32, std::stoi(Match)), nullptr,
                   ArraySizeModifier::Normal, 0);
               DeclTyMap.insert(std::make_pair(Param, ConstArrayTy));
+              if (!Match.empty()) {
+                auto *NewRequires = new Requires();
+                NewRequires->Ann = "pure (length " + Param->getNameAsString() +
+                                   " == SizeT.v " + Match + "sz)";
+                auto &Arr = FDefn->Annotation;
+                Arr.insert(Arr.begin(), NewRequires);
+              }
             }
           } else if (PulseAnnotKind == PulseAnnKind::HeapAllocated) {
             IsAllocatedOnHeap.insert(Param);
           } else {
             emitErrorWithLocation("Pulse annotation kind not implemented yet!",
-                                  &SM, FD->getLocation());
+                                  &Ctx, FD->getLocation());
           }
         }
       }
@@ -1476,15 +1533,19 @@ FStarType *PulseVisitor::getPulseTyFromCTy(clang::QualType CType) {
       auto *RecordTy = PointeeTy->getAs<RecordType>();
       auto *RD = RecordTy->getDecl();
       auto It = RecordToRecordName.find(RD);
-
+      
+      std::string StructName;
       if (It == RecordToRecordName.end()) {
-        emitError("Could not find Record Name!");
+        StructName = getNameForRecordDecl(RD);
+      }
+      else {
+        StructName = It->second;
       }
 
       PulseTy = new FStarPointerType();
       auto *PulsePointerTy = static_cast<FStarPointerType *>(PulseTy);
-      auto BaseTy = It->second;
-      PulsePointerTy->setName("ref " + It->second);
+      auto BaseTy = StructName;
+      PulsePointerTy->setName("ref " + StructName);
       auto UnderLyingType = CType->getPointeeType();
       auto *FStartUnderLyingType = getPulseTyFromCTy(UnderLyingType);
       PulsePointerTy->setPointerToTy(FStartUnderLyingType);
@@ -1512,10 +1573,14 @@ FStarType *PulseVisitor::getPulseTyFromCTy(clang::QualType CType) {
       auto RT = CType->getAs<RecordType>();
       auto RD = RT->getDecl();
       auto It = RecordToRecordName.find(RD);
+      std::string StructName;
       if (It == RecordToRecordName.end()) {
-        emitError("Did not find name for Record Type!");
+        StructName = getNameForRecordDecl(RD);
       }
-      CTyKeyStr = It->second;
+      else {
+        StructName = It->second;
+      }
+      CTyKeyStr = StructName;
 
     }
     else{
@@ -1681,7 +1746,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
                   IsAllocatedOnHeap.insert(VD);
                 } else {
                   emitErrorWithLocation("Did not expect pulse annotation kind!",
-                                        &SM, VD->getLocation());
+                                        &Ctx, VD->getLocation());
                 }
               }
             }
@@ -1716,7 +1781,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
             // A normal let bind
             emitErrorWithLocation(
                 "Did not implement case when struct allocation is not mutated!",
-                &SM, VD->getLocation());
+                &Ctx, VD->getLocation());
         }
 
         // Any uninitialized declaration that is not a struct
@@ -1737,8 +1802,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
         return GenericDecl;
       }
       emitErrorWithLocation(
-          "Declarations other than variable declarations not implemented!", &SM,
-          D->getLocation());
+          "Declarations other than variable declarations not implemented!",
+          &Ctx, D->getLocation());
     }
 
   } else if (auto *BO = dyn_cast<BinaryOperator>(S)) {
@@ -1809,6 +1874,10 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
       } else if (auto *ME = dyn_cast<MemberExpr>(Lhs)) {
 
         auto *LhsDecl = ME->getMemberDecl();
+        // TODO: Vidush
+        // We are ignoring implicit casts here
+        // However, we should check if that' the right approach.
+        //  casts may need to be handled and translated into !
         auto *BaseExpr = ME->getBase()->IgnoreParens()->IgnoreImpCasts();
         DEBUG_WITH_TYPE(DEBUG_TYPE, {
         ME->dump();
@@ -1851,7 +1920,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
                        << "\n";
 
           if (!RecordDec) {
-            emitErrorWithLocation("Could not find record declaration!", &SM,
+            emitErrorWithLocation("Could not find record declaration!", &Ctx,
                                   ME->getBeginLoc());
           }
 
@@ -1859,7 +1928,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           // if (It == MapRecordDeclsToTypedefDecls)
           auto It = RecordToRecordName.find(RecordDec);
           if (It == RecordToRecordName.end()) {
-            emitErrorWithLocation("Could not find name of record!", &SM,
+            emitErrorWithLocation("Could not find name of record!", &Ctx,
                                   BO->getBeginLoc());
           }
           StructName = It->second;
@@ -1963,7 +2032,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
             auto It = RecordToRecordName.find(RecordDecl);
             if (It == RecordToRecordName.end()) {
               emitErrorWithLocation(
-                  "Not implemented record type without typedef decl!", &SM,
+                  "Not implemented record type without typedef decl!", &Ctx,
                   ME->getBeginLoc());
             }
 
@@ -2071,12 +2140,13 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
         ME->dump();
         });
         emitErrorWithLocation(
-            "Could not cast member base expression to its declaration!", &SM,
+            "Could not cast member base expression to its declaration!", &Ctx,
             ME->getBeginLoc());
 
       } else if (auto *ME = dyn_cast<MemberExpr>(Rhs)) {
 
         auto *RhsDecl = ME->getMemberDecl();
+        /// TODO: Vidush, handle casts and check if it is safe to ignore them
         auto *BaseExpr = ME->getBase()->IgnoreParens()->IgnoreImpCasts();
         DEBUG_WITH_TYPE(DEBUG_TYPE, {
         BaseExpr->dump();
@@ -2277,7 +2347,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
               break;
             };
             default:
-              emitErrorWithLocation("Annotation not expected for IfStmt", &SM,
+              emitErrorWithLocation("Annotation not expected for IfStmt", &Ctx,
                                     IF->getBeginLoc());
             };
           }
@@ -2362,7 +2432,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
     S->dumpPretty(Ctx);
     emitErrorWithLocation("For loops not implemented since pulse does not "
                           "support for expressions",
-                          &SM, FS->getBeginLoc());
+                          &Ctx, FS->getBeginLoc());
   } else if (auto *WS = dyn_cast<WhileStmt>(S)) {
 
     auto *WhileCond = WS->getCond();
@@ -2433,7 +2503,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
     S->dumpPretty(Ctx);
     emitErrorWithLocation(
         "Did not implement translation from C unary expression to PulseStmt!",
-        &SM, US->getBeginLoc());
+        &Ctx, US->getBeginLoc());
   } else if (auto *NS = dyn_cast<NullStmt>(S)) {
     return nullptr;
   } else if (auto *CS = dyn_cast<CompoundStmt>(S)) {
@@ -2464,7 +2534,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
               return GenStmt;
             }
             else {
-              emitErrorWithLocation("Unhandled Attr in Attributed Stmt!", &SM,
+              emitErrorWithLocation("Unhandled Attr in Attributed Stmt!", &Ctx,
                                     AttrStmt->getAttrLoc());
             }
         }
@@ -2474,7 +2544,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
     return NewSequence;
   } else {
     S->dumpPretty(Ctx);
-    emitErrorWithLocation("Not implemented Clang expr!", &SM, S->getBeginLoc());
+    emitErrorWithLocation("Not implemented Clang expr!", &Ctx,
+                          S->getBeginLoc());
   }
 
   return nullptr;
@@ -2542,15 +2613,15 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     return NewConstTerm;
   } else if (auto *FL = dyn_cast<FloatingLiteral>(E)) {
     E->dumpPretty(Ctx);
-    emitErrorWithLocation("Floating Literal not implemented!", &SM,
+    emitErrorWithLocation("Floating Literal not implemented!", &Ctx,
                           E->getExprLoc());
   } else if (auto *SL = dyn_cast<StringLiteral>(E)) {
     E->dumpPretty(Ctx);
-    emitErrorWithLocation("String Literal not implemented!", &SM,
+    emitErrorWithLocation("String Literal not implemented!", &Ctx,
                           E->getExprLoc());
   } else if (auto *CL = dyn_cast<CharacterLiteral>(E)) {
     E->dumpPretty(Ctx);
-    emitErrorWithLocation("Character Liternal not implemented!", &SM,
+    emitErrorWithLocation("Character Liternal not implemented!", &Ctx,
                           E->getExprLoc());
   } else if (auto *BO = dyn_cast<BinaryOperator>(E)) {
 
@@ -2563,7 +2634,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       LLVM_DEBUG(llvm::dbgs() << "\n");
       emitErrorWithLocation("Expected types of Lhs and Rhs to be the same, "
                             "unsafe type casting now allowed in pulse!",
-                            &SM, E->getExprLoc());
+                            &Ctx, E->getExprLoc());
     }
 
     switch (Op) {
@@ -2647,7 +2718,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
         });
         emitErrorWithLocation("Null check not implemented for binary operator "
                               "other that Eq and Neq!",
-                              &SM, BO->getExprLoc());
+                              &Ctx, BO->getExprLoc());
       }
 
       SymbolTable TypeKey = getSymbolKeyForCType(Lhs->getType(), Ctx);
@@ -2687,6 +2758,8 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       if (auto *Mem = dyn_cast<MemberExpr>(SubExpr)) {
 
         auto *BaseExpr = Mem->getBase();
+        // TODO: Vidush, I am ignoring casts here.
+        // But the ! is added in GenStmt which comes because of the imp cast.
         if (auto *Dec = dyn_cast<DeclRefExpr>(
                 BaseExpr->IgnoreParenImpCasts()->IgnoreImpCasts())) {
           auto *VD = Dec->getDecl();
@@ -2727,60 +2800,61 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       E->dump();
       });
       emitErrorWithLocation(
-          "Unhandeled case in UnaryOperator getTermFromCExpr!", &SM,
+          "Unhandeled case in UnaryOperator getTermFromCExpr!", &Ctx,
           E->getExprLoc());
     }
   } else if (auto *CE = dyn_cast<CallExpr>(E)) {
 
-    if (CE->getDirectCallee()->getNameAsString() == pulseProofTermFromC) {
-      auto NumArgs = CE->getNumArgs();
-      assert(NumArgs == 1 &&
-             "Expected number of arguments for Pulse Proof Term to be 1!");
-      auto *UserLemma = new Lemma();
-      if (auto *ArgToString =
-              dyn_cast<StringLiteral>(CE->getArg(0)->IgnoreCasts())) {
-        auto ArgString = ArgToString->getString();
-        UserLemma->lemmas.push_back(ArgString.str());
-      } else {
-        emitErrorWithLocation(
-            "Expected pulse while to have arguments as string literals", &SM,
-            CE->getBeginLoc());
-      }
+    // if (CE->getDirectCallee()->getNameAsString() == pulseProofTermFromC) {
+    //   auto NumArgs = CE->getNumArgs();
+    //   assert(NumArgs == 1 &&
+    //          "Expected number of arguments for Pulse Proof Term to be 1!");
+    //   auto *UserLemma = new Lemma();
+    //   if (auto *ArgToString =
+    //           dyn_cast<StringLiteral>(CE->getArg(0)->IgnoreCasts())) {
+    //     auto ArgString = ArgToString->getString();
+    //     UserLemma->lemmas.push_back(ArgString.str());
+    //   } else {
+    //     emitErrorWithLocation(
+    //         "Expected pulse while to have arguments as string literals", &SM,
+    //         CE->getBeginLoc());
+    //   }
 
-      return UserLemma;
-    } else if (CE->getDirectCallee()->getNameAsString() ==
-               pulseWhileInvariantFromC) {
+    //   return UserLemma;
+    // } else if (CE->getDirectCallee()->getNameAsString() ==
+    //            pulseWhileInvariantFromC) {
 
-      auto NumArgs = CE->getNumArgs();
+    //   auto NumArgs = CE->getNumArgs();
 
-      std::vector<Slprop *> VectorLemmas;
-      for (size_t Idx = 0; Idx < NumArgs; Idx++) {
-        auto *UserLemma = new Lemma();
-        auto *Arg = CE->getArg(Idx);
-        // assert that each argument is actually a string literal
-        if (auto *ArgToString = dyn_cast<StringLiteral>(Arg->IgnoreCasts())) {
-          auto ArgString = ArgToString->getString();
-          UserLemma->lemmas.push_back(ArgString.str());
-          Slprop *Prop = UserLemma;
-          VectorLemmas.push_back(Prop);
-          // assert that next statement is a while loop
-        } else {
-          emitErrorWithLocation(
-              "Expected pulse while to have arguments as string literals", &SM,
-              E->getExprLoc());
-        }
-      }
+    //   std::vector<Slprop *> VectorLemmas;
+    //   for (size_t Idx = 0; Idx < NumArgs; Idx++) {
+    //     auto *UserLemma = new Lemma();
+    //     auto *Arg = CE->getArg(Idx);
+    //     // assert that each argument is actually a string literal
+    //     if (auto *ArgToString = dyn_cast<StringLiteral>(Arg->IgnoreCasts()))
+    //     {
+    //       auto ArgString = ArgToString->getString();
+    //       UserLemma->lemmas.push_back(ArgString.str());
+    //       Slprop *Prop = UserLemma;
+    //       VectorLemmas.push_back(Prop);
+    //       // assert that next statement is a while loop
+    //     } else {
+    //       emitErrorWithLocation(
+    //           "Expected pulse while to have arguments as string literals",
+    //           &SM, E->getExprLoc());
+    //     }
+    //   }
 
-      auto *Next = getNextStatement(E, Ctx);
-      if (auto *While = dyn_cast<WhileStmt>(Next)) {
-        // Add corresponding while invariant.
-        StmtToLemmas.insert(std::make_pair(While, VectorLemmas));
-        return nullptr;
-      }
-      emitErrorWithLocation(
-          "Expected next statement after pulse invariant to be a while!", &SM,
-          CE->getBeginLoc());
-    }
+    //   auto *Next = getNextStatement(E, Ctx);
+    //   if (auto *While = dyn_cast<WhileStmt>(Next)) {
+    //     // Add corresponding while invariant.
+    //     StmtToLemmas.insert(std::make_pair(While, VectorLemmas));
+    //     return nullptr;
+    //   }
+    //   emitErrorWithLocation(
+    //       "Expected next statement after pulse invariant to be a while!",
+    //       &SM, CE->getBeginLoc());
+    // }
 
     auto CallName = CE->getDirectCallee()->getNameAsString();
     auto *CallAppE = new AppE();
@@ -2822,6 +2896,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       assert(CE->getNumArgs() == 1 &&
              "Did not expect free to have more than one argument!");
       auto *Arg = CE->getArg(0);
+      // Vidush: TODO, check if we should ignore implicit casts here!
       if (auto *ArgDeclR =
               dyn_cast<DeclRefExpr>(Arg->IgnoreParens()->IgnoreImpCasts())) {
         auto *ArgDecl = ArgDeclR->getDecl();
@@ -2914,12 +2989,25 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     auto *ArrBase = ArrSubExpr->getBase();
     auto *ArrIdx = ArrSubExpr->getIdx();
 
-    auto *PulseCall = new AppE("op_Array_Access");
-    PulseCall->pushArg(getTermFromCExpr(ArrBase, MutAnalyzer, ExprsBefore, Parent,
-                                        ParentType, Module));
-    PulseCall->pushArg(
-        getTermFromCExpr(ArrIdx, MutAnalyzer, ExprsBefore, Parent, ParentType, Module));
+    llvm::outs() << "Dump arr sub expression!\n";
+    ArrSubExpr->dump();
+    llvm::outs() << "End dump arr sub expression.\n";
 
+    auto *PulseCall = new AppE("op_Array_Access");
+    PulseCall->pushArg(getTermFromCExpr(ArrBase, MutAnalyzer, ExprsBefore,
+                                        Parent, ParentType, Module));
+
+    if (ArrIdx->isIntegerConstantExpr(Ctx)) {
+      auto IntegerExprFromArrIdx = ArrIdx->getIntegerConstantExpr(Ctx);
+      auto *NewConstTerm = new ConstTerm();
+      NewConstTerm->ConstantValue =
+          std::to_string(IntegerExprFromArrIdx->getSExtValue());
+      NewConstTerm->Symbol = SymbolTable::SizeT;
+      PulseCall->pushArg(NewConstTerm);
+    } else {
+      PulseCall->pushArg(getTermFromCExpr(ArrIdx, MutAnalyzer, ExprsBefore,
+                                          Parent, ArrIdx->getType(), Module));
+    }
     // wrap PulseCall in Paren
     auto *NewParen = new Paren(PulseCall);
     return NewParen;
@@ -2934,6 +3022,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     auto *PulseParenExpr = new Paren(PulseSubExpr);
     return PulseParenExpr;
   } else if (auto *CCastExpr = dyn_cast<CStyleCastExpr>(E)) {
+    // Vidush::TODO We're ignore casts here, Check if we should?
     if (const CallExpr *Call =
             dyn_cast<CallExpr>(E->IgnoreParenImpCasts()->IgnoreCasts())) {
       if (const FunctionDecl *FD = Call->getDirectCallee()) {
@@ -2954,7 +3043,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
               CastType->dump();
               emitErrorWithLocation(
                   "Could not find Record Declaration or Corresponding Name!",
-                  &SM, FD->getLocation());
+                  &Ctx, FD->getLocation());
             }
 
             auto RecordName = It->second;
@@ -2982,7 +3071,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
           emitErrorWithLocation(
               "Expected allocated type for malloc to be a reference but found "
               "a pulse type that's not a reference!",
-              &SM, FD->getBeginLoc());
+              &Ctx, FD->getBeginLoc());
         }
       }
     } else if (checkIfExprIsNullPtr(CCastExpr)) {
@@ -2991,7 +3080,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     } else {
       CCastExpr->dumpPretty(Ctx);
       emitErrorWithLocation("Unimplemented case in CStyle Cast Expression!",
-                            &SM, CCastExpr->getExprLoc());
+                            &Ctx, CCastExpr->getExprLoc());
     }
   } else if (auto *RE = dyn_cast<clang::RecoveryExpr>(E)) {
     if (Expr *SubExpr = RE->getExprStmt()) {
@@ -3006,6 +3095,9 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
   } else if (auto *ME = dyn_cast<MemberExpr>(E)) {
 
     auto *MemberExprDecl = ME->getMemberDecl();
+    // TODO: check if we should ignore cases here
+    // Casts may need to be translated to !.
+    // But we need a principled approach for this.
     auto *BaseExpr = ME->getBase()->IgnoreParens()->IgnoreImpCasts();
 
     std::string NameOfDecl;
@@ -3054,7 +3146,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     E->dump();
     });
     emitErrorWithLocation("Expression not implemented in getTermFromCExpr!",
-                          &SM, E->getExprLoc());
+                          &Ctx, E->getExprLoc());
   }
 }
 

@@ -44,8 +44,9 @@ enum class SymbolTable {
   UInt64,
   UInt128,
   SizeT,
-  
-  //size t
+  Bool,
+
+  // size t
   SizeT_Add,
   SizeT_Sub,
   SizeT_Div,
@@ -55,7 +56,7 @@ enum class SymbolTable {
   SizeT_Lt,
   SizeT_Gt,
   SizeT_Ge,
-  
+
   // int 8
   Int8_Add,
   Int8_Sub,
@@ -66,8 +67,8 @@ enum class SymbolTable {
   Int8_Lt,
   Int8_Gt,
   Int8_Ge,
-  
-  //U int 8
+
+  // U int 8
   UInt8_Add,
   UInt8_Sub,
   UInt8_Div,
@@ -78,7 +79,7 @@ enum class SymbolTable {
   UInt8_Gt,
   UInt8_Ge,
 
-  // int 16 
+  // int 16
   Int16_Add,
   Int16_Sub,
   Int16_Div,
@@ -89,7 +90,7 @@ enum class SymbolTable {
   Int16_Gt,
   Int16_Ge,
 
-  // uint 16 
+  // uint 16
   UInt16_Add,
   UInt16_Sub,
   UInt16_Div,
@@ -99,8 +100,8 @@ enum class SymbolTable {
   UInt16_Lt,
   UInt16_Gt,
   UInt16_Ge,
-  
-  //int 32
+
+  // int 32
   Int32_Add,
   Int32_Sub,
   Int32_Div,
@@ -111,7 +112,7 @@ enum class SymbolTable {
   Int32_Gt,
   Int32_Ge,
 
-  //uint 32
+  // uint 32
   UInt32_Add,
   UInt32_Sub,
   UInt32_Div,
@@ -121,8 +122,8 @@ enum class SymbolTable {
   UInt32_Lt,
   UInt32_Gt,
   UInt32_Ge,
-  
-  //int 64
+
+  // int 64
   Int64_Add,
   Int64_Sub,
   Int64_Div,
@@ -133,7 +134,7 @@ enum class SymbolTable {
   Int64_Gt,
   Int64_Ge,
 
-  //uint 64
+  // uint 64
   UInt64_Add,
   UInt64_Sub,
   UInt64_Div,

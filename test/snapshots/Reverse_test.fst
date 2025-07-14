@@ -10,6 +10,7 @@ open Pulse.Lib.C
 fn reverse
 (arr : array UInt32.t)
 (len : SizeT.t)
+requires pure (length arr == SizeT.v len)
 requires exists* s.arr |-> s
 requires pure (length arr == SizeT.v len)
 ensures exists* s.arr |-> s

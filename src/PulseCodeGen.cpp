@@ -306,6 +306,14 @@ std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
       TermString += CT->ConstantValue + "sz";
       break;
     }
+    case SymbolTable::Bool: {
+      if (CT->ConstantValue == "0") {
+        TermString += "false";
+      } else {
+        TermString += "true";
+      }
+      break;
+    }
     default: {
       CT->dumpPretty();
       emitError("Did not expect pulse type!");

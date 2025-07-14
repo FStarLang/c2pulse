@@ -146,6 +146,10 @@ SymbolTable getSymbolKeyForCType(clang::QualType Ty, clang::ASTContext &Ctx) {
       return SymbolTable::SizeT;
     }
 
+    if (Ty.getAsString() == "_Bool") {
+      return SymbolTable::Bool;
+    }
+
     if (Ctx.getTypeSize(Ty) == 8) {
       return SymbolTable::UInt8;
     } else if (Ctx.getTypeSize(Ty) == 16) {
@@ -162,6 +166,8 @@ SymbolTable getSymbolKeyForCType(clang::QualType Ty, clang::ASTContext &Ctx) {
 
   } else if (Ty.getAsString() == "size_t") {
     return SymbolTable::SizeT;
+  } else if (Ty.getAsString() == "_Bool") {
+    return SymbolTable::Bool;
   } else if (Ty->isArrayType()) {
     return SymbolTable::Array;
   }
