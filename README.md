@@ -54,6 +54,12 @@ c2pulse/
 sudo apt install opam
 ```
 
+## Cloning the repo
+Ensure that you clone all submodules:
+```bash
+git clone --recurse-submodules git@github.com:FStarLang/c2pulse.git
+````
+
 ## Building C2Pulse 
 
 ```bash
