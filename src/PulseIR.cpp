@@ -58,7 +58,11 @@ llvm::raw_ostream &operator<<(llvm::raw_ostream &os, TermTag T) {
 }
 
 const char* lookupSymbol(SymbolTable Key){
-  return SymbolToStringTable.lookup(Key);
+  if (SymbolToStringTable.count(Key)) {
+    return SymbolToStringTable.lookup(Key);
+  } else {
+    emitError("Key not found in SymbolTable!");
+  }
 }
 
 static bool matchAnnotation(std::string Start, std::string End,
@@ -121,6 +125,68 @@ PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data,
 
   emitError("getPulseAnnKindFromString: Encountered an unknown annotation!\n");
   return PulseAnnKind::Unknown;
+}
+
+std::string getPulseStringForCType(clang::QualType Ty, clang::ASTContext &Ctx) {
+
+  if (Ty->isSignedIntegerType()) {
+
+    if (Ctx.getTypeSize(Ty) == 8) {
+      return "int8";
+    } else if (Ctx.getTypeSize(Ty) == 16) {
+      return "int16";
+    } else if (Ctx.getTypeSize(Ty) == 32) {
+      return "int32";
+    } else if (Ctx.getTypeSize(Ty) == 64) {
+      return "int64";
+    } else {
+      emitError("(getPulseStringForCType): did not expect Clang type!\n");
+    }
+
+  } else if (Ty->isUnsignedIntegerType()) {
+
+    // check explicitly if it is size_t
+    if (Ty.getAsString() == "size_t") {
+      return "size_t";
+    }
+
+    if (Ty.getAsString() == "_Bool") {
+      return "bool";
+    }
+
+    if (Ctx.getTypeSize(Ty) == 8) {
+      return "uint8";
+    } else if (Ctx.getTypeSize(Ty) == 16) {
+      return "uint16";
+    } else if (Ctx.getTypeSize(Ty) == 32) {
+      return "uint32";
+    } else if (Ctx.getTypeSize(Ty) == 64) {
+      return "uint64";
+    } else if (Ctx.getTypeSize(Ty) == 128) {
+      return "uint128";
+    } else {
+      emitError("(getPulseStringForCType): did not expect C type!\n");
+    }
+
+  } else if (Ty.getAsString() == "size_t") {
+    return "size_t";
+  } else if (Ty.getAsString() == "_Bool") {
+    return "bool";
+  } else if (Ty->isArrayType()) {
+    return "array";
+  }
+  // What about structs
+  else if (Ty->isStructureType() || Ty->isUnionType()) {
+    // We do not handle structs and unions in this function.
+    // We return UNKNOWN type from this function.
+    emitError("(getPulseStringForCType): did not expect C type!\n");
+
+  } else if (Ty->isPointerType()) {
+    emitError("(getPulseStringForCType): did not expect C type!\n");
+  }
+
+  Ty->dump();
+  emitError("(getPulseStringForCType): Did not expect C type!\n");
 }
 
 SymbolTable getSymbolKeyForCType(clang::QualType Ty, clang::ASTContext &Ctx) {
@@ -378,7 +444,27 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
     break;
   }
   case clang::BO_LE:{
-    emitError("(getSymbolKeyForOperator): Unknown case in BO_LE!\n");
+    if (Val == SymbolTable::Int8) {
+      return lookupSymbol(SymbolTable::Int8_Le);
+    } else if (Val == SymbolTable::Int16) {
+      return lookupSymbol(SymbolTable::Int16_Le);
+    } else if (Val == SymbolTable::Int32) {
+      return lookupSymbol(SymbolTable::Int32_Le);
+    } else if (Val == SymbolTable::Int64) {
+      return lookupSymbol(SymbolTable::Int64_Le);
+    } else if (Val == SymbolTable::UInt8) {
+      return lookupSymbol(SymbolTable::UInt8_Le);
+    } else if (Val == SymbolTable::UInt16) {
+      return lookupSymbol(SymbolTable::UInt16_Le);
+    } else if (Val == SymbolTable::UInt32) {
+      return lookupSymbol(SymbolTable::UInt32_Le);
+    } else if (Val == SymbolTable::UInt64) {
+      return lookupSymbol(SymbolTable::UInt64_Le);
+    } else if (Val == SymbolTable::SizeT) {
+      return lookupSymbol(SymbolTable::SizeT_Le);
+    } else {
+      emitError("(getSymbolKeyForOperator): Unknown case in BO_GT!\n");
+    }
     break;
   }
   case clang::BO_GE:{
@@ -431,7 +517,30 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
     break;
   }
   case clang::BO_NE:{
-    emitError("(getSymbolKeyForOperator): Not implemented BO_NE!\n");
+    ///Vidush: 
+    ///The parent who calls this should check BO_NE 
+    ///and add not around the expr.
+    if (Val == SymbolTable::Int8) {
+      return lookupSymbol(SymbolTable::Int8_Eq);
+    } else if (Val == SymbolTable::Int16) {
+      return lookupSymbol(SymbolTable::Int16_Eq);
+    } else if (Val == SymbolTable::Int32) {
+      return lookupSymbol(SymbolTable::Int32_Eq);
+    } else if (Val == SymbolTable::Int64) {
+      return lookupSymbol(SymbolTable::Int64_Eq);
+    } else if (Val == SymbolTable::UInt8) {
+      return lookupSymbol(SymbolTable::UInt8_Eq);
+    } else if (Val == SymbolTable::UInt16) {
+      return lookupSymbol(SymbolTable::UInt16_Eq);
+    } else if (Val == SymbolTable::UInt32) {
+      return lookupSymbol(SymbolTable::UInt32_Eq);
+    } else if (Val == SymbolTable::UInt64) {
+      return lookupSymbol(SymbolTable::UInt64_Eq);
+    } else if (Val == SymbolTable::SizeT) {
+      return lookupSymbol(SymbolTable::SizeT_Eq);
+    } else {
+      emitError("(getSymbolKeyForOperator): Unknown case in BO_EQ!\n");
+    }
     break;
   }
   case clang::BO_And:{

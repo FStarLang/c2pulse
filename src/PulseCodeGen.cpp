@@ -280,7 +280,8 @@ std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
       break;
     }
     case SymbolTable::Int8: {
-      emitError("ConstTerm: did not implement case for Int8!\n");
+      TermString += CT->ConstantValue + "y";
+      break;
     }
     case SymbolTable::Int16: {
       emitError("ConstTerm: did not implement case for Int16!\n");

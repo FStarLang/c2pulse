@@ -2378,19 +2378,92 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
       // return RetStmt;
       //}
       // else{
+      llvm::outs() << "Print the Return Stmt!\n";
+      RS->dump();
+      llvm::outs() << "End of printing return stmt!\n";
+      RetVal->dump();
+      llvm::outs() << "End of printing return value!\n";  
+      
+      if (auto *IC = dyn_cast<CastExpr>(RetVal)){
+        auto* SubExpr = IC->getSubExpr()->IgnoreParens();
+        QualType sourceType = IC->getSubExpr()->getType();
+        QualType destType = IC->getType();
+        //No need for cast to same type
+        if (sourceType.getCanonicalType() == destType.getCanonicalType()) {
+                goto ret_val_bo_general;
+        }
+        if (sourceType.getAsString() == destType.getAsString()) {
+                goto ret_val_bo_general;
+        }
+        //Handle BO differently
+        if (auto *BO = dyn_cast<BinaryOperator>(SubExpr)){
+          //Use _Bool since clang uses int to model Bools
+          if (BO->isComparisonOp()){
+            //No need for a bool to bool cast.
+            if (IC->getType().getAsString() == "_Bool" || IC->getType().getAsString() == "bool"){
+              goto ret_val_bo_general;
+            }
+            ///make a call expr
+            auto *CastCall = new AppE("bool_to_" + getPulseStringForCType(IC->getType(), Ctx));
 
-      SmallVector<PulseStmt *> ExprsBefore;
-      auto *RetTerm = getTermFromCExpr(RetVal, Analyzer, ExprsBefore, Parent,
+            SmallVector<PulseStmt *> ExprsBefore;
+            auto *RetTerm = getTermFromCExpr(BO, Analyzer, ExprsBefore, Parent,
+                                       RetVal->getType(), Module);
+            CastCall->pushArg(RetTerm);
+            auto *NewParen = new Paren(CastCall);
+            auto *NewPulseExpr = new PulseExpr();
+            NewPulseExpr->E = NewParen;
+            return NewPulseExpr;
+          }
+          else{
+            emitErrorWithLocation("Return value not implemented!", &Ctx, BO->getExprLoc());
+          }
+
+        }
+        else if (auto *IL = dyn_cast<IntegerLiteral>(SubExpr)){
+
+        auto *CastCall = new AppE(getPulseStringForCType(IL->getType(), Ctx) + "_to_" + getPulseStringForCType(IC->getType(), Ctx));
+
+        SmallVector<PulseStmt *> ExprsBefore;
+        auto *RetTerm = new ConstTerm();
+        RetTerm->ConstantValue = std::to_string(IL->getValue().getSExtValue());
+        RetTerm->Symbol = getSymbolKeyForCType(IL->getType(), Ctx);
+        CastCall->pushArg(RetTerm);
+        auto *NewParen = new Paren(CastCall);
+        auto *NewPulseExpr = new PulseExpr();
+        NewPulseExpr->E = NewParen;
+        return NewPulseExpr;
+
+        }
+        RS->dump();
+        ///Vidush: TODO We should handle these other cases where implicit casts exist.
+        ////TODO: These might need library implementation in Pulse
+        auto *CastCall = new AppE(getPulseStringForCType(SubExpr->getType(), Ctx) + "_to_" + getPulseStringForCType(IC->getType(), Ctx));
+
+        SmallVector<PulseStmt *> ExprsBefore;
+        auto *RetTerm = getTermFromCExpr(SubExpr, Analyzer, ExprsBefore, Parent,
+                                       RetVal->getType(), Module);
+        CastCall->pushArg(RetTerm);
+        auto *NewParen = new Paren(CastCall);
+        auto *NewPulseExpr = new PulseExpr();
+        NewPulseExpr->E = NewParen;
+        return NewPulseExpr;
+      }
+      else{
+        ret_val_bo_general:
+        SmallVector<PulseStmt *> ExprsBefore;
+        auto *RetTerm = getTermFromCExpr(RetVal, Analyzer, ExprsBefore, Parent,
                                        RetVal->getType(), Module);
 
-      if (RetTerm == nullptr)
-        return nullptr;
+        if (RetTerm == nullptr)
+          return nullptr;
 
-      auto *NewPulseExpr = new PulseExpr();
-      NewPulseExpr->E = RetTerm;
+        auto *NewPulseExpr = new PulseExpr();
+        NewPulseExpr->E = RetTerm;
 
-      assert(ExprsBefore.empty() && "Expected expressions to be released!");
-      return NewPulseExpr;
+        assert(ExprsBefore.empty() && "Expected expressions to be released!");
+        return NewPulseExpr;
+      }
       //}
       //   if (auto *DeclRef =
       //   dyn_cast<DeclRefExpr>(RetVal->IgnoreParenImpCasts()->IgnoreImpCasts())){
@@ -2720,21 +2793,52 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
                               "other that Eq and Neq!",
                               &Ctx, BO->getExprLoc());
       }
+      
+      //Vidush: This is a HACK, there should be a better approach rather than ignoring 
+      //casts to get the type of the operator
+      //Ignore casts to get underlying type!
 
-      SymbolTable TypeKey = getSymbolKeyForCType(Lhs->getType(), Ctx);
+      auto *RemoveCastsLhs = Lhs->IgnoreParens()->IgnoreCasts()->IgnoreImpCasts();
+
+      SymbolTable TypeKey = getSymbolKeyForCType(RemoveCastsLhs->getType(), Ctx);
       auto *OpKey = getSymbolKeyForOperator(TypeKey, Op);
 
-      auto *NewAppENode = new AppE(OpKey);
-      auto *LhsTerm = getTermFromCExpr(Lhs, MutAnalyzer, ExprsBefore, Parent,
+      switch (Op){
+        case BO_NE:{
+          auto *NewAppENode = new AppE(OpKey);
+          auto *LhsTerm = getTermFromCExpr(Lhs, MutAnalyzer, ExprsBefore, Parent,
                                        Lhs->getType(), Module);
-      auto *RhsTerm = getTermFromCExpr(Rhs, MutAnalyzer, ExprsBefore, Parent,
+          auto *RhsTerm = getTermFromCExpr(Rhs, MutAnalyzer, ExprsBefore, Parent,
                                        Rhs->getType(), Module);
-      NewAppENode->pushArg(LhsTerm);
-      NewAppENode->pushArg(RhsTerm);
+          NewAppENode->pushArg(LhsTerm);
+          NewAppENode->pushArg(RhsTerm);
+          
+          // Wrap Call Expr into a Paren to be safe.
+          auto *NewParen = new Paren(NewAppENode);
 
-      // Wrap Call Expr into a Paren to be safe.
-      auto *NewParen = new Paren(NewAppENode);
-      return NewParen;
+
+          //Add not 
+          auto *NotAppE = new AppE("not");
+          NotAppE->pushArg(NewParen);
+          auto *NotAppEParen = new Paren(NotAppE);
+          return NotAppEParen;
+          break;
+        }
+        default: {
+          auto *NewAppENode = new AppE(OpKey);
+          auto *LhsTerm = getTermFromCExpr(Lhs, MutAnalyzer, ExprsBefore, Parent,
+                                       Lhs->getType(), Module);
+          auto *RhsTerm = getTermFromCExpr(Rhs, MutAnalyzer, ExprsBefore, Parent,
+                                       Rhs->getType(), Module);
+          NewAppENode->pushArg(LhsTerm);
+          NewAppENode->pushArg(RhsTerm);
+          
+          // Wrap Call Expr into a Paren to be safe.
+          auto *NewParen = new Paren(NewAppENode);
+          return NewParen;
+          break;
+        };
+      };
       break;
     }
     }

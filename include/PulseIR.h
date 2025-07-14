@@ -45,6 +45,7 @@ enum class SymbolTable {
   UInt128,
   SizeT,
   Bool,
+  Int,
 
   // size t
   SizeT_Add,
@@ -54,8 +55,10 @@ enum class SymbolTable {
   SizeT_Mul,
   SizeT_Eq,
   SizeT_Lt,
+  SizeT_Le,
   SizeT_Gt,
   SizeT_Ge,
+  SizeT_Ne,
 
   // int 8
   Int8_Add,
@@ -65,8 +68,10 @@ enum class SymbolTable {
   Int8_Mul,
   Int8_Eq,
   Int8_Lt,
+  Int8_Le,
   Int8_Gt,
   Int8_Ge,
+  Int8_Ne,
 
   // U int 8
   UInt8_Add,
@@ -76,8 +81,10 @@ enum class SymbolTable {
   UInt8_Mul,
   UInt8_Eq,
   UInt8_Lt,
+  UInt8_Le,
   UInt8_Gt,
   UInt8_Ge,
+  UInt8_Ne,
 
   // int 16
   Int16_Add,
@@ -87,8 +94,10 @@ enum class SymbolTable {
   Int16_Mul,
   Int16_Eq,
   Int16_Lt,
+  Int16_Le,
   Int16_Gt,
   Int16_Ge,
+  Int16_Ne,
 
   // uint 16
   UInt16_Add,
@@ -98,8 +107,10 @@ enum class SymbolTable {
   UInt16_Mul,
   UInt16_Eq,
   UInt16_Lt,
+  UInt16_Le,
   UInt16_Gt,
   UInt16_Ge,
+  UInt16_Ne,
 
   // int 32
   Int32_Add,
@@ -109,8 +120,10 @@ enum class SymbolTable {
   Int32_Mul,
   Int32_Eq,
   Int32_Lt,
+  Int32_Le,
   Int32_Gt,
   Int32_Ge,
+  Int32_Ne,
 
   // uint 32
   UInt32_Add,
@@ -120,8 +133,10 @@ enum class SymbolTable {
   UInt32_Mul,
   UInt32_Eq,
   UInt32_Lt,
+  UInt32_Le,
   UInt32_Gt,
   UInt32_Ge,
+  UInt32_Ne,
 
   // int 64
   Int64_Add,
@@ -131,8 +146,10 @@ enum class SymbolTable {
   Int64_Mul,
   Int64_Eq,
   Int64_Lt,
+  Int64_Le,
   Int64_Gt,
   Int64_Ge,
+  Int64_Ne,
 
   // uint 64
   UInt64_Add,
@@ -142,8 +159,23 @@ enum class SymbolTable {
   UInt64_Mul,
   UInt64_Eq,
   UInt64_Lt,
+  UInt64_Le,
   UInt64_Gt,
   UInt64_Ge,
+  UInt64_Ne,
+
+  // int
+  Int_Add,
+  Int_Sub,
+  Int_Div,
+  Int_Rem,
+  Int_Mul,
+  Int_Eq,
+  Int_Lt,
+  Int_Le,
+  Int_Gt,
+  Int_Ge,
+  Int_Ne,
 
   Array,
   Ref,
@@ -166,6 +198,8 @@ static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
     {SymbolTable::UInt64, "UInt64.t"},
     {SymbolTable::UInt128, "UInt128.t"},
     {SymbolTable::SizeT, "SizeT.t"},
+    {SymbolTable::Bool, "bool"},
+    {SymbolTable::Int, "int"},
 
     
     {SymbolTable::SizeT_Add, "SizeT.add"},
@@ -175,6 +209,7 @@ static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
     {SymbolTable::SizeT_Mul, "SizeT.mul"},
     {SymbolTable::SizeT_Eq, "SizeT.eq"},
     {SymbolTable::SizeT_Lt, "SizeT.lt"},
+    {SymbolTable::SizeT_Le, "SizeT.lte"},
     {SymbolTable::SizeT_Gt, "SizeT.gt"},
     {SymbolTable::SizeT_Ge, "SizeT.gte"},
 
@@ -186,6 +221,7 @@ static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
     {SymbolTable::Int8_Mul, "Int8.mul"},
     {SymbolTable::Int8_Eq, "Int8.eq"},
     {SymbolTable::Int8_Lt, "Int8.lt"},
+    {SymbolTable::Int8_Le, "Int8.lte"},
     {SymbolTable::Int8_Gt, "Int8.gt"},
     {SymbolTable::Int8_Ge, "Int8.gte"},
         
@@ -197,6 +233,7 @@ static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
     {SymbolTable::UInt8_Mul, "UInt8.mul"},
     {SymbolTable::UInt8_Eq, "UInt8.eq"},
     {SymbolTable::UInt8_Lt, "UInt8.lt"},
+    {SymbolTable::UInt8_Le, "UInt8.lte"},
     {SymbolTable::UInt8_Gt, "UInt8.gt"},
     {SymbolTable::UInt8_Ge, "UInt8.gte"},
 
@@ -208,6 +245,7 @@ static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
     {SymbolTable::Int16_Mul, "Int16.mul"},
     {SymbolTable::Int16_Eq, "Int16.eq"},
     {SymbolTable::Int16_Lt, "Int16.lt"},
+    {SymbolTable::Int16_Le, "Int16.lte"},
     {SymbolTable::Int16_Gt, "Int16.gt"},
     {SymbolTable::Int16_Ge, "Int16.gte"},
         
@@ -219,6 +257,7 @@ static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
     {SymbolTable::UInt16_Mul, "UInt16.mul"},
     {SymbolTable::UInt16_Eq, "UInt16.eq"},
     {SymbolTable::UInt16_Lt, "UInt16.lt"},
+    {SymbolTable::UInt16_Le, "UInt16.lte"},
     {SymbolTable::UInt16_Gt, "UInt16.gt"},
     {SymbolTable::UInt16_Ge, "UInt16.gte"},
 
@@ -231,6 +270,7 @@ static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
     {SymbolTable::Int32_Mul, "Int32.mul"},
     {SymbolTable::Int32_Eq, "Int32.eq"},
     {SymbolTable::Int32_Lt, "Int32.lt"},
+    {SymbolTable::Int32_Le, "Int32.lte"},
     {SymbolTable::Int32_Gt, "Int32.gt"},
     {SymbolTable::Int32_Ge, "Int32.gte"},
         
@@ -242,6 +282,7 @@ static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
     {SymbolTable::UInt32_Mul, "UInt32.mul"},
     {SymbolTable::UInt32_Eq, "UInt32.eq"},
     {SymbolTable::UInt32_Lt, "UInt32.lt"},
+    {SymbolTable::UInt32_Le, "UInt32.lte"},
     {SymbolTable::UInt32_Gt, "UInt32.gt"},
     {SymbolTable::UInt32_Ge, "UInt32.gte"},
 
@@ -253,6 +294,7 @@ static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
     {SymbolTable::Int64_Rem, "Int64.rem"},
     {SymbolTable::Int64_Eq, "Int64.eq"},
     {SymbolTable::Int64_Lt, "Int64.lt"},
+    {SymbolTable::Int64_Le, "Int64.lte"},
     {SymbolTable::Int64_Gt, "Int64.gt"},
     {SymbolTable::Int64_Ge, "Int64.gte"},
 
@@ -264,8 +306,25 @@ static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
     {SymbolTable::UInt64_Rem, "UInt64.rem"},
     {SymbolTable::UInt64_Eq, "UInt64.eq"},
     {SymbolTable::UInt64_Lt, "UInt64.lt"},
+    {SymbolTable::UInt64_Le, "UInt64.lte"},
     {SymbolTable::UInt64_Gt, "UInt64.gt"},
     {SymbolTable::UInt64_Ge, "UInt64.gte"},
+
+
+    ///VIDUSH:
+    /// Right now Int32.t and int are the same 
+    /// In case we want these to be different...
+    /// adding stuff here for now.
+    {SymbolTable::Int_Add, "add"},
+    {SymbolTable::Int_Sub, "sub"},
+    {SymbolTable::Int_Div, "div"},
+    {SymbolTable::Int_Rem, "rem"},
+    {SymbolTable::Int_Mul, "mul"},
+    {SymbolTable::Int_Eq, "eq"},
+    {SymbolTable::Int_Lt, "lt"},
+    {SymbolTable::Int_Le, "lte"},
+    {SymbolTable::Int_Gt, "gt"},
+    {SymbolTable::Int_Ge, "gte"},
 
     {SymbolTable::Array, "array"},
     {SymbolTable::Ref, "ref"},
@@ -804,3 +863,6 @@ typedef PulseModul File;
 
 /// A function to get the kind of pulse annotation from a string.
 PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data, std::string &match);
+
+/// A function to get the string for the C type.
+std::string getPulseStringForCType(clang::QualType Ty, clang::ASTContext &Ctx);

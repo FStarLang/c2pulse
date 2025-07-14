@@ -14,10 +14,10 @@ returns b:_Bool
 {
 if((Int32.lt a b))
 {
-true;
+(int32_to_bool 1l);
 }
 else
 {
-false;
+(int32_to_bool 0l);
 };
 }

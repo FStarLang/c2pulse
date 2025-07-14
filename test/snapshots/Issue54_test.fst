@@ -28,6 +28,6 @@ pts_to_len a2;
 }
 else
 {
-false;
+(int32_to_bool 0l);
 };
 }
