@@ -11,7 +11,6 @@
 
 #include <unistd.h>
 #include <memory>
-// #include <vector>
 #include <unordered_map>
 #include <map>
 
@@ -72,7 +71,7 @@ int main(int argc, const char **argv) {
     // files and locations. And also allows for events with same range in different files
     // be stored separately, I am trying to avoid collisions. I believe this is useful for 
     // large projects with many files.
-    std::unordered_map<FileID, std::map<std::string, MacroEventInfo>> macroInfoMap;
+    std::unordered_map<FileID, std::map<unsigned, MacroEventInfo>> macroInfoMap;
     auto Factory = std::make_unique<MacroFrontendActionFactory>(macroInfoMap);
     int Result = Tool->run(Factory.get());
     if (Result != 0) {
@@ -120,7 +119,7 @@ int main(int argc, const char **argv) {
         // it depends where you will decide to collect the source information
         // I was wondering if we could have it modular, so we can have everything
         // organized in such a way that it is easy to maintain and extend.
-        const std::map<std::string, MacroEventInfo> &events = macroInfoMap[fileID]; 
+        const std::map<unsigned, MacroEventInfo> &events = macroInfoMap[fileID]; 
         LLVM_DEBUG( 
         if (!events.empty()) {
         llvm::outs() << "  Number of macro events collected: " << events.size() << "\n";

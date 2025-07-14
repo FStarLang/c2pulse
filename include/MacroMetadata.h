@@ -4,8 +4,6 @@
 #include <vector>
 #include "clang/Basic/SourceLocation.h"
 #include <vector>
-// #include <unordered_map>
-// #include <map>
 
 enum class MacroEventKind {
     Define,
