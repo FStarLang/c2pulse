@@ -7,7 +7,6 @@ open FStar.Int32
 open FStar.Int.Cast
 open FStar.SizeT
 
-let b2i (b:bool) = if b then 1l else 0l
 let bool_to_int64 (b:bool) = if b then 1L else 0L
 let bool_to_uint64 (b:bool) = if b then 1UL else 0UL
 let bool_to_int32 (b:bool) = if b then 1l else 0l
@@ -17,7 +16,6 @@ let bool_to_uint16 (b:bool) = if b then 1us else 0us
 let bool_to_int8 (b:bool) = if b then 1y else 0y
 let bool_to_uint8 (b:bool) = if b then 1uy else 0uy
 
-//TODO: Vidush check if this int to bool cast is correct?
 let int8_to_bool (i:Int8.t { i == 0y \/ i == 1y }) = if (Int8.gt i 0y) then true else false
 let int16_to_bool (i:Int16.t { i == 0s \/ i == 1s }) = if (Int16.gt i 0s) then true else false
 let int32_to_bool (i:FStar.Int32.t { i == 0l \/ i == 1l }) = if (FStar.Int32.gt i 0l) then true else false
