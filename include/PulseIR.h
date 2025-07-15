@@ -56,7 +56,7 @@ enum class SymbolTable {
   SizeT_Mul,
 
   SizeT_Eq,
-  SizeT_Eq_Int32, 
+  SizeT_Eq_Int32,
 
   SizeT_Lt,
   SizeT_Le,
@@ -183,6 +183,10 @@ enum class SymbolTable {
   Int_Ge,
   Int_Ne,
 
+  // logical operators
+  // AmpAmp
+  AmpAmp,
+
   Array,
   Ref,
   UNKNOWN,
@@ -207,7 +211,6 @@ static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
     {SymbolTable::Bool, "bool"},
     {SymbolTable::Int, "int"},
 
-    
     {SymbolTable::SizeT_Add, "SizeT.add"},
     {SymbolTable::SizeT_Sub, "SizeT.sub"},
     {SymbolTable::SizeT_Div, "SizeT.div"},
@@ -220,7 +223,7 @@ static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
     {SymbolTable::SizeT_Gt, "SizeT.gt"},
     {SymbolTable::SizeT_Ge, "SizeT.gte"},
 
-     //int 8
+    // int 8
     {SymbolTable::Int8_Add, "Int8.add"},
     {SymbolTable::Int8_Sub, "Int8.sub"},
     {SymbolTable::Int8_Div, "Int8.div"},
@@ -231,8 +234,8 @@ static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
     {SymbolTable::Int8_Le, "Int8.lte"},
     {SymbolTable::Int8_Gt, "Int8.gt"},
     {SymbolTable::Int8_Ge, "Int8.gte"},
-        
-         //uint 8
+
+    // uint 8
     {SymbolTable::UInt8_Add, "UInt8.add"},
     {SymbolTable::UInt8_Sub, "UInt8.sub"},
     {SymbolTable::UInt8_Div, "UInt8.div"},
@@ -244,7 +247,7 @@ static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
     {SymbolTable::UInt8_Gt, "UInt8.gt"},
     {SymbolTable::UInt8_Ge, "UInt8.gte"},
 
-        //int 16
+    // int 16
     {SymbolTable::Int16_Add, "Int16.add"},
     {SymbolTable::Int16_Sub, "Int16.sub"},
     {SymbolTable::Int16_Div, "Int16.div"},
@@ -255,8 +258,8 @@ static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
     {SymbolTable::Int16_Le, "Int16.lte"},
     {SymbolTable::Int16_Gt, "Int16.gt"},
     {SymbolTable::Int16_Ge, "Int16.gte"},
-        
-         //uint 16
+
+    // uint 16
     {SymbolTable::UInt16_Add, "UInt16.add"},
     {SymbolTable::UInt16_Sub, "UInt16.sub"},
     {SymbolTable::UInt16_Div, "UInt16.div"},
@@ -268,8 +271,7 @@ static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
     {SymbolTable::UInt16_Gt, "UInt16.gt"},
     {SymbolTable::UInt16_Ge, "UInt16.gte"},
 
-
-         //int 32
+    // int 32
     {SymbolTable::Int32_Add, "Int32.add"},
     {SymbolTable::Int32_Sub, "Int32.sub"},
     {SymbolTable::Int32_Div, "Int32.div"},
@@ -280,8 +282,8 @@ static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
     {SymbolTable::Int32_Le, "Int32.lte"},
     {SymbolTable::Int32_Gt, "Int32.gt"},
     {SymbolTable::Int32_Ge, "Int32.gte"},
-        
-         //uint 32
+
+    // uint 32
     {SymbolTable::UInt32_Add, "UInt32.add"},
     {SymbolTable::UInt32_Sub, "UInt32.sub"},
     {SymbolTable::UInt32_Div, "UInt32.div"},
@@ -294,7 +296,7 @@ static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
     {SymbolTable::UInt32_Gt, "UInt32.gt"},
     {SymbolTable::UInt32_Ge, "UInt32.gte"},
 
-    //int 64
+    // int 64
     {SymbolTable::Int64_Mul, "Int64.mul"},
     {SymbolTable::Int64_Add, "Int64.add"},
     {SymbolTable::Int64_Sub, "Int64.sub"},
@@ -306,7 +308,7 @@ static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
     {SymbolTable::Int64_Gt, "Int64.gt"},
     {SymbolTable::Int64_Ge, "Int64.gte"},
 
-         //U int 64  
+    // U int 64
     {SymbolTable::UInt64_Mul, "UInt64.mul"},
     {SymbolTable::UInt64_Add, "UInt64.add"},
     {SymbolTable::UInt64_Sub, "UInt64.sub"},
@@ -319,11 +321,10 @@ static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
     {SymbolTable::UInt64_Gt, "UInt64.gt"},
     {SymbolTable::UInt64_Ge, "UInt64.gte"},
 
-
-    ///VIDUSH:
-    /// Right now Int32.t and int are the same 
-    /// In case we want these to be different...
-    /// adding stuff here for now.
+    /// VIDUSH:
+    ///  Right now Int32.t and int are the same
+    ///  In case we want these to be different...
+    ///  adding stuff here for now.
     {SymbolTable::Int_Add, "add"},
     {SymbolTable::Int_Sub, "sub"},
     {SymbolTable::Int_Div, "div"},
@@ -334,6 +335,9 @@ static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
     {SymbolTable::Int_Le, "lte"},
     {SymbolTable::Int_Gt, "gt"},
     {SymbolTable::Int_Ge, "gte"},
+
+    // logical operators
+    {SymbolTable::AmpAmp, "op_AmpAmp"},
 
     {SymbolTable::Array, "array"},
     {SymbolTable::Ref, "ref"},

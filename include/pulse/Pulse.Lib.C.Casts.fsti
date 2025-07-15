@@ -16,14 +16,14 @@ let bool_to_uint16 (b:bool) = if b then 1us else 0us
 let bool_to_int8 (b:bool) = if b then 1y else 0y
 let bool_to_uint8 (b:bool) = if b then 1uy else 0uy
 
-let int8_to_bool (i:Int8.t { i == 0y \/ i == 1y }) = if (Int8.gt i 0y) then true else false
-let int16_to_bool (i:Int16.t { i == 0s \/ i == 1s }) = if (Int16.gt i 0s) then true else false
-let int32_to_bool (i:FStar.Int32.t { i == 0l \/ i == 1l }) = if (FStar.Int32.gt i 0l) then true else false
-let int64_to_bool (i:Int64.t { i == 0L \/ i == 1L }) = if (Int64.gt i 0L) then true else false
-let uint8_to_bool (i:UInt8.t { i == 0uy \/ i == 1uy } ) = if (UInt8.gt i 0uy) then true else false
-let uint16_to_bool (i:UInt16.t { i == 0us \/ i == 1us } ) = if (UInt16.gt i 0us) then true else false
-let uint32_to_bool (i:UInt32.t { i == 0ul \/ i == 1ul }) = if (UInt32.gt i 0ul) then true else false
-let uint64_to_bool (i:UInt64.t { i == 0UL \/ i == 1UL } ) = if (UInt64.gt i 0UL) then true else false
+let int8_to_bool (i:Int8.t) = Int8.ne i 0y
+let int16_to_bool (i:Int16.t) = Int16.ne i 0s
+let int32_to_bool (i:FStar.Int32.t) = FStar.Int32.ne i 0l
+let int64_to_bool (i:Int64.t) = Int64.ne i 0L
+let uint8_to_bool (i:UInt8.t) = UInt8.ne i 0uy
+let uint16_to_bool (i:UInt16.t) = UInt16.ne i 0us
+let uint32_to_bool (i:UInt32.t) = UInt32.ne i 0ul
+let uint64_to_bool (i:UInt64.t) = UInt64.ne i 0UL
 
 val int32_to_sizet (x: FStar.Int32.t {FStar.Int32.gte x 0l}) : Pure t
   (requires True)

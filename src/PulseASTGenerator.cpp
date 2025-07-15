@@ -2943,12 +2943,29 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
           auto *NewAppENode = new AppE(OpKey);
           auto *LhsTerm = getTermFromCExpr(Lhs, MutAnalyzer, ExprsBefore, Parent,
                                        Lhs->getType(), Module);
-          auto *RhsTerm = getTermFromCExpr(Rhs, MutAnalyzer, ExprsBefore, Parent,
-                                       Rhs->getType(), Module);
-          NewAppENode->pushArg(LhsTerm);
-          NewAppENode->pushArg(RhsTerm);
-          
-          
+          auto *RhsTerm = getTermFromCExpr(Rhs, MutAnalyzer, ExprsBefore,
+                                           Parent, Rhs->getType(), Module);
+
+          // For logical ops make sure type of argument is bool if not cast them
+          if (BO->isLogicalOp()) {
+            if (Lhs->getType().getAsString() != "_Bool" ||
+                Lhs->getType().getAsString() != "bool") {
+              auto *CastCall = new AppE(
+                  getPulseStringForCType(Lhs->getType(), Ctx) + "_to_bool");
+              CastCall->pushArg(LhsTerm);
+              NewAppENode->pushArg(new Paren(CastCall));
+            }
+            if (Lhs->getType().getAsString() != "_Bool" ||
+                Lhs->getType().getAsString() != "bool") {
+              auto *CastCall = new AppE(
+                  getPulseStringForCType(Rhs->getType(), Ctx) + "_to_bool");
+              CastCall->pushArg(RhsTerm);
+              NewAppENode->pushArg(new Paren(CastCall));
+            }
+          } else {
+            NewAppENode->pushArg(LhsTerm);
+            NewAppENode->pushArg(RhsTerm);
+          }
 
           // Wrap Call Expr into a Paren to be safe.
           auto *NewParen = new Paren(NewAppENode);
