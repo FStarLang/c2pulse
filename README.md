@@ -162,7 +162,7 @@ Each major part of C2Pulse defines its own `DEBUG_TYPE`. You can enable debug ou
 
 Available `DEBUG_TYPE`'s include:
 
-| `DEBUG_TYPE`            | Component                  |
+|      DEBUG_TYPE         |        Component           |
 | ----------------------- | -------------------------- |
 | `ast-loc-info`          | `ExprLocationAnalyzer.cpp` |
 | `macro-comment-tracker` | `MacroCommentTracker.cpp`  |
