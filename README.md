@@ -167,7 +167,7 @@ Available `DEBUG_TYPE`'s include:
 | `ast-loc-info`          | `ExprLocationAnalyzer.cpp` |
 | `macro-comment-tracker` | `MacroCommentTracker.cpp`  |
 | `macro-frontend-action` | `MacroFrontendAction.cpp`  |
-| `pulse-gen`             | `PulseGenerator.cpp`       |
+| `pulse-ast-gen`         | `PulseASTGenerator.cpp`    |
 | `pulse-code-gen`        | `PulseCodeGen.cpp`         |
 
 To add debug output in code, use:
