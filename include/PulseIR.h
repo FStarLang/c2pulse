@@ -370,7 +370,8 @@ enum class TermTag {Const, Paren, Var, Name, AppE, FStarType, FStarPointerType, 
                     Returns,
                     Lemma, 
                     Project,
-                    LemmaStatement};
+                    LemmaStatement, 
+                    IfExpr};
 
 /// A base class for term.                    
 class Term {
@@ -564,7 +565,16 @@ public:
 };
 
 
-// An IR node for representing a 
+// An IR node for representing a Fstar If expression
+class IfExpr : public Term {
+  public: 
+    Term *Cond; 
+    Term *TrueExpr;
+    Term *FalseExpr;
+    IfExpr(Term *Cond, Term*True, Term *False);
+    virtual void dumpPretty() override;
+    static bool classof(const Term *T) { return T->Tag == TermTag::IfExpr; }
+};
 
 /// An enum class for a pulse statements types.
 enum class PulseStmtTag {

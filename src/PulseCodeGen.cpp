@@ -421,6 +421,20 @@ std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
     OS << PulseSyntax::Dot;
     OS << P->MemberName;
   }
+  else if (IfExpr *If = dyn_cast<IfExpr>(T)){
+    TermString += PulseSyntax::PulseIf;
+    TermString += PulseSyntax::Space;
+    TermString += generateCodeFromTerm(OS, If->Cond, RowCounter, ColCounter);
+    TermString += PulseSyntax::NewLine;
+    TermString += PulseSyntax::IfExprThen; 
+    TermString += PulseSyntax::Space;
+    TermString += generateCodeFromTerm(OS, If->TrueExpr, RowCounter, ColCounter);
+    TermString += PulseSyntax::NewLine;
+    TermString += PulseSyntax::IfExprElse;
+    TermString += PulseSyntax::Space;
+    TermString += generateCodeFromTerm(OS, If->FalseExpr, RowCounter, ColCounter);
+
+  }
 
   else {
     T->dumpPretty();

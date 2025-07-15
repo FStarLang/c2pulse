@@ -2345,73 +2345,6 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
       return PExpr;
     }
 
-  } else if (auto *CondOperator = dyn_cast<ConditionalOperator>(S)){
-    auto *PulseIfStmt = new PulseIf();
-    auto *Cond = CondOperator->getCond();
-    auto *Then = CondOperator->getTrueExpr(); 
-    auto *Else = CondOperator->getFalseExpr();
-
-    SmallVector<PulseStmt *> ExprsBefore;
-
-    auto *PulseCond = getTermFromCExpr(Cond, Analyzer, ExprsBefore, Parent,
-                                       Cond->getType(), Module);
-
-    if (Cond->getType().getAsString() != "_Bool" || Cond->getType().getAsString() != "bool"){
-
-      auto *CastCall = new AppE(getPulseStringForCType(Cond->getType(), Ctx)
-                                                   + "_to_bool");
-      CastCall->pushArg(PulseCond);
-      PulseCond = new Paren(CastCall);
-
-    }                                   
-
-    //PulseStmt *PulseThen;
-    //Conditional Expressions don't have any supported annotations at the moment.
-    // if (auto *AttrStmt = dyn_cast<AttributedStmt>(Then)) {
-    //   auto *ThenBody = AttrStmt->getSubStmt();
-
-    //   auto Attributes = AttrStmt->getAttrs();
-    //   // auto *PulseWhile = new PulseWhileStmt();
-    //   for (auto *Attr : Attributes) {
-
-    //     if (auto *AnnAttr = dyn_cast<AnnotateAttr>(Attr)) {
-    //       if (AnnAttr->getAttrName()->getName() == "pulse") {
-
-    //         auto AnnotationData = AnnAttr->getAnnotation().str();
-
-    //         std::string Match;
-    //         auto AnnKind = getPulseAnnKindFromString(AnnotationData, Match);
-    //         switch (AnnKind) {
-    //         case PulseAnnKind::Ensures: {
-    //           auto *NewEnsures = new Ensures();
-    //           NewEnsures->Ann = Match;
-    //           PulseIfStmt->IfLemmas.push_back(NewEnsures);
-    //           break;
-    //         };
-    //         default:
-    //           emitErrorWithLocation("Annotation not expected for IfStmt", &Ctx,
-    //                                 IF->getBeginLoc());
-    //         };
-    //       }
-    //     }
-    //   }
-    //   PulseThen = pulseFromStmt(ThenBody, Analyzer, Parent, Module, CS);
-    // } else {
-    auto *PulseThen = new PulseExpr(getTermFromCExpr(Then, Analyzer, ExprsBefore, Parent,
-                                       Then->getType(), Module));
-    //}
-
-    auto *PulseElse = new PulseExpr(getTermFromCExpr(Else, Analyzer, ExprsBefore, Parent,
-                                       Else->getType(), Module));
-
-    PulseIfStmt->Head = PulseCond;
-    PulseIfStmt->Else = PulseElse;
-    PulseIfStmt->Then = PulseThen;
-
-    assert(ExprsBefore.empty() && "Expected expressions to be released!");
-
-    return PulseIfStmt;
-
   }
   // else if (auto *ParenExpr = dyn_cast<clang::ParenExpr>(S)) {
 
@@ -3500,6 +3433,73 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     }
 
     return nullptr;
+  }
+  else if (auto *CondOperator = dyn_cast<ConditionalOperator>(E)){
+    auto *Cond = CondOperator->getCond();
+    auto *Then = CondOperator->getTrueExpr(); 
+    auto *Else = CondOperator->getFalseExpr();
+
+    SmallVector<PulseStmt *> ExprsBefore;
+
+    auto *PulseCond = getTermFromCExpr(Cond, MutAnalyzer, ExprsBefore, Parent,
+                                       Cond->getType(), Module);
+
+    if (Cond->getType().getAsString() != "_Bool" || Cond->getType().getAsString() != "bool"){
+
+      auto *CastCall = new AppE(getPulseStringForCType(Cond->getType(), Ctx)
+                                                   + "_to_bool");
+      CastCall->pushArg(PulseCond);
+      PulseCond = new Paren(CastCall);
+
+    }                                   
+
+    //PulseStmt *PulseThen;
+    //Conditional Expressions don't have any supported annotations at the moment.
+    // if (auto *AttrStmt = dyn_cast<AttributedStmt>(Then)) {
+    //   auto *ThenBody = AttrStmt->getSubStmt();
+
+    //   auto Attributes = AttrStmt->getAttrs();
+    //   // auto *PulseWhile = new PulseWhileStmt();
+    //   for (auto *Attr : Attributes) {
+
+    //     if (auto *AnnAttr = dyn_cast<AnnotateAttr>(Attr)) {
+    //       if (AnnAttr->getAttrName()->getName() == "pulse") {
+
+    //         auto AnnotationData = AnnAttr->getAnnotation().str();
+
+    //         std::string Match;
+    //         auto AnnKind = getPulseAnnKindFromString(AnnotationData, Match);
+    //         switch (AnnKind) {
+    //         case PulseAnnKind::Ensures: {
+    //           auto *NewEnsures = new Ensures();
+    //           NewEnsures->Ann = Match;
+    //           PulseIfStmt->IfLemmas.push_back(NewEnsures);
+    //           break;
+    //         };
+    //         default:
+    //           emitErrorWithLocation("Annotation not expected for IfStmt", &Ctx,
+    //                                 IF->getBeginLoc());
+    //         };
+    //       }
+    //     }
+    //   }
+    //   PulseThen = pulseFromStmt(ThenBody, Analyzer, Parent, Module, CS);
+    // } else {
+    auto *PulseThen = getTermFromCExpr(Then, MutAnalyzer, ExprsBefore, Parent,
+                                       Then->getType(), Module);
+    //}
+
+    auto *PulseElse = getTermFromCExpr(Else, MutAnalyzer, ExprsBefore, Parent,
+                                       Else->getType(), Module);
+
+    auto *PulseIfExpr = new IfExpr(PulseCond, PulseThen, PulseElse);
+
+    assert(ExprsBefore.empty() && "Expected expressions to be released!");
+
+    auto *AddParen = new Paren(PulseIfExpr);
+
+    return AddParen;
+
   }
   else {
     DEBUG_WITH_TYPE(DEBUG_TYPE, {

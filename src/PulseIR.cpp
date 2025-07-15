@@ -869,6 +869,25 @@ void AppE::makeCallName(std::string CallName) {
 
 void AppE::pushArg(Term *Arg) { Args.push_back(Arg); }
 
+IfExpr::IfExpr(Term *C, Term *T, Term *F){
+  Tag = TermTag::IfExpr;
+  Cond = C;
+  TrueExpr = T;
+  FalseExpr = F;
+}
+
+void IfExpr::dumpPretty(){
+  llvm::outs() << "if (";
+  Cond->dumpPretty(); 
+  llvm::outs() << "then";
+  TrueExpr->dumpPretty();
+  llvm::outs() << "else";
+  FalseExpr->dumpPretty();
+}
+
+
+
+
 void PulseStmt::setTag(PulseStmtTag T) { Tag = T; }
 
 void PulseStmt::printTag() { llvm::outs() << Tag << "\n"; }
