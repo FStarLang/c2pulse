@@ -1,4 +1,4 @@
-module Issue52_test
+module Issue52_test_2
 
 #lang-pulse
 
@@ -14,6 +14,7 @@ requires exists* v. (x |-> v)
 returns Int32.t
 ensures exists* v. (x |-> v)
 {
+let idx : Int32.t = 0l;
 pts_to_len x;
-(op_Array_Access x (int32_to_sizet 0l));
+(op_Array_Access x (int32_to_sizet idx));
 }

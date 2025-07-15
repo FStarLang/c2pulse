@@ -3024,8 +3024,35 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
         auto *Parenthesis = new Paren(TermForBaseExpr);
         return Parenthesis;
       }
-    } else {
+    } 
+    else if (UO->getOpcode() == clang::UO_LNot){
+
+      auto *NotCall = new AppE("not");
+      auto *SubExpr = UO->getSubExpr();
+      
+      auto *PulseSubExpr = getTermFromCExpr(SubExpr, MutAnalyzer,
+                                               ExprsBefore, Parent, ParentType, Module);
+
+      if (SubExpr->getType().getAsString() != "_Bool" || SubExpr->getType().getAsString() != "bool"){
+        auto *CastCall = new AppE(getPulseStringForCType(SubExpr->getType(), Ctx) + "_to_bool");
+        CastCall->pushArg(PulseSubExpr);
+        PulseSubExpr = new Paren(CastCall);
+      }
+
+      NotCall->pushArg(PulseSubExpr);
+
+      if (UO->isKnownToHaveBooleanValue()){
+         auto *CastCall = new AppE("bool_to_" + getPulseStringForCType(UO->getType(), Ctx));
+         CastCall->pushArg(new Paren(NotCall));
+         return new Paren(CastCall);
+      }
+      return NotCall;
+    }
+    
+    else {
       DEBUG_WITH_TYPE(DEBUG_TYPE, {
+      UO->dump();
+      UO->getStmtClassName();  
       E->dumpPretty(Ctx);
       E->dump();
       });
@@ -3261,17 +3288,18 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     PulseCall->pushArg(getTermFromCExpr(ArrBase, MutAnalyzer, ExprsBefore,
                                         Parent, ParentType, Module));
 
-    if (ArrIdx->isIntegerConstantExpr(Ctx)) {
-      auto IntegerExprFromArrIdx = ArrIdx->getIntegerConstantExpr(Ctx);
-      auto *NewConstTerm = new ConstTerm();
-      NewConstTerm->ConstantValue =
-          std::to_string(IntegerExprFromArrIdx->getSExtValue());
-      NewConstTerm->Symbol = SymbolTable::SizeT;
-      PulseCall->pushArg(NewConstTerm);
-    } else {
-      PulseCall->pushArg(getTermFromCExpr(ArrIdx, MutAnalyzer, ExprsBefore,
-                                          Parent, ArrIdx->getType(), Module));
-    }
+    auto *PulseArrIdx = getTermFromCExpr(ArrIdx, MutAnalyzer, ExprsBefore,
+                                          Parent, ArrIdx->getType(), Module);
+    
+    //Add a cast to size_t if it is needed                                    
+    if (ArrIdx->getType().getAsString() != "size_t"){
+       auto *CastCall = new AppE(getPulseStringForCType(ArrIdx->getType(), Ctx) + "_to_sizet");
+
+       CastCall->pushArg(PulseArrIdx);
+       PulseArrIdx = new Paren(CastCall);
+    }                                    
+
+    PulseCall->pushArg(PulseArrIdx);
     // wrap PulseCall in Paren
     auto *NewParen = new Paren(PulseCall);
     return NewParen;
