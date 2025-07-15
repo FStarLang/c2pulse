@@ -14,6 +14,7 @@
 #include "clang/Analysis/Analyses/ExprMutationAnalyzer.h"
 #include "clang/Basic/Module.h"
 #include "clang/Basic/SourceLocation.h"
+#include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/Casting.h"
@@ -482,8 +483,15 @@ bool PulseVisitor::VisitRecordDecl(RecordDecl *RD) {
   auto SourceLoc = RD->getLocation();
   if (SM.isInSystemHeader(SourceLoc))
     return true;
-
+   
+  ///TODO: Vidush, we only handle record declaration and definitions together.
+  ///Not just declarations.  
+  if (!RD->isThisDeclarationADefinition())
+    return true;
+  
+  std::set<std::string> VarNamesInScope;  
   std::string StructName = getNameForRecordDecl(RD);
+  VarNamesInScope.insert(StructName);
 
   RecordToRecordName.insert(std::make_pair(RD, StructName));
 
@@ -531,13 +539,26 @@ bool PulseVisitor::VisitRecordDecl(RecordDecl *RD) {
       Modules.insert(std::make_pair(NewModul->ModuleName, NewModul));
     }
 
+    //Get Unique Field Names in scope.
+    llvm::SmallDenseMap<const FieldDecl*, std::string> FieldToUniqueNames;
+    for (const FieldDecl *FD : RD->fields()){
+
+      auto FName = FD->getNameAsString();
+      if (VarNamesInScope.count(FName) > 0){
+        FName = gensym(FName);
+        VarNamesInScope.insert(FName);
+      }
+
+      FieldToUniqueNames.insert(std::make_pair(FD, FName));
+    }
+
     auto *AbstractType = new GenericDecl();
     AbstractType->Ident = "noeq\n";
     AbstractType->Ident += "type ";
     AbstractType->Ident += StructName + " = {\n";
     for (const FieldDecl *FD : RD->fields()) {
       auto *PulseTy = getPulseTyFromCTy(FD->getType());
-      AbstractType->Ident += FD->getNameAsString() + ": ref ";
+      AbstractType->Ident += FieldToUniqueNames[FD] + ": ref ";
       AbstractType->Ident += PulseTy->print() + ";";
       AbstractType->Ident += "\n";
 
@@ -565,7 +586,7 @@ bool PulseVisitor::VisitRecordDecl(RecordDecl *RD) {
     for (const FieldDecl *FD : RD->fields()) {
       auto *Element = new RecordElement();
       Element->ElementTerm = getPulseTyFromCTy(FD->getType());
-      Element->Ident = FD->getNameAsString();
+      Element->Ident = FieldToUniqueNames[FD];
       Fields.push_back(Element);
     }
     auto NumRecordFields = Fields.size();
@@ -587,9 +608,9 @@ bool PulseVisitor::VisitRecordDecl(RecordDecl *RD) {
     size_t Counter = 0;
     for (auto *Fld : RD->fields()){
         GenericPredicate->Ident += "(y.";
-        GenericPredicate->Ident += Fld->getNameAsString(); 
+        GenericPredicate->Ident += FieldToUniqueNames[Fld]; 
         GenericPredicate->Ident += " |-> ";
-        GenericPredicate->Ident += "s." + Fld->getNameAsString() + ")";
+        GenericPredicate->Ident += "s." + FieldToUniqueNames[Fld] + ")";
         if (Counter < NumRecordFields - 1){
           GenericPredicate->Ident += " **";
         }
@@ -685,7 +706,7 @@ bool PulseVisitor::VisitRecordDecl(RecordDecl *RD) {
     GhostExplode->Ident += " ** ";
     Counter = 0;
     for (auto *Fld : RD->fields()){
-      GhostExplode->Ident += "(v." + Fld->getNameAsString() + " |-> " + "s." + Fld->getNameAsString() + ")";
+      GhostExplode->Ident += "(v." + FieldToUniqueNames[Fld] + " |-> " + "s." + FieldToUniqueNames[Fld] + ")";
       if (Counter < NumRecordFields - 1){
         GhostExplode->Ident += " ** ";
       }
@@ -725,7 +746,7 @@ bool PulseVisitor::VisitRecordDecl(RecordDecl *RD) {
     for (auto *Fld : RD->fields()){
       NewGhostFunction->Ident += "(";
       NewGhostFunction->Ident += "y.";
-      NewGhostFunction->Ident += Fld->getNameAsString() + " ";
+      NewGhostFunction->Ident += FieldToUniqueNames[Fld] + " ";
       NewGhostFunction->Ident += "|-> ";
       NewGhostFunction->Ident += FieldPrefix + std::to_string(Counter);
       NewGhostFunction->Ident += ")";
@@ -741,7 +762,7 @@ bool PulseVisitor::VisitRecordDecl(RecordDecl *RD) {
     Counter = 0;
     std::string TempStr = "";
     for (auto *Fld : RD->fields()){
-      TempStr += Fld->getNameAsString();
+      TempStr += FieldToUniqueNames[Fld];
       TempStr += " = ";
       TempStr += FieldPrefix;
       TempStr += std::to_string(Counter);
@@ -1108,12 +1129,20 @@ bool PulseVisitor::VisitVarDecl(VarDecl *VD) {
 }
 
 bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
+  
+  //If this is a declaration and it does have a function body, we ignore it.
+  //When we visit the actual declaration, we will generate code for it.
+  if (!FD->isThisDeclarationADefinition()){
+    if (const FunctionDecl *Def = FD->getDefinition()){
+      return true;
+    }
+  }
 
   if (!FD->hasBody() || SM.isInSystemHeader(FD->getLocation()) ||
       FD->isImplicit() ||
       (FD->getLocation().isMacroID() &&
        !SM.isWrittenInMainFile(SM.getExpansionLoc(FD->getLocation()))))
-    return true;
+    return true;  
 
   auto FuncName = FD->getNameAsString();
 
@@ -1435,6 +1464,23 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   
   FDefn->Args = PulseArgs;
 
+
+  //TODO: Vidush: Move this check up and clean the code
+  if (!FD->isThisDeclarationADefinition()){
+
+    auto *NewFunDecl = new _PulseFnDecl;
+    NewFunDecl->Name = FDefn->Name;
+    NewFunDecl->Args = FDefn->Args;
+
+    auto *PulseDecl = new PulseFnDecl();
+    PulseDecl->Defn = NewFunDecl;
+
+    PulseDecl->Kind = PulseDeclKind::FnDecl;
+    Module->Decls.push_back(PulseDecl);
+    DeclarationsMap.insert(std::make_pair(FD, PulseDecl));
+    return true;
+  }
+
   if (Stmt *Body = FD->getBody()) {
     if (auto *CS = dyn_cast<CompoundStmt>(Body)) {
       ExprMutationAnalyzer Analyzer(*CS, Ctx);
@@ -1517,6 +1563,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   DeclarationsMap.insert(std::make_pair(FD, PulseFn));
   return true;
 }
+
 
 FStarType *PulseVisitor::getPulseTyFromCTy(clang::QualType CType) {
   // TODO: Check if Ctype is a pointer type, if so, use FStarPointerType.
@@ -2370,137 +2417,141 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
   } else if (auto *RS = dyn_cast<ReturnStmt>(S)) {
 
     if (auto *RetVal = RS->getRetValue()) {
-
+       SmallVector<PulseStmt *> ExprsBefore;
       // if (auto *CastToStmt = dyn_cast<Stmt>(RS->getRetValue())){
-      //  auto *RetStmt = pulseFromStmt(RetVal, Analyzer,
-      //                                 RetVal, Module, CS);
-
+      auto *RetStmt = getTermFromCExpr(RetVal, Analyzer, ExprsBefore, Parent, RetVal->getType(), Module);
+      auto *RetExpr = new PulseExpr();
+      RetExpr->E = RetStmt;
+      return RetExpr;
       // return RetStmt;
       //}
       // else{
-      llvm::outs() << "Print the Return Stmt!\n";
-      RS->dump();
-      llvm::outs() << "End of printing return stmt!\n";
-      RetVal->dump();
-      llvm::outs() << "End of printing return value!\n";  
       
-      if (auto *IC = dyn_cast<CastExpr>(RetVal)){
-        auto* SubExpr = IC->getSubExpr()->IgnoreParens();
-        QualType sourceType = IC->getSubExpr()->getType();
-        QualType destType = IC->getType();
-        //No need for cast to same type
-        if (sourceType.getCanonicalType() == destType.getCanonicalType()) {
-                goto ret_val_bo_general;
-        }
-        if (sourceType.getAsString() == destType.getAsString()) {
-                goto ret_val_bo_general;
-        }
-        //Handle BO differently
-        if (auto *BO = dyn_cast<BinaryOperator>(SubExpr)){
-          //Use _Bool since clang uses int to model Bools
-          if (BO->isComparisonOp()){
-            //No need for a bool to bool cast.
-            if (IC->getType().getAsString() == "_Bool" || IC->getType().getAsString() == "bool"){
-              goto ret_val_bo_general;
-            }
-            ///make a call expr
-            auto *CastCall = new AppE("bool_to_" + getPulseStringForCType(IC->getType(), Ctx));
+      // // Key settings to preserve non-canonical names
+      // PrintingPolicy Policy(Ctx.getLangOpts());
+      // Policy.SuppressTagKeyword = false;
+      // Policy.SuppressUnwrittenScope = false;
+      // Policy.PrintAsCanonical = false;
+      // Policy.FullyQualifiedName = false;
 
-            SmallVector<PulseStmt *> ExprsBefore;
-            auto *RetTerm = getTermFromCExpr(BO, Analyzer, ExprsBefore, Parent,
-                                       RetVal->getType(), Module);
-            CastCall->pushArg(RetTerm);
-            auto *NewParen = new Paren(CastCall);
-            auto *NewPulseExpr = new PulseExpr();
-            NewPulseExpr->E = NewParen;
-            return NewPulseExpr;
-          }
-          else{
-            emitErrorWithLocation("Return value not implemented!", &Ctx, BO->getExprLoc());
-          }
+      // llvm::outs() << "Print the Return Stmt!" << RetVal->getType().getAsString(Policy) << "\n";
+      // RS->dump();
+      // llvm::outs() << "End of printing return stmt!\n";
+      // RetVal->dump();
+      // llvm::outs() << "End of printing return value!\n";
+      
+    //   if (auto *IC = dyn_cast<CastExpr>(RetVal)){
+    //     auto* SubExpr = IC->getSubExpr()->IgnoreParens();
+    //     QualType sourceType = IC->getSubExpr()->getType();
+    //     QualType destType = IC->getType();
+    //     if (sourceType.getAsString() == destType.getAsString()) {
+    //             goto ret_val_bo_general;
+    //     }
+    //     //Handle BO differently
+    //     if (checkIfExprIsBoolTy(SubExpr)){
+          
+    //       //No need for a bool to bool cast.
+    //       if (IC->getType().getAsString() == "_Bool" || IC->getType().getAsString() == "bool"){
+    //           goto ret_val_bo_general;
+    //       }
+    //       ///make a call expr
+    //       auto *CastCall = new AppE("bool_to_" + getPulseStringForCType(IC->getType(), Ctx));
 
-        }
-        else if (auto *IL = dyn_cast<IntegerLiteral>(SubExpr)){
+    //       SmallVector<PulseStmt *> ExprsBefore;
+    //       auto *RetTerm = getTermFromCExpr(BO, Analyzer, ExprsBefore, Parent,
+    //                                    RetVal->getType(), Module);
+    //       CastCall->pushArg(RetTerm);
+    //       auto *NewParen = new Paren(CastCall);
+    //       auto *NewPulseExpr = new PulseExpr();
+    //       NewPulseExpr->E = NewParen;
+    //       return NewPulseExpr;
 
-        auto *CastCall = new AppE(getPulseStringForCType(IL->getType(), Ctx) + "_to_" + getPulseStringForCType(IC->getType(), Ctx));
+    //     }
+    //     else if (auto *IL = dyn_cast<IntegerLiteral>(SubExpr)){
 
-        SmallVector<PulseStmt *> ExprsBefore;
-        auto *RetTerm = new ConstTerm();
-        RetTerm->ConstantValue = std::to_string(IL->getValue().getSExtValue());
-        RetTerm->Symbol = getSymbolKeyForCType(IL->getType(), Ctx);
-        CastCall->pushArg(RetTerm);
-        auto *NewParen = new Paren(CastCall);
-        auto *NewPulseExpr = new PulseExpr();
-        NewPulseExpr->E = NewParen;
-        return NewPulseExpr;
+    //     auto *CastCall = new AppE(getPulseStringForCType(IL->getType(), Ctx) + "_to_" + getPulseStringForCType(IC->getType(), Ctx));
 
-        }
-        RS->dump();
-        ///Vidush: TODO We should handle these other cases where implicit casts exist.
-        ////TODO: These might need library implementation in Pulse
-        auto *CastCall = new AppE(getPulseStringForCType(SubExpr->getType(), Ctx) + "_to_" + getPulseStringForCType(IC->getType(), Ctx));
+    //     SmallVector<PulseStmt *> ExprsBefore;
+    //     auto *RetTerm = new ConstTerm();
+    //     RetTerm->ConstantValue = std::to_string(IL->getValue().getSExtValue());
+    //     RetTerm->Symbol = getSymbolKeyForCType(IL->getType(), Ctx);
+    //     CastCall->pushArg(RetTerm);
+    //     auto *NewParen = new Paren(CastCall);
+    //     auto *NewPulseExpr = new PulseExpr();
+    //     NewPulseExpr->E = NewParen;
+    //     return NewPulseExpr;
 
-        SmallVector<PulseStmt *> ExprsBefore;
-        auto *RetTerm = getTermFromCExpr(SubExpr, Analyzer, ExprsBefore, Parent,
-                                       RetVal->getType(), Module);
-        CastCall->pushArg(RetTerm);
-        auto *NewParen = new Paren(CastCall);
-        auto *NewPulseExpr = new PulseExpr();
-        NewPulseExpr->E = NewParen;
-        return NewPulseExpr;
-      }
-      else{
-        ret_val_bo_general:
-        SmallVector<PulseStmt *> ExprsBefore;
-        auto *RetTerm = getTermFromCExpr(RetVal, Analyzer, ExprsBefore, Parent,
-                                       RetVal->getType(), Module);
+    //     }
+    //     RS->dump();
+    //     ///Vidush: TODO We should handle these other cases where implicit casts exist.
+    //     ////TODO: These might need library implementation in Pulse
+    //     auto *CastCall = new AppE(getPulseStringForCType(SubExpr->getType(), Ctx) + "_to_" + getPulseStringForCType(IC->getType(), Ctx));
 
-        if (RetTerm == nullptr)
-          return nullptr;
+    //     SmallVector<PulseStmt *> ExprsBefore;
+    //     auto *RetTerm = getTermFromCExpr(SubExpr, Analyzer, ExprsBefore, Parent,
+    //                                    RetVal->getType(), Module);
+    //     CastCall->pushArg(RetTerm);
+    //     auto *NewParen = new Paren(CastCall);
+    //     auto *NewPulseExpr = new PulseExpr();
+    //     NewPulseExpr->E = NewParen;
+    //     return NewPulseExpr;
+    //   }
+    //   else{
+    //     ret_val_bo_general:
+    //     SmallVector<PulseStmt *> ExprsBefore;
+    //     auto *RetTerm = getTermFromCExpr(RetVal, Analyzer, ExprsBefore, Parent,
+    //                                    RetVal->getType(), Module);
 
-        auto *NewPulseExpr = new PulseExpr();
-        NewPulseExpr->E = RetTerm;
+    //     if (RetTerm == nullptr)
+    //       return nullptr;
 
-        assert(ExprsBefore.empty() && "Expected expressions to be released!");
-        return NewPulseExpr;
-      }
-      //}
-      //   if (auto *DeclRef =
-      //   dyn_cast<DeclRefExpr>(RetVal->IgnoreParenImpCasts()->IgnoreImpCasts())){
-      //     auto It = TrackStructExplodeAndRecover.find(DeclRef->getDecl());
-      //     if (It != TrackStructExplodeAndRecover.end()){
-      //       auto Info = It->second;
-      //       if (!Info.second){
+    //     auto *NewPulseExpr = new PulseExpr();
+    //     NewPulseExpr->E = RetTerm;
 
-      //         //Get struct name from declration.
-      //           const auto *VD = DeclRef->getDecl();
-      //           auto *PSeq = new PulseSequence();
-      //           auto StructName =
-      //           VD->getType()->getPointeeType().getAsString(); if (RetTerm){
-      //              NewPulseExpr->E = RetTerm;
-      //              PSeq->assignS2(NewPulseExpr);
-      //              auto *FallBack  = new GenericStmt();
-      //              FallBack->body += StructName + "_recover " +
-      //              DeclRef->getDecl()->getNameAsString() + ";";
-      //              PSeq->assignS1(FallBack);
-      //              // update element in map.
-      //              TrackStructExplodeAndRecover.erase(It);
-      //              return PSeq;
-      //          }
+    //     assert(ExprsBefore.empty() && "Expected expressions to be released!");
+    //     return NewPulseExpr;
+    //   }
+    //   //}
+    //   //   if (auto *DeclRef =
+    //   //   dyn_cast<DeclRefExpr>(RetVal->IgnoreParenImpCasts()->IgnoreImpCasts())){
+    //   //     auto It = TrackStructExplodeAndRecover.find(DeclRef->getDecl());
+    //   //     if (It != TrackStructExplodeAndRecover.end()){
+    //   //       auto Info = It->second;
+    //   //       if (!Info.second){
 
-      //         auto *FallBack  = new GenericStmt();
-      //         FallBack->body += StructName + "_recover " +
-      //         DeclRef->getDecl()->getNameAsString() + ";";
+    //   //         //Get struct name from declration.
+    //   //           const auto *VD = DeclRef->getDecl();
+    //   //           auto *PSeq = new PulseSequence();
+    //   //           auto StructName =
+    //   //           VD->getType()->getPointeeType().getAsString(); if (RetTerm){
+    //   //              NewPulseExpr->E = RetTerm;
+    //   //              PSeq->assignS2(NewPulseExpr);
+    //   //              auto *FallBack  = new GenericStmt();
+    //   //              FallBack->body += StructName + "_recover " +
+    //   //              DeclRef->getDecl()->getNameAsString() + ";";
+    //   //              PSeq->assignS1(FallBack);
+    //   //              // update element in map.
+    //   //              TrackStructExplodeAndRecover.erase(It);
+    //   //              return PSeq;
+    //   //          }
 
-      //         // update element in map.
-      //         TrackStructExplodeAndRecover.erase(It);
-      //         return FallBack;
-      //     }
-      //   }
-      // }
-    }
+    //   //         auto *FallBack  = new GenericStmt();
+    //   //         FallBack->body += StructName + "_recover " +
+    //   //         DeclRef->getDecl()->getNameAsString() + ";";
 
-    return nullptr;
+    //   //         // update element in map.
+    //   //         TrackStructExplodeAndRecover.erase(It);
+    //   //         return FallBack;
+    //   //     }
+    //   //   }
+    //   // }
+   }
+
+    //Return a unit / void type
+    auto *RetExpr = new PulseExpr();
+    auto *Unit = new Name("()");
+    RetExpr->E = Unit;
+    return RetExpr;
   } else if (auto *FS = dyn_cast<ForStmt>(S)) {
     S->dumpPretty(Ctx);
     emitErrorWithLocation("For loops not implemented since pulse does not "
@@ -2681,7 +2732,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     llvm::outs() << ParentType.getAsString() << "\n";
     });
 
-    NewConstTerm->Symbol = getSymbolKeyForCType(ParentType, Ctx);
+    NewConstTerm->Symbol = getSymbolKeyForCType(IL->getType(), Ctx);
 
     return NewConstTerm;
   } else if (auto *FL = dyn_cast<FloatingLiteral>(E)) {
@@ -3032,11 +3083,33 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     auto *NewParen = new Paren(CallAppE);
     return NewParen;
   } else if (auto *IC = dyn_cast<ImplicitCastExpr>(E)) {
-
+    
+    IC->dump();
     // TODO: Check : Vidush
     // Right now we basically ignore implicit cast expressions.
     // However, since pulse is pure this may not be expected.
     auto *SubExpr = IC->getSubExpr();
+    QualType sourceType = SubExpr->getType();
+    QualType destType = IC->getType();
+    if (sourceType.getAsString() == destType.getAsString()) {
+      SmallVector<PulseStmt *> ExprsBefore;
+                 return getTermFromCExpr(SubExpr, MutAnalyzer, ExprsBefore, Parent,
+                            ParentType, Module);
+    }
+    
+    ///make a call expr
+    auto *CastCall = new AppE(getPulseStringForCType(sourceType, Ctx) + "_to_" + getPulseStringForCType(destType, Ctx));
+
+    SmallVector<PulseStmt *> ExprsBefore;
+    auto *RetTerm = getTermFromCExpr(SubExpr, MutAnalyzer, ExprsBefore, Parent,
+                                       IC->getType(), Module);
+    CastCall->pushArg(RetTerm);
+    auto *NewParen = new Paren(CastCall);
+    return NewParen;
+
+    IC->dump();
+    emitErrorWithLocation("Not Implemented!", &Ctx, E->getExprLoc());
+
     return getTermFromCExpr(SubExpr, MutAnalyzer, ExprsBefore, Parent,
                             ParentType, Module);
   } else if (auto *DRE = dyn_cast<DeclRefExpr>(E)) {

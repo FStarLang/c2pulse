@@ -3,7 +3,7 @@
 
 
 REQUIRES(exists* v. x |-> v)
-RETURNS(b:bool)
+RETURNS(UInt32.t)
 ENSURES(exists* v. x |-> v)
 uint32_t count_down (uint32_t *x)
 {

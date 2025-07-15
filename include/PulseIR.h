@@ -53,7 +53,10 @@ enum class SymbolTable {
   SizeT_Div,
   SizeT_Rem,
   SizeT_Mul,
+
   SizeT_Eq,
+  SizeT_Eq_Int32, 
+
   SizeT_Lt,
   SizeT_Le,
   SizeT_Gt,
@@ -208,6 +211,7 @@ static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
     {SymbolTable::SizeT_Rem, "SizeT.rem"},
     {SymbolTable::SizeT_Mul, "SizeT.mul"},
     {SymbolTable::SizeT_Eq, "SizeT.eq"},
+    {SymbolTable::SizeT_Eq_Int32, "SizeT.eq_int32"},
     {SymbolTable::SizeT_Lt, "SizeT.lt"},
     {SymbolTable::SizeT_Le, "SizeT.lte"},
     {SymbolTable::SizeT_Gt, "SizeT.gt"},

@@ -243,9 +243,42 @@ void PulseCodeGen::generateCodeFromPulseAST(llvm::raw_string_ostream &OS,
   } else if (auto *FallBackDeclaration = dyn_cast<GenericDecl>(FD)){
     OS << FallBackDeclaration->Ident;
   } 
-  else if (auto PulseFunDecl = dyn_cast<PulseFnDecl>(FD)) {
-    emitError("(generateCodeFromPulseAST): Codegen not implemented for "
-              "PulseFunDecl!\n");
+  else if (auto *PulseFunDecl = dyn_cast<PulseFnDecl>(FD)) {
+
+     auto *FuncDef = PulseFunDecl->Defn;
+    auto Args = FuncDef->Args;
+    auto FuncName = FuncDef->Name;
+    
+    //TODO: maybe for recursive functions these need to be extended 
+    // with a isRec field.
+    OS << PulseSyntax::PulseFunctionDeclaration << " ";
+    OS << FuncName;
+
+    // If there were no args, we still want to write () in the function
+    if (Args.empty()) {
+      OS << PulseSyntax::Space;
+      OS << PulseSyntax::OpeningParenthesis;
+      OS << PulseSyntax::ClosingParenthesis;
+    }
+
+    OS << "\n";
+
+    for (auto *Arg : Args) {
+      auto *Ty = Arg->Type;
+      auto Val = Arg->Ident;
+
+      if (!Arg->useFallBack) {
+        OS << PulseSyntax::OpeningParenthesis << Val << PulseSyntax::Space
+           << PulseSyntax::Colon << PulseSyntax::Space
+           << generateCodeFromTerm(OS, Ty) << PulseSyntax::ClosingParenthesis;
+        OS << "\n";
+      } else {
+        OS << PulseSyntax::OpeningParenthesis << Val
+           << PulseSyntax::ClosingParenthesis;
+        OS << "\n";
+      }
+    }
+
   } else {
     emitError("(generateCodeFromPulseAST): Encountered an unknown pulse "
               "declaration type!\n");

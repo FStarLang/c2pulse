@@ -147,7 +147,7 @@ std::string getPulseStringForCType(clang::QualType Ty, clang::ASTContext &Ctx) {
 
     // check explicitly if it is size_t
     if (Ty.getAsString() == "size_t") {
-      return "size_t";
+      return "sizet";
     }
 
     if (Ty.getAsString() == "_Bool") {
@@ -169,7 +169,7 @@ std::string getPulseStringForCType(clang::QualType Ty, clang::ASTContext &Ctx) {
     }
 
   } else if (Ty.getAsString() == "size_t") {
-    return "size_t";
+    return "sizet";
   } else if (Ty.getAsString() == "_Bool") {
     return "bool";
   } else if (Ty->isArrayType()) {
@@ -179,9 +179,11 @@ std::string getPulseStringForCType(clang::QualType Ty, clang::ASTContext &Ctx) {
   else if (Ty->isStructureType() || Ty->isUnionType()) {
     // We do not handle structs and unions in this function.
     // We return UNKNOWN type from this function.
+    Ty.dump();
     emitError("(getPulseStringForCType): did not expect C type!\n");
 
   } else if (Ty->isPointerType()) {
+    Ty.dump();
     emitError("(getPulseStringForCType): did not expect C type!\n");
   }
 
@@ -252,6 +254,7 @@ SymbolTable getSymbolKeyForCType(clang::QualType Ty, clang::ASTContext &Ctx) {
 }
 
 const char *getSymbolKeyForOperator(SymbolTable Val,
+                                    SymbolTable RetTy,   
                                     clang::BinaryOperatorKind &Op) {
 
   switch (Op) {
@@ -510,6 +513,9 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
     } else if (Val == SymbolTable::UInt64) {
       return lookupSymbol(SymbolTable::UInt64_Eq);
     } else if (Val == SymbolTable::SizeT) {
+      if (RetTy == SymbolTable::Int32){
+        return lookupSymbol(SymbolTable::SizeT_Eq_Int32);  
+      }
       return lookupSymbol(SymbolTable::SizeT_Eq);
     } else {
       emitError("(getSymbolKeyForOperator): Unknown case in BO_EQ!\n");

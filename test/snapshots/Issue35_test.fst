@@ -12,10 +12,10 @@ fn empty_branch ()
 let x = 1l;
 if((Int32.eq x 1l))
 {
-()
+();
 }
 else
 {
-()
+();
 };
 }

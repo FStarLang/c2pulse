@@ -3,6 +3,12 @@
 #include <stdbool.h>
 #include "../include/PulseMacros.h"
 
+
+int fo(int x, short y) {
+	return x == y;
+}
+
+/*
 INCLUDE ( 
   module SZ = Pulse.Lib.C.SizeT
  )

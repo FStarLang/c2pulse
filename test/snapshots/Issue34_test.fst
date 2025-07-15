@@ -10,13 +10,13 @@ open Pulse.Lib.C
 fn integer_promotion ()
 returns b:FStar.UInt32.t
 {
-let x = 1ul;
-if((UInt32.eq x 1ul))
+let x = (int32_to_uint32 1l);
+if((UInt32.eq x (int32_to_uint32 1l)))
 {
-0ul;
+(int32_to_uint32 0l);
 }
 else
 {
-0ul;
+(int32_to_uint32 0l);
 };
 }

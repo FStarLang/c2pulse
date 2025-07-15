@@ -69,8 +69,6 @@ private:
   std::map<clang::FunctionDecl*, PulseDecl*> DeclarationsMap;
   std::set<const clang::Decl*> TrackScopeOfStackAllocatedStructs;
   std::map<const clang::Decl*, std::pair<bool, bool>> TrackStructExplodeAndRecover;
-  std::map<const clang::Decl *, const clang::Decl *>
-      MapRecordDeclsToTypedefDecls;
   std::map<const clang::Decl *, std::string> RecordToRecordName;
 };
 
