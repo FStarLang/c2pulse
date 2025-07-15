@@ -185,7 +185,8 @@ enum class SymbolTable {
 
   // logical operators
   // AmpAmp
-  AmpAmp,
+  OpAmpAmp,
+  OpBarBar,
 
   Array,
   Ref,
@@ -337,7 +338,8 @@ static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
     {SymbolTable::Int_Ge, "gte"},
 
     // logical operators
-    {SymbolTable::AmpAmp, "op_AmpAmp"},
+    {SymbolTable::OpAmpAmp, "op_AmpAmp"},
+    {SymbolTable::OpBarBar, "op_BarBar"},
 
     {SymbolTable::Array, "array"},
     {SymbolTable::Ref, "ref"},

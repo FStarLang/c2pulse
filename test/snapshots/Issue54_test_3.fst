@@ -15,6 +15,14 @@ let b: Int32.t = witness #_ #_;
 (bool_to_int32 (op_AmpAmp (int32_to_bool a) (int32_to_bool b)));
 }
 
+fn test_barbar ()
+returns Int32.t
+{
+let a: Int32.t = witness #_ #_;
+let b: Int32.t = witness #_ #_;
+(bool_to_int32 (op_BarBar (int32_to_bool a) (int32_to_bool b)));
+}
+
 fn compare_elt
 (a1 : array Int32.t)
 (a2 : array Int32.t)

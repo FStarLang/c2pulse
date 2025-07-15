@@ -559,11 +559,11 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
     break;
   }
   case clang::BO_LAnd:{
-    return lookupSymbol(SymbolTable::AmpAmp);
+    return lookupSymbol(SymbolTable::OpAmpAmp);
     break;
   }
   case clang::BO_LOr:{
-    emitError("(getSymbolKeyForOperator): Not implemented BO_LOr!\n");
+    return lookupSymbol(SymbolTable::OpBarBar);
     break;
   }
   case clang::BO_Assign:{

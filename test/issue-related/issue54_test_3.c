@@ -10,6 +10,14 @@ int test_ampamp(){
     return a && b;
 }
 
+RETURNS(Int32.t)
+int test_barbar(){
+    int a; 
+    int b;
+    return a || b;
+
+}
+
 REQUIRES(exists* v. (a1 |-> v))
 REQUIRES(exists* v. (a2 |-> v))
 RETURNS(bool)
