@@ -4,6 +4,7 @@
 
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/OperationKinds.h"
+#include "clang/AST/Type.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/StringRef.h"
 
@@ -186,7 +187,7 @@ enum class SymbolTable {
 };
 
 SymbolTable getSymbolKeyForCType(clang::QualType Ty, clang::ASTContext &Ctx);
-const char* getSymbolKeyForOperator(SymbolTable Val, clang::BinaryOperatorKind &Op);
+const char* getSymbolKeyForOperator(SymbolTable Val, SymbolTable RetTy, clang::BinaryOperatorKind &Op);
 const char* lookupSymbol(SymbolTable Key);
 
 /// A map from symbol to its pulse specific string.
@@ -645,6 +646,7 @@ public:
 class LetBinding : public PulseStmt {
 public:
   std::string VarName;
+  std::string VarTy;
   LetBinding();
   LetBinding(std::string Lhs, Term *Rhs, MutOrRef Qual);
   Term *LetInit;

@@ -22,7 +22,7 @@ requires emp
 returns i:Pulse.Lib.C.Int32.int32
 ensures pure Pulse.Lib.C.Int32.(as_int i == 1)
 {
-let mut i = 0l;
+let mut i : Int32.t = 0l;
 (incr i);
 (! i);
 }

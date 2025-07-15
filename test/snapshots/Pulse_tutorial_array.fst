@@ -77,11 +77,11 @@ ensures a1 |-> Frac p s1
 ensures a2 |-> Frac p s2
 ensures pure (res <==> Seq.equal s1 s2)
 {
-let mut i = 0sz;
+let mut i : SizeT.t = (int32_to_sizet 0l);
 while((Int32.eq (compare_elements a1 a2 l (! i)) 1l);
 )
 invariant b.        exists* vi.            (i |-> vi) ** (a1 |-> Frac p s1) ** (a2 |-> Frac p s2) **            pure (                SZ.as_int vi <= SZ.as_int l /\                 (b == (SZ.as_int vi < SZ.as_int l && Seq.index s1 (SZ.as_int vi) = Seq.index s2 (SZ.as_int vi))) /\                 (forall (i:nat). i < SZ.as_int vi ==> Seq.index s1 i == Seq.index s2 i)                        )
 {
-i := (SizeT.add (! i) 1sz);
-};((SizeT.eq (! i) l));
+i := (SizeT.add (! i) (int32_to_sizet 1l));
+};(int32_to_bool ((SizeT.eq_int32 (! i) l)));
 }

@@ -9,7 +9,7 @@ open Pulse.Lib.C
 
 fn empty_branch ()
 {
-let x = 1l;
+let x : Int32.t = 1l;
 if((Int32.eq x 1l))
 {
 ();

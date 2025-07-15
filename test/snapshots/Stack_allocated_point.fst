@@ -70,7 +70,7 @@ fn test_stack_allocator ()
 requires emp
 ensures emp
 {
-let mut p = point_default point_spec_default;
+let mut p : point = point_default point_spec_default;
 point_pack p;
 point_explode p;
 (! p).px := 1l;

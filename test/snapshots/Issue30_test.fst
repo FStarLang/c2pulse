@@ -20,9 +20,9 @@ ensures x |->Frac px vx
 ensures y |->Frac py vy
 ensures pure(as_int n == max_spec(as_int vx)(as_int vy))
 {
-let mut result = 0l;
-let vx = (! x);
-let vy = (! y);
+let mut result : Int32.t = 0l;
+let vx : Int32.t = (! x);
+let vy : Int32.t = (! y);
 if((Int32.gt vx vy))
 ensures exists* r. (x |->Frac px vx) ** (y |->Frac py vy) ** (result |->r) ** pure (as_int r == max_spec (as_int vx) (as_int vy))
 {

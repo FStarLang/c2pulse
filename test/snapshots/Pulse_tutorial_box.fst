@@ -30,7 +30,7 @@ returns i:ref int32
 ensures i |-> v
 ensures freeable i
 {
-let r = alloc_ref #Int32.t ();
+let r : (ref Int32.t) = alloc_ref #Int32.t ();
 r := v;
 r;
 }
@@ -42,7 +42,7 @@ requires (r |-> w) ** freeable r
 returns i:int32
 ensures pure (i == w)
 {
-let v = (! r);
+let v : Int32.t = (! r);
 (free_ref r);
 v;
 }
@@ -56,9 +56,9 @@ returns s:ref int32
 ensures s |-> w
 ensures freeable s
 {
-let v = (! r);
+let v : Int32.t = (! r);
 (free_ref r);
-let s = alloc_ref #Int32.t ();
+let s : (ref Int32.t) = alloc_ref #Int32.t ();
 s := v;
 s;
 }
@@ -70,8 +70,8 @@ requires r |-> w
 returns s:ref int32
 ensures (r |-> w) ** (s |-> w) ** freeable s
 {
-let v = (! r);
-let s = alloc_ref #Int32.t ();
+let v : Int32.t = (! r);
+let s : (ref Int32.t) = alloc_ref #Int32.t ();
 s := v;
 s;
 }

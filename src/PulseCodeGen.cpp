@@ -270,7 +270,7 @@ void PulseCodeGen::generateCodeFromPulseAST(llvm::raw_string_ostream &OS,
       if (!Arg->useFallBack) {
         OS << PulseSyntax::OpeningParenthesis << Val << PulseSyntax::Space
            << PulseSyntax::Colon << PulseSyntax::Space
-           << generateCodeFromTerm(OS, Ty) << PulseSyntax::ClosingParenthesis;
+           << generateCodeFromTerm(OS, Ty, RowCounter, ColCounter) << PulseSyntax::ClosingParenthesis;
         OS << "\n";
       } else {
         OS << PulseSyntax::OpeningParenthesis << Val
@@ -511,6 +511,13 @@ void PulseCodeGen::generateCodeFromPulseStmt(llvm::raw_string_ostream &OS,
     *ColCounter = *ColCounter + (Let->VarName).size();
     OS << PulseSyntax::Space;
     *ColCounter = *ColCounter + strlen(PulseSyntax::Space);
+
+    //Add type annotation for variable in let binding
+    OS << PulseSyntax::Colon; 
+    OS << PulseSyntax::Space; 
+    OS << Let->VarTy; 
+    OS << PulseSyntax::Space;
+
     OS << PulseSyntax::PulseLetAssignmentOpRef;
     *ColCounter = *ColCounter + strlen(PulseSyntax::PulseLetAssignmentOpRef);
     OS << PulseSyntax::Space;

@@ -80,6 +80,24 @@ std::map<Decl *, QualType> PulseVisitor::inferArrayTypes(FunctionDecl *FD) {
   return DeclToPulseSymbol;
 }
 
+static bool checkIfExprIsNullPtr(Expr *E){
+
+  //Make sure we remove any parens and casts around the expr.
+  if (CastExpr *CE = dyn_cast<CastExpr>(E)) {
+    if (CE->getType()->isPointerType()) {
+        auto *IgnoreParenCasts = CE->getSubExpr()->IgnoreParens()->IgnoreCasts();
+        auto *IgnoreImpCasts = IgnoreParenCasts->IgnoreImpCasts();
+      if (const IntegerLiteral *IL = dyn_cast<IntegerLiteral>(IgnoreImpCasts)) {
+        if (IL->getValue() == 0) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
 bool checkIsSameStructInstance(Expr *A, Expr *B, ASTContext &Context) {
   A = A->IgnoreImpCasts();
   B = B->IgnoreImpCasts();
@@ -1708,6 +1726,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           } else {
             PulseLet = new LetBinding(VarName, LetInit, MutOrRef::NOTMUT);
           }
+          auto *VDPulseTy = getPulseTyFromCTy(VD->getType());
+          PulseLet->VarTy = VDPulseTy->print(); 
 
           //Set the corresponding source location for the C ast node. 
           //PulseLet->RegInfo = new RegionMapping();
@@ -1821,6 +1841,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
                                    StructName.getAsString() + "_spec_default");
               auto *NewMutLet =
                   new LetBinding(VD->getNameAsString(), Rhs, MutOrRef::MUT);
+                  auto *PulseTy = getPulseTyFromCTy(VD->getType());
+                  NewMutLet->VarTy = PulseTy->print();
               return NewMutLet;
             }
             
@@ -2417,6 +2439,12 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
   } else if (auto *RS = dyn_cast<ReturnStmt>(S)) {
 
     if (auto *RetVal = RS->getRetValue()) {
+
+      // if (checkIfExprIsNullPtr(RetVal)){
+
+
+      // }
+
        SmallVector<PulseStmt *> ExprsBefore;
       // if (auto *CastToStmt = dyn_cast<Stmt>(RS->getRetValue())){
       auto *RetStmt = getTermFromCExpr(RetVal, Analyzer, ExprsBefore, Parent, RetVal->getType(), Module);
@@ -2696,24 +2724,6 @@ const clang::Stmt *getNextStatement(const clang::Expr *expr,
   return nullptr; // No next statement found
 }
 
-static bool checkIfExprIsNullPtr(Expr *E){
-
-  //Make sure we remove any parens and casts around the expr.
-  if (CastExpr *CE = dyn_cast<CastExpr>(E)) {
-    if (CE->getType()->isPointerType()) {
-        auto *IgnoreParenCasts = CE->getSubExpr()->IgnoreParens()->IgnoreCasts();
-        auto *IgnoreImpCasts = IgnoreParenCasts->IgnoreImpCasts();
-      if (const IntegerLiteral *IL = dyn_cast<IntegerLiteral>(IgnoreImpCasts)) {
-        if (IL->getValue() == 0) {
-          return true;
-        }
-      }
-    }
-  }
-
-  return false;
-}
-
 Term *
 PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
                                llvm::SmallVector<PulseStmt *> &ExprsBefore,
@@ -2852,7 +2862,8 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       auto *RemoveCastsLhs = Lhs->IgnoreParens()->IgnoreCasts()->IgnoreImpCasts();
 
       SymbolTable TypeKey = getSymbolKeyForCType(RemoveCastsLhs->getType(), Ctx);
-      auto *OpKey = getSymbolKeyForOperator(TypeKey, Op);
+      SymbolTable RetTy = getSymbolKeyForCType(BO->getType(), Ctx);
+      auto *OpKey = getSymbolKeyForOperator(TypeKey, RetTy, Op);
 
       switch (Op){
         case BO_NE:{
@@ -3050,7 +3061,10 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       // check argument type.
       assert(CE->getNumArgs() == 1 &&
              "Did not expect free to have more than one argument!");
-      auto *Arg = CE->getArg(0);
+      ///Vidush: I ignore all casts and parens here. 
+      ///Since free expects void* there may be implicit casts here that won't be handled by pulse.
+      ///Hence we just ignore them here.       
+      auto *Arg = CE->getArg(0)->IgnoreParens()->IgnoreCasts()->IgnoreImpCasts();
       // Vidush: TODO, check if we should ignore implicit casts here!
       if (auto *ArgDeclR =
               dyn_cast<DeclRefExpr>(Arg->IgnoreParens()->IgnoreImpCasts())) {
@@ -3083,6 +3097,12 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     auto *NewParen = new Paren(CallAppE);
     return NewParen;
   } else if (auto *IC = dyn_cast<ImplicitCastExpr>(E)) {
+
+
+    if (checkIfExprIsNullPtr(IC)) {
+      auto *NullValue = new Name("null");
+      return NullValue;
+    }
     
     IC->dump();
     // TODO: Check : Vidush
@@ -3095,6 +3115,9 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       SmallVector<PulseStmt *> ExprsBefore;
                  return getTermFromCExpr(SubExpr, MutAnalyzer, ExprsBefore, Parent,
                             ParentType, Module);
+    }
+    else if (isa<CStyleCastExpr>(SubExpr)){
+      emitErrorWithLocation("Unsafe casting not not handled!", &Ctx, SubExpr->getExprLoc());
     }
     
     ///make a call expr

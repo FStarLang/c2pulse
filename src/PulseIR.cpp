@@ -1,5 +1,6 @@
 #include "PulseIR.h"
 #include "Globals.h"
+#include "clang/AST/ASTContext.h"
 #include "clang/AST/Type.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/Support/Casting.h"

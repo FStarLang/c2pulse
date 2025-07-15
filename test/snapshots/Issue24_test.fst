@@ -12,6 +12,6 @@ fn refs_are_scoped ()
 returns s:ref int32
 ensures s |-> 0l
 {
-let mut s = 0l;
+let mut s : Int32.t = 0l;
 ((! s));
 }

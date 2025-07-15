@@ -15,11 +15,11 @@ fn foo
 
 fn bar ()
 {
-(foo (null));
+(foo null);
 }
 
 fn baz ()
 {
-let p = (null);
+let p : (ref Int32.t) = null;
 (foo p);
 }

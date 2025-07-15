@@ -13,7 +13,7 @@ fn ref_swap
 requires (r1 `pts_to` 'w1) ** (r2 `pts_to` 'w2)
 ensures (r1 `pts_to` 'w2) ** (r2 `pts_to` 'w1)
 {
-let tmp = (! r1);
+let tmp : Int32.t = (! r1);
 r1 := (! r2);
 r2 := tmp;
 }

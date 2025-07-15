@@ -13,7 +13,7 @@ returns r:ref int32
 ensures r |-> v
 ensures freeable r
 {
-let r = alloc_ref #Int32.t ();
+let r : (ref Int32.t) = alloc_ref #Int32.t ();
 r := v;
 r;
 }
