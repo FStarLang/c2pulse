@@ -882,6 +882,11 @@ void PulseExpr::dumpPretty() {
 
 PulseExpr::PulseExpr() { Tag = PulseStmtTag::Expr; }
 
+PulseExpr::PulseExpr(Term *Exp){
+  Tag = PulseStmtTag::Expr;
+  E = Exp;
+}
+
 void PulseAssignment::dumpPretty() {
   Lhs->dumpPretty();
   llvm::outs() << " := ";

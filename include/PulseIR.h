@@ -563,6 +563,9 @@ public:
   static bool classof(const Term *T) { return T->Tag == TermTag::AppE; }
 };
 
+
+// An IR node for representing a 
+
 /// An enum class for a pulse statements types.
 enum class PulseStmtTag {
   Expr,
@@ -614,6 +617,7 @@ class PulseExpr : public PulseStmt {
 public:
   Term *E;
   PulseExpr();
+  PulseExpr(Term *T);
   virtual void dumpPretty() override;
   static bool classof(const PulseStmt *S) {
     return S->Tag == PulseStmtTag::Expr;
