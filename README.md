@@ -157,7 +157,7 @@ C2Pulse leverages LLVM’s internal debugging infrastructure. To help developers
 Each major part of C2Pulse defines its own `DEBUG_TYPE`. You can enable debug output for a specific component using:
 
 ```bash
-bash run.sh ./test/general/swap_test.c -debug --debug-only=ast-loc-info
+./run.sh ./test/general/swap_test.c -debug --debug-only=ast-loc-info
 ```
 
 Available `DEBUG_TYPE`'s include:
@@ -184,14 +184,14 @@ DEBUG_WITH_TYPE("ast-loc-info", {
 To see all debug output, from every `DEBUG_TYPE`, pass the `-debug` flag alone:
 
 ```bash
-bash run.sh ./test/general/swap_test.c  -debug
+./run.sh ./test/general/swap_test.c  -debug
 ```
 
 Or set the environment variable:
 
 ```bash
 export LLVM_DEBUG=1
-bash run.sh ./test/general/swap_test.c 
+./run.sh ./test/general/swap_test.c 
 ```
 
 > Note: The environment variable disables all filtering, and outputs everything inside `LLVM_DEBUG(...)` and `DEBUG_WITH_TYPE(...)` blocks. 
