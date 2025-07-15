@@ -154,7 +154,7 @@ requires emp
 returns i:int32
 ensures pure (as_int i == 1)
 {
-let mut i = 0l;
+let mut i : Int32.t = 0l;
 (incr i);
 (! i);
 }

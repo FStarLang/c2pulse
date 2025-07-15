@@ -13,7 +13,7 @@ requires exists* v. x |-> v
 returns UInt32.t
 ensures exists* v. x |-> v
 {
-(bool_to_uint32 (UInt32.eq (! x) 0ul));
+(int32_to_uint32 ((bool_to_int32 (UInt32.eq (! x) (int32_to_uint32 0l)))));
 }
 
 fn decr
@@ -22,5 +22,5 @@ requires exists* v. x |-> v
 returns b:FStar.UInt32.t
 ensures exists* v. x |-> v
 {
-((UInt32.sub (! x) 0ul));
+((UInt32.sub (! x) (int32_to_uint32 0l)));
 }

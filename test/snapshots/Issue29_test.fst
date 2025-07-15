@@ -20,7 +20,7 @@ ensures x |->Frac px vx
 ensures y |->Frac py vy
 ensures pure(as_int n == max_spec(as_int vx)(as_int vy))
 {
-if((Int32.gt (! x) (! y)))
+if((int32_to_bool (bool_to_int32 (Int32.gt (! x) (! y)))))
 {
 (! x);
 }

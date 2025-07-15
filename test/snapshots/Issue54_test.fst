@@ -20,11 +20,11 @@ returns b:_Bool
 ensures exists* v. (a1 |-> v)
 ensures exists* v. (a2 |-> v)
 {
-if((SizeT.lt i len))
+if((int32_to_bool (bool_to_int32 (SizeT.lt i len))))
 {
 pts_to_len a1;
 pts_to_len a2;
-((Int32.eq (op_Array_Access a1 i) (op_Array_Access a2 i)));
+(int32_to_bool ((bool_to_int32 (Int32.eq (op_Array_Access a1 i) (op_Array_Access a2 i)))));
 }
 else
 {

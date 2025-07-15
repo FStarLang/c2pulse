@@ -20,7 +20,7 @@ ensures x |-> Frac px vx
 ensures y |-> Frac py vy
 ensures pure (as_int n == max_spec (as_int vx) (as_int vy))
 {
-if((Int32.gt (! x) (! y)))
+if((int32_to_bool (bool_to_int32 (Int32.gt (! x) (! y)))))
 {
 (! x);
 }
@@ -45,7 +45,7 @@ ensures pure (as_int n == max_spec (as_int vx) (as_int vy))
 let mut result : Int32.t = 0l;
 let vx : Int32.t = (! x);
 let vy : Int32.t = (! y);
-if((Int32.gt vx vy))
+if((int32_to_bool (bool_to_int32 (Int32.gt vx vy))))
 ensures exists* r. (x |-> Frac px vx) ** (y |-> Frac py vy) ** (result |-> r) ** pure (as_int r == max_spec (as_int vx) (as_int vy))
 {
 result := vx;
@@ -66,7 +66,7 @@ returns i:int32
 ensures r |->? Frac p w
 ensures pure (Some? w ==> Some?.v w == i)
 {
-if(is_null r)
+if((int32_to_bool (bool_to_int32 (is_null r))))
 {
 elim_intro_null r;
 0l;
@@ -87,7 +87,7 @@ fn write_nullable
 requires r |->? w
 ensures exists* x. (r |->? x) ** pure (if Some? w then x == Some v else x == w)
 {
-if(is_null r)
+if((int32_to_bool (bool_to_int32 (is_null r))))
 {
 elim_intro_null r;
 }

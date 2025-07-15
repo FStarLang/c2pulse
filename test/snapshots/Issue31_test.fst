@@ -13,7 +13,7 @@ requires emp
 returns i:int32
 ensures emp
 {
-if(is_null r)
+if((int32_to_bool (bool_to_int32 (is_null r))))
 {
 0l;
 }

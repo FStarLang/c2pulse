@@ -136,6 +136,7 @@ enum class SymbolTable {
   UInt32_Rem,
   UInt32_Mul,
   UInt32_Eq,
+  UInt32_Eq_Int32,
   UInt32_Lt,
   UInt32_Le,
   UInt32_Gt,
@@ -149,6 +150,7 @@ enum class SymbolTable {
   Int64_Rem,
   Int64_Mul,
   Int64_Eq,
+  UInt64_Eq_Int32,
   Int64_Lt,
   Int64_Le,
   Int64_Gt,
@@ -187,7 +189,7 @@ enum class SymbolTable {
 };
 
 SymbolTable getSymbolKeyForCType(clang::QualType Ty, clang::ASTContext &Ctx);
-const char* getSymbolKeyForOperator(SymbolTable Val, SymbolTable RetTy, clang::BinaryOperatorKind &Op);
+const char* getSymbolKeyForOperator(SymbolTable Val, clang::BinaryOperatorKind &Op);
 const char* lookupSymbol(SymbolTable Key);
 
 /// A map from symbol to its pulse specific string.
@@ -286,6 +288,7 @@ static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
     {SymbolTable::UInt32_Rem, "UInt32.rem"},
     {SymbolTable::UInt32_Mul, "UInt32.mul"},
     {SymbolTable::UInt32_Eq, "UInt32.eq"},
+    {SymbolTable::UInt32_Eq_Int32, "Int32.eq_int32"},
     {SymbolTable::UInt32_Lt, "UInt32.lt"},
     {SymbolTable::UInt32_Le, "UInt32.lte"},
     {SymbolTable::UInt32_Gt, "UInt32.gt"},
@@ -310,6 +313,7 @@ static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
     {SymbolTable::UInt64_Div, "UInt64.div"},
     {SymbolTable::UInt64_Rem, "UInt64.rem"},
     {SymbolTable::UInt64_Eq, "UInt64.eq"},
+    {SymbolTable::UInt64_Eq_Int32, "UInt64.eq_int32"},
     {SymbolTable::UInt64_Lt, "UInt64.lt"},
     {SymbolTable::UInt64_Le, "UInt64.lte"},
     {SymbolTable::UInt64_Gt, "UInt64.gt"},

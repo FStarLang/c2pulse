@@ -121,7 +121,7 @@ returns p:ref point
 ensures is_point p (as_int x, as_int y)
 ensures freeable p
 {
-let p = point_alloc ();
+let p : (ref point) = point_alloc ();
 point_explode p;
 Mkpoint?.px (! p) := x;
 Mkpoint?.py (! p) := y;
@@ -131,7 +131,7 @@ p;
 
 fn create_and_move ()
 {
-let p = (create_point 0l 0l);
+let p : (ref point) = (create_point 0l 0l);
 (move_alt p 1l 1l);
 assert(is_point p (1, 1));
 unfold is_point;

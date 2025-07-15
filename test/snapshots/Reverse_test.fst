@@ -16,7 +16,7 @@ requires pure (length arr == SizeT.v len)
 ensures exists* s.arr |-> s
 {
 let mut i : SizeT.t = (int32_to_sizet 0l);
-while((SizeT.lt (! i) (SizeT.div len (int32_to_sizet 2l)));
+while((int32_to_bool (bool_to_int32 (SizeT.lt (! i) (SizeT.div len (int32_to_sizet 2l)))));
 )
 invariant c. 
  exists* vi. (i |->vi) ** (exists* s.arr |->s) ** pure (c == (vi `SizeT.lt` SizeT.div len 2sz))

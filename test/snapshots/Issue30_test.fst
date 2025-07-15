@@ -23,7 +23,7 @@ ensures pure(as_int n == max_spec(as_int vx)(as_int vy))
 let mut result : Int32.t = 0l;
 let vx : Int32.t = (! x);
 let vy : Int32.t = (! y);
-if((Int32.gt vx vy))
+if((int32_to_bool (bool_to_int32 (Int32.gt vx vy))))
 ensures exists* r. (x |->Frac px vx) ** (y |->Frac py vy) ** (result |->r) ** pure (as_int r == max_spec (as_int vx) (as_int vy))
 {
 result := vx;

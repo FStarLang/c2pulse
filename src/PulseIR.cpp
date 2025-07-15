@@ -254,8 +254,7 @@ SymbolTable getSymbolKeyForCType(clang::QualType Ty, clang::ASTContext &Ctx) {
   emitError("(getSymbolKeyForCType): Did not expect C type!\n");
 }
 
-const char *getSymbolKeyForOperator(SymbolTable Val,
-                                    SymbolTable RetTy,   
+const char *getSymbolKeyForOperator(SymbolTable Val,   
                                     clang::BinaryOperatorKind &Op) {
 
   switch (Op) {
@@ -514,9 +513,6 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
     } else if (Val == SymbolTable::UInt64) {
       return lookupSymbol(SymbolTable::UInt64_Eq);
     } else if (Val == SymbolTable::SizeT) {
-      if (RetTy == SymbolTable::Int32){
-        return lookupSymbol(SymbolTable::SizeT_Eq_Int32);  
-      }
       return lookupSymbol(SymbolTable::SizeT_Eq);
     } else {
       emitError("(getSymbolKeyForOperator): Unknown case in BO_EQ!\n");

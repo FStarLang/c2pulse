@@ -12,7 +12,7 @@ fn test_bool
 (b : Int32.t)
 returns b:_Bool
 {
-if((Int32.lt a b))
+if((int32_to_bool (bool_to_int32 (Int32.lt a b))))
 {
 (int32_to_bool 1l);
 }

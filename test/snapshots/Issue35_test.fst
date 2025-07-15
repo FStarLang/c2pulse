@@ -10,7 +10,7 @@ open Pulse.Lib.C
 fn empty_branch ()
 {
 let x : Int32.t = 1l;
-if((Int32.eq x 1l))
+if((int32_to_bool (bool_to_int32 (Int32.eq x 1l))))
 {
 ();
 }

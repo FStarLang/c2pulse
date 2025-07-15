@@ -2393,6 +2393,15 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
     auto *PulseCond = getTermFromCExpr(Cond, Analyzer, ExprsBefore, Parent,
                                        Cond->getType(), Module);
 
+    if (Cond->getType().getAsString() != "_Bool" || Cond->getType().getAsString() != "bool"){
+
+      auto *CastCall = new AppE(getPulseStringForCType(Cond->getType(), Ctx)
+                                                   + "_to_bool");
+      CastCall->pushArg(PulseCond);
+      PulseCond = new Paren(CastCall);
+
+    }                                   
+
     PulseStmt *PulseThen;
     if (auto *AttrStmt = dyn_cast<AttributedStmt>(Then)) {
       auto *ThenBody = AttrStmt->getSubStmt();
@@ -2636,9 +2645,23 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           }
         }
       }
+      
+      SmallVector<PulseStmt*> ExprsBef;
+      auto *PulseWhileGuard =
+          getTermFromCExpr(WhileCond, Analyzer, ExprsBef, Parent, WhileCond->getType(), Module, CS);
+      auto *NewExprGuard = new PulseExpr();
+      if (WhileCond->getType().getAsString() != "_Bool" || WhileCond->getType().getAsString() != "bool"){
 
-      PulseWhile->Guard =
-          pulseFromStmt(WhileCond, Analyzer, Parent, Module, CS);
+        auto *CastCall = new AppE(getPulseStringForCType(WhileCond->getType(), Ctx)
+                                                   + "_to_bool");
+        CastCall->pushArg(PulseWhileGuard);
+        auto *NewParenCastCall =  new Paren(CastCall); 
+        NewExprGuard->E = NewParenCastCall; 
+      }
+      else {
+        NewExprGuard->E = PulseWhileGuard;
+      }
+      PulseWhile->Guard = NewExprGuard;    
       PulseWhile->Body = pulseFromCompoundStmt(CompundBody, Analyzer, Module);
 
       return PulseWhile;
@@ -2787,6 +2810,11 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
         auto *RhsTerm = getTermFromCExpr(Rhs, MutAnalyzer, ExprsBefore, Parent,
                                          BO->getType(), Module);
         IsNullCall->pushArg(RhsTerm);
+        if (BO->isKnownToHaveBooleanValue()){
+            auto *CastCall = new AppE("bool_to_" + getPulseStringForCType(BO->getType(), Ctx));
+            CastCall->pushArg(new Paren(IsNullCall));
+            return new Paren(CastCall);
+        }
         return IsNullCall;
       }
 
@@ -2796,6 +2824,11 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
         auto *LhsTerm = getTermFromCExpr(Lhs, MutAnalyzer, ExprsBefore, Parent,
                                          BO->getType(), Module);
         IsNullCall->pushArg(LhsTerm);
+        if (BO->isKnownToHaveBooleanValue()){
+            auto *CastCall = new AppE("bool_to_" + getPulseStringForCType(BO->getType(), Ctx));
+            CastCall->pushArg(new Paren(IsNullCall));
+            return new Paren(CastCall);
+        }
         return IsNullCall;
       }
 
@@ -2820,6 +2853,13 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
         auto *ParenNullCall = new Paren(IsNullCall);
 
         NotCall->pushArg(ParenNullCall);
+
+        if (BO->isKnownToHaveBooleanValue()){
+            auto *CastCall = new AppE("bool_to_" + getPulseStringForCType(BO->getType(), Ctx));
+            CastCall->pushArg(new Paren(NotCall));
+            return new Paren(CastCall);
+        }
+
         return NotCall;
       }
 
@@ -2838,6 +2878,11 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
         auto *ParenNullCall = new Paren(IsNullCall);
 
         NotCall->pushArg(ParenNullCall);
+        if (BO->isKnownToHaveBooleanValue()){
+            auto *CastCall = new AppE("bool_to_" + getPulseStringForCType(BO->getType(), Ctx));
+            CastCall->pushArg(new Paren(NotCall));
+            return new Paren(CastCall);
+        }
         return NotCall;
       }
 
@@ -2859,11 +2904,11 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       //casts to get the type of the operator
       //Ignore casts to get underlying type!
 
-      auto *RemoveCastsLhs = Lhs->IgnoreParens()->IgnoreCasts()->IgnoreImpCasts();
+     // auto *RemoveCastsLhs = Lhs->IgnoreParens()->IgnoreCasts()->IgnoreImpCasts();
 
-      SymbolTable TypeKey = getSymbolKeyForCType(RemoveCastsLhs->getType(), Ctx);
-      SymbolTable RetTy = getSymbolKeyForCType(BO->getType(), Ctx);
-      auto *OpKey = getSymbolKeyForOperator(TypeKey, RetTy, Op);
+      SymbolTable TypeKey = getSymbolKeyForCType(Lhs->getType(), Ctx);
+      //SymbolTable RetTy = getSymbolKeyForCType(BO->getType(), Ctx);
+      auto *OpKey = getSymbolKeyForOperator(TypeKey, Op);
 
       switch (Op){
         case BO_NE:{
@@ -2883,6 +2928,14 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
           auto *NotAppE = new AppE("not");
           NotAppE->pushArg(NewParen);
           auto *NotAppEParen = new Paren(NotAppE);
+
+          if (BO->isKnownToHaveBooleanValue()){
+            auto *CastCall = new AppE("bool_to_" + getPulseStringForCType(BO->getType(), Ctx));
+            CastCall->pushArg(NotAppEParen);
+            return new Paren(CastCall);
+          }
+
+
           return NotAppEParen;
           break;
         }
@@ -2895,8 +2948,19 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
           NewAppENode->pushArg(LhsTerm);
           NewAppENode->pushArg(RhsTerm);
           
+          
+
           // Wrap Call Expr into a Paren to be safe.
           auto *NewParen = new Paren(NewAppENode);
+          //In case its know to have a boolean return value generate
+          //the right kind of op here.
+          if (BO->isKnownToHaveBooleanValue()){
+            auto *CastCall = new AppE("bool_to_" + getPulseStringForCType(BO->getType(), Ctx));
+            CastCall->pushArg(NewParen);
+            return new Paren(CastCall);
+          }
+
+
           return NewParen;
           break;
         };
