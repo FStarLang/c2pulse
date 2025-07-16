@@ -1,0 +1,173 @@
+This is a rouch sketch of the translation, from a "tiny C"
+language into pseudo Pulse.
+
+Tiny C
+======
+
+# Missing still : structs and array accesses. They
+# are interesting wrt lvalue/rvalues too. Returns are not
+# very well modelled either.
+
+    # Types
+    type ::=
+      bool | int | void | type*
+
+    # Global declarations
+    GDecl ::=
+      type id(type id, ..., type id) {
+        VDecl*;
+        Stmt*;
+      }
+
+    # Local variable declarations
+    VDecl ::=
+      type id;                                 # modelling all variable decls as uninitialized
+
+    # Statements
+    Stmt ::=
+      RExpr;                                   # function calls go here
+      LExpr = RExpr;
+      if (RExpr) { Stmt* } else { Stmt* }
+      return RExpr;
+
+    # rvalue expressions
+    RExpr ::=
+      expr +  expr
+      expr /  expr
+      expr && expr
+      id(expr, ..., expr)
+      lvalue_as_rvalue(LExpr)
+      &LExpr                                   # address of an lvalue
+      Cast(type, type, expr)
+
+    # lvalue expressions
+    LExpr ::=
+      id
+      *RExpr                                   # pointer dereference
+
+All operations (+, /, &&) work over ints, not bools (= _Bool). casts are
+All explicit in Tiny C. A term like
+
+    x && b
+
+with x being an int and b a boolean is ill-typed. This would be correct:
+
+    x && Cast(bool, int, b)
+
+and the type of this expression is `int`. This can later be casted to a
+bool.
+
+Translation
+===========
+
+The key ideas here are
+- Local variables (including function arguments) get translated
+  to `let mut`, turning them into a ref, so we essentially
+  model a C variable as its address. Using a C variable `x`
+  as an lvalue (e.g. `&x`) is just `x`, the address. If it's casted
+  to an rvalue, we translate to `!x`.
+- All operations work on integers, even &&.
+- Casts to and from bool (which are present in the C syntax) are translated
+  to appropriate Pulse casts.
+
+    tr_Type(int)  = Int32.t
+    tr_Type(bool) = bool
+    tr_Type(void) = unit      # when on the return type of a function, failure anywhere else
+    tr_Type(t*)   = ref (tr_Type(t))
+
+    # Translation of R expressions
+    tr_RExpr(a +  b) = tr_RExpr(a) +   tr_RExpr(b)
+    tr_RExpr(a /  b) = tr_RExpr(a) /   tr_RExpr(b)
+
+    tr_RExpr(a && b) = tr_RExpr(a) &&' tr_RExpr(b)      # defining &&' : int -> int -> int
+    # OR:
+    tr_RExpr(a && b) = bool_as_int
+                         (int_as_bool (tr_RExpr(a)) &&  # with just a normal &&
+                          int_as_bool (tr_RExpr(b)))
+
+    tr_RExpr(id(a1, .., an)) =
+      id (tr_RExpr(a1), .., tr_RExpr(an))
+
+    tr_RExpr(lvalue_as_rvalue(x)) = !x                 # perhaps mangling
+
+    tr_RExpr(&x) = x
+
+    tr_RExpr(Cast(t1, t2, e)) = t1_as_t2 (tr_RExpr(e)) # for the casts that may make sense, fail otherwise
+
+    # Translation of L expressions. Not much to do, as we are translating
+    # things "to their lvalue".
+    tr_LExpr(x)     = x
+    tr_LExpr(*expr) = tr_RExpr(expr)
+
+    tr_Stmt(rexpr;) = tr_RExpr(rexpr);
+
+    tr_Stmt(l = r;) = tr_LExpr(l) := tr_RExpr(r);
+
+    tr_Stmt(
+      if (cond) { th } else { el }
+    )
+    =
+      if (int_as_bool (tr_RExpr(cond))) {
+        tr_Stmt*(th)
+      } else {
+        tr_Stmt*(el)
+      }
+      
+    tr_Stmt(return e;) = (tr_RExpr(e));    # roughly...
+
+    # Translation of a variable decl, simple enough.
+    tr_VDecl(type id;) = let mut id : type = witness #_ #_;
+
+When translating a function body, we first also mutably let-bind all of
+its arguments locally. Even if the function is call-by-value (i.e. its argument
+is an Int32 Pulse *value*) this makes it so that internally we still have a ref
+to it, that can be assigned and updated. This makes them uniform with local
+variables (as one expects in C).
+
+Example:
+
+  A normal C program like:
+
+  int foo(int a, bool b) {
+    a = a + b;
+    int *p = &b;
+    *p = *p + 123;
+    return *p;
+  }
+
+  Would be elaborated to Tiny C (i.e. Clang would give us):
+  # TODO: make sure the Clang AST looks roughly like this, or what
+  # the discrepancies are.
+
+  int foo(int a, bool b) {
+    a = lvalue_as_rvalue(a) + cast(bool, int, lvalue_as_rvalue(b));
+    int *p = &a;
+    *(lvalue_as_rvalue(p)) = lvalue_as_rvalue(*(lvalue_as_rvalue(p))) + 123;
+    return lvalue_as_rvalue(*(lvalue_as_rvalue(p)));
+  }
+
+  And translated to this pseudo Pulse
+
+  ~>
+
+  fn foo (a : int) (b : bool)
+    returns Int32.t
+  {
+    /* uniform shadowing of function arguments. */
+    let mut a : Int32.t = a;
+    let mut b : bool    = b;
+
+    // a = lvalue_as_rvalue(a) + cast(bool, int, !b)
+    a := !a + bool_to_int b;
+
+    // int *p;
+    let mut p : ref Int32.t = witness #_ #_;
+    // p = &a;
+    p := a;
+
+    // *p = *p + 123;
+    !p := !!p + 123;
+
+    // return *p
+    !!p;
+  }
