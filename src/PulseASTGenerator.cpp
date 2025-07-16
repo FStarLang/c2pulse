@@ -3065,6 +3065,34 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       }
       return NotCall;
     }
+    else if (UO->getOpcode() == clang::UO_Minus) {
+
+      auto SymbolForBase = getSymbolKeyForCType(UO->getSubExpr()->getType(), Ctx);
+      std::string OpStr;
+      switch (SymbolForBase){
+        case SymbolTable::UInt32:{
+          OpStr = "UInt32.minus";
+          break;
+        };
+        case SymbolTable::UInt64:{
+          OpStr = "UInt64.minus";
+          break;
+        };
+        default: {
+          emitError("UO Minus not implemented in pulse for Type.");
+        }
+      };
+      auto *UOMinus = new AppE(OpStr);
+
+      auto *TermForBaseExpr = getTermFromCExpr(UO->getSubExpr(), MutAnalyzer,
+                                               ExprsBefore, Parent, ParentType, Module);
+      UOMinus->pushArg(TermForBaseExpr);
+
+      // Wrap this deref in a parenthesis.
+      auto *Parenthesis = new Paren(UOMinus);
+      return Parenthesis;
+
+    }
     
     else {
       DEBUG_WITH_TYPE(DEBUG_TYPE, {
