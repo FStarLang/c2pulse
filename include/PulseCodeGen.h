@@ -1,20 +1,23 @@
 #pragma once
 
 #include "PulseIR.h"
+#include "PulseCodeGen.h"
 
+#include "clang/AST/ASTContext.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include <map>
 #include <memory>
 #include <set>
 #include <string>
+#include <tuple>
 
 using CodegenStrTy = const char*;
 using CodegenPyTy = std::unique_ptr<llvm::raw_string_ostream>;
 class PulseCodeGen {
 
 public:
-  PulseCodeGen() = default;
+  PulseCodeGen(clang::ASTContext &Ctx);
   ~PulseCodeGen() {
     // emittedModules uses unique_ptr, auto-cleanup—no manual deletion needed
     emittedModules.clear();
@@ -37,11 +40,14 @@ public:
   std::string formatAsComments(PulseDecl *Decl);
   void writeHeaders(PulseModul *pulseModule, llvm::raw_string_ostream &Stream, 
     unsigned *RowIdx);
+  void printSourceLocations();
 
 private:
   std::map<std::string, CodegenPyTy> emittedModules;
   std::set<std::string> alreadyEmittedModules;
   std::map<std::string, PulseModul *> allModulesByName;
+  std::vector<std::pair<PulseSourceRange, SourceInfo>> PulseLocsToCLocs;
+  clang::ASTContext &ClangCtx;
 };
 
 namespace PulseSyntax {

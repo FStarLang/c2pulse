@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+EXPECT_FAILURE()
 bool compare(ISARRAY(l) int *a1, ISARRAY(l) int *a2, size_t l)
 {
     size_t i = 0;

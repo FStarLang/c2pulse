@@ -1,9 +1,11 @@
 #include "ExprLocationAnalyzer.h"
 
+#include "clang/AST/Decl.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/PrettyPrinter.h"
 #include "clang/AST/ParentMapContext.h"
+#include "clang/AST/Stmt.h"
 #include "clang/Basic/SourceManager.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
@@ -39,6 +41,31 @@ bool ExprLocationAnalyzer::TraverseFunctionDecl(FunctionDecl *FD){
 void SourceInfo::setLine(unsigned LineNum) { Line = LineNum; }
 
 void SourceInfo::setColumn(unsigned ColumnNum) { Column = ColumnNum; }
+
+clang::SourceLocation SourceInfo::getBeginLoc(){
+  return range.getBegin();
+}
+
+clang::SourceLocation SourceInfo::getEndLoc(){
+  return range.getEnd();
+}
+
+void SourceInfo::setBeginLoc(clang::SourceLocation b){
+  range.setBegin(b);
+}
+
+void SourceInfo::setEndLoc(clang::SourceLocation e){
+  range.setEnd(e);
+}
+
+bool SourceInfo::isSingleLocation(){
+
+  if (range.getBegin() == range.getEnd()){
+    return true;
+  }
+
+  return false;
+}
 
 void ExprLocationAnalyzer::dumpTokens(SourceRange Range) {
   SourceLocation B = Range.getBegin();
@@ -344,6 +371,18 @@ const  std::map<const clang::Stmt*, SourceInfo>  &ExprLocationAnalyzer::getNodeI
   return NodeInfoMap;
 }
 
+void SourceInfo::dumpPretty(){
+  llvm::outs() << "------------------------------------------------------\n";
+  llvm::outs() << "Pretty:    " << PrettyString << "\n";
+  llvm::outs() << "Location:  Line " << Line << ", Column " << Column << "\n";
+  llvm::outs() << "Type:      " << Type << "\n";
+  llvm::outs() << "Source:    " << SourceLine << "\n";
+  llvm::outs() << "Context:   " << Context << "\n";
+  if (!Operation.empty())
+      llvm::outs() << "Operation: " << Operation << "\n";
+  llvm::outs() << "------------------------------------------------------\n";
+}
+
 void ExprLocationAnalyzer::printNodeInfoMap() const {
   
   llvm::outs() << "-------------------------------\n";
@@ -361,4 +400,102 @@ void ExprLocationAnalyzer::printNodeInfoMap() const {
     llvm::outs() << "----------------------\n";
   }
 }
+
+
+
+static std::optional<std::string> getSourceLine(SourceLocation loc, SourceManager &SM) {
+  bool invalid = false;
+  const char *bufferStart = SM.getCharacterData(loc, &invalid);
+  if (invalid) {
+    llvm::errs() << "  [Could not get source line]\n";
+    return "";
+  }
+
+  FileID FID = SM.getFileID(loc);
+  std::optional<llvm::MemoryBufferRef> BufRef = SM.getBufferOrNone(FID);
+  if (!BufRef) {
+    llvm::errs() << "Unable to get buffer\n";
+    return "";
+  }
+
+  const char *fileStart = BufRef->getBufferStart();
+  const char *fileEnd = BufRef->getBufferEnd();
+
+  const char *lineStart = bufferStart;
+  while (lineStart > fileStart && (*(lineStart - 1) != '\n' && *(lineStart - 1) != '\r'))
+    --lineStart;
+
+  const char *lineEnd = bufferStart;
+  while (lineEnd < fileEnd && *lineEnd != '\n' && *lineEnd != '\r')
+    ++lineEnd;
+
+  std::string lineText(lineStart, lineEnd);
+  return lineText;
+}
+
+
+SourceInfo getSourceInfoFromExpr(clang::Expr *ExprNode, clang::ASTContext &Context, 
+    std::string CtxString, std::string Op){
+
+  auto &SM = Context.getSourceManager();
+  SourceLocation loc = SM.getSpellingLoc(ExprNode->getExprLoc());
+
+  unsigned line = SM.getSpellingLineNumber(loc);
+  unsigned column = SM.getSpellingColumnNumber(loc);
+  QualType QT = ExprNode->getType();
+
+  std::string pretty;
+  llvm::raw_string_ostream rso(pretty);
+  ExprNode->printPretty(rso, nullptr, Context.getPrintingPolicy());
+
+  std::optional<std::string> srcLine = getSourceLine(loc, SM);
+
+  SourceInfo info;
+  info.PrettyString = rso.str();
+  info.Line = line;
+  info.Column = column;
+  info.Type = QT.getAsString();
+  info.SourceLine = srcLine.value_or("[Unavailable]");
+  info.Context = CtxString;
+  info.Operation = Op;
+  info.range = ExprNode->getSourceRange();
+  return info;
+}
+
+SourceInfo getSourceInfoFromStmt(clang::Stmt *StmtNode, clang::ASTContext &Context, 
+    std::string CtxString, std::string Op){
+
+  auto &SM = Context.getSourceManager();
+  SourceLocation loc = SM.getSpellingLoc(StmtNode->getBeginLoc());
+
+  unsigned line = SM.getSpellingLineNumber(loc);
+  unsigned column = SM.getSpellingColumnNumber(loc);
+  
+  QualType QT;
+  if (auto *Expr = llvm::dyn_cast<clang::Expr>(StmtNode)) {
+    QT = Expr->getType();
+  }
+
+  std::string pretty;
+  llvm::raw_string_ostream rso(pretty);
+  StmtNode->printPretty(rso, nullptr, Context.getPrintingPolicy());
+
+  std::optional<std::string> srcLine = getSourceLine(loc, SM);
+
+  SourceInfo info;
+  info.PrettyString = rso.str();
+  info.Line = line;
+  info.Column = column;
+  info.Type = QT.getAsString();
+  info.SourceLine = srcLine.value_or("[Unavailable]");
+  info.Context = CtxString;
+  info.Operation = Op;
+  info.range = StmtNode->getSourceRange();
+  return info;
+}
+
+
+SourceInfo getSourceInfoFromFuncDecl(clang::FunctionDecl *S){}
+
+SourceInfo getSourceInfoFromRecordDecl(clang::RecordDecl *S){}
 

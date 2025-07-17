@@ -26,9 +26,77 @@
 //   End.Column = Col;
 // }
 
-SourceInfo &RegionMapping::getCInfo() { return CInfo; }
+// SourceInfo &RegionMapping::getCInfo() { return CInfo; }
 
-SourceInfo &RegionMapping::getPulseInfo() { return PulseInfo; }
+// SourceInfo &RegionMapping::getPulseInfo() { return PulseInfo; }
+
+PulseSourceLocation::PulseSourceLocation(unsigned L, unsigned C){
+  Line = L;
+  Column = C;
+}
+
+unsigned PulseSourceLocation::getLine(){
+  return Line;
+}
+
+unsigned PulseSourceLocation::getColumn(){
+  return Column;
+}
+
+void PulseSourceLocation::setLine(unsigned L){
+  Line = L;
+}
+
+void PulseSourceLocation::setColumn(unsigned C){
+  Column = C;
+}
+
+void PulseSourceLocation::dumpPretty(){
+  
+  llvm::outs() << "-------------------------------\n";
+  llvm::outs() << "Line: " << Line << "\n";
+  llvm::outs() << "Column: " << Column << "\n";
+  llvm::outs() << "-------------------------------\n";
+
+}
+
+bool PulseSourceLocation::isSame(PulseSourceLocation ToCheck){
+  if (Line == ToCheck.getLine() && Column == ToCheck.getColumn()){
+    return true;
+  }
+  return false;
+}
+
+PulseSourceRange::PulseSourceRange(PulseSourceLocation B, PulseSourceLocation E) 
+  : Begin(B), End(E){}
+
+
+PulseSourceRange::PulseSourceRange(PulseSourceLocation B)
+  : Begin(B), End(B){}
+
+bool PulseSourceRange::isSingleLocation(){
+  if (Begin.isSame(End)){
+    return true;
+  }
+  return false;
+}
+
+void PulseSourceRange::dumpPretty(){
+
+  llvm::outs() << "LocRange: (";
+  llvm::outs() << "Start: (";
+  llvm::outs() << "R: " << Begin.getLine() << ", ";
+  llvm::outs() << "C: " << Begin.getColumn() << ")";
+  llvm::outs() << ", ";
+
+  llvm::outs() << "End: (";
+  llvm::outs() << "R: " << End.getLine() << ", ";
+  llvm::outs() << "C: " << End.getColumn() << ")";
+
+  llvm::outs() << ")";
+  llvm::outs() << "\n";
+
+}
 
 // enum class TermTag { Const, Var, Name, AppE, FStarType, FStarPointerType };
 llvm::raw_ostream &operator<<(llvm::raw_ostream &os, TermTag T) {
@@ -631,8 +699,8 @@ const char *getSymbolKeyForOperator(SymbolTable Val,
 
 Binder::Binder(std::string FallBack) { Ident = FallBack; }
 
-RegionMapping &Binder::getRegInfoMapping(){
-  return RegInfo;
+SourceInfo Binder::getCSourceInfo(){
+  return CInfo;
 }
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &os, PulseStmtTag T) {
@@ -689,10 +757,14 @@ void Term::printTag() { llvm::outs() << Tag << "\n"; }
 
 void Term::dumpPretty() { printTag(); }
 
-
-RegionMapping &Term::getRegInfoMapping(){
-  return RegInfo;
+SourceInfo Term::getCSourceInfo(){
+  return CInfo;
 }
+
+
+// RegionMapping &Term::getRegInfoMapping(){
+//   return RegInfo;
+// }
 
 
 Project::Project(){
@@ -824,8 +896,8 @@ std::string FStarPointerType::print() {
   return Out;
 }
 
-RegionMapping &PulseStmt::getRegInfoMapping(){
-  return RegInfo;
+SourceInfo PulseStmt::getCSourceInfo(){
+  return CInfo;
 }
 
 FStarArrType::FStarArrType() { Tag = TermTag::FStarArrType; }
@@ -997,8 +1069,10 @@ PulseWhileStmt::PulseWhileStmt() { Tag = PulseStmtTag::WhileStmt; }
 
 PulseDeclKind PulseDecl::getKind() { return Kind; }
 
-RegionMapping &PulseDecl::getRegInfoMapping(){
-  return RegInfo;
+
+
+SourceInfo PulseDecl::getCSourceInfo(){
+  return CInfo;
 }
 
 PulseFnDefn::PulseFnDefn(_PulseFnDefn *Defn) : Defn(Defn) {

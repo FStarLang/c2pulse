@@ -30,7 +30,7 @@ public:
 
   bool VisitFunctionDecl(clang::FunctionDecl *FD);
   // bool VisitTypedefDecl(clang::TypedefDecl *TypeDefDec);
-  bool VisitRecordDecl(clang::RecordDecl *RecordDecl);
+  bool VisitRecordDecl(const clang::RecordDecl *RecordDecl);
   bool VisitVarDecl(clang::VarDecl *VD);
 
   PulseStmt *pulseFromCompoundStmt(clang::Stmt *S, clang::ExprMutationAnalyzer *A, PulseModul *Module);
@@ -57,6 +57,7 @@ public:
   bool checkIsRecursiveStmt(clang::Stmt *InnerStmt,
                             clang::FunctionDecl *CurrFunction);
   bool checkIsRecursiveFunction(clang::FunctionDecl *FD);
+  std::string getNameForRecordDecl(const clang::RecordDecl *RD);
 
 private:
   std::map<std::string, PulseModul *> Modules;

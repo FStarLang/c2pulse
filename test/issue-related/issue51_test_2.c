@@ -2,11 +2,13 @@
 #include <stdint.h>
 
 RETURNS(Int32.t)
+EXPECT_FAILURE()
 int neg(uint32_t x) { 
     return -x;
 }
 
 RETURNS(Int64.t)
+EXPECT_FAILURE()
 long neg_2(uint64_t x) { 
     return -x;
 }

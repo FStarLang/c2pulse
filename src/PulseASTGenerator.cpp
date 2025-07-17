@@ -231,6 +231,9 @@ void PulseVisitor::inferDeclType(Decl *Dec, Stmt *InnerStmt) {
 
 void PulseVisitor::inferArrayTypesStmt(Stmt *InnerStmt) {
 
+  if (!InnerStmt)
+     return;
+
   /// Check the types of the statements here.
   if (auto *DS = dyn_cast<DeclStmt>(InnerStmt)) {
     for (auto *D : DS->decls()) {
@@ -455,11 +458,16 @@ bool PulseVisitor::checkIsRecursiveExpr(Expr *ExprPtr,
   }
 }
 
-
-std::string getNameForRecordDecl(RecordDecl *RD){
+///TODO: Vidush change name of function to getTypeNameForRecordDecl.
+std::string PulseVisitor::getNameForRecordDecl(const RecordDecl *RD){
 
   std::string StructName = RD->getDeclName().getAsString();
-  clang::DeclContext *context = RD->getDeclContext();
+  const clang::DeclContext *context = RD->getDeclContext();
+
+  auto It = RecordToRecordName.find(RD);
+  if (It != RecordToRecordName.end()){
+    return It->second;
+  }
 
   if (context == nullptr) {
     llvm::outs() << "Cannot get typedefs for record, using record name for "
@@ -468,6 +476,18 @@ std::string getNameForRecordDecl(RecordDecl *RD){
 
   if (context->decls_empty()) {
     llvm::outs() << "Declarations empty for record\n";
+  }
+
+  if (RD->isAnonymousStructOrUnion()){
+    auto NewName = gensym("anon_struct"); 
+    RecordToRecordName.insert(std::make_pair(RD, NewName));
+    return NewName;
+  }
+
+  if (RD->isInAnonymousNamespace()){
+    auto NewName = gensym("anon_struct"); 
+    RecordToRecordName.insert(std::make_pair(RD, NewName));
+    return NewName;
   }
 
   for (auto *Decl : context->decls()) {
@@ -492,11 +512,21 @@ std::string getNameForRecordDecl(RecordDecl *RD){
     }
   }
 
+
+  //Could not find a struct Name, hence we just gensym a struct name.
+  if (StructName == ""){
+    auto NewName = gensym("anon_name");
+    RecordToRecordName.insert(std::make_pair(RD, NewName));
+    return NewName;
+  }
+
+
+  RecordToRecordName.insert(std::make_pair(RD, StructName));
   return StructName;
 
 }
 
-bool PulseVisitor::VisitRecordDecl(RecordDecl *RD) {
+bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
 
   auto SourceLoc = RD->getLocation();
   if (SM.isInSystemHeader(SourceLoc))
@@ -508,10 +538,17 @@ bool PulseVisitor::VisitRecordDecl(RecordDecl *RD) {
     return true;
   
   std::set<std::string> VarNamesInScope;  
-  std::string StructName = getNameForRecordDecl(RD);
-  VarNamesInScope.insert(StructName);
+  
+  std::string StructName;
+  auto ItRecName = RecordToRecordName.find(RD);
+  //Record type name already exists.
+  if (ItRecName != RecordToRecordName.end()){
+    //Record must already be visited and we have generated code for it.
+    return true;
+  }
 
-  RecordToRecordName.insert(std::make_pair(RD, StructName));
+  StructName = getNameForRecordDecl(RD);
+  VarNamesInScope.insert(StructName);
 
   // auto *Def = TypeDefDec->getUnderlyingDecl();
 
@@ -562,11 +599,19 @@ bool PulseVisitor::VisitRecordDecl(RecordDecl *RD) {
     for (const FieldDecl *FD : RD->fields()){
 
       auto FName = FD->getNameAsString();
+
+      //Visit field record to make sure its definition is released.
+      clang::QualType fieldType = FD->getType();
+      if (const clang::RecordType *RecordType = fieldType->getAs<clang::RecordType>()) {
+          clang::RecordDecl *CastRecTy = RecordType->getDecl();
+          VisitRecordDecl(CastRecTy);
+      }
+
       if (VarNamesInScope.count(FName) > 0){
         FName = gensym(FName);
         VarNamesInScope.insert(FName);
       }
-
+      //Make sure name of the field is made unique.
       FieldToUniqueNames.insert(std::make_pair(FD, FName));
     }
 
@@ -603,7 +648,11 @@ bool PulseVisitor::VisitRecordDecl(RecordDecl *RD) {
     std::vector<RecordElement *> Fields;
     for (const FieldDecl *FD : RD->fields()) {
       auto *Element = new RecordElement();
-      Element->ElementTerm = getPulseTyFromCTy(FD->getType());
+      auto FieldTy = getPulseTyFromCTy(FD->getType());
+      if (FD->getType()->isRecordType()){
+        FieldTy->NamedValue += "_spec";
+      }
+      Element->ElementTerm = FieldTy;
       Element->Ident = FieldToUniqueNames[FD];
       Fields.push_back(Element);
     }
@@ -625,10 +674,22 @@ bool PulseVisitor::VisitRecordDecl(RecordDecl *RD) {
     GenericPredicate->Ident += "exists* (y: " + StructName + "). (x |-> y) **\n";
     size_t Counter = 0;
     for (auto *Fld : RD->fields()){
-        GenericPredicate->Ident += "(y.";
-        GenericPredicate->Ident += FieldToUniqueNames[Fld]; 
-        GenericPredicate->Ident += " |-> ";
-        GenericPredicate->Ident += "s." + FieldToUniqueNames[Fld] + ")";
+
+        if (Fld->getType()->isRecordType()){
+          auto FieldTy = getPulseTyFromCTy(Fld->getType());
+          GenericPredicate->Ident += FieldTy->print() + "_pred ";
+          GenericPredicate->Ident += "y.";
+          GenericPredicate->Ident += FieldToUniqueNames[Fld]; 
+          GenericPredicate->Ident += " ";
+          GenericPredicate->Ident += "s." + FieldToUniqueNames[Fld];
+        }
+        else{
+          GenericPredicate->Ident += "(y.";
+          GenericPredicate->Ident += FieldToUniqueNames[Fld]; 
+          GenericPredicate->Ident += " |-> ";
+          GenericPredicate->Ident += "s." + FieldToUniqueNames[Fld] + ")";
+        }
+        
         if (Counter < NumRecordFields - 1){
           GenericPredicate->Ident += " **";
         }
@@ -724,7 +785,15 @@ bool PulseVisitor::VisitRecordDecl(RecordDecl *RD) {
     GhostExplode->Ident += " ** ";
     Counter = 0;
     for (auto *Fld : RD->fields()){
-      GhostExplode->Ident += "(v." + FieldToUniqueNames[Fld] + " |-> " + "s." + FieldToUniqueNames[Fld] + ")";
+      GhostExplode->Ident += "(v." + FieldToUniqueNames[Fld];
+      if (Fld->getType()->isRecordType()){
+        auto *FieldTy = getPulseTyFromCTy(Fld->getType());
+        GhostExplode->Ident += " `" + FieldTy->print() + "_pred` ";
+      }
+      else {
+        GhostExplode->Ident += " |-> ";
+      }
+      GhostExplode->Ident += "s." + FieldToUniqueNames[Fld] + ")";
       if (Counter < NumRecordFields - 1){
         GhostExplode->Ident += " ** ";
       }
@@ -753,7 +822,12 @@ bool PulseVisitor::VisitRecordDecl(RecordDecl *RD) {
       auto *PulseTy = getPulseTyFromCTy(Ty);
       NewGhostFunction->Ident += "(";
       NewGhostFunction->Ident += "#" + FieldPrefix + std::to_string(Counter) + " : ";
-      NewGhostFunction->Ident += PulseTy->print(); 
+      if (Fld->getType()->isRecordType()){
+        NewGhostFunction->Ident += PulseTy->print() + "_spec";
+      } 
+      else {
+        NewGhostFunction->Ident += PulseTy->print();
+      }
       NewGhostFunction->Ident += ") ";
       Counter++;
     }
@@ -765,7 +839,13 @@ bool PulseVisitor::VisitRecordDecl(RecordDecl *RD) {
       NewGhostFunction->Ident += "(";
       NewGhostFunction->Ident += "y.";
       NewGhostFunction->Ident += FieldToUniqueNames[Fld] + " ";
-      NewGhostFunction->Ident += "|-> ";
+      if (Fld->getType()->isRecordType()){
+        auto *FieldTy = getPulseTyFromCTy(Fld->getType());
+        NewGhostFunction->Ident += " `" + FieldTy->print() + "_pred` ";
+      }
+      else{
+        NewGhostFunction->Ident += "|-> ";
+      }
       NewGhostFunction->Ident += FieldPrefix + std::to_string(Counter);
       NewGhostFunction->Ident += ")";
 
@@ -1728,6 +1808,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           }
           auto *VDPulseTy = getPulseTyFromCTy(VD->getType());
           PulseLet->VarTy = VDPulseTy->print(); 
+          //PulseLet->CInfo = getSourceInfoFromExpr(VD, Ctx, "", "");
 
           //Set the corresponding source location for the C ast node. 
           //PulseLet->RegInfo = new RegionMapping();
@@ -1823,6 +1904,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           AppendLet->assignS1(Start);
           AppendLet->assignS2(PulseLet);
 
+          AppendLet->CInfo = getSourceInfoFromStmt(S, Ctx, "", "");
+
           return AppendLet;
         }
 
@@ -1839,6 +1922,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
               auto *Rhs = new Name(StructName.getAsString() + "_default " +
                                    StructName.getAsString() + "_spec_default");
+
               auto *NewMutLet =
                   new LetBinding(VD->getNameAsString(), Rhs, MutOrRef::MUT);
                   auto *PulseTy = getPulseTyFromCTy(VD->getType());
@@ -1895,6 +1979,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           PulseAssignment *Assignment =
               new PulseAssignment(PulseLhsTerm, PulseRhsTerm);
 
+          Assignment->CInfo = getSourceInfoFromStmt(S, Ctx, "", "");
+
           assert(ExprsBef.empty() && "Expected expressions to be released!");
 
           return Assignment;
@@ -1911,6 +1997,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
             ArrSub->getIdx(), Analyzer, ExprsBef, Parent, BO->getType(), Module);
         ArrayAssignExpr->Value =
             getTermFromCExpr(Rhs, Analyzer, ExprsBef, Parent, BO->getType(), Module);
+        ArrayAssignExpr->CInfo = getSourceInfoFromStmt(Lhs, Ctx, "", "");
 
         // We need to make a sequence of pulse statements.
         PulseSequence *Start = nullptr;
@@ -2035,6 +2122,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
             Assignment = new PulseAssignment(NewProjection, PulseRhsTerm);
           }
 
+          Assignment->CInfo = getSourceInfoFromExpr(ME, Ctx, "", "");
+
           // auto It = TrackStructExplodeAndRecover.find(VD);
           // if (It == TrackStructExplodeAndRecover.end()){
           //   auto *NewSeq = new PulseSequence();
@@ -2147,6 +2236,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
             Assignment = new PulseAssignment(NewProjection, PulseRhsTerm);
           }
 
+          Assignment->CInfo = getSourceInfoFromExpr(ME, Ctx, "", "");
+
           // auto It = TrackStructExplodeAndRecover.find(VD);
           // if (It == TrackStructExplodeAndRecover.end()){
           //   auto *NewSeq = new PulseSequence();
@@ -2255,6 +2346,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           //   return NewSeq;
           // }
 
+          Assignment->CInfo = getSourceInfoFromExpr(ME, Ctx, "", "");
+
           assert(ExprsBef.empty() && "Expected ExprsBefore to be empty!\n");
 
           return Assignment;
@@ -2273,6 +2366,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
             getTermFromCExpr(Rhs, Analyzer, ExprsBef, Parent, BO->getType(), Module);
         PulseAssignment *Assignment =
             new PulseAssignment(PulseLhsTerm, PulseRhsTerm);
+
+        Assignment->CInfo = getSourceInfoFromStmt(S, Ctx, "", "");
 
         // We need to make a sequence of pulse statements.
         PulseSequence *Start = nullptr;
@@ -2314,6 +2409,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
         return nullptr;
 
       PExpr->E = ExprTerm;
+      PExpr->CInfo = getSourceInfoFromExpr(BO, Ctx, "", "");
 
       // We need to make a sequence of pulse statements.
       PulseSequence *Start = nullptr;
@@ -2361,6 +2457,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
     SmallVector<PulseStmt *> ExprsBefore;
 
     auto *PulseExpression = new PulseExpr();
+    PulseExpression->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
 
     auto *PExprTerm =
         getTermFromCExpr(E, Analyzer, ExprsBefore, Parent, E->getType(), Module);
@@ -2383,6 +2480,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
   } else if (auto *IF = dyn_cast<IfStmt>(S)) {
 
     auto *PulseIfStmt = new PulseIf();
+    PulseIfStmt->CInfo = getSourceInfoFromStmt(S, Ctx, "", "");
 
     auto *Cond = IF->getCond();
     auto *Then = IF->getThen();
@@ -2420,6 +2518,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
             switch (AnnKind) {
             case PulseAnnKind::Ensures: {
               auto *NewEnsures = new Ensures();
+              NewEnsures->CInfo = getSourceInfoFromStmt(Then, Ctx, "", "");
               NewEnsures->Ann = Match;
               PulseIfStmt->IfLemmas.push_back(NewEnsures);
               break;
@@ -2459,6 +2558,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
       auto *RetStmt = getTermFromCExpr(RetVal, Analyzer, ExprsBefore, Parent, RetVal->getType(), Module);
       auto *RetExpr = new PulseExpr();
       RetExpr->E = RetStmt;
+      RetExpr->CInfo = getSourceInfoFromStmt(S, Ctx, "", "");
       return RetExpr;
       // return RetStmt;
       //}
@@ -2588,6 +2688,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
     auto *RetExpr = new PulseExpr();
     auto *Unit = new Name("()");
     RetExpr->E = Unit;
+    RetExpr->CInfo = getSourceInfoFromStmt(S, Ctx, "", "");
     return RetExpr;
   } else if (auto *FS = dyn_cast<ForStmt>(S)) {
     S->dumpPretty(Ctx);
@@ -2604,6 +2705,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
       auto Attributes = AttrStmt->getAttrs();
       auto *PulseWhile = new PulseWhileStmt();
+      PulseWhile->CInfo = getSourceInfoFromStmt(S, Ctx, "", "");
       for (auto *Attr : Attributes) {
 
         if (auto *AnnAttr = dyn_cast<AnnotateAttr>(Attr)) {
@@ -2639,6 +2741,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
               //llvm::outs() << token << "\n";
               auto *NewLemmaTerm = new LemmaStatement();
               NewLemmaTerm->Lemma.assign(token.c_str());
+              NewLemmaTerm->CInfo = getSourceInfoFromStmt(AttrStmt, Ctx, "", "");
               PulseWhile->Invariant.push_back(NewLemmaTerm);
             }
             // llvm::outs() << "\n";
@@ -2766,6 +2869,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     });
 
     NewConstTerm->Symbol = getSymbolKeyForCType(IL->getType(), Ctx);
+    NewConstTerm->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
 
     return NewConstTerm;
   } else if (auto *FL = dyn_cast<FloatingLiteral>(E)) {
@@ -2785,14 +2889,15 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     auto *Lhs = BO->getLHS();
     auto *Rhs = BO->getRHS();
     auto Op = BO->getOpcode();
-
-    if (Lhs->getType() != Rhs->getType()) {
-      E->dumpPretty(Ctx);
-      LLVM_DEBUG(llvm::dbgs() << "\n");
-      emitErrorWithLocation("Expected types of Lhs and Rhs to be the same, "
-                            "unsafe type casting now allowed in pulse!",
-                            &Ctx, E->getExprLoc());
-    }
+    
+    //Remove this check for now since we have cast operations!
+    // if (Lhs->getType() != Rhs->getType()) {
+    //   E->dumpPretty(Ctx);
+    //   LLVM_DEBUG(llvm::dbgs() << "\n");
+    //   emitErrorWithLocation("Expected types of Lhs and Rhs to be the same, "
+    //                         "unsafe type casting now allowed in pulse!",
+    //                         &Ctx, E->getExprLoc());
+    // }
 
     switch (Op) {
     case clang::BO_EQ: {
@@ -2815,6 +2920,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
             CastCall->pushArg(new Paren(IsNullCall));
             return new Paren(CastCall);
         }
+        IsNullCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
         return IsNullCall;
       }
 
@@ -2829,6 +2935,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
             CastCall->pushArg(new Paren(IsNullCall));
             return new Paren(CastCall);
         }
+        IsNullCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
         return IsNullCall;
       }
 
@@ -2859,7 +2966,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
             CastCall->pushArg(new Paren(NotCall));
             return new Paren(CastCall);
         }
-
+        NotCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
         return NotCall;
       }
 
@@ -2883,6 +2990,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
             CastCall->pushArg(new Paren(NotCall));
             return new Paren(CastCall);
         }
+        NotCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
         return NotCall;
       }
 
@@ -2935,7 +3043,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
             return new Paren(CastCall);
           }
 
-
+          NotAppEParen->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
           return NotAppEParen;
           break;
         }
@@ -2974,7 +3082,9 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
           if (BO->isKnownToHaveBooleanValue()){
             auto *CastCall = new AppE("bool_to_" + getPulseStringForCType(BO->getType(), Ctx));
             CastCall->pushArg(NewParen);
-            return new Paren(CastCall);
+            auto *NewParenRet = new Paren(CastCall);
+            NewParenRet->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+            return NewParenRet;
           }
 
 
@@ -2996,6 +3106,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
 
       // Wrap this deref in a parenthesis.
       auto *Parenthesis = new Paren(DerefAppE);
+      Parenthesis->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
       return Parenthesis;
 
     } 
@@ -3026,7 +3137,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
           //   TrackStructExplodeAndRecover.insert(
           //       std::make_pair(VD, std::make_pair(true, false)));
           // }
-
+          GenStmt->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
           return GenStmt;
         }
       }
@@ -3039,6 +3150,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
 
         // Wrap address of in a parenthesis.
         auto *Parenthesis = new Paren(TermForBaseExpr);
+        Parenthesis->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
         return Parenthesis;
       }
     } 
@@ -3061,28 +3173,41 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       if (UO->isKnownToHaveBooleanValue()){
          auto *CastCall = new AppE("bool_to_" + getPulseStringForCType(UO->getType(), Ctx));
          CastCall->pushArg(new Paren(NotCall));
-         return new Paren(CastCall);
+         auto *NewParenRet = new Paren(CastCall);
+         NewParenRet->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+         return NewParenRet;
       }
+
+      NotCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
       return NotCall;
     }
     else if (UO->getOpcode() == clang::UO_Minus) {
+      //UO_MINUS should be compiled as 0 - x. 
+      //See: 
+      //https://github.com/FStarLang/c2pulse/issues/51#issuecomment-3076469809
 
       auto SymbolForBase = getSymbolKeyForCType(UO->getSubExpr()->getType(), Ctx);
-      std::string OpStr;
-      switch (SymbolForBase){
-        case SymbolTable::UInt32:{
-          OpStr = "UInt32.minus";
-          break;
-        };
-        case SymbolTable::UInt64:{
-          OpStr = "UInt64.minus";
-          break;
-        };
-        default: {
-          emitError("UO Minus not implemented in pulse for Type.");
-        }
-      };
+      auto BinOp = clang::BO_Sub;
+      auto *OpStr = getSymbolKeyForOperator(SymbolForBase, BinOp);
+      // std::string OpStr;
+      // switch (SymbolForBase){
+      //   case SymbolTable::UInt32:{
+      //     OpStr = "UInt32.minus";
+      //     break;
+      //   };
+      //   case SymbolTable::UInt64:{
+      //     OpStr = "UInt64.minus";
+      //     break;
+      //   };
+      //   default: {
+      //     emitError("UO Minus not implemented in pulse for Type.");
+      //   }
+      // };
       auto *UOMinus = new AppE(OpStr);
+      auto *ConstrZeroTerm = new ConstTerm();
+      ConstrZeroTerm->Symbol = SymbolForBase;
+      ConstrZeroTerm->ConstantValue = "0";
+      UOMinus->pushArg(ConstrZeroTerm);
 
       auto *TermForBaseExpr = getTermFromCExpr(UO->getSubExpr(), MutAnalyzer,
                                                ExprsBefore, Parent, ParentType, Module);
@@ -3090,6 +3215,8 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
 
       // Wrap this deref in a parenthesis.
       auto *Parenthesis = new Paren(UOMinus);
+
+      Parenthesis->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
       return Parenthesis;
 
     }
@@ -3161,6 +3288,8 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     auto CallName = CE->getDirectCallee()->getNameAsString();
     auto *CallAppE = new AppE();
 
+    CallAppE->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+
     if (CallName != "free") {
       CallAppE->makeCallName(CallName);
 
@@ -3231,12 +3360,14 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
 
     // Wrap Call expr in Paren Node
     auto *NewParen = new Paren(CallAppE);
+    NewParen->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
     return NewParen;
   } else if (auto *IC = dyn_cast<ImplicitCastExpr>(E)) {
 
 
     if (checkIfExprIsNullPtr(IC)) {
       auto *NullValue = new Name("null");
+      NullValue->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
       return NullValue;
     }
     
@@ -3249,8 +3380,10 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     QualType destType = IC->getType();
     if (sourceType.getAsString() == destType.getAsString()) {
       SmallVector<PulseStmt *> ExprsBefore;
-                 return getTermFromCExpr(SubExpr, MutAnalyzer, ExprsBefore, Parent,
+      auto *RetTerm = getTermFromCExpr(SubExpr, MutAnalyzer, ExprsBefore, Parent,
                             ParentType, Module);
+      RetTerm->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+      return RetTerm;
     }
     else if (isa<CStyleCastExpr>(SubExpr)){
       emitErrorWithLocation("Unsafe casting not not handled!", &Ctx, SubExpr->getExprLoc());
@@ -3264,13 +3397,9 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
                                        IC->getType(), Module);
     CastCall->pushArg(RetTerm);
     auto *NewParen = new Paren(CastCall);
+    NewParen->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
     return NewParen;
 
-    IC->dump();
-    emitErrorWithLocation("Not Implemented!", &Ctx, E->getExprLoc());
-
-    return getTermFromCExpr(SubExpr, MutAnalyzer, ExprsBefore, Parent,
-                            ParentType, Module);
   } else if (auto *DRE = dyn_cast<DeclRefExpr>(E)) {
 
     auto *DreDecl = DRE->getDecl();
@@ -3315,10 +3444,12 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
 
       // Wrap this AppE in a Parenthesis.
       auto *PulseParenthesis = new Paren(InitAppE);
+      PulseParenthesis->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
       return PulseParenthesis;
     }
 
     VarTerm *VTerm = new VarTerm(DRE->getDecl()->getNameAsString());
+    VTerm->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
     return VTerm;
 
   } else if (auto *ArrSubExpr = dyn_cast<ArraySubscriptExpr>(E)) {
@@ -3345,8 +3476,10 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     }                                    
 
     PulseCall->pushArg(PulseArrIdx);
+    PulseCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
     // wrap PulseCall in Paren
     auto *NewParen = new Paren(PulseCall);
+    NewParen->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
     return NewParen;
 
   } else if (auto *ParenExpr = dyn_cast<clang::ParenExpr>(E)) {
@@ -3357,6 +3490,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
                                           ExprsBefore, Parent, ParentType, Module);
 
     auto *PulseParenExpr = new Paren(PulseSubExpr);
+    PulseParenExpr->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
     return PulseParenExpr;
   } else if (auto *CCastExpr = dyn_cast<CStyleCastExpr>(E)) {
     // Vidush::TODO We're ignore casts here, Check if we should?
@@ -3385,6 +3519,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
 
             auto RecordName = It->second;
             auto *NewCall = new AppE(RecordName + "_alloc");
+            NewCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
             return NewCall;
           }
           DEBUG_WITH_TYPE(DEBUG_TYPE , {
@@ -3402,6 +3537,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
           if (auto *PulsePointerTy = dyn_cast<FStarPointerType>(PulseTy)){
             auto *NewCall =
                 new AppE("alloc_ref #" + PulsePointerTy->PointerTo->print());
+            NewCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
             return NewCall;
           }
 
@@ -3413,6 +3549,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       }
     } else if (checkIfExprIsNullPtr(CCastExpr)) {
       auto NullValue = new Name("null");
+      NullValue->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
       return NullValue;
     } else {
       CCastExpr->dumpPretty(Ctx);
@@ -3473,7 +3610,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       //   ExprsBefore.push_back(ExplodeStmt);
       //   TrackStructExplodeAndRecover.insert(std::make_pair(VD, std::make_pair(true, false)));
       // }
-
+      GenStmt->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
       return GenStmt;
     }
 
@@ -3538,10 +3675,12 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
                                        Else->getType(), Module);
 
     auto *PulseIfExpr = new IfExpr(PulseCond, PulseThen, PulseElse);
+    PulseIfExpr->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
 
     assert(ExprsBefore.empty() && "Expected expressions to be released!");
 
     auto *AddParen = new Paren(PulseIfExpr);
+    AddParen->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
 
     return AddParen;
 
@@ -3556,7 +3695,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
 }
 
 
-PulseTransformer::PulseTransformer(ASTContext &Ctx) : AstCtx(Ctx) {
+PulseTransformer::PulseTransformer(ASTContext &Ctx) : AstCtx(Ctx), CodeGen(Ctx) {
   RewriterForPlugin.setSourceMgr(Ctx.getSourceManager(), Ctx.getLangOpts());
 }
 
@@ -3610,6 +3749,8 @@ std::string PulseTransformer::writeToFile() {
     OutFile << OutputString->str();
     OutFile.close();
   }
+
+  CodeGen.printSourceLocations();
 
   // TODO what should we return for writeToFile
   return "";

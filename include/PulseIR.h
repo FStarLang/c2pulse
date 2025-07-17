@@ -160,7 +160,7 @@ enum class SymbolTable {
   UInt64_Le,
   UInt64_Gt,
   UInt64_Ge,
-  
+
   // logical operators
   // AmpAmp
   OpAmpAmp,
@@ -321,14 +321,41 @@ static const llvm::SmallDenseMap<SymbolTable, const char *> SymbolToStringTable{
 
 // };
 
-class RegionMapping {
-  public:
-  //use SourceInfo.
-    SourceInfo CInfo;
-    SourceInfo PulseInfo;
+// class RegionMapping {
+//   public:
+//   //use SourceInfo.
+//     SourceInfo CInfo;
+//     SourceInfo PulseInfo;
 
-    SourceInfo &getCInfo();
-    SourceInfo &getPulseInfo();
+//     SourceInfo &getCInfo();
+//     SourceInfo &getPulseInfo();
+// };
+
+class PulseSourceLocation {
+  public:
+  PulseSourceLocation(unsigned Line, unsigned Column);
+  bool isSame(PulseSourceLocation ToCheck);
+  unsigned Line; 
+  unsigned Column;
+  unsigned getLine(); 
+  unsigned getColumn();
+  void setLine(unsigned L); 
+  void setColumn(unsigned L);
+  void dumpPretty();
+};
+
+class PulseSourceRange {
+  public:
+  PulseSourceRange(PulseSourceLocation B, PulseSourceLocation E);
+  PulseSourceRange(PulseSourceLocation B);
+  PulseSourceLocation Begin; 
+  PulseSourceLocation End;
+  PulseSourceLocation getBegin(); 
+  PulseSourceLocation getEnd(); 
+  void setBegin(PulseSourceLocation B);
+  void setEnd(PulseSourceLocation E);
+  bool isSingleLocation();
+  void dumpPretty();
 };
 
 /// Define F* IR Similar to type term
@@ -345,8 +372,8 @@ enum class TermTag {Const, Paren, Var, Name, AppE, FStarType, FStarPointerType, 
 /// A base class for term.                    
 class Term {
 public:
-  RegionMapping RegInfo;
-  RegionMapping &getRegInfoMapping();
+  SourceInfo CInfo;
+  SourceInfo getCSourceInfo();
   TermTag Tag;
   void setTag(TermTag T);
   void printTag();
@@ -567,8 +594,8 @@ enum class MutOrRef {
 /// The base class for a pulse statement.
 class PulseStmt {
 public:
-  RegionMapping RegInfo;
-  RegionMapping &getRegInfoMapping();
+  SourceInfo CInfo;
+  SourceInfo getCSourceInfo();
   PulseStmtTag Tag;
   void setTag(PulseStmtTag T);
   void printTag();
@@ -686,8 +713,8 @@ public:
 /// An IR node for representing a Function Argument.
 struct Binder {
 public:
-  RegionMapping RegInfo;
-  RegionMapping &getRegInfoMapping();
+  SourceInfo CInfo;
+  SourceInfo getCSourceInfo();
   Binder(std::string ident, Term *type) : Ident(std::move(ident)), Type(type) {}
   Binder(std::string fallback);
   std::string Ident;
@@ -728,7 +755,7 @@ enum class TyConTag {Base, TyConAbstract, TyConAbbrev, TyConRecord, TyConVariant
 
 /// A class for representing a pulse tycon.
 class TyCon {
-  public: 
+  public:
     TyCon();
     TyConTag Tag;
     std::string Ident;
@@ -759,8 +786,8 @@ enum class PulseDeclKind {
 /// An enum class to represent what kind of a pulse declaration it is.
 class PulseDecl {
 public:
-  RegionMapping RegInfo;
-  RegionMapping &getRegInfoMapping();
+  SourceInfo CInfo;
+  SourceInfo getCSourceInfo();
   PulseDeclKind Kind;
   PulseDeclKind getKind();
 };

@@ -35,8 +35,23 @@ class SourceInfo {
 
   void setLine(unsigned Line);
   void setColumn(unsigned Column);
+  clang::SourceLocation getBeginLoc(); 
+  clang::SourceLocation getEndLoc();
+  void setBeginLoc(clang::SourceLocation b);
+  void setEndLoc(clang::SourceLocation e);
+  bool isSingleLocation();
+  void dumpPretty();
 };
 
+
+SourceInfo getSourceInfoFromExpr(clang::Expr *ExprNode, clang::ASTContext &Context, 
+    std::string CtxString, std::string Op);
+
+    SourceInfo getSourceInfoFromStmt(clang::Stmt *StmtNode, clang::ASTContext &Context, 
+    std::string CtxString, std::string Op);
+
+SourceInfo getSourceInfoFromFuncDecl(clang::FunctionDecl *S);
+SourceInfo getSourceInfoFromRecordDecl(clang::RecordDecl *S);
 
 
 class ExprLocationAnalyzer : public clang::RecursiveASTVisitor<ExprLocationAnalyzer> {

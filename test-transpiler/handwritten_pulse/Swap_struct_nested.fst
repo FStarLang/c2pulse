@@ -80,6 +80,7 @@ c : bar_spec
 
 let foo_pred (x:ref foo) (s:foo_spec) : slprop =
 exists* (y: foo). (x |-> y) **
+//(y.c |-> s.c)
 bar_pred y.c s.c
 
 assume val foo_spec_default : foo_spec
@@ -117,7 +118,7 @@ ensures exists* (v: foo). (x |-> v) ** (v.c `bar_pred` s.c)
 
 
 ghost
-fn foo_recover (x:ref foo) (#a0 : bar_spec) 
-requires exists* (y: foo). (x |-> y) ** (y.c  `bar_pred` a0)
+fn foo_recover (x:ref foo) (#a0 : bar_spec)
+requires exists* (y: foo). (x |-> y) ** (y.c `bar_pred` a0)
 ensures exists* w. foo_pred x w ** pure (w == {c = a0})
 {fold foo_pred x ({c = a0}) }
