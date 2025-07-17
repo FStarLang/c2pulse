@@ -90,13 +90,13 @@ The key ideas here are
 
     tr_RExpr(lvalue_as_rvalue(x)) = !x                 # perhaps mangling
 
-    tr_RExpr(&x) = x
+    tr_RExpr(&lexpr) = tr_LExpr(lexpr)
 
     tr_RExpr(Cast(t1, t2, e)) = t1_as_t2 (tr_RExpr(e)) # for the casts that may make sense, fail otherwise
 
     # Translation of L expressions. Not much to do, as we are translating
     # things "to their lvalue".
-    tr_LExpr(x)     = x
+    tr_LExpr(id)    = id
     tr_LExpr(*expr) = tr_RExpr(expr)
 
     tr_Stmt(rexpr;) = tr_RExpr(rexpr);
@@ -141,7 +141,8 @@ Example:
 
   int foo(int a, bool b) {
     a = lvalue_as_rvalue(a) + cast(bool, int, lvalue_as_rvalue(b));
-    int *p = &a;
+    int *p;
+    p = &a;
     *(lvalue_as_rvalue(p)) = lvalue_as_rvalue(*(lvalue_as_rvalue(p))) + 123;
     return lvalue_as_rvalue(*(lvalue_as_rvalue(p)));
   }
@@ -157,8 +158,9 @@ Example:
     let mut a : Int32.t = a;
     let mut b : bool    = b;
 
-    // a = lvalue_as_rvalue(a) + cast(bool, int, !b)
-    a := !a + bool_to_int b;
+    // a = a + b;
+    // a = lvalue_as_rvalue(a) + cast(bool, int, lvalue_as_rvalue(b))
+    a := !a + bool_to_int (!b);
 
     // int *p;
     let mut p : ref Int32.t = witness #_ #_;
@@ -166,6 +168,7 @@ Example:
     p := a;
 
     // *p = *p + 123;
+    // *(lvalue_as_rvalue(p)) = lvalue_as_rvalue(*(lvalue_as_rvalue(p))) + 123;
     !p := !!p + 123;
 
     // return *p
