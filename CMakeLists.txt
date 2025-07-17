@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.13)
 project(C2Pulse LANGUAGES C CXX)
 
 set(LLVM_LINK_COMPONENTS support)
+set(JSON_BuildTests OFF CACHE INTERNAL "")
+
+add_subdirectory(json)
 
 # Define which LLVM components we need
 llvm_map_components_to_libnames(LLVM_LIBS
@@ -45,11 +48,12 @@ target_link_libraries(c2pulse
     clangFrontend
     clangRewrite
     clangTooling
+    nlohmann_json::nlohmann_json
 )
 
 # Set C++ standard and other properties
 set_target_properties(c2pulse PROPERTIES
-  CXX_STANDARD 17
+  CXX_STANDARD 20
   INTERPROCEDURAL_OPTIMIZATION OFF
 )
 

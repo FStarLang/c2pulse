@@ -41,6 +41,7 @@ public:
   void writeHeaders(PulseModul *pulseModule, llvm::raw_string_ostream &Stream, 
     unsigned *RowIdx);
   void printSourceLocations();
+  void JsonifySourceRangeMap(std::string JsonOutputFile);
 
 private:
   std::map<std::string, CodegenPyTy> emittedModules;

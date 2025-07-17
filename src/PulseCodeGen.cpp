@@ -1,19 +1,20 @@
 #include "PulseCodeGen.h"
 #include "Globals.h"
 #include "PulseIR.h"
-
+#include <nlohmann/json.hpp>
 #include "clang/AST/ASTContext.h"
-#include "clang/Basic/SourceLocation.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include <cstddef>
 #include <cstdio>
+#include <fstream>
 
 #define DEBUG_TYPE "pulse-code-gen"
 
 using namespace clang;
 using namespace llvm;
+using json = nlohmann::json;
 
 
 PulseCodeGen::PulseCodeGen(clang::ASTContext &Ctx) : ClangCtx(Ctx){}
@@ -1113,6 +1114,54 @@ void PulseCodeGen::generateCodeFromPulseStmt(llvm::raw_string_ostream &OS,
   else {
     emitError("Did not Expect Pulse AST Node!");
   }
+}
+
+// Define how to convert PulseSourceRange to JSON
+void PulseSourceRangeToJson(json& J, const PulseSourceRange& Range) {
+    J = json{
+        {"start_line", Range.Begin.Line},
+        {"start_column", Range.Begin.Column},
+        {"end_line", Range.End.Line},
+        {"end_column", Range.End.Column},
+    };
+}
+
+void SourceInfoToJson(json& J, const SourceInfo &Info){
+   J = json{
+        {"Line", Info.Line},
+        {"Column", Info.Column},
+        {"Type", Info.Context},
+        {"Source", Info.SourceLine},
+        {"Context", Info.Context},
+        {"Operations", Info.Operation},
+    };
+}
+
+void PulseCodeGen::JsonifySourceRangeMap(std::string JsonOutputFile){
+
+    nlohmann::ordered_json JSonArray = nlohmann::ordered_json::array();
+    for (const auto& [Key, Value] : PulseLocsToCLocs) {
+        nlohmann::ordered_json Entry;
+        json JsonKey;
+        json JsonVal;
+
+        PulseSourceRangeToJson(JsonKey, Key);
+        Entry["PulseSourceRange"] =  JsonKey;
+
+        SourceInfoToJson(JsonVal, Value);
+        Entry["CSourceRangeInfo"] = JsonVal;
+
+        JSonArray.push_back(Entry);
+    }
+
+    std::ofstream JsonStream(JsonOutputFile);
+    if (JsonStream.is_open()) {
+        JsonStream << JSonArray.dump(2); // Pretty-print with indent = 2
+        JsonStream.close();
+    } else {
+        llvm::errs() << "Unable to open file: " << JsonOutputFile << "\n";
+    }
+
 }
 
 
