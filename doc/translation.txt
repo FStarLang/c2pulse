@@ -130,7 +130,7 @@ Example:
 
   int foo(int a, bool b) {
     a = a + b;
-    int *p = &b;
+    int *p = &a;
     *p = *p + 123;
     return *p;
   }
