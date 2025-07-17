@@ -75,11 +75,11 @@ The key ideas here are
     tr_Type(void) = unit      # when on the return type of a function, failure anywhere else
     tr_Type(t*)   = ref (tr_Type(t))
 
-    # Translation of R expressions
+    # Translation of R expressions (tr_RExpr returns a value like Int32.t/bool/...)
     tr_RExpr(a +  b) = tr_RExpr(a) +   tr_RExpr(b)
     tr_RExpr(a /  b) = tr_RExpr(a) /   tr_RExpr(b)
 
-    tr_RExpr(a && b) = tr_RExpr(a) &&' tr_RExpr(b)      # defining &&' : int -> int -> int
+    tr_RExpr(a && b) = tr_RExpr(a) &&' tr_RExpr(b)      # defining &&' : Int32.t -> Int32.t -> Int32.t
     # OR:
     tr_RExpr(a && b) = bool_as_int
                          (int_as_bool (tr_RExpr(a)) &&  # with just a normal &&
@@ -88,14 +88,14 @@ The key ideas here are
     tr_RExpr(id(a1, .., an)) =
       id (tr_RExpr(a1), .., tr_RExpr(an))
 
-    tr_RExpr(lvalue_as_rvalue(x)) = !x                 # perhaps mangling
+    tr_RExpr(lvalue_as_rvalue(x)) = !tr_LExpr(x)
 
     tr_RExpr(&lexpr) = tr_LExpr(lexpr)
 
     tr_RExpr(Cast(t1, t2, e)) = t1_as_t2 (tr_RExpr(e)) # for the casts that may make sense, fail otherwise
 
     # Translation of L expressions. Not much to do, as we are translating
-    # things "to their lvalue".
+    # things "to their lvalue".  (tr_LExpr returns a ref)
     tr_LExpr(id)    = id
     tr_LExpr(*expr) = tr_RExpr(expr)
 
@@ -113,10 +113,10 @@ The key ideas here are
         tr_Stmt*(el)
       }
       
-    tr_Stmt(return e;) = (tr_RExpr(e));    # roughly...
+    tr_Stmt(return e;) = (tr_RExpr(e));    # roughly...  (only works when it is the final statement)
 
     # Translation of a variable decl, simple enough.
-    tr_VDecl(type id;) = let mut id : type = witness #_ #_;
+    tr_VDecl(type id;) = let mut id : tr_Type(type) = witness #_ #_;
 
 When translating a function body, we first also mutably let-bind all of
 its arguments locally. Even if the function is call-by-value (i.e. its argument
