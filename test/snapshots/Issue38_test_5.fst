@@ -67,6 +67,6 @@ ensures exists* w. foo_pred x w ** pure (w == {v = a0; foo0 = a1})
 {fold foo_pred x ({v = a0; foo0 = a1}) }
 
 //Dumping the Clang AST.
-// RecordDecl 0x6172f0fc7730 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue38_test_5.c:1:1, line:4:1> line:1:8 struct foo definition
-// |-FieldDecl 0x6172f0fc77e8 <line:2:3, col:7> col:7 v 'int'
-// `-FieldDecl 0x6172f0fc78f8 <line:3:3, col:15> col:15 foo 'struct foo *'
+// RecordDecl 0x5fdf32b29730 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue38_test_5.c:1:1, line:4:1> line:1:8 struct foo definition
+// |-FieldDecl 0x5fdf32b297e8 <line:2:3, col:7> col:7 v 'int'
+// `-FieldDecl 0x5fdf32b298f8 <line:3:3, col:15> col:15 foo 'struct foo *'

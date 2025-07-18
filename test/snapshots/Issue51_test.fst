@@ -608,771 +608,771 @@ let mut y : bool = y;
 }
 
 //Dumping the Clang AST.
-// FunctionDecl 0x595c125af9d8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:5:18, col:58> col:22 cmp1 'int (int, int)'
-// |-ParmVarDecl 0x595c125af878 <col:27, col:31> col:31 used x 'int'
-// |-ParmVarDecl 0x595c125af8f8 <col:34, col:38> col:38 used y 'int'
-// |-CompoundStmt 0x595c125afc18 <col:41, col:58>
-// | `-ReturnStmt 0x595c125afc08 <col:43, col:55>
-// |   `-BinaryOperator 0x595c125afbe8 <col:50, col:55> 'int' '=='
-// |     |-ImplicitCastExpr 0x595c125afbb8 <col:50> 'int' <LValueToRValue>
-// |     | `-DeclRefExpr 0x595c125afb78 <col:50> 'int' lvalue ParmVar 0x595c125af878 'x' 'int'
-// |     `-ImplicitCastExpr 0x595c125afbd0 <col:55> 'int' <LValueToRValue>
-// |       `-DeclRefExpr 0x595c125afb98 <col:55> 'int' lvalue ParmVar 0x595c125af8f8 'y' 'int'
-// `-AnnotateAttr 0x595c125afa90 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int32.t|END"
-// FunctionDecl 0x595c125afda0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:6:18, col:58> col:22 cmp2 'int (int, int)'
-// |-ParmVarDecl 0x595c125afc80 <col:27, col:31> col:31 used x 'int'
-// |-ParmVarDecl 0x595c125afd00 <col:34, col:38> col:38 used y 'int'
-// |-CompoundStmt 0x595c125affa0 <col:41, col:58>
-// | `-ReturnStmt 0x595c125aff90 <col:43, col:55>
-// |   `-BinaryOperator 0x595c125aff70 <col:50, col:55> 'int' '>='
-// |     |-ImplicitCastExpr 0x595c125aff40 <col:50> 'int' <LValueToRValue>
-// |     | `-DeclRefExpr 0x595c125aff00 <col:50> 'int' lvalue ParmVar 0x595c125afc80 'x' 'int'
-// |     `-ImplicitCastExpr 0x595c125aff58 <col:55> 'int' <LValueToRValue>
-// |       `-DeclRefExpr 0x595c125aff20 <col:55> 'int' lvalue ParmVar 0x595c125afd00 'y' 'int'
-// `-AnnotateAttr 0x595c125afe58 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int32.t|END"
-// FunctionDecl 0x595c125b0128 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:7:18, col:57> col:22 cmp3 'int (int, int)'
-// |-ParmVarDecl 0x595c125b0008 <col:27, col:31> col:31 used x 'int'
-// |-ParmVarDecl 0x595c125b0088 <col:34, col:38> col:38 used y 'int'
-// |-CompoundStmt 0x595c125b0320 <col:41, col:57>
-// | `-ReturnStmt 0x595c125b0310 <col:43, col:54>
-// |   `-BinaryOperator 0x595c125b02f0 <col:50, col:54> 'int' '>'
-// |     |-ImplicitCastExpr 0x595c125b02c0 <col:50> 'int' <LValueToRValue>
-// |     | `-DeclRefExpr 0x595c125b0280 <col:50> 'int' lvalue ParmVar 0x595c125b0008 'x' 'int'
-// |     `-ImplicitCastExpr 0x595c125b02d8 <col:54> 'int' <LValueToRValue>
-// |       `-DeclRefExpr 0x595c125b02a0 <col:54> 'int' lvalue ParmVar 0x595c125b0088 'y' 'int'
-// `-AnnotateAttr 0x595c125b01e0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int32.t|END"
-// FunctionDecl 0x595c125b04a8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:8:18, col:58> col:22 cmp4 'int (int, int)'
-// |-ParmVarDecl 0x595c125b0388 <col:27, col:31> col:31 used x 'int'
-// |-ParmVarDecl 0x595c125b0408 <col:34, col:38> col:38 used y 'int'
-// |-CompoundStmt 0x595c125b06a0 <col:41, col:58>
-// | `-ReturnStmt 0x595c125b0690 <col:43, col:55>
-// |   `-BinaryOperator 0x595c125b0670 <col:50, col:55> 'int' '<='
-// |     |-ImplicitCastExpr 0x595c125b0640 <col:50> 'int' <LValueToRValue>
-// |     | `-DeclRefExpr 0x595c125b0600 <col:50> 'int' lvalue ParmVar 0x595c125b0388 'x' 'int'
-// |     `-ImplicitCastExpr 0x595c125b0658 <col:55> 'int' <LValueToRValue>
-// |       `-DeclRefExpr 0x595c125b0620 <col:55> 'int' lvalue ParmVar 0x595c125b0408 'y' 'int'
-// `-AnnotateAttr 0x595c125b0560 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int32.t|END"
-// FunctionDecl 0x595c125b7f38 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:9:18, col:57> col:22 cmp5 'int (int, int)'
-// |-ParmVarDecl 0x595c125b7e18 <col:27, col:31> col:31 used x 'int'
-// |-ParmVarDecl 0x595c125b7e98 <col:34, col:38> col:38 used y 'int'
-// |-CompoundStmt 0x595c125b8130 <col:41, col:57>
-// | `-ReturnStmt 0x595c125b8120 <col:43, col:54>
-// |   `-BinaryOperator 0x595c125b8100 <col:50, col:54> 'int' '<'
-// |     |-ImplicitCastExpr 0x595c125b80d0 <col:50> 'int' <LValueToRValue>
-// |     | `-DeclRefExpr 0x595c125b8090 <col:50> 'int' lvalue ParmVar 0x595c125b7e18 'x' 'int'
-// |     `-ImplicitCastExpr 0x595c125b80e8 <col:54> 'int' <LValueToRValue>
-// |       `-DeclRefExpr 0x595c125b80b0 <col:54> 'int' lvalue ParmVar 0x595c125b7e98 'y' 'int'
-// `-AnnotateAttr 0x595c125b7ff0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int32.t|END"
-// FunctionDecl 0x595c125b82b8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:10:18, col:58> col:22 cmp6 'int (int, int)'
-// |-ParmVarDecl 0x595c125b8198 <col:27, col:31> col:31 used x 'int'
-// |-ParmVarDecl 0x595c125b8218 <col:34, col:38> col:38 used y 'int'
-// |-CompoundStmt 0x595c125b84b0 <col:41, col:58>
-// | `-ReturnStmt 0x595c125b84a0 <col:43, col:55>
-// |   `-BinaryOperator 0x595c125b8480 <col:50, col:55> 'int' '!='
-// |     |-ImplicitCastExpr 0x595c125b8450 <col:50> 'int' <LValueToRValue>
-// |     | `-DeclRefExpr 0x595c125b8410 <col:50> 'int' lvalue ParmVar 0x595c125b8198 'x' 'int'
-// |     `-ImplicitCastExpr 0x595c125b8468 <col:55> 'int' <LValueToRValue>
-// |       `-DeclRefExpr 0x595c125b8430 <col:55> 'int' lvalue ParmVar 0x595c125b8218 'y' 'int'
-// `-AnnotateAttr 0x595c125b8370 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int32.t|END"
-// FunctionDecl 0x595c125b8700 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:12:18, col:70> col:26 cmp7 'int64_t (int64_t, int64_t)'
-// |-ParmVarDecl 0x595c125b8570 <col:31, col:39> col:39 used x 'int64_t':'long'
-// |-ParmVarDecl 0x595c125b85e8 <col:42, col:50> col:50 used y 'int64_t':'long'
-// |-CompoundStmt 0x595c125b8918 <col:53, col:70>
-// | `-ReturnStmt 0x595c125b8908 <col:55, col:67>
-// |   `-ImplicitCastExpr 0x595c125b88f0 <col:62, col:67> 'int64_t':'long' <IntegralCast>
-// |     `-BinaryOperator 0x595c125b88d0 <col:62, col:67> 'int' '=='
-// |       |-ImplicitCastExpr 0x595c125b88a0 <col:62> 'int64_t':'long' <LValueToRValue>
-// |       | `-DeclRefExpr 0x595c125b8860 <col:62> 'int64_t':'long' lvalue ParmVar 0x595c125b8570 'x' 'int64_t':'long'
-// |       `-ImplicitCastExpr 0x595c125b88b8 <col:67> 'int64_t':'long' <LValueToRValue>
-// |         `-DeclRefExpr 0x595c125b8880 <col:67> 'int64_t':'long' lvalue ParmVar 0x595c125b85e8 'y' 'int64_t':'long'
-// `-AnnotateAttr 0x595c125b87b8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int64.t|END"
-// FunctionDecl 0x595c125b8a88 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:13:18, col:70> col:26 cmp8 'int64_t (int64_t, int64_t)'
-// |-ParmVarDecl 0x595c125b8978 <col:31, col:39> col:39 used x 'int64_t':'long'
-// |-ParmVarDecl 0x595c125b89f0 <col:42, col:50> col:50 used y 'int64_t':'long'
-// |-CompoundStmt 0x595c125b8c98 <col:53, col:70>
-// | `-ReturnStmt 0x595c125b8c88 <col:55, col:67>
-// |   `-ImplicitCastExpr 0x595c125b8c70 <col:62, col:67> 'int64_t':'long' <IntegralCast>
-// |     `-BinaryOperator 0x595c125b8c50 <col:62, col:67> 'int' '>='
-// |       |-ImplicitCastExpr 0x595c125b8c20 <col:62> 'int64_t':'long' <LValueToRValue>
-// |       | `-DeclRefExpr 0x595c125b8be0 <col:62> 'int64_t':'long' lvalue ParmVar 0x595c125b8978 'x' 'int64_t':'long'
-// |       `-ImplicitCastExpr 0x595c125b8c38 <col:67> 'int64_t':'long' <LValueToRValue>
-// |         `-DeclRefExpr 0x595c125b8c00 <col:67> 'int64_t':'long' lvalue ParmVar 0x595c125b89f0 'y' 'int64_t':'long'
-// `-AnnotateAttr 0x595c125b8b40 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int64.t|END"
-// FunctionDecl 0x595c1259ea40 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:14:18, col:69> col:26 cmp9 'int64_t (int64_t, int64_t)'
-// |-ParmVarDecl 0x595c125b8cf8 <col:31, col:39> col:39 used x 'int64_t':'long'
-// |-ParmVarDecl 0x595c125b8d70 <col:42, col:50> col:50 used y 'int64_t':'long'
-// |-CompoundStmt 0x595c1259ec58 <col:53, col:69>
-// | `-ReturnStmt 0x595c1259ec48 <col:55, col:66>
-// |   `-ImplicitCastExpr 0x595c1259ec30 <col:62, col:66> 'int64_t':'long' <IntegralCast>
-// |     `-BinaryOperator 0x595c1259ec10 <col:62, col:66> 'int' '>'
-// |       |-ImplicitCastExpr 0x595c1259ebe0 <col:62> 'int64_t':'long' <LValueToRValue>
-// |       | `-DeclRefExpr 0x595c1259eba0 <col:62> 'int64_t':'long' lvalue ParmVar 0x595c125b8cf8 'x' 'int64_t':'long'
-// |       `-ImplicitCastExpr 0x595c1259ebf8 <col:66> 'int64_t':'long' <LValueToRValue>
-// |         `-DeclRefExpr 0x595c1259ebc0 <col:66> 'int64_t':'long' lvalue ParmVar 0x595c125b8d70 'y' 'int64_t':'long'
-// `-AnnotateAttr 0x595c1259eaf8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int64.t|END"
-// FunctionDecl 0x595c1259edc8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:15:18, col:71> col:26 cmp10 'int64_t (int64_t, int64_t)'
-// |-ParmVarDecl 0x595c1259ecb8 <col:32, col:40> col:40 used x 'int64_t':'long'
-// |-ParmVarDecl 0x595c1259ed30 <col:43, col:51> col:51 used y 'int64_t':'long'
-// |-CompoundStmt 0x595c1259efd8 <col:54, col:71>
-// | `-ReturnStmt 0x595c1259efc8 <col:56, col:68>
-// |   `-ImplicitCastExpr 0x595c1259efb0 <col:63, col:68> 'int64_t':'long' <IntegralCast>
-// |     `-BinaryOperator 0x595c1259ef90 <col:63, col:68> 'int' '<='
-// |       |-ImplicitCastExpr 0x595c1259ef60 <col:63> 'int64_t':'long' <LValueToRValue>
-// |       | `-DeclRefExpr 0x595c1259ef20 <col:63> 'int64_t':'long' lvalue ParmVar 0x595c1259ecb8 'x' 'int64_t':'long'
-// |       `-ImplicitCastExpr 0x595c1259ef78 <col:68> 'int64_t':'long' <LValueToRValue>
-// |         `-DeclRefExpr 0x595c1259ef40 <col:68> 'int64_t':'long' lvalue ParmVar 0x595c1259ed30 'y' 'int64_t':'long'
-// `-AnnotateAttr 0x595c1259ee80 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int64.t|END"
-// FunctionDecl 0x595c1259f148 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:16:18, col:70> col:26 cmp11 'int64_t (int64_t, int64_t)'
-// |-ParmVarDecl 0x595c1259f038 <col:32, col:40> col:40 used x 'int64_t':'long'
-// |-ParmVarDecl 0x595c1259f0b0 <col:43, col:51> col:51 used y 'int64_t':'long'
-// |-CompoundStmt 0x595c1259f358 <col:54, col:70>
-// | `-ReturnStmt 0x595c1259f348 <col:56, col:67>
-// |   `-ImplicitCastExpr 0x595c1259f330 <col:63, col:67> 'int64_t':'long' <IntegralCast>
-// |     `-BinaryOperator 0x595c1259f310 <col:63, col:67> 'int' '<'
-// |       |-ImplicitCastExpr 0x595c1259f2e0 <col:63> 'int64_t':'long' <LValueToRValue>
-// |       | `-DeclRefExpr 0x595c1259f2a0 <col:63> 'int64_t':'long' lvalue ParmVar 0x595c1259f038 'x' 'int64_t':'long'
-// |       `-ImplicitCastExpr 0x595c1259f2f8 <col:67> 'int64_t':'long' <LValueToRValue>
-// |         `-DeclRefExpr 0x595c1259f2c0 <col:67> 'int64_t':'long' lvalue ParmVar 0x595c1259f0b0 'y' 'int64_t':'long'
-// `-AnnotateAttr 0x595c1259f200 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int64.t|END"
-// FunctionDecl 0x595c1259f4c8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:17:18, col:71> col:26 cmp12 'int64_t (int64_t, int64_t)'
-// |-ParmVarDecl 0x595c1259f3b8 <col:32, col:40> col:40 used x 'int64_t':'long'
-// |-ParmVarDecl 0x595c1259f430 <col:43, col:51> col:51 used y 'int64_t':'long'
-// |-CompoundStmt 0x595c1259f6d8 <col:54, col:71>
-// | `-ReturnStmt 0x595c1259f6c8 <col:56, col:68>
-// |   `-ImplicitCastExpr 0x595c1259f6b0 <col:63, col:68> 'int64_t':'long' <IntegralCast>
-// |     `-BinaryOperator 0x595c1259f690 <col:63, col:68> 'int' '!='
-// |       |-ImplicitCastExpr 0x595c1259f660 <col:63> 'int64_t':'long' <LValueToRValue>
-// |       | `-DeclRefExpr 0x595c1259f620 <col:63> 'int64_t':'long' lvalue ParmVar 0x595c1259f3b8 'x' 'int64_t':'long'
-// |       `-ImplicitCastExpr 0x595c1259f678 <col:68> 'int64_t':'long' <LValueToRValue>
-// |         `-DeclRefExpr 0x595c1259f640 <col:68> 'int64_t':'long' lvalue ParmVar 0x595c1259f430 'y' 'int64_t':'long'
-// `-AnnotateAttr 0x595c1259f580 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int64.t|END"
-// FunctionDecl 0x595c1259f8f0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:19:18, col:71> col:26 cmp13 'int32_t (int32_t, int32_t)'
-// |-ParmVarDecl 0x595c1259f7a0 <col:32, col:40> col:40 used x 'int32_t':'int'
-// |-ParmVarDecl 0x595c1259f818 <col:43, col:51> col:51 used y 'int32_t':'int'
-// |-CompoundStmt 0x595c1259fb10 <col:54, col:71>
-// | `-ReturnStmt 0x595c1259fb00 <col:56, col:68>
-// |   `-BinaryOperator 0x595c1259fae0 <col:63, col:68> 'int' '=='
-// |     |-ImplicitCastExpr 0x595c1259fab0 <col:63> 'int32_t':'int' <LValueToRValue>
-// |     | `-DeclRefExpr 0x595c1259fa70 <col:63> 'int32_t':'int' lvalue ParmVar 0x595c1259f7a0 'x' 'int32_t':'int'
-// |     `-ImplicitCastExpr 0x595c1259fac8 <col:68> 'int32_t':'int' <LValueToRValue>
-// |       `-DeclRefExpr 0x595c1259fa90 <col:68> 'int32_t':'int' lvalue ParmVar 0x595c1259f818 'y' 'int32_t':'int'
-// `-AnnotateAttr 0x595c1259f9a8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int32.t|END"
-// FunctionDecl 0x595c1259fc80 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:20:18, col:71> col:26 cmp14 'int32_t (int32_t, int32_t)'
-// |-ParmVarDecl 0x595c1259fb70 <col:32, col:40> col:40 used x 'int32_t':'int'
-// |-ParmVarDecl 0x595c1259fbe8 <col:43, col:51> col:51 used y 'int32_t':'int'
-// |-CompoundStmt 0x595c1259fe80 <col:54, col:71>
-// | `-ReturnStmt 0x595c1259fe70 <col:56, col:68>
-// |   `-BinaryOperator 0x595c1259fe50 <col:63, col:68> 'int' '>='
-// |     |-ImplicitCastExpr 0x595c1259fe20 <col:63> 'int32_t':'int' <LValueToRValue>
-// |     | `-DeclRefExpr 0x595c1259fde0 <col:63> 'int32_t':'int' lvalue ParmVar 0x595c1259fb70 'x' 'int32_t':'int'
-// |     `-ImplicitCastExpr 0x595c1259fe38 <col:68> 'int32_t':'int' <LValueToRValue>
-// |       `-DeclRefExpr 0x595c1259fe00 <col:68> 'int32_t':'int' lvalue ParmVar 0x595c1259fbe8 'y' 'int32_t':'int'
-// `-AnnotateAttr 0x595c1259fd38 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int32.t|END"
-// FunctionDecl 0x595c1259fff0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:21:18, col:70> col:26 cmp15 'int32_t (int32_t, int32_t)'
-// |-ParmVarDecl 0x595c1259fee0 <col:32, col:40> col:40 used x 'int32_t':'int'
-// |-ParmVarDecl 0x595c1259ff58 <col:43, col:51> col:51 used y 'int32_t':'int'
-// |-CompoundStmt 0x595c125a01f0 <col:54, col:70>
-// | `-ReturnStmt 0x595c125a01e0 <col:56, col:67>
-// |   `-BinaryOperator 0x595c125a01c0 <col:63, col:67> 'int' '>'
-// |     |-ImplicitCastExpr 0x595c125a0190 <col:63> 'int32_t':'int' <LValueToRValue>
-// |     | `-DeclRefExpr 0x595c125a0150 <col:63> 'int32_t':'int' lvalue ParmVar 0x595c1259fee0 'x' 'int32_t':'int'
-// |     `-ImplicitCastExpr 0x595c125a01a8 <col:67> 'int32_t':'int' <LValueToRValue>
-// |       `-DeclRefExpr 0x595c125a0170 <col:67> 'int32_t':'int' lvalue ParmVar 0x595c1259ff58 'y' 'int32_t':'int'
-// `-AnnotateAttr 0x595c125a00a8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int32.t|END"
-// FunctionDecl 0x595c125a0360 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:22:18, col:71> col:26 cmp16 'int32_t (int32_t, int32_t)'
-// |-ParmVarDecl 0x595c125a0250 <col:32, col:40> col:40 used x 'int32_t':'int'
-// |-ParmVarDecl 0x595c125a02c8 <col:43, col:51> col:51 used y 'int32_t':'int'
-// |-CompoundStmt 0x595c125a0560 <col:54, col:71>
-// | `-ReturnStmt 0x595c125a0550 <col:56, col:68>
-// |   `-BinaryOperator 0x595c125a0530 <col:63, col:68> 'int' '<='
-// |     |-ImplicitCastExpr 0x595c125a0500 <col:63> 'int32_t':'int' <LValueToRValue>
-// |     | `-DeclRefExpr 0x595c125a04c0 <col:63> 'int32_t':'int' lvalue ParmVar 0x595c125a0250 'x' 'int32_t':'int'
-// |     `-ImplicitCastExpr 0x595c125a0518 <col:68> 'int32_t':'int' <LValueToRValue>
-// |       `-DeclRefExpr 0x595c125a04e0 <col:68> 'int32_t':'int' lvalue ParmVar 0x595c125a02c8 'y' 'int32_t':'int'
-// `-AnnotateAttr 0x595c125a0418 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int32.t|END"
-// FunctionDecl 0x595c125a06d0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:23:18, col:70> col:26 cmp17 'int32_t (int32_t, int32_t)'
-// |-ParmVarDecl 0x595c125a05c0 <col:32, col:40> col:40 used x 'int32_t':'int'
-// |-ParmVarDecl 0x595c125a0638 <col:43, col:51> col:51 used y 'int32_t':'int'
-// |-CompoundStmt 0x595c125a08d0 <col:54, col:70>
-// | `-ReturnStmt 0x595c125a08c0 <col:56, col:67>
-// |   `-BinaryOperator 0x595c125a08a0 <col:63, col:67> 'int' '<'
-// |     |-ImplicitCastExpr 0x595c125a0870 <col:63> 'int32_t':'int' <LValueToRValue>
-// |     | `-DeclRefExpr 0x595c125a0830 <col:63> 'int32_t':'int' lvalue ParmVar 0x595c125a05c0 'x' 'int32_t':'int'
-// |     `-ImplicitCastExpr 0x595c125a0888 <col:67> 'int32_t':'int' <LValueToRValue>
-// |       `-DeclRefExpr 0x595c125a0850 <col:67> 'int32_t':'int' lvalue ParmVar 0x595c125a0638 'y' 'int32_t':'int'
-// `-AnnotateAttr 0x595c125a0788 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int32.t|END"
-// FunctionDecl 0x595c125b8e40 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:24:18, col:71> col:26 cmp18 'int32_t (int32_t, int32_t)'
-// |-ParmVarDecl 0x595c125a0930 <col:32, col:40> col:40 used x 'int32_t':'int'
-// |-ParmVarDecl 0x595c125a09a8 <col:43, col:51> col:51 used y 'int32_t':'int'
-// |-CompoundStmt 0x595c125b9040 <col:54, col:71>
-// | `-ReturnStmt 0x595c125b9030 <col:56, col:68>
-// |   `-BinaryOperator 0x595c125b9010 <col:63, col:68> 'int' '!='
-// |     |-ImplicitCastExpr 0x595c125b8fe0 <col:63> 'int32_t':'int' <LValueToRValue>
-// |     | `-DeclRefExpr 0x595c125b8fa0 <col:63> 'int32_t':'int' lvalue ParmVar 0x595c125a0930 'x' 'int32_t':'int'
-// |     `-ImplicitCastExpr 0x595c125b8ff8 <col:68> 'int32_t':'int' <LValueToRValue>
-// |       `-DeclRefExpr 0x595c125b8fc0 <col:68> 'int32_t':'int' lvalue ParmVar 0x595c125a09a8 'y' 'int32_t':'int'
-// `-AnnotateAttr 0x595c125b8ef8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int32.t|END"
-// FunctionDecl 0x595c125b9290 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:26:18, col:71> col:26 cmp19 'int16_t (int16_t, int16_t)'
-// |-ParmVarDecl 0x595c125b9100 <col:32, col:40> col:40 used x 'int16_t':'short'
-// |-ParmVarDecl 0x595c125b9178 <col:43, col:51> col:51 used y 'int16_t':'short'
-// |-CompoundStmt 0x595c125b94d8 <col:54, col:71>
-// | `-ReturnStmt 0x595c125b94c8 <col:56, col:68>
-// |   `-ImplicitCastExpr 0x595c125b94b0 <col:63, col:68> 'int16_t':'short' <IntegralCast>
-// |     `-BinaryOperator 0x595c125b9490 <col:63, col:68> 'int' '=='
-// |       |-ImplicitCastExpr 0x595c125b9460 <col:63> 'int' <IntegralCast>
-// |       | `-ImplicitCastExpr 0x595c125b9430 <col:63> 'int16_t':'short' <LValueToRValue>
-// |       |   `-DeclRefExpr 0x595c125b93f0 <col:63> 'int16_t':'short' lvalue ParmVar 0x595c125b9100 'x' 'int16_t':'short'
-// |       `-ImplicitCastExpr 0x595c125b9478 <col:68> 'int' <IntegralCast>
-// |         `-ImplicitCastExpr 0x595c125b9448 <col:68> 'int16_t':'short' <LValueToRValue>
-// |           `-DeclRefExpr 0x595c125b9410 <col:68> 'int16_t':'short' lvalue ParmVar 0x595c125b9178 'y' 'int16_t':'short'
-// `-AnnotateAttr 0x595c125b9348 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int16.t|END"
-// FunctionDecl 0x595c125b9648 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:27:18, col:71> col:26 cmp20 'int16_t (int16_t, int16_t)'
-// |-ParmVarDecl 0x595c125b9538 <col:32, col:40> col:40 used x 'int16_t':'short'
-// |-ParmVarDecl 0x595c125b95b0 <col:43, col:51> col:51 used y 'int16_t':'short'
-// |-CompoundStmt 0x595c125b9888 <col:54, col:71>
-// | `-ReturnStmt 0x595c125b9878 <col:56, col:68>
-// |   `-ImplicitCastExpr 0x595c125b9860 <col:63, col:68> 'int16_t':'short' <IntegralCast>
-// |     `-BinaryOperator 0x595c125b9840 <col:63, col:68> 'int' '>='
-// |       |-ImplicitCastExpr 0x595c125b9810 <col:63> 'int' <IntegralCast>
-// |       | `-ImplicitCastExpr 0x595c125b97e0 <col:63> 'int16_t':'short' <LValueToRValue>
-// |       |   `-DeclRefExpr 0x595c125b97a0 <col:63> 'int16_t':'short' lvalue ParmVar 0x595c125b9538 'x' 'int16_t':'short'
-// |       `-ImplicitCastExpr 0x595c125b9828 <col:68> 'int' <IntegralCast>
-// |         `-ImplicitCastExpr 0x595c125b97f8 <col:68> 'int16_t':'short' <LValueToRValue>
-// |           `-DeclRefExpr 0x595c125b97c0 <col:68> 'int16_t':'short' lvalue ParmVar 0x595c125b95b0 'y' 'int16_t':'short'
-// `-AnnotateAttr 0x595c125b9700 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int16.t|END"
-// FunctionDecl 0x595c125b99f8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:28:18, col:70> col:26 cmp21 'int16_t (int16_t, int16_t)'
-// |-ParmVarDecl 0x595c125b98e8 <col:32, col:40> col:40 used x 'int16_t':'short'
-// |-ParmVarDecl 0x595c125b9960 <col:43, col:51> col:51 used y 'int16_t':'short'
-// |-CompoundStmt 0x595c125b9c38 <col:54, col:70>
-// | `-ReturnStmt 0x595c125b9c28 <col:56, col:67>
-// |   `-ImplicitCastExpr 0x595c125b9c10 <col:63, col:67> 'int16_t':'short' <IntegralCast>
-// |     `-BinaryOperator 0x595c125b9bf0 <col:63, col:67> 'int' '>'
-// |       |-ImplicitCastExpr 0x595c125b9bc0 <col:63> 'int' <IntegralCast>
-// |       | `-ImplicitCastExpr 0x595c125b9b90 <col:63> 'int16_t':'short' <LValueToRValue>
-// |       |   `-DeclRefExpr 0x595c125b9b50 <col:63> 'int16_t':'short' lvalue ParmVar 0x595c125b98e8 'x' 'int16_t':'short'
-// |       `-ImplicitCastExpr 0x595c125b9bd8 <col:67> 'int' <IntegralCast>
-// |         `-ImplicitCastExpr 0x595c125b9ba8 <col:67> 'int16_t':'short' <LValueToRValue>
-// |           `-DeclRefExpr 0x595c125b9b70 <col:67> 'int16_t':'short' lvalue ParmVar 0x595c125b9960 'y' 'int16_t':'short'
-// `-AnnotateAttr 0x595c125b9ab0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int16.t|END"
-// FunctionDecl 0x595c125bae30 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:29:18, col:71> col:26 cmp22 'int16_t (int16_t, int16_t)'
-// |-ParmVarDecl 0x595c125b9c98 <col:32, col:40> col:40 used x 'int16_t':'short'
-// |-ParmVarDecl 0x595c125b9d10 <col:43, col:51> col:51 used y 'int16_t':'short'
-// |-CompoundStmt 0x595c125bb078 <col:54, col:71>
-// | `-ReturnStmt 0x595c125bb068 <col:56, col:68>
-// |   `-ImplicitCastExpr 0x595c125bb050 <col:63, col:68> 'int16_t':'short' <IntegralCast>
-// |     `-BinaryOperator 0x595c125bb030 <col:63, col:68> 'int' '<='
-// |       |-ImplicitCastExpr 0x595c125bb000 <col:63> 'int' <IntegralCast>
-// |       | `-ImplicitCastExpr 0x595c125bafd0 <col:63> 'int16_t':'short' <LValueToRValue>
-// |       |   `-DeclRefExpr 0x595c125baf90 <col:63> 'int16_t':'short' lvalue ParmVar 0x595c125b9c98 'x' 'int16_t':'short'
-// |       `-ImplicitCastExpr 0x595c125bb018 <col:68> 'int' <IntegralCast>
-// |         `-ImplicitCastExpr 0x595c125bafe8 <col:68> 'int16_t':'short' <LValueToRValue>
-// |           `-DeclRefExpr 0x595c125bafb0 <col:68> 'int16_t':'short' lvalue ParmVar 0x595c125b9d10 'y' 'int16_t':'short'
-// `-AnnotateAttr 0x595c125baee8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int16.t|END"
-// FunctionDecl 0x595c125bb1e8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:30:18, col:70> col:26 cmp23 'int16_t (int16_t, int16_t)'
-// |-ParmVarDecl 0x595c125bb0d8 <col:32, col:40> col:40 used x 'int16_t':'short'
-// |-ParmVarDecl 0x595c125bb150 <col:43, col:51> col:51 used y 'int16_t':'short'
-// |-CompoundStmt 0x595c125bb428 <col:54, col:70>
-// | `-ReturnStmt 0x595c125bb418 <col:56, col:67>
-// |   `-ImplicitCastExpr 0x595c125bb400 <col:63, col:67> 'int16_t':'short' <IntegralCast>
-// |     `-BinaryOperator 0x595c125bb3e0 <col:63, col:67> 'int' '<'
-// |       |-ImplicitCastExpr 0x595c125bb3b0 <col:63> 'int' <IntegralCast>
-// |       | `-ImplicitCastExpr 0x595c125bb380 <col:63> 'int16_t':'short' <LValueToRValue>
-// |       |   `-DeclRefExpr 0x595c125bb340 <col:63> 'int16_t':'short' lvalue ParmVar 0x595c125bb0d8 'x' 'int16_t':'short'
-// |       `-ImplicitCastExpr 0x595c125bb3c8 <col:67> 'int' <IntegralCast>
-// |         `-ImplicitCastExpr 0x595c125bb398 <col:67> 'int16_t':'short' <LValueToRValue>
-// |           `-DeclRefExpr 0x595c125bb360 <col:67> 'int16_t':'short' lvalue ParmVar 0x595c125bb150 'y' 'int16_t':'short'
-// `-AnnotateAttr 0x595c125bb2a0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int16.t|END"
-// FunctionDecl 0x595c125bb598 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:31:18, col:71> col:26 cmp24 'int16_t (int16_t, int16_t)'
-// |-ParmVarDecl 0x595c125bb488 <col:32, col:40> col:40 used x 'int16_t':'short'
-// |-ParmVarDecl 0x595c125bb500 <col:43, col:51> col:51 used y 'int16_t':'short'
-// |-CompoundStmt 0x595c125bb7d8 <col:54, col:71>
-// | `-ReturnStmt 0x595c125bb7c8 <col:56, col:68>
-// |   `-ImplicitCastExpr 0x595c125bb7b0 <col:63, col:68> 'int16_t':'short' <IntegralCast>
-// |     `-BinaryOperator 0x595c125bb790 <col:63, col:68> 'int' '!='
-// |       |-ImplicitCastExpr 0x595c125bb760 <col:63> 'int' <IntegralCast>
-// |       | `-ImplicitCastExpr 0x595c125bb730 <col:63> 'int16_t':'short' <LValueToRValue>
-// |       |   `-DeclRefExpr 0x595c125bb6f0 <col:63> 'int16_t':'short' lvalue ParmVar 0x595c125bb488 'x' 'int16_t':'short'
-// |       `-ImplicitCastExpr 0x595c125bb778 <col:68> 'int' <IntegralCast>
-// |         `-ImplicitCastExpr 0x595c125bb748 <col:68> 'int16_t':'short' <LValueToRValue>
-// |           `-DeclRefExpr 0x595c125bb710 <col:68> 'int16_t':'short' lvalue ParmVar 0x595c125bb500 'y' 'int16_t':'short'
-// `-AnnotateAttr 0x595c125bb650 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int16.t|END"
-// FunctionDecl 0x595c125bba30 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:33:17, col:67> col:24 cmp25 'int8_t (int8_t, int8_t)'
-// |-ParmVarDecl 0x595c125bb8a0 <col:30, col:37> col:37 used x 'int8_t':'signed char'
-// |-ParmVarDecl 0x595c125bb918 <col:40, col:47> col:47 used y 'int8_t':'signed char'
-// |-CompoundStmt 0x595c125bbc78 <col:50, col:67>
-// | `-ReturnStmt 0x595c125bbc68 <col:52, col:64>
-// |   `-ImplicitCastExpr 0x595c125bbc50 <col:59, col:64> 'int8_t':'signed char' <IntegralCast>
-// |     `-BinaryOperator 0x595c125bbc30 <col:59, col:64> 'int' '=='
-// |       |-ImplicitCastExpr 0x595c125bbc00 <col:59> 'int' <IntegralCast>
-// |       | `-ImplicitCastExpr 0x595c125bbbd0 <col:59> 'int8_t':'signed char' <LValueToRValue>
-// |       |   `-DeclRefExpr 0x595c125bbb90 <col:59> 'int8_t':'signed char' lvalue ParmVar 0x595c125bb8a0 'x' 'int8_t':'signed char'
-// |       `-ImplicitCastExpr 0x595c125bbc18 <col:64> 'int' <IntegralCast>
-// |         `-ImplicitCastExpr 0x595c125bbbe8 <col:64> 'int8_t':'signed char' <LValueToRValue>
-// |           `-DeclRefExpr 0x595c125bbbb0 <col:64> 'int8_t':'signed char' lvalue ParmVar 0x595c125bb918 'y' 'int8_t':'signed char'
-// `-AnnotateAttr 0x595c125bbae8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int8.t|END"
-// FunctionDecl 0x595c125bbe40 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:34:17, col:67> col:24 cmp26 'int8_t (int8_t, int8_t)'
-// |-ParmVarDecl 0x595c125bbcd8 <col:30, col:37> col:37 used x 'int8_t':'signed char'
-// |-ParmVarDecl 0x595c125bbd50 <col:40, col:47> col:47 used y 'int8_t':'signed char'
-// |-CompoundStmt 0x595c125bc088 <col:50, col:67>
-// | `-ReturnStmt 0x595c125bc078 <col:52, col:64>
-// |   `-ImplicitCastExpr 0x595c125bc060 <col:59, col:64> 'int8_t':'signed char' <IntegralCast>
-// |     `-BinaryOperator 0x595c125bc040 <col:59, col:64> 'int' '>='
-// |       |-ImplicitCastExpr 0x595c125bc010 <col:59> 'int' <IntegralCast>
-// |       | `-ImplicitCastExpr 0x595c125bbfe0 <col:59> 'int8_t':'signed char' <LValueToRValue>
-// |       |   `-DeclRefExpr 0x595c125bbfa0 <col:59> 'int8_t':'signed char' lvalue ParmVar 0x595c125bbcd8 'x' 'int8_t':'signed char'
-// |       `-ImplicitCastExpr 0x595c125bc028 <col:64> 'int' <IntegralCast>
-// |         `-ImplicitCastExpr 0x595c125bbff8 <col:64> 'int8_t':'signed char' <LValueToRValue>
-// |           `-DeclRefExpr 0x595c125bbfc0 <col:64> 'int8_t':'signed char' lvalue ParmVar 0x595c125bbd50 'y' 'int8_t':'signed char'
-// `-AnnotateAttr 0x595c125bbef8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int8.t|END"
-// FunctionDecl 0x595c125bc1f8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:35:17, col:66> col:24 cmp27 'int8_t (int8_t, int8_t)'
-// |-ParmVarDecl 0x595c125bc0e8 <col:30, col:37> col:37 used x 'int8_t':'signed char'
-// |-ParmVarDecl 0x595c125bc160 <col:40, col:47> col:47 used y 'int8_t':'signed char'
-// |-CompoundStmt 0x595c125bc438 <col:50, col:66>
-// | `-ReturnStmt 0x595c125bc428 <col:52, col:63>
-// |   `-ImplicitCastExpr 0x595c125bc410 <col:59, col:63> 'int8_t':'signed char' <IntegralCast>
-// |     `-BinaryOperator 0x595c125bc3f0 <col:59, col:63> 'int' '>'
-// |       |-ImplicitCastExpr 0x595c125bc3c0 <col:59> 'int' <IntegralCast>
-// |       | `-ImplicitCastExpr 0x595c125bc390 <col:59> 'int8_t':'signed char' <LValueToRValue>
-// |       |   `-DeclRefExpr 0x595c125bc350 <col:59> 'int8_t':'signed char' lvalue ParmVar 0x595c125bc0e8 'x' 'int8_t':'signed char'
-// |       `-ImplicitCastExpr 0x595c125bc3d8 <col:63> 'int' <IntegralCast>
-// |         `-ImplicitCastExpr 0x595c125bc3a8 <col:63> 'int8_t':'signed char' <LValueToRValue>
-// |           `-DeclRefExpr 0x595c125bc370 <col:63> 'int8_t':'signed char' lvalue ParmVar 0x595c125bc160 'y' 'int8_t':'signed char'
-// `-AnnotateAttr 0x595c125bc2b0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int8.t|END"
-// FunctionDecl 0x595c125bc5a8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:36:17, col:67> col:24 cmp28 'int8_t (int8_t, int8_t)'
-// |-ParmVarDecl 0x595c125bc498 <col:30, col:37> col:37 used x 'int8_t':'signed char'
-// |-ParmVarDecl 0x595c125bc510 <col:40, col:47> col:47 used y 'int8_t':'signed char'
-// |-CompoundStmt 0x595c125bc7e8 <col:50, col:67>
-// | `-ReturnStmt 0x595c125bc7d8 <col:52, col:64>
-// |   `-ImplicitCastExpr 0x595c125bc7c0 <col:59, col:64> 'int8_t':'signed char' <IntegralCast>
-// |     `-BinaryOperator 0x595c125bc7a0 <col:59, col:64> 'int' '<='
-// |       |-ImplicitCastExpr 0x595c125bc770 <col:59> 'int' <IntegralCast>
-// |       | `-ImplicitCastExpr 0x595c125bc740 <col:59> 'int8_t':'signed char' <LValueToRValue>
-// |       |   `-DeclRefExpr 0x595c125bc700 <col:59> 'int8_t':'signed char' lvalue ParmVar 0x595c125bc498 'x' 'int8_t':'signed char'
-// |       `-ImplicitCastExpr 0x595c125bc788 <col:64> 'int' <IntegralCast>
-// |         `-ImplicitCastExpr 0x595c125bc758 <col:64> 'int8_t':'signed char' <LValueToRValue>
-// |           `-DeclRefExpr 0x595c125bc720 <col:64> 'int8_t':'signed char' lvalue ParmVar 0x595c125bc510 'y' 'int8_t':'signed char'
-// `-AnnotateAttr 0x595c125bc660 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int8.t|END"
-// FunctionDecl 0x595c125bc958 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:37:17, col:66> col:24 cmp29 'int8_t (int8_t, int8_t)'
-// |-ParmVarDecl 0x595c125bc848 <col:30, col:37> col:37 used x 'int8_t':'signed char'
-// |-ParmVarDecl 0x595c125bc8c0 <col:40, col:47> col:47 used y 'int8_t':'signed char'
-// |-CompoundStmt 0x595c125bcb98 <col:50, col:66>
-// | `-ReturnStmt 0x595c125bcb88 <col:52, col:63>
-// |   `-ImplicitCastExpr 0x595c125bcb70 <col:59, col:63> 'int8_t':'signed char' <IntegralCast>
-// |     `-BinaryOperator 0x595c125bcb50 <col:59, col:63> 'int' '<'
-// |       |-ImplicitCastExpr 0x595c125bcb20 <col:59> 'int' <IntegralCast>
-// |       | `-ImplicitCastExpr 0x595c125bcaf0 <col:59> 'int8_t':'signed char' <LValueToRValue>
-// |       |   `-DeclRefExpr 0x595c125bcab0 <col:59> 'int8_t':'signed char' lvalue ParmVar 0x595c125bc848 'x' 'int8_t':'signed char'
-// |       `-ImplicitCastExpr 0x595c125bcb38 <col:63> 'int' <IntegralCast>
-// |         `-ImplicitCastExpr 0x595c125bcb08 <col:63> 'int8_t':'signed char' <LValueToRValue>
-// |           `-DeclRefExpr 0x595c125bcad0 <col:63> 'int8_t':'signed char' lvalue ParmVar 0x595c125bc8c0 'y' 'int8_t':'signed char'
-// `-AnnotateAttr 0x595c125bca10 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int8.t|END"
-// FunctionDecl 0x595c125bcd08 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:38:17, col:67> col:24 cmp30 'int8_t (int8_t, int8_t)'
-// |-ParmVarDecl 0x595c125bcbf8 <col:30, col:37> col:37 used x 'int8_t':'signed char'
-// |-ParmVarDecl 0x595c125bcc70 <col:40, col:47> col:47 used y 'int8_t':'signed char'
-// |-CompoundStmt 0x595c125bcf68 <col:50, col:67>
-// | `-ReturnStmt 0x595c125bcf58 <col:52, col:64>
-// |   `-ImplicitCastExpr 0x595c125bcf40 <col:59, col:64> 'int8_t':'signed char' <IntegralCast>
-// |     `-BinaryOperator 0x595c125bcf20 <col:59, col:64> 'int' '!='
-// |       |-ImplicitCastExpr 0x595c125bcef0 <col:59> 'int' <IntegralCast>
-// |       | `-ImplicitCastExpr 0x595c125bcec0 <col:59> 'int8_t':'signed char' <LValueToRValue>
-// |       |   `-DeclRefExpr 0x595c125bce80 <col:59> 'int8_t':'signed char' lvalue ParmVar 0x595c125bcbf8 'x' 'int8_t':'signed char'
-// |       `-ImplicitCastExpr 0x595c125bcf08 <col:64> 'int' <IntegralCast>
-// |         `-ImplicitCastExpr 0x595c125bced8 <col:64> 'int8_t':'signed char' <LValueToRValue>
-// |           `-DeclRefExpr 0x595c125bcea0 <col:64> 'int8_t':'signed char' lvalue ParmVar 0x595c125bcc70 'y' 'int8_t':'signed char'
-// `-AnnotateAttr 0x595c125bcdc0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int8.t|END"
-// FunctionDecl 0x595c125bd1c0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:41:19, col:75> col:28 cmp31 'uint64_t (uint64_t, uint64_t)'
-// |-ParmVarDecl 0x595c125bd030 <col:34, col:43> col:43 used x 'uint64_t':'unsigned long'
-// |-ParmVarDecl 0x595c125bd0a8 <col:46, col:55> col:55 used y 'uint64_t':'unsigned long'
-// |-CompoundStmt 0x595c125bd3d8 <col:58, col:75>
-// | `-ReturnStmt 0x595c125bd3c8 <col:60, col:72>
-// |   `-ImplicitCastExpr 0x595c125bd3b0 <col:67, col:72> 'uint64_t':'unsigned long' <IntegralCast>
-// |     `-BinaryOperator 0x595c125bd390 <col:67, col:72> 'int' '=='
-// |       |-ImplicitCastExpr 0x595c125bd360 <col:67> 'uint64_t':'unsigned long' <LValueToRValue>
-// |       | `-DeclRefExpr 0x595c125bd320 <col:67> 'uint64_t':'unsigned long' lvalue ParmVar 0x595c125bd030 'x' 'uint64_t':'unsigned long'
-// |       `-ImplicitCastExpr 0x595c125bd378 <col:72> 'uint64_t':'unsigned long' <LValueToRValue>
-// |         `-DeclRefExpr 0x595c125bd340 <col:72> 'uint64_t':'unsigned long' lvalue ParmVar 0x595c125bd0a8 'y' 'uint64_t':'unsigned long'
-// `-AnnotateAttr 0x595c125bd278 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt64.t|END"
-// FunctionDecl 0x595c125bd548 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:42:19, col:75> col:28 cmp32 'uint64_t (uint64_t, uint64_t)'
-// |-ParmVarDecl 0x595c125bd438 <col:34, col:43> col:43 used x 'uint64_t':'unsigned long'
-// |-ParmVarDecl 0x595c125bd4b0 <col:46, col:55> col:55 used y 'uint64_t':'unsigned long'
-// |-CompoundStmt 0x595c125bd758 <col:58, col:75>
-// | `-ReturnStmt 0x595c125bd748 <col:60, col:72>
-// |   `-ImplicitCastExpr 0x595c125bd730 <col:67, col:72> 'uint64_t':'unsigned long' <IntegralCast>
-// |     `-BinaryOperator 0x595c125bd710 <col:67, col:72> 'int' '>='
-// |       |-ImplicitCastExpr 0x595c125bd6e0 <col:67> 'uint64_t':'unsigned long' <LValueToRValue>
-// |       | `-DeclRefExpr 0x595c125bd6a0 <col:67> 'uint64_t':'unsigned long' lvalue ParmVar 0x595c125bd438 'x' 'uint64_t':'unsigned long'
-// |       `-ImplicitCastExpr 0x595c125bd6f8 <col:72> 'uint64_t':'unsigned long' <LValueToRValue>
-// |         `-DeclRefExpr 0x595c125bd6c0 <col:72> 'uint64_t':'unsigned long' lvalue ParmVar 0x595c125bd4b0 'y' 'uint64_t':'unsigned long'
-// `-AnnotateAttr 0x595c125bd600 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt64.t|END"
-// FunctionDecl 0x595c125bd8c8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:43:19, col:74> col:28 cmp33 'uint64_t (uint64_t, uint64_t)'
-// |-ParmVarDecl 0x595c125bd7b8 <col:34, col:43> col:43 used x 'uint64_t':'unsigned long'
-// |-ParmVarDecl 0x595c125bd830 <col:46, col:55> col:55 used y 'uint64_t':'unsigned long'
-// |-CompoundStmt 0x595c125bdad8 <col:58, col:74>
-// | `-ReturnStmt 0x595c125bdac8 <col:60, col:71>
-// |   `-ImplicitCastExpr 0x595c125bdab0 <col:67, col:71> 'uint64_t':'unsigned long' <IntegralCast>
-// |     `-BinaryOperator 0x595c125bda90 <col:67, col:71> 'int' '>'
-// |       |-ImplicitCastExpr 0x595c125bda60 <col:67> 'uint64_t':'unsigned long' <LValueToRValue>
-// |       | `-DeclRefExpr 0x595c125bda20 <col:67> 'uint64_t':'unsigned long' lvalue ParmVar 0x595c125bd7b8 'x' 'uint64_t':'unsigned long'
-// |       `-ImplicitCastExpr 0x595c125bda78 <col:71> 'uint64_t':'unsigned long' <LValueToRValue>
-// |         `-DeclRefExpr 0x595c125bda40 <col:71> 'uint64_t':'unsigned long' lvalue ParmVar 0x595c125bd830 'y' 'uint64_t':'unsigned long'
-// `-AnnotateAttr 0x595c125bd980 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt64.t|END"
-// FunctionDecl 0x595c125bdc48 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:44:19, col:75> col:28 cmp34 'uint64_t (uint64_t, uint64_t)'
-// |-ParmVarDecl 0x595c125bdb38 <col:34, col:43> col:43 used x 'uint64_t':'unsigned long'
-// |-ParmVarDecl 0x595c125bdbb0 <col:46, col:55> col:55 used y 'uint64_t':'unsigned long'
-// |-CompoundStmt 0x595c126821d0 <col:58, col:75>
-// | `-ReturnStmt 0x595c126821c0 <col:60, col:72>
-// |   `-ImplicitCastExpr 0x595c125bde30 <col:67, col:72> 'uint64_t':'unsigned long' <IntegralCast>
-// |     `-BinaryOperator 0x595c125bde10 <col:67, col:72> 'int' '<='
-// |       |-ImplicitCastExpr 0x595c125bdde0 <col:67> 'uint64_t':'unsigned long' <LValueToRValue>
-// |       | `-DeclRefExpr 0x595c125bdda0 <col:67> 'uint64_t':'unsigned long' lvalue ParmVar 0x595c125bdb38 'x' 'uint64_t':'unsigned long'
-// |       `-ImplicitCastExpr 0x595c125bddf8 <col:72> 'uint64_t':'unsigned long' <LValueToRValue>
-// |         `-DeclRefExpr 0x595c125bddc0 <col:72> 'uint64_t':'unsigned long' lvalue ParmVar 0x595c125bdbb0 'y' 'uint64_t':'unsigned long'
-// `-AnnotateAttr 0x595c125bdd00 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt64.t|END"
-// FunctionDecl 0x595c12682340 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:45:19, col:74> col:28 cmp35 'uint64_t (uint64_t, uint64_t)'
-// |-ParmVarDecl 0x595c12682230 <col:34, col:43> col:43 used x 'uint64_t':'unsigned long'
-// |-ParmVarDecl 0x595c126822a8 <col:46, col:55> col:55 used y 'uint64_t':'unsigned long'
-// |-CompoundStmt 0x595c12682558 <col:58, col:74>
-// | `-ReturnStmt 0x595c12682548 <col:60, col:71>
-// |   `-ImplicitCastExpr 0x595c12682530 <col:67, col:71> 'uint64_t':'unsigned long' <IntegralCast>
-// |     `-BinaryOperator 0x595c12682510 <col:67, col:71> 'int' '<'
-// |       |-ImplicitCastExpr 0x595c126824e0 <col:67> 'uint64_t':'unsigned long' <LValueToRValue>
-// |       | `-DeclRefExpr 0x595c126824a0 <col:67> 'uint64_t':'unsigned long' lvalue ParmVar 0x595c12682230 'x' 'uint64_t':'unsigned long'
-// |       `-ImplicitCastExpr 0x595c126824f8 <col:71> 'uint64_t':'unsigned long' <LValueToRValue>
-// |         `-DeclRefExpr 0x595c126824c0 <col:71> 'uint64_t':'unsigned long' lvalue ParmVar 0x595c126822a8 'y' 'uint64_t':'unsigned long'
-// `-AnnotateAttr 0x595c126823f8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt64.t|END"
-// FunctionDecl 0x595c126826c8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:46:19, col:75> col:28 cmp36 'uint64_t (uint64_t, uint64_t)'
-// |-ParmVarDecl 0x595c126825b8 <col:34, col:43> col:43 used x 'uint64_t':'unsigned long'
-// |-ParmVarDecl 0x595c12682630 <col:46, col:55> col:55 used y 'uint64_t':'unsigned long'
-// |-CompoundStmt 0x595c126828d8 <col:58, col:75>
-// | `-ReturnStmt 0x595c126828c8 <col:60, col:72>
-// |   `-ImplicitCastExpr 0x595c126828b0 <col:67, col:72> 'uint64_t':'unsigned long' <IntegralCast>
-// |     `-BinaryOperator 0x595c12682890 <col:67, col:72> 'int' '!='
-// |       |-ImplicitCastExpr 0x595c12682860 <col:67> 'uint64_t':'unsigned long' <LValueToRValue>
-// |       | `-DeclRefExpr 0x595c12682820 <col:67> 'uint64_t':'unsigned long' lvalue ParmVar 0x595c126825b8 'x' 'uint64_t':'unsigned long'
-// |       `-ImplicitCastExpr 0x595c12682878 <col:72> 'uint64_t':'unsigned long' <LValueToRValue>
-// |         `-DeclRefExpr 0x595c12682840 <col:72> 'uint64_t':'unsigned long' lvalue ParmVar 0x595c12682630 'y' 'uint64_t':'unsigned long'
-// `-AnnotateAttr 0x595c12682780 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt64.t|END"
-// FunctionDecl 0x595c12682b30 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:48:19, col:75> col:28 cmp37 'uint32_t (uint32_t, uint32_t)'
-// |-ParmVarDecl 0x595c126829a0 <col:34, col:43> col:43 used x 'uint32_t':'unsigned int'
-// |-ParmVarDecl 0x595c12682a18 <col:46, col:55> col:55 used y 'uint32_t':'unsigned int'
-// |-CompoundStmt 0x595c12682d48 <col:58, col:75>
-// | `-ReturnStmt 0x595c12682d38 <col:60, col:72>
-// |   `-ImplicitCastExpr 0x595c12682d20 <col:67, col:72> 'uint32_t':'unsigned int' <IntegralCast>
-// |     `-BinaryOperator 0x595c12682d00 <col:67, col:72> 'int' '=='
-// |       |-ImplicitCastExpr 0x595c12682cd0 <col:67> 'uint32_t':'unsigned int' <LValueToRValue>
-// |       | `-DeclRefExpr 0x595c12682c90 <col:67> 'uint32_t':'unsigned int' lvalue ParmVar 0x595c126829a0 'x' 'uint32_t':'unsigned int'
-// |       `-ImplicitCastExpr 0x595c12682ce8 <col:72> 'uint32_t':'unsigned int' <LValueToRValue>
-// |         `-DeclRefExpr 0x595c12682cb0 <col:72> 'uint32_t':'unsigned int' lvalue ParmVar 0x595c12682a18 'y' 'uint32_t':'unsigned int'
-// `-AnnotateAttr 0x595c12682be8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt32.t|END"
-// FunctionDecl 0x595c12682eb8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:49:19, col:75> col:28 cmp38 'uint32_t (uint32_t, uint32_t)'
-// |-ParmVarDecl 0x595c12682da8 <col:34, col:43> col:43 used x 'uint32_t':'unsigned int'
-// |-ParmVarDecl 0x595c12682e20 <col:46, col:55> col:55 used y 'uint32_t':'unsigned int'
-// |-CompoundStmt 0x595c126830c8 <col:58, col:75>
-// | `-ReturnStmt 0x595c126830b8 <col:60, col:72>
-// |   `-ImplicitCastExpr 0x595c126830a0 <col:67, col:72> 'uint32_t':'unsigned int' <IntegralCast>
-// |     `-BinaryOperator 0x595c12683080 <col:67, col:72> 'int' '>='
-// |       |-ImplicitCastExpr 0x595c12683050 <col:67> 'uint32_t':'unsigned int' <LValueToRValue>
-// |       | `-DeclRefExpr 0x595c12683010 <col:67> 'uint32_t':'unsigned int' lvalue ParmVar 0x595c12682da8 'x' 'uint32_t':'unsigned int'
-// |       `-ImplicitCastExpr 0x595c12683068 <col:72> 'uint32_t':'unsigned int' <LValueToRValue>
-// |         `-DeclRefExpr 0x595c12683030 <col:72> 'uint32_t':'unsigned int' lvalue ParmVar 0x595c12682e20 'y' 'uint32_t':'unsigned int'
-// `-AnnotateAttr 0x595c12682f70 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt32.t|END"
-// FunctionDecl 0x595c12683268 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:50:19, col:74> col:28 cmp39 'uint32_t (uint32_t, uint32_t)'
-// |-ParmVarDecl 0x595c12683128 <col:34, col:43> col:43 used x 'uint32_t':'unsigned int'
-// |-ParmVarDecl 0x595c126831d0 <col:46, col:55> col:55 used y 'uint32_t':'unsigned int'
-// |-CompoundStmt 0x595c12683478 <col:58, col:74>
-// | `-ReturnStmt 0x595c12683468 <col:60, col:71>
-// |   `-ImplicitCastExpr 0x595c12683450 <col:67, col:71> 'uint32_t':'unsigned int' <IntegralCast>
-// |     `-BinaryOperator 0x595c12683430 <col:67, col:71> 'int' '>'
-// |       |-ImplicitCastExpr 0x595c12683400 <col:67> 'uint32_t':'unsigned int' <LValueToRValue>
-// |       | `-DeclRefExpr 0x595c126833c0 <col:67> 'uint32_t':'unsigned int' lvalue ParmVar 0x595c12683128 'x' 'uint32_t':'unsigned int'
-// |       `-ImplicitCastExpr 0x595c12683418 <col:71> 'uint32_t':'unsigned int' <LValueToRValue>
-// |         `-DeclRefExpr 0x595c126833e0 <col:71> 'uint32_t':'unsigned int' lvalue ParmVar 0x595c126831d0 'y' 'uint32_t':'unsigned int'
-// `-AnnotateAttr 0x595c12683320 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt32.t|END"
-// FunctionDecl 0x595c126835e8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:51:19, col:75> col:28 cmp40 'uint32_t (uint32_t, uint32_t)'
-// |-ParmVarDecl 0x595c126834d8 <col:34, col:43> col:43 used x 'uint32_t':'unsigned int'
-// |-ParmVarDecl 0x595c12683550 <col:46, col:55> col:55 used y 'uint32_t':'unsigned int'
-// |-CompoundStmt 0x595c126837f8 <col:58, col:75>
-// | `-ReturnStmt 0x595c126837e8 <col:60, col:72>
-// |   `-ImplicitCastExpr 0x595c126837d0 <col:67, col:72> 'uint32_t':'unsigned int' <IntegralCast>
-// |     `-BinaryOperator 0x595c126837b0 <col:67, col:72> 'int' '<='
-// |       |-ImplicitCastExpr 0x595c12683780 <col:67> 'uint32_t':'unsigned int' <LValueToRValue>
-// |       | `-DeclRefExpr 0x595c12683740 <col:67> 'uint32_t':'unsigned int' lvalue ParmVar 0x595c126834d8 'x' 'uint32_t':'unsigned int'
-// |       `-ImplicitCastExpr 0x595c12683798 <col:72> 'uint32_t':'unsigned int' <LValueToRValue>
-// |         `-DeclRefExpr 0x595c12683760 <col:72> 'uint32_t':'unsigned int' lvalue ParmVar 0x595c12683550 'y' 'uint32_t':'unsigned int'
-// `-AnnotateAttr 0x595c126836a0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt32.t|END"
-// FunctionDecl 0x595c12683968 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:52:19, col:74> col:28 cmp41 'uint32_t (uint32_t, uint32_t)'
-// |-ParmVarDecl 0x595c12683858 <col:34, col:43> col:43 used x 'uint32_t':'unsigned int'
-// |-ParmVarDecl 0x595c126838d0 <col:46, col:55> col:55 used y 'uint32_t':'unsigned int'
-// |-CompoundStmt 0x595c12683b78 <col:58, col:74>
-// | `-ReturnStmt 0x595c12683b68 <col:60, col:71>
-// |   `-ImplicitCastExpr 0x595c12683b50 <col:67, col:71> 'uint32_t':'unsigned int' <IntegralCast>
-// |     `-BinaryOperator 0x595c12683b30 <col:67, col:71> 'int' '<'
-// |       |-ImplicitCastExpr 0x595c12683b00 <col:67> 'uint32_t':'unsigned int' <LValueToRValue>
-// |       | `-DeclRefExpr 0x595c12683ac0 <col:67> 'uint32_t':'unsigned int' lvalue ParmVar 0x595c12683858 'x' 'uint32_t':'unsigned int'
-// |       `-ImplicitCastExpr 0x595c12683b18 <col:71> 'uint32_t':'unsigned int' <LValueToRValue>
-// |         `-DeclRefExpr 0x595c12683ae0 <col:71> 'uint32_t':'unsigned int' lvalue ParmVar 0x595c126838d0 'y' 'uint32_t':'unsigned int'
-// `-AnnotateAttr 0x595c12683a20 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt32.t|END"
-// FunctionDecl 0x595c12683ce8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:53:19, col:75> col:28 cmp42 'uint32_t (uint32_t, uint32_t)'
-// |-ParmVarDecl 0x595c12683bd8 <col:34, col:43> col:43 used x 'uint32_t':'unsigned int'
-// |-ParmVarDecl 0x595c12683c50 <col:46, col:55> col:55 used y 'uint32_t':'unsigned int'
-// |-CompoundStmt 0x595c12683ef8 <col:58, col:75>
-// | `-ReturnStmt 0x595c12683ee8 <col:60, col:72>
-// |   `-ImplicitCastExpr 0x595c12683ed0 <col:67, col:72> 'uint32_t':'unsigned int' <IntegralCast>
-// |     `-BinaryOperator 0x595c12683eb0 <col:67, col:72> 'int' '!='
-// |       |-ImplicitCastExpr 0x595c12683e80 <col:67> 'uint32_t':'unsigned int' <LValueToRValue>
-// |       | `-DeclRefExpr 0x595c12683e40 <col:67> 'uint32_t':'unsigned int' lvalue ParmVar 0x595c12683bd8 'x' 'uint32_t':'unsigned int'
-// |       `-ImplicitCastExpr 0x595c12683e98 <col:72> 'uint32_t':'unsigned int' <LValueToRValue>
-// |         `-DeclRefExpr 0x595c12683e60 <col:72> 'uint32_t':'unsigned int' lvalue ParmVar 0x595c12683c50 'y' 'uint32_t':'unsigned int'
-// `-AnnotateAttr 0x595c12683da0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt32.t|END"
-// FunctionDecl 0x595c126841e0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:55:19, col:75> col:28 cmp43 'uint16_t (uint16_t, uint16_t)'
-// |-ParmVarDecl 0x595c12683fc0 <col:34, col:43> col:43 used x 'uint16_t':'unsigned short'
-// |-ParmVarDecl 0x595c12684038 <col:46, col:55> col:55 used y 'uint16_t':'unsigned short'
-// |-CompoundStmt 0x595c12684428 <col:58, col:75>
-// | `-ReturnStmt 0x595c12684418 <col:60, col:72>
-// |   `-ImplicitCastExpr 0x595c12684400 <col:67, col:72> 'uint16_t':'unsigned short' <IntegralCast>
-// |     `-BinaryOperator 0x595c126843e0 <col:67, col:72> 'int' '=='
-// |       |-ImplicitCastExpr 0x595c126843b0 <col:67> 'int' <IntegralCast>
-// |       | `-ImplicitCastExpr 0x595c12684380 <col:67> 'uint16_t':'unsigned short' <LValueToRValue>
-// |       |   `-DeclRefExpr 0x595c12684340 <col:67> 'uint16_t':'unsigned short' lvalue ParmVar 0x595c12683fc0 'x' 'uint16_t':'unsigned short'
-// |       `-ImplicitCastExpr 0x595c126843c8 <col:72> 'int' <IntegralCast>
-// |         `-ImplicitCastExpr 0x595c12684398 <col:72> 'uint16_t':'unsigned short' <LValueToRValue>
-// |           `-DeclRefExpr 0x595c12684360 <col:72> 'uint16_t':'unsigned short' lvalue ParmVar 0x595c12684038 'y' 'uint16_t':'unsigned short'
-// `-AnnotateAttr 0x595c12684298 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt16.t|END"
-// FunctionDecl 0x595c12684598 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:56:19, col:75> col:28 cmp44 'uint16_t (uint16_t, uint16_t)'
-// |-ParmVarDecl 0x595c12684488 <col:34, col:43> col:43 used x 'uint16_t':'unsigned short'
-// |-ParmVarDecl 0x595c12684500 <col:46, col:55> col:55 used y 'uint16_t':'unsigned short'
-// |-CompoundStmt 0x595c126847d8 <col:58, col:75>
-// | `-ReturnStmt 0x595c126847c8 <col:60, col:72>
-// |   `-ImplicitCastExpr 0x595c126847b0 <col:67, col:72> 'uint16_t':'unsigned short' <IntegralCast>
-// |     `-BinaryOperator 0x595c12684790 <col:67, col:72> 'int' '>='
-// |       |-ImplicitCastExpr 0x595c12684760 <col:67> 'int' <IntegralCast>
-// |       | `-ImplicitCastExpr 0x595c12684730 <col:67> 'uint16_t':'unsigned short' <LValueToRValue>
-// |       |   `-DeclRefExpr 0x595c126846f0 <col:67> 'uint16_t':'unsigned short' lvalue ParmVar 0x595c12684488 'x' 'uint16_t':'unsigned short'
-// |       `-ImplicitCastExpr 0x595c12684778 <col:72> 'int' <IntegralCast>
-// |         `-ImplicitCastExpr 0x595c12684748 <col:72> 'uint16_t':'unsigned short' <LValueToRValue>
-// |           `-DeclRefExpr 0x595c12684710 <col:72> 'uint16_t':'unsigned short' lvalue ParmVar 0x595c12684500 'y' 'uint16_t':'unsigned short'
-// `-AnnotateAttr 0x595c12684650 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt16.t|END"
-// FunctionDecl 0x595c12684948 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:57:19, col:74> col:28 cmp45 'uint16_t (uint16_t, uint16_t)'
-// |-ParmVarDecl 0x595c12684838 <col:34, col:43> col:43 used x 'uint16_t':'unsigned short'
-// |-ParmVarDecl 0x595c126848b0 <col:46, col:55> col:55 used y 'uint16_t':'unsigned short'
-// |-CompoundStmt 0x595c12684b88 <col:58, col:74>
-// | `-ReturnStmt 0x595c12684b78 <col:60, col:71>
-// |   `-ImplicitCastExpr 0x595c12684b60 <col:67, col:71> 'uint16_t':'unsigned short' <IntegralCast>
-// |     `-BinaryOperator 0x595c12684b40 <col:67, col:71> 'int' '>'
-// |       |-ImplicitCastExpr 0x595c12684b10 <col:67> 'int' <IntegralCast>
-// |       | `-ImplicitCastExpr 0x595c12684ae0 <col:67> 'uint16_t':'unsigned short' <LValueToRValue>
-// |       |   `-DeclRefExpr 0x595c12684aa0 <col:67> 'uint16_t':'unsigned short' lvalue ParmVar 0x595c12684838 'x' 'uint16_t':'unsigned short'
-// |       `-ImplicitCastExpr 0x595c12684b28 <col:71> 'int' <IntegralCast>
-// |         `-ImplicitCastExpr 0x595c12684af8 <col:71> 'uint16_t':'unsigned short' <LValueToRValue>
-// |           `-DeclRefExpr 0x595c12684ac0 <col:71> 'uint16_t':'unsigned short' lvalue ParmVar 0x595c126848b0 'y' 'uint16_t':'unsigned short'
-// `-AnnotateAttr 0x595c12684a00 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt16.t|END"
-// FunctionDecl 0x595c12684cf8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:58:19, col:75> col:28 cmp46 'uint16_t (uint16_t, uint16_t)'
-// |-ParmVarDecl 0x595c12684be8 <col:34, col:43> col:43 used x 'uint16_t':'unsigned short'
-// |-ParmVarDecl 0x595c12684c60 <col:46, col:55> col:55 used y 'uint16_t':'unsigned short'
-// |-CompoundStmt 0x595c12684f38 <col:58, col:75>
-// | `-ReturnStmt 0x595c12684f28 <col:60, col:72>
-// |   `-ImplicitCastExpr 0x595c12684f10 <col:67, col:72> 'uint16_t':'unsigned short' <IntegralCast>
-// |     `-BinaryOperator 0x595c12684ef0 <col:67, col:72> 'int' '<='
-// |       |-ImplicitCastExpr 0x595c12684ec0 <col:67> 'int' <IntegralCast>
-// |       | `-ImplicitCastExpr 0x595c12684e90 <col:67> 'uint16_t':'unsigned short' <LValueToRValue>
-// |       |   `-DeclRefExpr 0x595c12684e50 <col:67> 'uint16_t':'unsigned short' lvalue ParmVar 0x595c12684be8 'x' 'uint16_t':'unsigned short'
-// |       `-ImplicitCastExpr 0x595c12684ed8 <col:72> 'int' <IntegralCast>
-// |         `-ImplicitCastExpr 0x595c12684ea8 <col:72> 'uint16_t':'unsigned short' <LValueToRValue>
-// |           `-DeclRefExpr 0x595c12684e70 <col:72> 'uint16_t':'unsigned short' lvalue ParmVar 0x595c12684c60 'y' 'uint16_t':'unsigned short'
-// `-AnnotateAttr 0x595c12684db0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt16.t|END"
-// FunctionDecl 0x595c126850a8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:59:19, col:74> col:28 cmp47 'uint16_t (uint16_t, uint16_t)'
-// |-ParmVarDecl 0x595c12684f98 <col:34, col:43> col:43 used x 'uint16_t':'unsigned short'
-// |-ParmVarDecl 0x595c12685010 <col:46, col:55> col:55 used y 'uint16_t':'unsigned short'
-// |-CompoundStmt 0x595c12685308 <col:58, col:74>
-// | `-ReturnStmt 0x595c126852f8 <col:60, col:71>
-// |   `-ImplicitCastExpr 0x595c126852e0 <col:67, col:71> 'uint16_t':'unsigned short' <IntegralCast>
-// |     `-BinaryOperator 0x595c126852c0 <col:67, col:71> 'int' '<'
-// |       |-ImplicitCastExpr 0x595c12685290 <col:67> 'int' <IntegralCast>
-// |       | `-ImplicitCastExpr 0x595c12685260 <col:67> 'uint16_t':'unsigned short' <LValueToRValue>
-// |       |   `-DeclRefExpr 0x595c12685220 <col:67> 'uint16_t':'unsigned short' lvalue ParmVar 0x595c12684f98 'x' 'uint16_t':'unsigned short'
-// |       `-ImplicitCastExpr 0x595c126852a8 <col:71> 'int' <IntegralCast>
-// |         `-ImplicitCastExpr 0x595c12685278 <col:71> 'uint16_t':'unsigned short' <LValueToRValue>
-// |           `-DeclRefExpr 0x595c12685240 <col:71> 'uint16_t':'unsigned short' lvalue ParmVar 0x595c12685010 'y' 'uint16_t':'unsigned short'
-// `-AnnotateAttr 0x595c12685160 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt16.t|END"
-// FunctionDecl 0x595c12685478 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:60:19, col:75> col:28 cmp48 'uint16_t (uint16_t, uint16_t)'
-// |-ParmVarDecl 0x595c12685368 <col:34, col:43> col:43 used x 'uint16_t':'unsigned short'
-// |-ParmVarDecl 0x595c126853e0 <col:46, col:55> col:55 used y 'uint16_t':'unsigned short'
-// |-CompoundStmt 0x595c126856b8 <col:58, col:75>
-// | `-ReturnStmt 0x595c126856a8 <col:60, col:72>
-// |   `-ImplicitCastExpr 0x595c12685690 <col:67, col:72> 'uint16_t':'unsigned short' <IntegralCast>
-// |     `-BinaryOperator 0x595c12685670 <col:67, col:72> 'int' '!='
-// |       |-ImplicitCastExpr 0x595c12685640 <col:67> 'int' <IntegralCast>
-// |       | `-ImplicitCastExpr 0x595c12685610 <col:67> 'uint16_t':'unsigned short' <LValueToRValue>
-// |       |   `-DeclRefExpr 0x595c126855d0 <col:67> 'uint16_t':'unsigned short' lvalue ParmVar 0x595c12685368 'x' 'uint16_t':'unsigned short'
-// |       `-ImplicitCastExpr 0x595c12685658 <col:72> 'int' <IntegralCast>
-// |         `-ImplicitCastExpr 0x595c12685628 <col:72> 'uint16_t':'unsigned short' <LValueToRValue>
-// |           `-DeclRefExpr 0x595c126855f0 <col:72> 'uint16_t':'unsigned short' lvalue ParmVar 0x595c126853e0 'y' 'uint16_t':'unsigned short'
-// `-AnnotateAttr 0x595c12685530 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt16.t|END"
-// FunctionDecl 0x595c12685910 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:62:18, col:71> col:26 cmp49 'uint8_t (uint8_t, uint8_t)'
-// |-ParmVarDecl 0x595c12685780 <col:32, col:40> col:40 used x 'uint8_t':'unsigned char'
-// |-ParmVarDecl 0x595c126857f8 <col:43, col:51> col:51 used y 'uint8_t':'unsigned char'
-// |-CompoundStmt 0x595c12685b58 <col:54, col:71>
-// | `-ReturnStmt 0x595c12685b48 <col:56, col:68>
-// |   `-ImplicitCastExpr 0x595c12685b30 <col:63, col:68> 'uint8_t':'unsigned char' <IntegralCast>
-// |     `-BinaryOperator 0x595c12685b10 <col:63, col:68> 'int' '=='
-// |       |-ImplicitCastExpr 0x595c12685ae0 <col:63> 'int' <IntegralCast>
-// |       | `-ImplicitCastExpr 0x595c12685ab0 <col:63> 'uint8_t':'unsigned char' <LValueToRValue>
-// |       |   `-DeclRefExpr 0x595c12685a70 <col:63> 'uint8_t':'unsigned char' lvalue ParmVar 0x595c12685780 'x' 'uint8_t':'unsigned char'
-// |       `-ImplicitCastExpr 0x595c12685af8 <col:68> 'int' <IntegralCast>
-// |         `-ImplicitCastExpr 0x595c12685ac8 <col:68> 'uint8_t':'unsigned char' <LValueToRValue>
-// |           `-DeclRefExpr 0x595c12685a90 <col:68> 'uint8_t':'unsigned char' lvalue ParmVar 0x595c126857f8 'y' 'uint8_t':'unsigned char'
-// `-AnnotateAttr 0x595c126859c8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt8.t|END"
-// FunctionDecl 0x595c12685cc8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:63:18, col:71> col:26 cmp50 'uint8_t (uint8_t, uint8_t)'
-// |-ParmVarDecl 0x595c12685bb8 <col:32, col:40> col:40 used x 'uint8_t':'unsigned char'
-// |-ParmVarDecl 0x595c12685c30 <col:43, col:51> col:51 used y 'uint8_t':'unsigned char'
-// |-CompoundStmt 0x595c12685f08 <col:54, col:71>
-// | `-ReturnStmt 0x595c12685ef8 <col:56, col:68>
-// |   `-ImplicitCastExpr 0x595c12685ee0 <col:63, col:68> 'uint8_t':'unsigned char' <IntegralCast>
-// |     `-BinaryOperator 0x595c12685ec0 <col:63, col:68> 'int' '>='
-// |       |-ImplicitCastExpr 0x595c12685e90 <col:63> 'int' <IntegralCast>
-// |       | `-ImplicitCastExpr 0x595c12685e60 <col:63> 'uint8_t':'unsigned char' <LValueToRValue>
-// |       |   `-DeclRefExpr 0x595c12685e20 <col:63> 'uint8_t':'unsigned char' lvalue ParmVar 0x595c12685bb8 'x' 'uint8_t':'unsigned char'
-// |       `-ImplicitCastExpr 0x595c12685ea8 <col:68> 'int' <IntegralCast>
-// |         `-ImplicitCastExpr 0x595c12685e78 <col:68> 'uint8_t':'unsigned char' <LValueToRValue>
-// |           `-DeclRefExpr 0x595c12685e40 <col:68> 'uint8_t':'unsigned char' lvalue ParmVar 0x595c12685c30 'y' 'uint8_t':'unsigned char'
-// `-AnnotateAttr 0x595c12685d80 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt8.t|END"
-// FunctionDecl 0x595c12686078 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:64:18, col:70> col:26 cmp51 'uint8_t (uint8_t, uint8_t)'
-// |-ParmVarDecl 0x595c12685f68 <col:32, col:40> col:40 used x 'uint8_t':'unsigned char'
-// |-ParmVarDecl 0x595c12685fe0 <col:43, col:51> col:51 used y 'uint8_t':'unsigned char'
-// |-CompoundStmt 0x595c126862c8 <col:54, col:70>
-// | `-ReturnStmt 0x595c126862b8 <col:56, col:67>
-// |   `-ImplicitCastExpr 0x595c126862a0 <col:63, col:67> 'uint8_t':'unsigned char' <IntegralCast>
-// |     `-BinaryOperator 0x595c12686280 <col:63, col:67> 'int' '>'
-// |       |-ImplicitCastExpr 0x595c12686250 <col:63> 'int' <IntegralCast>
-// |       | `-ImplicitCastExpr 0x595c12686220 <col:63> 'uint8_t':'unsigned char' <LValueToRValue>
-// |       |   `-DeclRefExpr 0x595c126861d0 <col:63> 'uint8_t':'unsigned char' lvalue ParmVar 0x595c12685f68 'x' 'uint8_t':'unsigned char'
-// |       `-ImplicitCastExpr 0x595c12686268 <col:67> 'int' <IntegralCast>
-// |         `-ImplicitCastExpr 0x595c12686238 <col:67> 'uint8_t':'unsigned char' <LValueToRValue>
-// |           `-DeclRefExpr 0x595c12686200 <col:67> 'uint8_t':'unsigned char' lvalue ParmVar 0x595c12685fe0 'y' 'uint8_t':'unsigned char'
-// `-AnnotateAttr 0x595c12686130 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt8.t|END"
-// FunctionDecl 0x595c12686438 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:65:18, col:71> col:26 cmp52 'uint8_t (uint8_t, uint8_t)'
-// |-ParmVarDecl 0x595c12686328 <col:32, col:40> col:40 used x 'uint8_t':'unsigned char'
-// |-ParmVarDecl 0x595c126863a0 <col:43, col:51> col:51 used y 'uint8_t':'unsigned char'
-// |-CompoundStmt 0x595c12686678 <col:54, col:71>
-// | `-ReturnStmt 0x595c12686668 <col:56, col:68>
-// |   `-ImplicitCastExpr 0x595c12686650 <col:63, col:68> 'uint8_t':'unsigned char' <IntegralCast>
-// |     `-BinaryOperator 0x595c12686630 <col:63, col:68> 'int' '<='
-// |       |-ImplicitCastExpr 0x595c12686600 <col:63> 'int' <IntegralCast>
-// |       | `-ImplicitCastExpr 0x595c126865d0 <col:63> 'uint8_t':'unsigned char' <LValueToRValue>
-// |       |   `-DeclRefExpr 0x595c12686590 <col:63> 'uint8_t':'unsigned char' lvalue ParmVar 0x595c12686328 'x' 'uint8_t':'unsigned char'
-// |       `-ImplicitCastExpr 0x595c12686618 <col:68> 'int' <IntegralCast>
-// |         `-ImplicitCastExpr 0x595c126865e8 <col:68> 'uint8_t':'unsigned char' <LValueToRValue>
-// |           `-DeclRefExpr 0x595c126865b0 <col:68> 'uint8_t':'unsigned char' lvalue ParmVar 0x595c126863a0 'y' 'uint8_t':'unsigned char'
-// `-AnnotateAttr 0x595c126864f0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt8.t|END"
-// FunctionDecl 0x595c126867e8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:66:18, col:70> col:26 cmp53 'uint8_t (uint8_t, uint8_t)'
-// |-ParmVarDecl 0x595c126866d8 <col:32, col:40> col:40 used x 'uint8_t':'unsigned char'
-// |-ParmVarDecl 0x595c12686750 <col:43, col:51> col:51 used y 'uint8_t':'unsigned char'
-// |-CompoundStmt 0x595c12686a28 <col:54, col:70>
-// | `-ReturnStmt 0x595c12686a18 <col:56, col:67>
-// |   `-ImplicitCastExpr 0x595c12686a00 <col:63, col:67> 'uint8_t':'unsigned char' <IntegralCast>
-// |     `-BinaryOperator 0x595c126869e0 <col:63, col:67> 'int' '<'
-// |       |-ImplicitCastExpr 0x595c126869b0 <col:63> 'int' <IntegralCast>
-// |       | `-ImplicitCastExpr 0x595c12686980 <col:63> 'uint8_t':'unsigned char' <LValueToRValue>
-// |       |   `-DeclRefExpr 0x595c12686940 <col:63> 'uint8_t':'unsigned char' lvalue ParmVar 0x595c126866d8 'x' 'uint8_t':'unsigned char'
-// |       `-ImplicitCastExpr 0x595c126869c8 <col:67> 'int' <IntegralCast>
-// |         `-ImplicitCastExpr 0x595c12686998 <col:67> 'uint8_t':'unsigned char' <LValueToRValue>
-// |           `-DeclRefExpr 0x595c12686960 <col:67> 'uint8_t':'unsigned char' lvalue ParmVar 0x595c12686750 'y' 'uint8_t':'unsigned char'
-// `-AnnotateAttr 0x595c126868a0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt8.t|END"
-// FunctionDecl 0x595c12686b98 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:67:18, col:71> col:26 cmp54 'uint8_t (uint8_t, uint8_t)'
-// |-ParmVarDecl 0x595c12686a88 <col:32, col:40> col:40 used x 'uint8_t':'unsigned char'
-// |-ParmVarDecl 0x595c12686b00 <col:43, col:51> col:51 used y 'uint8_t':'unsigned char'
-// |-CompoundStmt 0x595c12686dd8 <col:54, col:71>
-// | `-ReturnStmt 0x595c12686dc8 <col:56, col:68>
-// |   `-ImplicitCastExpr 0x595c12686db0 <col:63, col:68> 'uint8_t':'unsigned char' <IntegralCast>
-// |     `-BinaryOperator 0x595c12686d90 <col:63, col:68> 'int' '!='
-// |       |-ImplicitCastExpr 0x595c12686d60 <col:63> 'int' <IntegralCast>
-// |       | `-ImplicitCastExpr 0x595c12686d30 <col:63> 'uint8_t':'unsigned char' <LValueToRValue>
-// |       |   `-DeclRefExpr 0x595c12686cf0 <col:63> 'uint8_t':'unsigned char' lvalue ParmVar 0x595c12686a88 'x' 'uint8_t':'unsigned char'
-// |       `-ImplicitCastExpr 0x595c12686d78 <col:68> 'int' <IntegralCast>
-// |         `-ImplicitCastExpr 0x595c12686d48 <col:68> 'uint8_t':'unsigned char' <LValueToRValue>
-// |           `-DeclRefExpr 0x595c12686d10 <col:68> 'uint8_t':'unsigned char' lvalue ParmVar 0x595c12686b00 'y' 'uint8_t':'unsigned char'
-// `-AnnotateAttr 0x595c12686c50 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt8.t|END"
-// FunctionDecl 0x595c12686f90 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:70:59> col:20 cmp55 'bool (bool, bool)'
-// |-ParmVarDecl 0x595c12686e38 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:70:31> col:31 used x 'bool'
-// |-ParmVarDecl 0x595c12686eb0 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:70:39> col:39 used y 'bool'
-// |-CompoundStmt 0x595c126871d8 <col:42, col:59>
-// | `-ReturnStmt 0x595c126871c8 <col:44, col:56>
-// |   `-ImplicitCastExpr 0x595c126871b0 <col:51, col:56> 'bool' <IntegralToBoolean>
-// |     `-BinaryOperator 0x595c12687190 <col:51, col:56> 'int' '=='
-// |       |-ImplicitCastExpr 0x595c12687160 <col:51> 'int' <IntegralCast>
-// |       | `-ImplicitCastExpr 0x595c12687130 <col:51> 'bool' <LValueToRValue>
-// |       |   `-DeclRefExpr 0x595c126870f0 <col:51> 'bool' lvalue ParmVar 0x595c12686e38 'x' 'bool'
-// |       `-ImplicitCastExpr 0x595c12687178 <col:56> 'int' <IntegralCast>
-// |         `-ImplicitCastExpr 0x595c12687148 <col:56> 'bool' <LValueToRValue>
-// |           `-DeclRefExpr 0x595c12687110 <col:56> 'bool' lvalue ParmVar 0x595c12686eb0 'y' 'bool'
-// `-AnnotateAttr 0x595c12687048 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:_Bool|END"
-// FunctionDecl 0x595c12687368 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:71:59> col:20 cmp56 'bool (bool, bool)'
-// |-ParmVarDecl 0x595c12687258 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:71:31> col:31 used x 'bool'
-// |-ParmVarDecl 0x595c126872d0 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:71:39> col:39 used y 'bool'
-// |-CompoundStmt 0x595c126875a8 <col:42, col:59>
-// | `-ReturnStmt 0x595c12687598 <col:44, col:56>
-// |   `-ImplicitCastExpr 0x595c12687580 <col:51, col:56> 'bool' <IntegralToBoolean>
-// |     `-BinaryOperator 0x595c12687560 <col:51, col:56> 'int' '>='
-// |       |-ImplicitCastExpr 0x595c12687530 <col:51> 'int' <IntegralCast>
-// |       | `-ImplicitCastExpr 0x595c12687500 <col:51> 'bool' <LValueToRValue>
-// |       |   `-DeclRefExpr 0x595c126874c0 <col:51> 'bool' lvalue ParmVar 0x595c12687258 'x' 'bool'
-// |       `-ImplicitCastExpr 0x595c12687548 <col:56> 'int' <IntegralCast>
-// |         `-ImplicitCastExpr 0x595c12687518 <col:56> 'bool' <LValueToRValue>
-// |           `-DeclRefExpr 0x595c126874e0 <col:56> 'bool' lvalue ParmVar 0x595c126872d0 'y' 'bool'
-// `-AnnotateAttr 0x595c12687420 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:_Bool|END"
-// FunctionDecl 0x595c12687718 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:72:58> col:20 cmp57 'bool (bool, bool)'
-// |-ParmVarDecl 0x595c12687608 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:72:31> col:31 used x 'bool'
-// |-ParmVarDecl 0x595c12687680 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:72:39> col:39 used y 'bool'
-// |-CompoundStmt 0x595c12687958 <col:42, col:58>
-// | `-ReturnStmt 0x595c12687948 <col:44, col:55>
-// |   `-ImplicitCastExpr 0x595c12687930 <col:51, col:55> 'bool' <IntegralToBoolean>
-// |     `-BinaryOperator 0x595c12687910 <col:51, col:55> 'int' '>'
-// |       |-ImplicitCastExpr 0x595c126878e0 <col:51> 'int' <IntegralCast>
-// |       | `-ImplicitCastExpr 0x595c126878b0 <col:51> 'bool' <LValueToRValue>
-// |       |   `-DeclRefExpr 0x595c12687870 <col:51> 'bool' lvalue ParmVar 0x595c12687608 'x' 'bool'
-// |       `-ImplicitCastExpr 0x595c126878f8 <col:55> 'int' <IntegralCast>
-// |         `-ImplicitCastExpr 0x595c126878c8 <col:55> 'bool' <LValueToRValue>
-// |           `-DeclRefExpr 0x595c12687890 <col:55> 'bool' lvalue ParmVar 0x595c12687680 'y' 'bool'
-// `-AnnotateAttr 0x595c126877d0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:_Bool|END"
-// FunctionDecl 0x595c12687ac8 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:73:59> col:20 cmp58 'bool (bool, bool)'
-// |-ParmVarDecl 0x595c126879b8 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:73:31> col:31 used x 'bool'
-// |-ParmVarDecl 0x595c12687a30 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:73:39> col:39 used y 'bool'
-// |-CompoundStmt 0x595c12687d08 <col:42, col:59>
-// | `-ReturnStmt 0x595c12687cf8 <col:44, col:56>
-// |   `-ImplicitCastExpr 0x595c12687ce0 <col:51, col:56> 'bool' <IntegralToBoolean>
-// |     `-BinaryOperator 0x595c12687cc0 <col:51, col:56> 'int' '<='
-// |       |-ImplicitCastExpr 0x595c12687c90 <col:51> 'int' <IntegralCast>
-// |       | `-ImplicitCastExpr 0x595c12687c60 <col:51> 'bool' <LValueToRValue>
-// |       |   `-DeclRefExpr 0x595c12687c20 <col:51> 'bool' lvalue ParmVar 0x595c126879b8 'x' 'bool'
-// |       `-ImplicitCastExpr 0x595c12687ca8 <col:56> 'int' <IntegralCast>
-// |         `-ImplicitCastExpr 0x595c12687c78 <col:56> 'bool' <LValueToRValue>
-// |           `-DeclRefExpr 0x595c12687c40 <col:56> 'bool' lvalue ParmVar 0x595c12687a30 'y' 'bool'
-// `-AnnotateAttr 0x595c12687b80 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:_Bool|END"
-// FunctionDecl 0x595c12687e78 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:74:58> col:20 cmp59 'bool (bool, bool)'
-// |-ParmVarDecl 0x595c12687d68 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:74:31> col:31 used x 'bool'
-// |-ParmVarDecl 0x595c12687de0 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:74:39> col:39 used y 'bool'
-// |-CompoundStmt 0x595c126880b8 <col:42, col:58>
-// | `-ReturnStmt 0x595c126880a8 <col:44, col:55>
-// |   `-ImplicitCastExpr 0x595c12688090 <col:51, col:55> 'bool' <IntegralToBoolean>
-// |     `-BinaryOperator 0x595c12688070 <col:51, col:55> 'int' '<'
-// |       |-ImplicitCastExpr 0x595c12688040 <col:51> 'int' <IntegralCast>
-// |       | `-ImplicitCastExpr 0x595c12688010 <col:51> 'bool' <LValueToRValue>
-// |       |   `-DeclRefExpr 0x595c12687fd0 <col:51> 'bool' lvalue ParmVar 0x595c12687d68 'x' 'bool'
-// |       `-ImplicitCastExpr 0x595c12688058 <col:55> 'int' <IntegralCast>
-// |         `-ImplicitCastExpr 0x595c12688028 <col:55> 'bool' <LValueToRValue>
-// |           `-DeclRefExpr 0x595c12687ff0 <col:55> 'bool' lvalue ParmVar 0x595c12687de0 'y' 'bool'
-// `-AnnotateAttr 0x595c12687f30 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:_Bool|END"
-// FunctionDecl 0x595c12689260 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:75:59> col:20 cmp60 'bool (bool, bool)'
-// |-ParmVarDecl 0x595c12688118 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:75:31> col:31 used x 'bool'
-// |-ParmVarDecl 0x595c12688190 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:75:39> col:39 used y 'bool'
-// |-CompoundStmt 0x595c126894a8 <col:42, col:59>
-// | `-ReturnStmt 0x595c12689498 <col:44, col:56>
-// |   `-ImplicitCastExpr 0x595c12689480 <col:51, col:56> 'bool' <IntegralToBoolean>
-// |     `-BinaryOperator 0x595c12689460 <col:51, col:56> 'int' '!='
-// |       |-ImplicitCastExpr 0x595c12689430 <col:51> 'int' <IntegralCast>
-// |       | `-ImplicitCastExpr 0x595c12689400 <col:51> 'bool' <LValueToRValue>
-// |       |   `-DeclRefExpr 0x595c126893c0 <col:51> 'bool' lvalue ParmVar 0x595c12688118 'x' 'bool'
-// |       `-ImplicitCastExpr 0x595c12689448 <col:56> 'int' <IntegralCast>
-// |         `-ImplicitCastExpr 0x595c12689418 <col:56> 'bool' <LValueToRValue>
-// |           `-DeclRefExpr 0x595c126893e0 <col:56> 'bool' lvalue ParmVar 0x595c12688190 'y' 'bool'
-// `-AnnotateAttr 0x595c12689318 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:_Bool|END"
+// FunctionDecl 0x63e625ccd9d8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:5:18, col:58> col:22 cmp1 'int (int, int)'
+// |-ParmVarDecl 0x63e625ccd878 <col:27, col:31> col:31 used x 'int'
+// |-ParmVarDecl 0x63e625ccd8f8 <col:34, col:38> col:38 used y 'int'
+// |-CompoundStmt 0x63e625ccdc18 <col:41, col:58>
+// | `-ReturnStmt 0x63e625ccdc08 <col:43, col:55>
+// |   `-BinaryOperator 0x63e625ccdbe8 <col:50, col:55> 'int' '=='
+// |     |-ImplicitCastExpr 0x63e625ccdbb8 <col:50> 'int' <LValueToRValue>
+// |     | `-DeclRefExpr 0x63e625ccdb78 <col:50> 'int' lvalue ParmVar 0x63e625ccd878 'x' 'int'
+// |     `-ImplicitCastExpr 0x63e625ccdbd0 <col:55> 'int' <LValueToRValue>
+// |       `-DeclRefExpr 0x63e625ccdb98 <col:55> 'int' lvalue ParmVar 0x63e625ccd8f8 'y' 'int'
+// `-AnnotateAttr 0x63e625ccda90 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int32.t|END"
+// FunctionDecl 0x63e625ccdda0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:6:18, col:58> col:22 cmp2 'int (int, int)'
+// |-ParmVarDecl 0x63e625ccdc80 <col:27, col:31> col:31 used x 'int'
+// |-ParmVarDecl 0x63e625ccdd00 <col:34, col:38> col:38 used y 'int'
+// |-CompoundStmt 0x63e625ccdfa0 <col:41, col:58>
+// | `-ReturnStmt 0x63e625ccdf90 <col:43, col:55>
+// |   `-BinaryOperator 0x63e625ccdf70 <col:50, col:55> 'int' '>='
+// |     |-ImplicitCastExpr 0x63e625ccdf40 <col:50> 'int' <LValueToRValue>
+// |     | `-DeclRefExpr 0x63e625ccdf00 <col:50> 'int' lvalue ParmVar 0x63e625ccdc80 'x' 'int'
+// |     `-ImplicitCastExpr 0x63e625ccdf58 <col:55> 'int' <LValueToRValue>
+// |       `-DeclRefExpr 0x63e625ccdf20 <col:55> 'int' lvalue ParmVar 0x63e625ccdd00 'y' 'int'
+// `-AnnotateAttr 0x63e625ccde58 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int32.t|END"
+// FunctionDecl 0x63e625cce128 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:7:18, col:57> col:22 cmp3 'int (int, int)'
+// |-ParmVarDecl 0x63e625cce008 <col:27, col:31> col:31 used x 'int'
+// |-ParmVarDecl 0x63e625cce088 <col:34, col:38> col:38 used y 'int'
+// |-CompoundStmt 0x63e625cce320 <col:41, col:57>
+// | `-ReturnStmt 0x63e625cce310 <col:43, col:54>
+// |   `-BinaryOperator 0x63e625cce2f0 <col:50, col:54> 'int' '>'
+// |     |-ImplicitCastExpr 0x63e625cce2c0 <col:50> 'int' <LValueToRValue>
+// |     | `-DeclRefExpr 0x63e625cce280 <col:50> 'int' lvalue ParmVar 0x63e625cce008 'x' 'int'
+// |     `-ImplicitCastExpr 0x63e625cce2d8 <col:54> 'int' <LValueToRValue>
+// |       `-DeclRefExpr 0x63e625cce2a0 <col:54> 'int' lvalue ParmVar 0x63e625cce088 'y' 'int'
+// `-AnnotateAttr 0x63e625cce1e0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int32.t|END"
+// FunctionDecl 0x63e625cce4a8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:8:18, col:58> col:22 cmp4 'int (int, int)'
+// |-ParmVarDecl 0x63e625cce388 <col:27, col:31> col:31 used x 'int'
+// |-ParmVarDecl 0x63e625cce408 <col:34, col:38> col:38 used y 'int'
+// |-CompoundStmt 0x63e625cce6a0 <col:41, col:58>
+// | `-ReturnStmt 0x63e625cce690 <col:43, col:55>
+// |   `-BinaryOperator 0x63e625cce670 <col:50, col:55> 'int' '<='
+// |     |-ImplicitCastExpr 0x63e625cce640 <col:50> 'int' <LValueToRValue>
+// |     | `-DeclRefExpr 0x63e625cce600 <col:50> 'int' lvalue ParmVar 0x63e625cce388 'x' 'int'
+// |     `-ImplicitCastExpr 0x63e625cce658 <col:55> 'int' <LValueToRValue>
+// |       `-DeclRefExpr 0x63e625cce620 <col:55> 'int' lvalue ParmVar 0x63e625cce408 'y' 'int'
+// `-AnnotateAttr 0x63e625cce560 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int32.t|END"
+// FunctionDecl 0x63e625cd5f38 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:9:18, col:57> col:22 cmp5 'int (int, int)'
+// |-ParmVarDecl 0x63e625cd5e18 <col:27, col:31> col:31 used x 'int'
+// |-ParmVarDecl 0x63e625cd5e98 <col:34, col:38> col:38 used y 'int'
+// |-CompoundStmt 0x63e625cd6130 <col:41, col:57>
+// | `-ReturnStmt 0x63e625cd6120 <col:43, col:54>
+// |   `-BinaryOperator 0x63e625cd6100 <col:50, col:54> 'int' '<'
+// |     |-ImplicitCastExpr 0x63e625cd60d0 <col:50> 'int' <LValueToRValue>
+// |     | `-DeclRefExpr 0x63e625cd6090 <col:50> 'int' lvalue ParmVar 0x63e625cd5e18 'x' 'int'
+// |     `-ImplicitCastExpr 0x63e625cd60e8 <col:54> 'int' <LValueToRValue>
+// |       `-DeclRefExpr 0x63e625cd60b0 <col:54> 'int' lvalue ParmVar 0x63e625cd5e98 'y' 'int'
+// `-AnnotateAttr 0x63e625cd5ff0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int32.t|END"
+// FunctionDecl 0x63e625cd62b8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:10:18, col:58> col:22 cmp6 'int (int, int)'
+// |-ParmVarDecl 0x63e625cd6198 <col:27, col:31> col:31 used x 'int'
+// |-ParmVarDecl 0x63e625cd6218 <col:34, col:38> col:38 used y 'int'
+// |-CompoundStmt 0x63e625cd64b0 <col:41, col:58>
+// | `-ReturnStmt 0x63e625cd64a0 <col:43, col:55>
+// |   `-BinaryOperator 0x63e625cd6480 <col:50, col:55> 'int' '!='
+// |     |-ImplicitCastExpr 0x63e625cd6450 <col:50> 'int' <LValueToRValue>
+// |     | `-DeclRefExpr 0x63e625cd6410 <col:50> 'int' lvalue ParmVar 0x63e625cd6198 'x' 'int'
+// |     `-ImplicitCastExpr 0x63e625cd6468 <col:55> 'int' <LValueToRValue>
+// |       `-DeclRefExpr 0x63e625cd6430 <col:55> 'int' lvalue ParmVar 0x63e625cd6218 'y' 'int'
+// `-AnnotateAttr 0x63e625cd6370 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int32.t|END"
+// FunctionDecl 0x63e625cd6700 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:12:18, col:70> col:26 cmp7 'int64_t (int64_t, int64_t)'
+// |-ParmVarDecl 0x63e625cd6570 <col:31, col:39> col:39 used x 'int64_t':'long'
+// |-ParmVarDecl 0x63e625cd65e8 <col:42, col:50> col:50 used y 'int64_t':'long'
+// |-CompoundStmt 0x63e625cd6918 <col:53, col:70>
+// | `-ReturnStmt 0x63e625cd6908 <col:55, col:67>
+// |   `-ImplicitCastExpr 0x63e625cd68f0 <col:62, col:67> 'int64_t':'long' <IntegralCast>
+// |     `-BinaryOperator 0x63e625cd68d0 <col:62, col:67> 'int' '=='
+// |       |-ImplicitCastExpr 0x63e625cd68a0 <col:62> 'int64_t':'long' <LValueToRValue>
+// |       | `-DeclRefExpr 0x63e625cd6860 <col:62> 'int64_t':'long' lvalue ParmVar 0x63e625cd6570 'x' 'int64_t':'long'
+// |       `-ImplicitCastExpr 0x63e625cd68b8 <col:67> 'int64_t':'long' <LValueToRValue>
+// |         `-DeclRefExpr 0x63e625cd6880 <col:67> 'int64_t':'long' lvalue ParmVar 0x63e625cd65e8 'y' 'int64_t':'long'
+// `-AnnotateAttr 0x63e625cd67b8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int64.t|END"
+// FunctionDecl 0x63e625cd6a88 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:13:18, col:70> col:26 cmp8 'int64_t (int64_t, int64_t)'
+// |-ParmVarDecl 0x63e625cd6978 <col:31, col:39> col:39 used x 'int64_t':'long'
+// |-ParmVarDecl 0x63e625cd69f0 <col:42, col:50> col:50 used y 'int64_t':'long'
+// |-CompoundStmt 0x63e625cd6c98 <col:53, col:70>
+// | `-ReturnStmt 0x63e625cd6c88 <col:55, col:67>
+// |   `-ImplicitCastExpr 0x63e625cd6c70 <col:62, col:67> 'int64_t':'long' <IntegralCast>
+// |     `-BinaryOperator 0x63e625cd6c50 <col:62, col:67> 'int' '>='
+// |       |-ImplicitCastExpr 0x63e625cd6c20 <col:62> 'int64_t':'long' <LValueToRValue>
+// |       | `-DeclRefExpr 0x63e625cd6be0 <col:62> 'int64_t':'long' lvalue ParmVar 0x63e625cd6978 'x' 'int64_t':'long'
+// |       `-ImplicitCastExpr 0x63e625cd6c38 <col:67> 'int64_t':'long' <LValueToRValue>
+// |         `-DeclRefExpr 0x63e625cd6c00 <col:67> 'int64_t':'long' lvalue ParmVar 0x63e625cd69f0 'y' 'int64_t':'long'
+// `-AnnotateAttr 0x63e625cd6b40 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int64.t|END"
+// FunctionDecl 0x63e625cbca40 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:14:18, col:69> col:26 cmp9 'int64_t (int64_t, int64_t)'
+// |-ParmVarDecl 0x63e625cd6cf8 <col:31, col:39> col:39 used x 'int64_t':'long'
+// |-ParmVarDecl 0x63e625cd6d70 <col:42, col:50> col:50 used y 'int64_t':'long'
+// |-CompoundStmt 0x63e625cbcc58 <col:53, col:69>
+// | `-ReturnStmt 0x63e625cbcc48 <col:55, col:66>
+// |   `-ImplicitCastExpr 0x63e625cbcc30 <col:62, col:66> 'int64_t':'long' <IntegralCast>
+// |     `-BinaryOperator 0x63e625cbcc10 <col:62, col:66> 'int' '>'
+// |       |-ImplicitCastExpr 0x63e625cbcbe0 <col:62> 'int64_t':'long' <LValueToRValue>
+// |       | `-DeclRefExpr 0x63e625cbcba0 <col:62> 'int64_t':'long' lvalue ParmVar 0x63e625cd6cf8 'x' 'int64_t':'long'
+// |       `-ImplicitCastExpr 0x63e625cbcbf8 <col:66> 'int64_t':'long' <LValueToRValue>
+// |         `-DeclRefExpr 0x63e625cbcbc0 <col:66> 'int64_t':'long' lvalue ParmVar 0x63e625cd6d70 'y' 'int64_t':'long'
+// `-AnnotateAttr 0x63e625cbcaf8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int64.t|END"
+// FunctionDecl 0x63e625cbcdc8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:15:18, col:71> col:26 cmp10 'int64_t (int64_t, int64_t)'
+// |-ParmVarDecl 0x63e625cbccb8 <col:32, col:40> col:40 used x 'int64_t':'long'
+// |-ParmVarDecl 0x63e625cbcd30 <col:43, col:51> col:51 used y 'int64_t':'long'
+// |-CompoundStmt 0x63e625cbcfd8 <col:54, col:71>
+// | `-ReturnStmt 0x63e625cbcfc8 <col:56, col:68>
+// |   `-ImplicitCastExpr 0x63e625cbcfb0 <col:63, col:68> 'int64_t':'long' <IntegralCast>
+// |     `-BinaryOperator 0x63e625cbcf90 <col:63, col:68> 'int' '<='
+// |       |-ImplicitCastExpr 0x63e625cbcf60 <col:63> 'int64_t':'long' <LValueToRValue>
+// |       | `-DeclRefExpr 0x63e625cbcf20 <col:63> 'int64_t':'long' lvalue ParmVar 0x63e625cbccb8 'x' 'int64_t':'long'
+// |       `-ImplicitCastExpr 0x63e625cbcf78 <col:68> 'int64_t':'long' <LValueToRValue>
+// |         `-DeclRefExpr 0x63e625cbcf40 <col:68> 'int64_t':'long' lvalue ParmVar 0x63e625cbcd30 'y' 'int64_t':'long'
+// `-AnnotateAttr 0x63e625cbce80 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int64.t|END"
+// FunctionDecl 0x63e625cbd148 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:16:18, col:70> col:26 cmp11 'int64_t (int64_t, int64_t)'
+// |-ParmVarDecl 0x63e625cbd038 <col:32, col:40> col:40 used x 'int64_t':'long'
+// |-ParmVarDecl 0x63e625cbd0b0 <col:43, col:51> col:51 used y 'int64_t':'long'
+// |-CompoundStmt 0x63e625cbd358 <col:54, col:70>
+// | `-ReturnStmt 0x63e625cbd348 <col:56, col:67>
+// |   `-ImplicitCastExpr 0x63e625cbd330 <col:63, col:67> 'int64_t':'long' <IntegralCast>
+// |     `-BinaryOperator 0x63e625cbd310 <col:63, col:67> 'int' '<'
+// |       |-ImplicitCastExpr 0x63e625cbd2e0 <col:63> 'int64_t':'long' <LValueToRValue>
+// |       | `-DeclRefExpr 0x63e625cbd2a0 <col:63> 'int64_t':'long' lvalue ParmVar 0x63e625cbd038 'x' 'int64_t':'long'
+// |       `-ImplicitCastExpr 0x63e625cbd2f8 <col:67> 'int64_t':'long' <LValueToRValue>
+// |         `-DeclRefExpr 0x63e625cbd2c0 <col:67> 'int64_t':'long' lvalue ParmVar 0x63e625cbd0b0 'y' 'int64_t':'long'
+// `-AnnotateAttr 0x63e625cbd200 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int64.t|END"
+// FunctionDecl 0x63e625cbd4c8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:17:18, col:71> col:26 cmp12 'int64_t (int64_t, int64_t)'
+// |-ParmVarDecl 0x63e625cbd3b8 <col:32, col:40> col:40 used x 'int64_t':'long'
+// |-ParmVarDecl 0x63e625cbd430 <col:43, col:51> col:51 used y 'int64_t':'long'
+// |-CompoundStmt 0x63e625cbd6d8 <col:54, col:71>
+// | `-ReturnStmt 0x63e625cbd6c8 <col:56, col:68>
+// |   `-ImplicitCastExpr 0x63e625cbd6b0 <col:63, col:68> 'int64_t':'long' <IntegralCast>
+// |     `-BinaryOperator 0x63e625cbd690 <col:63, col:68> 'int' '!='
+// |       |-ImplicitCastExpr 0x63e625cbd660 <col:63> 'int64_t':'long' <LValueToRValue>
+// |       | `-DeclRefExpr 0x63e625cbd620 <col:63> 'int64_t':'long' lvalue ParmVar 0x63e625cbd3b8 'x' 'int64_t':'long'
+// |       `-ImplicitCastExpr 0x63e625cbd678 <col:68> 'int64_t':'long' <LValueToRValue>
+// |         `-DeclRefExpr 0x63e625cbd640 <col:68> 'int64_t':'long' lvalue ParmVar 0x63e625cbd430 'y' 'int64_t':'long'
+// `-AnnotateAttr 0x63e625cbd580 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int64.t|END"
+// FunctionDecl 0x63e625cbd8f0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:19:18, col:71> col:26 cmp13 'int32_t (int32_t, int32_t)'
+// |-ParmVarDecl 0x63e625cbd7a0 <col:32, col:40> col:40 used x 'int32_t':'int'
+// |-ParmVarDecl 0x63e625cbd818 <col:43, col:51> col:51 used y 'int32_t':'int'
+// |-CompoundStmt 0x63e625cbdb10 <col:54, col:71>
+// | `-ReturnStmt 0x63e625cbdb00 <col:56, col:68>
+// |   `-BinaryOperator 0x63e625cbdae0 <col:63, col:68> 'int' '=='
+// |     |-ImplicitCastExpr 0x63e625cbdab0 <col:63> 'int32_t':'int' <LValueToRValue>
+// |     | `-DeclRefExpr 0x63e625cbda70 <col:63> 'int32_t':'int' lvalue ParmVar 0x63e625cbd7a0 'x' 'int32_t':'int'
+// |     `-ImplicitCastExpr 0x63e625cbdac8 <col:68> 'int32_t':'int' <LValueToRValue>
+// |       `-DeclRefExpr 0x63e625cbda90 <col:68> 'int32_t':'int' lvalue ParmVar 0x63e625cbd818 'y' 'int32_t':'int'
+// `-AnnotateAttr 0x63e625cbd9a8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int32.t|END"
+// FunctionDecl 0x63e625cbdc80 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:20:18, col:71> col:26 cmp14 'int32_t (int32_t, int32_t)'
+// |-ParmVarDecl 0x63e625cbdb70 <col:32, col:40> col:40 used x 'int32_t':'int'
+// |-ParmVarDecl 0x63e625cbdbe8 <col:43, col:51> col:51 used y 'int32_t':'int'
+// |-CompoundStmt 0x63e625cbde80 <col:54, col:71>
+// | `-ReturnStmt 0x63e625cbde70 <col:56, col:68>
+// |   `-BinaryOperator 0x63e625cbde50 <col:63, col:68> 'int' '>='
+// |     |-ImplicitCastExpr 0x63e625cbde20 <col:63> 'int32_t':'int' <LValueToRValue>
+// |     | `-DeclRefExpr 0x63e625cbdde0 <col:63> 'int32_t':'int' lvalue ParmVar 0x63e625cbdb70 'x' 'int32_t':'int'
+// |     `-ImplicitCastExpr 0x63e625cbde38 <col:68> 'int32_t':'int' <LValueToRValue>
+// |       `-DeclRefExpr 0x63e625cbde00 <col:68> 'int32_t':'int' lvalue ParmVar 0x63e625cbdbe8 'y' 'int32_t':'int'
+// `-AnnotateAttr 0x63e625cbdd38 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int32.t|END"
+// FunctionDecl 0x63e625cbdff0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:21:18, col:70> col:26 cmp15 'int32_t (int32_t, int32_t)'
+// |-ParmVarDecl 0x63e625cbdee0 <col:32, col:40> col:40 used x 'int32_t':'int'
+// |-ParmVarDecl 0x63e625cbdf58 <col:43, col:51> col:51 used y 'int32_t':'int'
+// |-CompoundStmt 0x63e625cbe1f0 <col:54, col:70>
+// | `-ReturnStmt 0x63e625cbe1e0 <col:56, col:67>
+// |   `-BinaryOperator 0x63e625cbe1c0 <col:63, col:67> 'int' '>'
+// |     |-ImplicitCastExpr 0x63e625cbe190 <col:63> 'int32_t':'int' <LValueToRValue>
+// |     | `-DeclRefExpr 0x63e625cbe150 <col:63> 'int32_t':'int' lvalue ParmVar 0x63e625cbdee0 'x' 'int32_t':'int'
+// |     `-ImplicitCastExpr 0x63e625cbe1a8 <col:67> 'int32_t':'int' <LValueToRValue>
+// |       `-DeclRefExpr 0x63e625cbe170 <col:67> 'int32_t':'int' lvalue ParmVar 0x63e625cbdf58 'y' 'int32_t':'int'
+// `-AnnotateAttr 0x63e625cbe0a8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int32.t|END"
+// FunctionDecl 0x63e625cbe360 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:22:18, col:71> col:26 cmp16 'int32_t (int32_t, int32_t)'
+// |-ParmVarDecl 0x63e625cbe250 <col:32, col:40> col:40 used x 'int32_t':'int'
+// |-ParmVarDecl 0x63e625cbe2c8 <col:43, col:51> col:51 used y 'int32_t':'int'
+// |-CompoundStmt 0x63e625cbe560 <col:54, col:71>
+// | `-ReturnStmt 0x63e625cbe550 <col:56, col:68>
+// |   `-BinaryOperator 0x63e625cbe530 <col:63, col:68> 'int' '<='
+// |     |-ImplicitCastExpr 0x63e625cbe500 <col:63> 'int32_t':'int' <LValueToRValue>
+// |     | `-DeclRefExpr 0x63e625cbe4c0 <col:63> 'int32_t':'int' lvalue ParmVar 0x63e625cbe250 'x' 'int32_t':'int'
+// |     `-ImplicitCastExpr 0x63e625cbe518 <col:68> 'int32_t':'int' <LValueToRValue>
+// |       `-DeclRefExpr 0x63e625cbe4e0 <col:68> 'int32_t':'int' lvalue ParmVar 0x63e625cbe2c8 'y' 'int32_t':'int'
+// `-AnnotateAttr 0x63e625cbe418 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int32.t|END"
+// FunctionDecl 0x63e625cbe6d0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:23:18, col:70> col:26 cmp17 'int32_t (int32_t, int32_t)'
+// |-ParmVarDecl 0x63e625cbe5c0 <col:32, col:40> col:40 used x 'int32_t':'int'
+// |-ParmVarDecl 0x63e625cbe638 <col:43, col:51> col:51 used y 'int32_t':'int'
+// |-CompoundStmt 0x63e625cbe8d0 <col:54, col:70>
+// | `-ReturnStmt 0x63e625cbe8c0 <col:56, col:67>
+// |   `-BinaryOperator 0x63e625cbe8a0 <col:63, col:67> 'int' '<'
+// |     |-ImplicitCastExpr 0x63e625cbe870 <col:63> 'int32_t':'int' <LValueToRValue>
+// |     | `-DeclRefExpr 0x63e625cbe830 <col:63> 'int32_t':'int' lvalue ParmVar 0x63e625cbe5c0 'x' 'int32_t':'int'
+// |     `-ImplicitCastExpr 0x63e625cbe888 <col:67> 'int32_t':'int' <LValueToRValue>
+// |       `-DeclRefExpr 0x63e625cbe850 <col:67> 'int32_t':'int' lvalue ParmVar 0x63e625cbe638 'y' 'int32_t':'int'
+// `-AnnotateAttr 0x63e625cbe788 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int32.t|END"
+// FunctionDecl 0x63e625cd6e40 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:24:18, col:71> col:26 cmp18 'int32_t (int32_t, int32_t)'
+// |-ParmVarDecl 0x63e625cbe930 <col:32, col:40> col:40 used x 'int32_t':'int'
+// |-ParmVarDecl 0x63e625cbe9a8 <col:43, col:51> col:51 used y 'int32_t':'int'
+// |-CompoundStmt 0x63e625cd7040 <col:54, col:71>
+// | `-ReturnStmt 0x63e625cd7030 <col:56, col:68>
+// |   `-BinaryOperator 0x63e625cd7010 <col:63, col:68> 'int' '!='
+// |     |-ImplicitCastExpr 0x63e625cd6fe0 <col:63> 'int32_t':'int' <LValueToRValue>
+// |     | `-DeclRefExpr 0x63e625cd6fa0 <col:63> 'int32_t':'int' lvalue ParmVar 0x63e625cbe930 'x' 'int32_t':'int'
+// |     `-ImplicitCastExpr 0x63e625cd6ff8 <col:68> 'int32_t':'int' <LValueToRValue>
+// |       `-DeclRefExpr 0x63e625cd6fc0 <col:68> 'int32_t':'int' lvalue ParmVar 0x63e625cbe9a8 'y' 'int32_t':'int'
+// `-AnnotateAttr 0x63e625cd6ef8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int32.t|END"
+// FunctionDecl 0x63e625cd7290 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:26:18, col:71> col:26 cmp19 'int16_t (int16_t, int16_t)'
+// |-ParmVarDecl 0x63e625cd7100 <col:32, col:40> col:40 used x 'int16_t':'short'
+// |-ParmVarDecl 0x63e625cd7178 <col:43, col:51> col:51 used y 'int16_t':'short'
+// |-CompoundStmt 0x63e625cd74d8 <col:54, col:71>
+// | `-ReturnStmt 0x63e625cd74c8 <col:56, col:68>
+// |   `-ImplicitCastExpr 0x63e625cd74b0 <col:63, col:68> 'int16_t':'short' <IntegralCast>
+// |     `-BinaryOperator 0x63e625cd7490 <col:63, col:68> 'int' '=='
+// |       |-ImplicitCastExpr 0x63e625cd7460 <col:63> 'int' <IntegralCast>
+// |       | `-ImplicitCastExpr 0x63e625cd7430 <col:63> 'int16_t':'short' <LValueToRValue>
+// |       |   `-DeclRefExpr 0x63e625cd73f0 <col:63> 'int16_t':'short' lvalue ParmVar 0x63e625cd7100 'x' 'int16_t':'short'
+// |       `-ImplicitCastExpr 0x63e625cd7478 <col:68> 'int' <IntegralCast>
+// |         `-ImplicitCastExpr 0x63e625cd7448 <col:68> 'int16_t':'short' <LValueToRValue>
+// |           `-DeclRefExpr 0x63e625cd7410 <col:68> 'int16_t':'short' lvalue ParmVar 0x63e625cd7178 'y' 'int16_t':'short'
+// `-AnnotateAttr 0x63e625cd7348 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int16.t|END"
+// FunctionDecl 0x63e625cd7648 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:27:18, col:71> col:26 cmp20 'int16_t (int16_t, int16_t)'
+// |-ParmVarDecl 0x63e625cd7538 <col:32, col:40> col:40 used x 'int16_t':'short'
+// |-ParmVarDecl 0x63e625cd75b0 <col:43, col:51> col:51 used y 'int16_t':'short'
+// |-CompoundStmt 0x63e625cd7888 <col:54, col:71>
+// | `-ReturnStmt 0x63e625cd7878 <col:56, col:68>
+// |   `-ImplicitCastExpr 0x63e625cd7860 <col:63, col:68> 'int16_t':'short' <IntegralCast>
+// |     `-BinaryOperator 0x63e625cd7840 <col:63, col:68> 'int' '>='
+// |       |-ImplicitCastExpr 0x63e625cd7810 <col:63> 'int' <IntegralCast>
+// |       | `-ImplicitCastExpr 0x63e625cd77e0 <col:63> 'int16_t':'short' <LValueToRValue>
+// |       |   `-DeclRefExpr 0x63e625cd77a0 <col:63> 'int16_t':'short' lvalue ParmVar 0x63e625cd7538 'x' 'int16_t':'short'
+// |       `-ImplicitCastExpr 0x63e625cd7828 <col:68> 'int' <IntegralCast>
+// |         `-ImplicitCastExpr 0x63e625cd77f8 <col:68> 'int16_t':'short' <LValueToRValue>
+// |           `-DeclRefExpr 0x63e625cd77c0 <col:68> 'int16_t':'short' lvalue ParmVar 0x63e625cd75b0 'y' 'int16_t':'short'
+// `-AnnotateAttr 0x63e625cd7700 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int16.t|END"
+// FunctionDecl 0x63e625cd79f8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:28:18, col:70> col:26 cmp21 'int16_t (int16_t, int16_t)'
+// |-ParmVarDecl 0x63e625cd78e8 <col:32, col:40> col:40 used x 'int16_t':'short'
+// |-ParmVarDecl 0x63e625cd7960 <col:43, col:51> col:51 used y 'int16_t':'short'
+// |-CompoundStmt 0x63e625cd7c38 <col:54, col:70>
+// | `-ReturnStmt 0x63e625cd7c28 <col:56, col:67>
+// |   `-ImplicitCastExpr 0x63e625cd7c10 <col:63, col:67> 'int16_t':'short' <IntegralCast>
+// |     `-BinaryOperator 0x63e625cd7bf0 <col:63, col:67> 'int' '>'
+// |       |-ImplicitCastExpr 0x63e625cd7bc0 <col:63> 'int' <IntegralCast>
+// |       | `-ImplicitCastExpr 0x63e625cd7b90 <col:63> 'int16_t':'short' <LValueToRValue>
+// |       |   `-DeclRefExpr 0x63e625cd7b50 <col:63> 'int16_t':'short' lvalue ParmVar 0x63e625cd78e8 'x' 'int16_t':'short'
+// |       `-ImplicitCastExpr 0x63e625cd7bd8 <col:67> 'int' <IntegralCast>
+// |         `-ImplicitCastExpr 0x63e625cd7ba8 <col:67> 'int16_t':'short' <LValueToRValue>
+// |           `-DeclRefExpr 0x63e625cd7b70 <col:67> 'int16_t':'short' lvalue ParmVar 0x63e625cd7960 'y' 'int16_t':'short'
+// `-AnnotateAttr 0x63e625cd7ab0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int16.t|END"
+// FunctionDecl 0x63e625cd8e30 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:29:18, col:71> col:26 cmp22 'int16_t (int16_t, int16_t)'
+// |-ParmVarDecl 0x63e625cd7c98 <col:32, col:40> col:40 used x 'int16_t':'short'
+// |-ParmVarDecl 0x63e625cd7d10 <col:43, col:51> col:51 used y 'int16_t':'short'
+// |-CompoundStmt 0x63e625cd9078 <col:54, col:71>
+// | `-ReturnStmt 0x63e625cd9068 <col:56, col:68>
+// |   `-ImplicitCastExpr 0x63e625cd9050 <col:63, col:68> 'int16_t':'short' <IntegralCast>
+// |     `-BinaryOperator 0x63e625cd9030 <col:63, col:68> 'int' '<='
+// |       |-ImplicitCastExpr 0x63e625cd9000 <col:63> 'int' <IntegralCast>
+// |       | `-ImplicitCastExpr 0x63e625cd8fd0 <col:63> 'int16_t':'short' <LValueToRValue>
+// |       |   `-DeclRefExpr 0x63e625cd8f90 <col:63> 'int16_t':'short' lvalue ParmVar 0x63e625cd7c98 'x' 'int16_t':'short'
+// |       `-ImplicitCastExpr 0x63e625cd9018 <col:68> 'int' <IntegralCast>
+// |         `-ImplicitCastExpr 0x63e625cd8fe8 <col:68> 'int16_t':'short' <LValueToRValue>
+// |           `-DeclRefExpr 0x63e625cd8fb0 <col:68> 'int16_t':'short' lvalue ParmVar 0x63e625cd7d10 'y' 'int16_t':'short'
+// `-AnnotateAttr 0x63e625cd8ee8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int16.t|END"
+// FunctionDecl 0x63e625cd91e8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:30:18, col:70> col:26 cmp23 'int16_t (int16_t, int16_t)'
+// |-ParmVarDecl 0x63e625cd90d8 <col:32, col:40> col:40 used x 'int16_t':'short'
+// |-ParmVarDecl 0x63e625cd9150 <col:43, col:51> col:51 used y 'int16_t':'short'
+// |-CompoundStmt 0x63e625cd9428 <col:54, col:70>
+// | `-ReturnStmt 0x63e625cd9418 <col:56, col:67>
+// |   `-ImplicitCastExpr 0x63e625cd9400 <col:63, col:67> 'int16_t':'short' <IntegralCast>
+// |     `-BinaryOperator 0x63e625cd93e0 <col:63, col:67> 'int' '<'
+// |       |-ImplicitCastExpr 0x63e625cd93b0 <col:63> 'int' <IntegralCast>
+// |       | `-ImplicitCastExpr 0x63e625cd9380 <col:63> 'int16_t':'short' <LValueToRValue>
+// |       |   `-DeclRefExpr 0x63e625cd9340 <col:63> 'int16_t':'short' lvalue ParmVar 0x63e625cd90d8 'x' 'int16_t':'short'
+// |       `-ImplicitCastExpr 0x63e625cd93c8 <col:67> 'int' <IntegralCast>
+// |         `-ImplicitCastExpr 0x63e625cd9398 <col:67> 'int16_t':'short' <LValueToRValue>
+// |           `-DeclRefExpr 0x63e625cd9360 <col:67> 'int16_t':'short' lvalue ParmVar 0x63e625cd9150 'y' 'int16_t':'short'
+// `-AnnotateAttr 0x63e625cd92a0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int16.t|END"
+// FunctionDecl 0x63e625cd9598 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:31:18, col:71> col:26 cmp24 'int16_t (int16_t, int16_t)'
+// |-ParmVarDecl 0x63e625cd9488 <col:32, col:40> col:40 used x 'int16_t':'short'
+// |-ParmVarDecl 0x63e625cd9500 <col:43, col:51> col:51 used y 'int16_t':'short'
+// |-CompoundStmt 0x63e625cd97d8 <col:54, col:71>
+// | `-ReturnStmt 0x63e625cd97c8 <col:56, col:68>
+// |   `-ImplicitCastExpr 0x63e625cd97b0 <col:63, col:68> 'int16_t':'short' <IntegralCast>
+// |     `-BinaryOperator 0x63e625cd9790 <col:63, col:68> 'int' '!='
+// |       |-ImplicitCastExpr 0x63e625cd9760 <col:63> 'int' <IntegralCast>
+// |       | `-ImplicitCastExpr 0x63e625cd9730 <col:63> 'int16_t':'short' <LValueToRValue>
+// |       |   `-DeclRefExpr 0x63e625cd96f0 <col:63> 'int16_t':'short' lvalue ParmVar 0x63e625cd9488 'x' 'int16_t':'short'
+// |       `-ImplicitCastExpr 0x63e625cd9778 <col:68> 'int' <IntegralCast>
+// |         `-ImplicitCastExpr 0x63e625cd9748 <col:68> 'int16_t':'short' <LValueToRValue>
+// |           `-DeclRefExpr 0x63e625cd9710 <col:68> 'int16_t':'short' lvalue ParmVar 0x63e625cd9500 'y' 'int16_t':'short'
+// `-AnnotateAttr 0x63e625cd9650 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int16.t|END"
+// FunctionDecl 0x63e625cd9a30 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:33:17, col:67> col:24 cmp25 'int8_t (int8_t, int8_t)'
+// |-ParmVarDecl 0x63e625cd98a0 <col:30, col:37> col:37 used x 'int8_t':'signed char'
+// |-ParmVarDecl 0x63e625cd9918 <col:40, col:47> col:47 used y 'int8_t':'signed char'
+// |-CompoundStmt 0x63e625cd9c78 <col:50, col:67>
+// | `-ReturnStmt 0x63e625cd9c68 <col:52, col:64>
+// |   `-ImplicitCastExpr 0x63e625cd9c50 <col:59, col:64> 'int8_t':'signed char' <IntegralCast>
+// |     `-BinaryOperator 0x63e625cd9c30 <col:59, col:64> 'int' '=='
+// |       |-ImplicitCastExpr 0x63e625cd9c00 <col:59> 'int' <IntegralCast>
+// |       | `-ImplicitCastExpr 0x63e625cd9bd0 <col:59> 'int8_t':'signed char' <LValueToRValue>
+// |       |   `-DeclRefExpr 0x63e625cd9b90 <col:59> 'int8_t':'signed char' lvalue ParmVar 0x63e625cd98a0 'x' 'int8_t':'signed char'
+// |       `-ImplicitCastExpr 0x63e625cd9c18 <col:64> 'int' <IntegralCast>
+// |         `-ImplicitCastExpr 0x63e625cd9be8 <col:64> 'int8_t':'signed char' <LValueToRValue>
+// |           `-DeclRefExpr 0x63e625cd9bb0 <col:64> 'int8_t':'signed char' lvalue ParmVar 0x63e625cd9918 'y' 'int8_t':'signed char'
+// `-AnnotateAttr 0x63e625cd9ae8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int8.t|END"
+// FunctionDecl 0x63e625cd9e40 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:34:17, col:67> col:24 cmp26 'int8_t (int8_t, int8_t)'
+// |-ParmVarDecl 0x63e625cd9cd8 <col:30, col:37> col:37 used x 'int8_t':'signed char'
+// |-ParmVarDecl 0x63e625cd9d50 <col:40, col:47> col:47 used y 'int8_t':'signed char'
+// |-CompoundStmt 0x63e625cda088 <col:50, col:67>
+// | `-ReturnStmt 0x63e625cda078 <col:52, col:64>
+// |   `-ImplicitCastExpr 0x63e625cda060 <col:59, col:64> 'int8_t':'signed char' <IntegralCast>
+// |     `-BinaryOperator 0x63e625cda040 <col:59, col:64> 'int' '>='
+// |       |-ImplicitCastExpr 0x63e625cda010 <col:59> 'int' <IntegralCast>
+// |       | `-ImplicitCastExpr 0x63e625cd9fe0 <col:59> 'int8_t':'signed char' <LValueToRValue>
+// |       |   `-DeclRefExpr 0x63e625cd9fa0 <col:59> 'int8_t':'signed char' lvalue ParmVar 0x63e625cd9cd8 'x' 'int8_t':'signed char'
+// |       `-ImplicitCastExpr 0x63e625cda028 <col:64> 'int' <IntegralCast>
+// |         `-ImplicitCastExpr 0x63e625cd9ff8 <col:64> 'int8_t':'signed char' <LValueToRValue>
+// |           `-DeclRefExpr 0x63e625cd9fc0 <col:64> 'int8_t':'signed char' lvalue ParmVar 0x63e625cd9d50 'y' 'int8_t':'signed char'
+// `-AnnotateAttr 0x63e625cd9ef8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int8.t|END"
+// FunctionDecl 0x63e625cda1f8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:35:17, col:66> col:24 cmp27 'int8_t (int8_t, int8_t)'
+// |-ParmVarDecl 0x63e625cda0e8 <col:30, col:37> col:37 used x 'int8_t':'signed char'
+// |-ParmVarDecl 0x63e625cda160 <col:40, col:47> col:47 used y 'int8_t':'signed char'
+// |-CompoundStmt 0x63e625cda438 <col:50, col:66>
+// | `-ReturnStmt 0x63e625cda428 <col:52, col:63>
+// |   `-ImplicitCastExpr 0x63e625cda410 <col:59, col:63> 'int8_t':'signed char' <IntegralCast>
+// |     `-BinaryOperator 0x63e625cda3f0 <col:59, col:63> 'int' '>'
+// |       |-ImplicitCastExpr 0x63e625cda3c0 <col:59> 'int' <IntegralCast>
+// |       | `-ImplicitCastExpr 0x63e625cda390 <col:59> 'int8_t':'signed char' <LValueToRValue>
+// |       |   `-DeclRefExpr 0x63e625cda350 <col:59> 'int8_t':'signed char' lvalue ParmVar 0x63e625cda0e8 'x' 'int8_t':'signed char'
+// |       `-ImplicitCastExpr 0x63e625cda3d8 <col:63> 'int' <IntegralCast>
+// |         `-ImplicitCastExpr 0x63e625cda3a8 <col:63> 'int8_t':'signed char' <LValueToRValue>
+// |           `-DeclRefExpr 0x63e625cda370 <col:63> 'int8_t':'signed char' lvalue ParmVar 0x63e625cda160 'y' 'int8_t':'signed char'
+// `-AnnotateAttr 0x63e625cda2b0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int8.t|END"
+// FunctionDecl 0x63e625cda5a8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:36:17, col:67> col:24 cmp28 'int8_t (int8_t, int8_t)'
+// |-ParmVarDecl 0x63e625cda498 <col:30, col:37> col:37 used x 'int8_t':'signed char'
+// |-ParmVarDecl 0x63e625cda510 <col:40, col:47> col:47 used y 'int8_t':'signed char'
+// |-CompoundStmt 0x63e625cda7e8 <col:50, col:67>
+// | `-ReturnStmt 0x63e625cda7d8 <col:52, col:64>
+// |   `-ImplicitCastExpr 0x63e625cda7c0 <col:59, col:64> 'int8_t':'signed char' <IntegralCast>
+// |     `-BinaryOperator 0x63e625cda7a0 <col:59, col:64> 'int' '<='
+// |       |-ImplicitCastExpr 0x63e625cda770 <col:59> 'int' <IntegralCast>
+// |       | `-ImplicitCastExpr 0x63e625cda740 <col:59> 'int8_t':'signed char' <LValueToRValue>
+// |       |   `-DeclRefExpr 0x63e625cda700 <col:59> 'int8_t':'signed char' lvalue ParmVar 0x63e625cda498 'x' 'int8_t':'signed char'
+// |       `-ImplicitCastExpr 0x63e625cda788 <col:64> 'int' <IntegralCast>
+// |         `-ImplicitCastExpr 0x63e625cda758 <col:64> 'int8_t':'signed char' <LValueToRValue>
+// |           `-DeclRefExpr 0x63e625cda720 <col:64> 'int8_t':'signed char' lvalue ParmVar 0x63e625cda510 'y' 'int8_t':'signed char'
+// `-AnnotateAttr 0x63e625cda660 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int8.t|END"
+// FunctionDecl 0x63e625cda958 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:37:17, col:66> col:24 cmp29 'int8_t (int8_t, int8_t)'
+// |-ParmVarDecl 0x63e625cda848 <col:30, col:37> col:37 used x 'int8_t':'signed char'
+// |-ParmVarDecl 0x63e625cda8c0 <col:40, col:47> col:47 used y 'int8_t':'signed char'
+// |-CompoundStmt 0x63e625cdab98 <col:50, col:66>
+// | `-ReturnStmt 0x63e625cdab88 <col:52, col:63>
+// |   `-ImplicitCastExpr 0x63e625cdab70 <col:59, col:63> 'int8_t':'signed char' <IntegralCast>
+// |     `-BinaryOperator 0x63e625cdab50 <col:59, col:63> 'int' '<'
+// |       |-ImplicitCastExpr 0x63e625cdab20 <col:59> 'int' <IntegralCast>
+// |       | `-ImplicitCastExpr 0x63e625cdaaf0 <col:59> 'int8_t':'signed char' <LValueToRValue>
+// |       |   `-DeclRefExpr 0x63e625cdaab0 <col:59> 'int8_t':'signed char' lvalue ParmVar 0x63e625cda848 'x' 'int8_t':'signed char'
+// |       `-ImplicitCastExpr 0x63e625cdab38 <col:63> 'int' <IntegralCast>
+// |         `-ImplicitCastExpr 0x63e625cdab08 <col:63> 'int8_t':'signed char' <LValueToRValue>
+// |           `-DeclRefExpr 0x63e625cdaad0 <col:63> 'int8_t':'signed char' lvalue ParmVar 0x63e625cda8c0 'y' 'int8_t':'signed char'
+// `-AnnotateAttr 0x63e625cdaa10 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int8.t|END"
+// FunctionDecl 0x63e625cdad08 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:38:17, col:67> col:24 cmp30 'int8_t (int8_t, int8_t)'
+// |-ParmVarDecl 0x63e625cdabf8 <col:30, col:37> col:37 used x 'int8_t':'signed char'
+// |-ParmVarDecl 0x63e625cdac70 <col:40, col:47> col:47 used y 'int8_t':'signed char'
+// |-CompoundStmt 0x63e625cdaf68 <col:50, col:67>
+// | `-ReturnStmt 0x63e625cdaf58 <col:52, col:64>
+// |   `-ImplicitCastExpr 0x63e625cdaf40 <col:59, col:64> 'int8_t':'signed char' <IntegralCast>
+// |     `-BinaryOperator 0x63e625cdaf20 <col:59, col:64> 'int' '!='
+// |       |-ImplicitCastExpr 0x63e625cdaef0 <col:59> 'int' <IntegralCast>
+// |       | `-ImplicitCastExpr 0x63e625cdaec0 <col:59> 'int8_t':'signed char' <LValueToRValue>
+// |       |   `-DeclRefExpr 0x63e625cdae80 <col:59> 'int8_t':'signed char' lvalue ParmVar 0x63e625cdabf8 'x' 'int8_t':'signed char'
+// |       `-ImplicitCastExpr 0x63e625cdaf08 <col:64> 'int' <IntegralCast>
+// |         `-ImplicitCastExpr 0x63e625cdaed8 <col:64> 'int8_t':'signed char' <LValueToRValue>
+// |           `-DeclRefExpr 0x63e625cdaea0 <col:64> 'int8_t':'signed char' lvalue ParmVar 0x63e625cdac70 'y' 'int8_t':'signed char'
+// `-AnnotateAttr 0x63e625cdadc0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:Int8.t|END"
+// FunctionDecl 0x63e625cdb1c0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:41:19, col:75> col:28 cmp31 'uint64_t (uint64_t, uint64_t)'
+// |-ParmVarDecl 0x63e625cdb030 <col:34, col:43> col:43 used x 'uint64_t':'unsigned long'
+// |-ParmVarDecl 0x63e625cdb0a8 <col:46, col:55> col:55 used y 'uint64_t':'unsigned long'
+// |-CompoundStmt 0x63e625cdb3d8 <col:58, col:75>
+// | `-ReturnStmt 0x63e625cdb3c8 <col:60, col:72>
+// |   `-ImplicitCastExpr 0x63e625cdb3b0 <col:67, col:72> 'uint64_t':'unsigned long' <IntegralCast>
+// |     `-BinaryOperator 0x63e625cdb390 <col:67, col:72> 'int' '=='
+// |       |-ImplicitCastExpr 0x63e625cdb360 <col:67> 'uint64_t':'unsigned long' <LValueToRValue>
+// |       | `-DeclRefExpr 0x63e625cdb320 <col:67> 'uint64_t':'unsigned long' lvalue ParmVar 0x63e625cdb030 'x' 'uint64_t':'unsigned long'
+// |       `-ImplicitCastExpr 0x63e625cdb378 <col:72> 'uint64_t':'unsigned long' <LValueToRValue>
+// |         `-DeclRefExpr 0x63e625cdb340 <col:72> 'uint64_t':'unsigned long' lvalue ParmVar 0x63e625cdb0a8 'y' 'uint64_t':'unsigned long'
+// `-AnnotateAttr 0x63e625cdb278 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt64.t|END"
+// FunctionDecl 0x63e625cdb548 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:42:19, col:75> col:28 cmp32 'uint64_t (uint64_t, uint64_t)'
+// |-ParmVarDecl 0x63e625cdb438 <col:34, col:43> col:43 used x 'uint64_t':'unsigned long'
+// |-ParmVarDecl 0x63e625cdb4b0 <col:46, col:55> col:55 used y 'uint64_t':'unsigned long'
+// |-CompoundStmt 0x63e625cdb758 <col:58, col:75>
+// | `-ReturnStmt 0x63e625cdb748 <col:60, col:72>
+// |   `-ImplicitCastExpr 0x63e625cdb730 <col:67, col:72> 'uint64_t':'unsigned long' <IntegralCast>
+// |     `-BinaryOperator 0x63e625cdb710 <col:67, col:72> 'int' '>='
+// |       |-ImplicitCastExpr 0x63e625cdb6e0 <col:67> 'uint64_t':'unsigned long' <LValueToRValue>
+// |       | `-DeclRefExpr 0x63e625cdb6a0 <col:67> 'uint64_t':'unsigned long' lvalue ParmVar 0x63e625cdb438 'x' 'uint64_t':'unsigned long'
+// |       `-ImplicitCastExpr 0x63e625cdb6f8 <col:72> 'uint64_t':'unsigned long' <LValueToRValue>
+// |         `-DeclRefExpr 0x63e625cdb6c0 <col:72> 'uint64_t':'unsigned long' lvalue ParmVar 0x63e625cdb4b0 'y' 'uint64_t':'unsigned long'
+// `-AnnotateAttr 0x63e625cdb600 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt64.t|END"
+// FunctionDecl 0x63e625cdb8c8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:43:19, col:74> col:28 cmp33 'uint64_t (uint64_t, uint64_t)'
+// |-ParmVarDecl 0x63e625cdb7b8 <col:34, col:43> col:43 used x 'uint64_t':'unsigned long'
+// |-ParmVarDecl 0x63e625cdb830 <col:46, col:55> col:55 used y 'uint64_t':'unsigned long'
+// |-CompoundStmt 0x63e625cdbad8 <col:58, col:74>
+// | `-ReturnStmt 0x63e625cdbac8 <col:60, col:71>
+// |   `-ImplicitCastExpr 0x63e625cdbab0 <col:67, col:71> 'uint64_t':'unsigned long' <IntegralCast>
+// |     `-BinaryOperator 0x63e625cdba90 <col:67, col:71> 'int' '>'
+// |       |-ImplicitCastExpr 0x63e625cdba60 <col:67> 'uint64_t':'unsigned long' <LValueToRValue>
+// |       | `-DeclRefExpr 0x63e625cdba20 <col:67> 'uint64_t':'unsigned long' lvalue ParmVar 0x63e625cdb7b8 'x' 'uint64_t':'unsigned long'
+// |       `-ImplicitCastExpr 0x63e625cdba78 <col:71> 'uint64_t':'unsigned long' <LValueToRValue>
+// |         `-DeclRefExpr 0x63e625cdba40 <col:71> 'uint64_t':'unsigned long' lvalue ParmVar 0x63e625cdb830 'y' 'uint64_t':'unsigned long'
+// `-AnnotateAttr 0x63e625cdb980 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt64.t|END"
+// FunctionDecl 0x63e625cdbc48 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:44:19, col:75> col:28 cmp34 'uint64_t (uint64_t, uint64_t)'
+// |-ParmVarDecl 0x63e625cdbb38 <col:34, col:43> col:43 used x 'uint64_t':'unsigned long'
+// |-ParmVarDecl 0x63e625cdbbb0 <col:46, col:55> col:55 used y 'uint64_t':'unsigned long'
+// |-CompoundStmt 0x63e625da01d0 <col:58, col:75>
+// | `-ReturnStmt 0x63e625da01c0 <col:60, col:72>
+// |   `-ImplicitCastExpr 0x63e625cdbe30 <col:67, col:72> 'uint64_t':'unsigned long' <IntegralCast>
+// |     `-BinaryOperator 0x63e625cdbe10 <col:67, col:72> 'int' '<='
+// |       |-ImplicitCastExpr 0x63e625cdbde0 <col:67> 'uint64_t':'unsigned long' <LValueToRValue>
+// |       | `-DeclRefExpr 0x63e625cdbda0 <col:67> 'uint64_t':'unsigned long' lvalue ParmVar 0x63e625cdbb38 'x' 'uint64_t':'unsigned long'
+// |       `-ImplicitCastExpr 0x63e625cdbdf8 <col:72> 'uint64_t':'unsigned long' <LValueToRValue>
+// |         `-DeclRefExpr 0x63e625cdbdc0 <col:72> 'uint64_t':'unsigned long' lvalue ParmVar 0x63e625cdbbb0 'y' 'uint64_t':'unsigned long'
+// `-AnnotateAttr 0x63e625cdbd00 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt64.t|END"
+// FunctionDecl 0x63e625da0340 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:45:19, col:74> col:28 cmp35 'uint64_t (uint64_t, uint64_t)'
+// |-ParmVarDecl 0x63e625da0230 <col:34, col:43> col:43 used x 'uint64_t':'unsigned long'
+// |-ParmVarDecl 0x63e625da02a8 <col:46, col:55> col:55 used y 'uint64_t':'unsigned long'
+// |-CompoundStmt 0x63e625da0558 <col:58, col:74>
+// | `-ReturnStmt 0x63e625da0548 <col:60, col:71>
+// |   `-ImplicitCastExpr 0x63e625da0530 <col:67, col:71> 'uint64_t':'unsigned long' <IntegralCast>
+// |     `-BinaryOperator 0x63e625da0510 <col:67, col:71> 'int' '<'
+// |       |-ImplicitCastExpr 0x63e625da04e0 <col:67> 'uint64_t':'unsigned long' <LValueToRValue>
+// |       | `-DeclRefExpr 0x63e625da04a0 <col:67> 'uint64_t':'unsigned long' lvalue ParmVar 0x63e625da0230 'x' 'uint64_t':'unsigned long'
+// |       `-ImplicitCastExpr 0x63e625da04f8 <col:71> 'uint64_t':'unsigned long' <LValueToRValue>
+// |         `-DeclRefExpr 0x63e625da04c0 <col:71> 'uint64_t':'unsigned long' lvalue ParmVar 0x63e625da02a8 'y' 'uint64_t':'unsigned long'
+// `-AnnotateAttr 0x63e625da03f8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt64.t|END"
+// FunctionDecl 0x63e625da06c8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:46:19, col:75> col:28 cmp36 'uint64_t (uint64_t, uint64_t)'
+// |-ParmVarDecl 0x63e625da05b8 <col:34, col:43> col:43 used x 'uint64_t':'unsigned long'
+// |-ParmVarDecl 0x63e625da0630 <col:46, col:55> col:55 used y 'uint64_t':'unsigned long'
+// |-CompoundStmt 0x63e625da08d8 <col:58, col:75>
+// | `-ReturnStmt 0x63e625da08c8 <col:60, col:72>
+// |   `-ImplicitCastExpr 0x63e625da08b0 <col:67, col:72> 'uint64_t':'unsigned long' <IntegralCast>
+// |     `-BinaryOperator 0x63e625da0890 <col:67, col:72> 'int' '!='
+// |       |-ImplicitCastExpr 0x63e625da0860 <col:67> 'uint64_t':'unsigned long' <LValueToRValue>
+// |       | `-DeclRefExpr 0x63e625da0820 <col:67> 'uint64_t':'unsigned long' lvalue ParmVar 0x63e625da05b8 'x' 'uint64_t':'unsigned long'
+// |       `-ImplicitCastExpr 0x63e625da0878 <col:72> 'uint64_t':'unsigned long' <LValueToRValue>
+// |         `-DeclRefExpr 0x63e625da0840 <col:72> 'uint64_t':'unsigned long' lvalue ParmVar 0x63e625da0630 'y' 'uint64_t':'unsigned long'
+// `-AnnotateAttr 0x63e625da0780 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt64.t|END"
+// FunctionDecl 0x63e625da0b30 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:48:19, col:75> col:28 cmp37 'uint32_t (uint32_t, uint32_t)'
+// |-ParmVarDecl 0x63e625da09a0 <col:34, col:43> col:43 used x 'uint32_t':'unsigned int'
+// |-ParmVarDecl 0x63e625da0a18 <col:46, col:55> col:55 used y 'uint32_t':'unsigned int'
+// |-CompoundStmt 0x63e625da0d48 <col:58, col:75>
+// | `-ReturnStmt 0x63e625da0d38 <col:60, col:72>
+// |   `-ImplicitCastExpr 0x63e625da0d20 <col:67, col:72> 'uint32_t':'unsigned int' <IntegralCast>
+// |     `-BinaryOperator 0x63e625da0d00 <col:67, col:72> 'int' '=='
+// |       |-ImplicitCastExpr 0x63e625da0cd0 <col:67> 'uint32_t':'unsigned int' <LValueToRValue>
+// |       | `-DeclRefExpr 0x63e625da0c90 <col:67> 'uint32_t':'unsigned int' lvalue ParmVar 0x63e625da09a0 'x' 'uint32_t':'unsigned int'
+// |       `-ImplicitCastExpr 0x63e625da0ce8 <col:72> 'uint32_t':'unsigned int' <LValueToRValue>
+// |         `-DeclRefExpr 0x63e625da0cb0 <col:72> 'uint32_t':'unsigned int' lvalue ParmVar 0x63e625da0a18 'y' 'uint32_t':'unsigned int'
+// `-AnnotateAttr 0x63e625da0be8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt32.t|END"
+// FunctionDecl 0x63e625da0eb8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:49:19, col:75> col:28 cmp38 'uint32_t (uint32_t, uint32_t)'
+// |-ParmVarDecl 0x63e625da0da8 <col:34, col:43> col:43 used x 'uint32_t':'unsigned int'
+// |-ParmVarDecl 0x63e625da0e20 <col:46, col:55> col:55 used y 'uint32_t':'unsigned int'
+// |-CompoundStmt 0x63e625da10c8 <col:58, col:75>
+// | `-ReturnStmt 0x63e625da10b8 <col:60, col:72>
+// |   `-ImplicitCastExpr 0x63e625da10a0 <col:67, col:72> 'uint32_t':'unsigned int' <IntegralCast>
+// |     `-BinaryOperator 0x63e625da1080 <col:67, col:72> 'int' '>='
+// |       |-ImplicitCastExpr 0x63e625da1050 <col:67> 'uint32_t':'unsigned int' <LValueToRValue>
+// |       | `-DeclRefExpr 0x63e625da1010 <col:67> 'uint32_t':'unsigned int' lvalue ParmVar 0x63e625da0da8 'x' 'uint32_t':'unsigned int'
+// |       `-ImplicitCastExpr 0x63e625da1068 <col:72> 'uint32_t':'unsigned int' <LValueToRValue>
+// |         `-DeclRefExpr 0x63e625da1030 <col:72> 'uint32_t':'unsigned int' lvalue ParmVar 0x63e625da0e20 'y' 'uint32_t':'unsigned int'
+// `-AnnotateAttr 0x63e625da0f70 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt32.t|END"
+// FunctionDecl 0x63e625da1268 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:50:19, col:74> col:28 cmp39 'uint32_t (uint32_t, uint32_t)'
+// |-ParmVarDecl 0x63e625da1128 <col:34, col:43> col:43 used x 'uint32_t':'unsigned int'
+// |-ParmVarDecl 0x63e625da11d0 <col:46, col:55> col:55 used y 'uint32_t':'unsigned int'
+// |-CompoundStmt 0x63e625da1478 <col:58, col:74>
+// | `-ReturnStmt 0x63e625da1468 <col:60, col:71>
+// |   `-ImplicitCastExpr 0x63e625da1450 <col:67, col:71> 'uint32_t':'unsigned int' <IntegralCast>
+// |     `-BinaryOperator 0x63e625da1430 <col:67, col:71> 'int' '>'
+// |       |-ImplicitCastExpr 0x63e625da1400 <col:67> 'uint32_t':'unsigned int' <LValueToRValue>
+// |       | `-DeclRefExpr 0x63e625da13c0 <col:67> 'uint32_t':'unsigned int' lvalue ParmVar 0x63e625da1128 'x' 'uint32_t':'unsigned int'
+// |       `-ImplicitCastExpr 0x63e625da1418 <col:71> 'uint32_t':'unsigned int' <LValueToRValue>
+// |         `-DeclRefExpr 0x63e625da13e0 <col:71> 'uint32_t':'unsigned int' lvalue ParmVar 0x63e625da11d0 'y' 'uint32_t':'unsigned int'
+// `-AnnotateAttr 0x63e625da1320 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt32.t|END"
+// FunctionDecl 0x63e625da15e8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:51:19, col:75> col:28 cmp40 'uint32_t (uint32_t, uint32_t)'
+// |-ParmVarDecl 0x63e625da14d8 <col:34, col:43> col:43 used x 'uint32_t':'unsigned int'
+// |-ParmVarDecl 0x63e625da1550 <col:46, col:55> col:55 used y 'uint32_t':'unsigned int'
+// |-CompoundStmt 0x63e625da17f8 <col:58, col:75>
+// | `-ReturnStmt 0x63e625da17e8 <col:60, col:72>
+// |   `-ImplicitCastExpr 0x63e625da17d0 <col:67, col:72> 'uint32_t':'unsigned int' <IntegralCast>
+// |     `-BinaryOperator 0x63e625da17b0 <col:67, col:72> 'int' '<='
+// |       |-ImplicitCastExpr 0x63e625da1780 <col:67> 'uint32_t':'unsigned int' <LValueToRValue>
+// |       | `-DeclRefExpr 0x63e625da1740 <col:67> 'uint32_t':'unsigned int' lvalue ParmVar 0x63e625da14d8 'x' 'uint32_t':'unsigned int'
+// |       `-ImplicitCastExpr 0x63e625da1798 <col:72> 'uint32_t':'unsigned int' <LValueToRValue>
+// |         `-DeclRefExpr 0x63e625da1760 <col:72> 'uint32_t':'unsigned int' lvalue ParmVar 0x63e625da1550 'y' 'uint32_t':'unsigned int'
+// `-AnnotateAttr 0x63e625da16a0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt32.t|END"
+// FunctionDecl 0x63e625da1968 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:52:19, col:74> col:28 cmp41 'uint32_t (uint32_t, uint32_t)'
+// |-ParmVarDecl 0x63e625da1858 <col:34, col:43> col:43 used x 'uint32_t':'unsigned int'
+// |-ParmVarDecl 0x63e625da18d0 <col:46, col:55> col:55 used y 'uint32_t':'unsigned int'
+// |-CompoundStmt 0x63e625da1b78 <col:58, col:74>
+// | `-ReturnStmt 0x63e625da1b68 <col:60, col:71>
+// |   `-ImplicitCastExpr 0x63e625da1b50 <col:67, col:71> 'uint32_t':'unsigned int' <IntegralCast>
+// |     `-BinaryOperator 0x63e625da1b30 <col:67, col:71> 'int' '<'
+// |       |-ImplicitCastExpr 0x63e625da1b00 <col:67> 'uint32_t':'unsigned int' <LValueToRValue>
+// |       | `-DeclRefExpr 0x63e625da1ac0 <col:67> 'uint32_t':'unsigned int' lvalue ParmVar 0x63e625da1858 'x' 'uint32_t':'unsigned int'
+// |       `-ImplicitCastExpr 0x63e625da1b18 <col:71> 'uint32_t':'unsigned int' <LValueToRValue>
+// |         `-DeclRefExpr 0x63e625da1ae0 <col:71> 'uint32_t':'unsigned int' lvalue ParmVar 0x63e625da18d0 'y' 'uint32_t':'unsigned int'
+// `-AnnotateAttr 0x63e625da1a20 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt32.t|END"
+// FunctionDecl 0x63e625da1ce8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:53:19, col:75> col:28 cmp42 'uint32_t (uint32_t, uint32_t)'
+// |-ParmVarDecl 0x63e625da1bd8 <col:34, col:43> col:43 used x 'uint32_t':'unsigned int'
+// |-ParmVarDecl 0x63e625da1c50 <col:46, col:55> col:55 used y 'uint32_t':'unsigned int'
+// |-CompoundStmt 0x63e625da1ef8 <col:58, col:75>
+// | `-ReturnStmt 0x63e625da1ee8 <col:60, col:72>
+// |   `-ImplicitCastExpr 0x63e625da1ed0 <col:67, col:72> 'uint32_t':'unsigned int' <IntegralCast>
+// |     `-BinaryOperator 0x63e625da1eb0 <col:67, col:72> 'int' '!='
+// |       |-ImplicitCastExpr 0x63e625da1e80 <col:67> 'uint32_t':'unsigned int' <LValueToRValue>
+// |       | `-DeclRefExpr 0x63e625da1e40 <col:67> 'uint32_t':'unsigned int' lvalue ParmVar 0x63e625da1bd8 'x' 'uint32_t':'unsigned int'
+// |       `-ImplicitCastExpr 0x63e625da1e98 <col:72> 'uint32_t':'unsigned int' <LValueToRValue>
+// |         `-DeclRefExpr 0x63e625da1e60 <col:72> 'uint32_t':'unsigned int' lvalue ParmVar 0x63e625da1c50 'y' 'uint32_t':'unsigned int'
+// `-AnnotateAttr 0x63e625da1da0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt32.t|END"
+// FunctionDecl 0x63e625da21e0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:55:19, col:75> col:28 cmp43 'uint16_t (uint16_t, uint16_t)'
+// |-ParmVarDecl 0x63e625da1fc0 <col:34, col:43> col:43 used x 'uint16_t':'unsigned short'
+// |-ParmVarDecl 0x63e625da2038 <col:46, col:55> col:55 used y 'uint16_t':'unsigned short'
+// |-CompoundStmt 0x63e625da2428 <col:58, col:75>
+// | `-ReturnStmt 0x63e625da2418 <col:60, col:72>
+// |   `-ImplicitCastExpr 0x63e625da2400 <col:67, col:72> 'uint16_t':'unsigned short' <IntegralCast>
+// |     `-BinaryOperator 0x63e625da23e0 <col:67, col:72> 'int' '=='
+// |       |-ImplicitCastExpr 0x63e625da23b0 <col:67> 'int' <IntegralCast>
+// |       | `-ImplicitCastExpr 0x63e625da2380 <col:67> 'uint16_t':'unsigned short' <LValueToRValue>
+// |       |   `-DeclRefExpr 0x63e625da2340 <col:67> 'uint16_t':'unsigned short' lvalue ParmVar 0x63e625da1fc0 'x' 'uint16_t':'unsigned short'
+// |       `-ImplicitCastExpr 0x63e625da23c8 <col:72> 'int' <IntegralCast>
+// |         `-ImplicitCastExpr 0x63e625da2398 <col:72> 'uint16_t':'unsigned short' <LValueToRValue>
+// |           `-DeclRefExpr 0x63e625da2360 <col:72> 'uint16_t':'unsigned short' lvalue ParmVar 0x63e625da2038 'y' 'uint16_t':'unsigned short'
+// `-AnnotateAttr 0x63e625da2298 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt16.t|END"
+// FunctionDecl 0x63e625da2598 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:56:19, col:75> col:28 cmp44 'uint16_t (uint16_t, uint16_t)'
+// |-ParmVarDecl 0x63e625da2488 <col:34, col:43> col:43 used x 'uint16_t':'unsigned short'
+// |-ParmVarDecl 0x63e625da2500 <col:46, col:55> col:55 used y 'uint16_t':'unsigned short'
+// |-CompoundStmt 0x63e625da27d8 <col:58, col:75>
+// | `-ReturnStmt 0x63e625da27c8 <col:60, col:72>
+// |   `-ImplicitCastExpr 0x63e625da27b0 <col:67, col:72> 'uint16_t':'unsigned short' <IntegralCast>
+// |     `-BinaryOperator 0x63e625da2790 <col:67, col:72> 'int' '>='
+// |       |-ImplicitCastExpr 0x63e625da2760 <col:67> 'int' <IntegralCast>
+// |       | `-ImplicitCastExpr 0x63e625da2730 <col:67> 'uint16_t':'unsigned short' <LValueToRValue>
+// |       |   `-DeclRefExpr 0x63e625da26f0 <col:67> 'uint16_t':'unsigned short' lvalue ParmVar 0x63e625da2488 'x' 'uint16_t':'unsigned short'
+// |       `-ImplicitCastExpr 0x63e625da2778 <col:72> 'int' <IntegralCast>
+// |         `-ImplicitCastExpr 0x63e625da2748 <col:72> 'uint16_t':'unsigned short' <LValueToRValue>
+// |           `-DeclRefExpr 0x63e625da2710 <col:72> 'uint16_t':'unsigned short' lvalue ParmVar 0x63e625da2500 'y' 'uint16_t':'unsigned short'
+// `-AnnotateAttr 0x63e625da2650 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt16.t|END"
+// FunctionDecl 0x63e625da2948 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:57:19, col:74> col:28 cmp45 'uint16_t (uint16_t, uint16_t)'
+// |-ParmVarDecl 0x63e625da2838 <col:34, col:43> col:43 used x 'uint16_t':'unsigned short'
+// |-ParmVarDecl 0x63e625da28b0 <col:46, col:55> col:55 used y 'uint16_t':'unsigned short'
+// |-CompoundStmt 0x63e625da2b88 <col:58, col:74>
+// | `-ReturnStmt 0x63e625da2b78 <col:60, col:71>
+// |   `-ImplicitCastExpr 0x63e625da2b60 <col:67, col:71> 'uint16_t':'unsigned short' <IntegralCast>
+// |     `-BinaryOperator 0x63e625da2b40 <col:67, col:71> 'int' '>'
+// |       |-ImplicitCastExpr 0x63e625da2b10 <col:67> 'int' <IntegralCast>
+// |       | `-ImplicitCastExpr 0x63e625da2ae0 <col:67> 'uint16_t':'unsigned short' <LValueToRValue>
+// |       |   `-DeclRefExpr 0x63e625da2aa0 <col:67> 'uint16_t':'unsigned short' lvalue ParmVar 0x63e625da2838 'x' 'uint16_t':'unsigned short'
+// |       `-ImplicitCastExpr 0x63e625da2b28 <col:71> 'int' <IntegralCast>
+// |         `-ImplicitCastExpr 0x63e625da2af8 <col:71> 'uint16_t':'unsigned short' <LValueToRValue>
+// |           `-DeclRefExpr 0x63e625da2ac0 <col:71> 'uint16_t':'unsigned short' lvalue ParmVar 0x63e625da28b0 'y' 'uint16_t':'unsigned short'
+// `-AnnotateAttr 0x63e625da2a00 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt16.t|END"
+// FunctionDecl 0x63e625da2cf8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:58:19, col:75> col:28 cmp46 'uint16_t (uint16_t, uint16_t)'
+// |-ParmVarDecl 0x63e625da2be8 <col:34, col:43> col:43 used x 'uint16_t':'unsigned short'
+// |-ParmVarDecl 0x63e625da2c60 <col:46, col:55> col:55 used y 'uint16_t':'unsigned short'
+// |-CompoundStmt 0x63e625da2f38 <col:58, col:75>
+// | `-ReturnStmt 0x63e625da2f28 <col:60, col:72>
+// |   `-ImplicitCastExpr 0x63e625da2f10 <col:67, col:72> 'uint16_t':'unsigned short' <IntegralCast>
+// |     `-BinaryOperator 0x63e625da2ef0 <col:67, col:72> 'int' '<='
+// |       |-ImplicitCastExpr 0x63e625da2ec0 <col:67> 'int' <IntegralCast>
+// |       | `-ImplicitCastExpr 0x63e625da2e90 <col:67> 'uint16_t':'unsigned short' <LValueToRValue>
+// |       |   `-DeclRefExpr 0x63e625da2e50 <col:67> 'uint16_t':'unsigned short' lvalue ParmVar 0x63e625da2be8 'x' 'uint16_t':'unsigned short'
+// |       `-ImplicitCastExpr 0x63e625da2ed8 <col:72> 'int' <IntegralCast>
+// |         `-ImplicitCastExpr 0x63e625da2ea8 <col:72> 'uint16_t':'unsigned short' <LValueToRValue>
+// |           `-DeclRefExpr 0x63e625da2e70 <col:72> 'uint16_t':'unsigned short' lvalue ParmVar 0x63e625da2c60 'y' 'uint16_t':'unsigned short'
+// `-AnnotateAttr 0x63e625da2db0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt16.t|END"
+// FunctionDecl 0x63e625da30a8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:59:19, col:74> col:28 cmp47 'uint16_t (uint16_t, uint16_t)'
+// |-ParmVarDecl 0x63e625da2f98 <col:34, col:43> col:43 used x 'uint16_t':'unsigned short'
+// |-ParmVarDecl 0x63e625da3010 <col:46, col:55> col:55 used y 'uint16_t':'unsigned short'
+// |-CompoundStmt 0x63e625da3308 <col:58, col:74>
+// | `-ReturnStmt 0x63e625da32f8 <col:60, col:71>
+// |   `-ImplicitCastExpr 0x63e625da32e0 <col:67, col:71> 'uint16_t':'unsigned short' <IntegralCast>
+// |     `-BinaryOperator 0x63e625da32c0 <col:67, col:71> 'int' '<'
+// |       |-ImplicitCastExpr 0x63e625da3290 <col:67> 'int' <IntegralCast>
+// |       | `-ImplicitCastExpr 0x63e625da3260 <col:67> 'uint16_t':'unsigned short' <LValueToRValue>
+// |       |   `-DeclRefExpr 0x63e625da3220 <col:67> 'uint16_t':'unsigned short' lvalue ParmVar 0x63e625da2f98 'x' 'uint16_t':'unsigned short'
+// |       `-ImplicitCastExpr 0x63e625da32a8 <col:71> 'int' <IntegralCast>
+// |         `-ImplicitCastExpr 0x63e625da3278 <col:71> 'uint16_t':'unsigned short' <LValueToRValue>
+// |           `-DeclRefExpr 0x63e625da3240 <col:71> 'uint16_t':'unsigned short' lvalue ParmVar 0x63e625da3010 'y' 'uint16_t':'unsigned short'
+// `-AnnotateAttr 0x63e625da3160 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt16.t|END"
+// FunctionDecl 0x63e625da3478 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:60:19, col:75> col:28 cmp48 'uint16_t (uint16_t, uint16_t)'
+// |-ParmVarDecl 0x63e625da3368 <col:34, col:43> col:43 used x 'uint16_t':'unsigned short'
+// |-ParmVarDecl 0x63e625da33e0 <col:46, col:55> col:55 used y 'uint16_t':'unsigned short'
+// |-CompoundStmt 0x63e625da36b8 <col:58, col:75>
+// | `-ReturnStmt 0x63e625da36a8 <col:60, col:72>
+// |   `-ImplicitCastExpr 0x63e625da3690 <col:67, col:72> 'uint16_t':'unsigned short' <IntegralCast>
+// |     `-BinaryOperator 0x63e625da3670 <col:67, col:72> 'int' '!='
+// |       |-ImplicitCastExpr 0x63e625da3640 <col:67> 'int' <IntegralCast>
+// |       | `-ImplicitCastExpr 0x63e625da3610 <col:67> 'uint16_t':'unsigned short' <LValueToRValue>
+// |       |   `-DeclRefExpr 0x63e625da35d0 <col:67> 'uint16_t':'unsigned short' lvalue ParmVar 0x63e625da3368 'x' 'uint16_t':'unsigned short'
+// |       `-ImplicitCastExpr 0x63e625da3658 <col:72> 'int' <IntegralCast>
+// |         `-ImplicitCastExpr 0x63e625da3628 <col:72> 'uint16_t':'unsigned short' <LValueToRValue>
+// |           `-DeclRefExpr 0x63e625da35f0 <col:72> 'uint16_t':'unsigned short' lvalue ParmVar 0x63e625da33e0 'y' 'uint16_t':'unsigned short'
+// `-AnnotateAttr 0x63e625da3530 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt16.t|END"
+// FunctionDecl 0x63e625da3910 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:62:18, col:71> col:26 cmp49 'uint8_t (uint8_t, uint8_t)'
+// |-ParmVarDecl 0x63e625da3780 <col:32, col:40> col:40 used x 'uint8_t':'unsigned char'
+// |-ParmVarDecl 0x63e625da37f8 <col:43, col:51> col:51 used y 'uint8_t':'unsigned char'
+// |-CompoundStmt 0x63e625da3b58 <col:54, col:71>
+// | `-ReturnStmt 0x63e625da3b48 <col:56, col:68>
+// |   `-ImplicitCastExpr 0x63e625da3b30 <col:63, col:68> 'uint8_t':'unsigned char' <IntegralCast>
+// |     `-BinaryOperator 0x63e625da3b10 <col:63, col:68> 'int' '=='
+// |       |-ImplicitCastExpr 0x63e625da3ae0 <col:63> 'int' <IntegralCast>
+// |       | `-ImplicitCastExpr 0x63e625da3ab0 <col:63> 'uint8_t':'unsigned char' <LValueToRValue>
+// |       |   `-DeclRefExpr 0x63e625da3a70 <col:63> 'uint8_t':'unsigned char' lvalue ParmVar 0x63e625da3780 'x' 'uint8_t':'unsigned char'
+// |       `-ImplicitCastExpr 0x63e625da3af8 <col:68> 'int' <IntegralCast>
+// |         `-ImplicitCastExpr 0x63e625da3ac8 <col:68> 'uint8_t':'unsigned char' <LValueToRValue>
+// |           `-DeclRefExpr 0x63e625da3a90 <col:68> 'uint8_t':'unsigned char' lvalue ParmVar 0x63e625da37f8 'y' 'uint8_t':'unsigned char'
+// `-AnnotateAttr 0x63e625da39c8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt8.t|END"
+// FunctionDecl 0x63e625da3cc8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:63:18, col:71> col:26 cmp50 'uint8_t (uint8_t, uint8_t)'
+// |-ParmVarDecl 0x63e625da3bb8 <col:32, col:40> col:40 used x 'uint8_t':'unsigned char'
+// |-ParmVarDecl 0x63e625da3c30 <col:43, col:51> col:51 used y 'uint8_t':'unsigned char'
+// |-CompoundStmt 0x63e625da3f08 <col:54, col:71>
+// | `-ReturnStmt 0x63e625da3ef8 <col:56, col:68>
+// |   `-ImplicitCastExpr 0x63e625da3ee0 <col:63, col:68> 'uint8_t':'unsigned char' <IntegralCast>
+// |     `-BinaryOperator 0x63e625da3ec0 <col:63, col:68> 'int' '>='
+// |       |-ImplicitCastExpr 0x63e625da3e90 <col:63> 'int' <IntegralCast>
+// |       | `-ImplicitCastExpr 0x63e625da3e60 <col:63> 'uint8_t':'unsigned char' <LValueToRValue>
+// |       |   `-DeclRefExpr 0x63e625da3e20 <col:63> 'uint8_t':'unsigned char' lvalue ParmVar 0x63e625da3bb8 'x' 'uint8_t':'unsigned char'
+// |       `-ImplicitCastExpr 0x63e625da3ea8 <col:68> 'int' <IntegralCast>
+// |         `-ImplicitCastExpr 0x63e625da3e78 <col:68> 'uint8_t':'unsigned char' <LValueToRValue>
+// |           `-DeclRefExpr 0x63e625da3e40 <col:68> 'uint8_t':'unsigned char' lvalue ParmVar 0x63e625da3c30 'y' 'uint8_t':'unsigned char'
+// `-AnnotateAttr 0x63e625da3d80 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt8.t|END"
+// FunctionDecl 0x63e625da4078 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:64:18, col:70> col:26 cmp51 'uint8_t (uint8_t, uint8_t)'
+// |-ParmVarDecl 0x63e625da3f68 <col:32, col:40> col:40 used x 'uint8_t':'unsigned char'
+// |-ParmVarDecl 0x63e625da3fe0 <col:43, col:51> col:51 used y 'uint8_t':'unsigned char'
+// |-CompoundStmt 0x63e625da42c8 <col:54, col:70>
+// | `-ReturnStmt 0x63e625da42b8 <col:56, col:67>
+// |   `-ImplicitCastExpr 0x63e625da42a0 <col:63, col:67> 'uint8_t':'unsigned char' <IntegralCast>
+// |     `-BinaryOperator 0x63e625da4280 <col:63, col:67> 'int' '>'
+// |       |-ImplicitCastExpr 0x63e625da4250 <col:63> 'int' <IntegralCast>
+// |       | `-ImplicitCastExpr 0x63e625da4220 <col:63> 'uint8_t':'unsigned char' <LValueToRValue>
+// |       |   `-DeclRefExpr 0x63e625da41d0 <col:63> 'uint8_t':'unsigned char' lvalue ParmVar 0x63e625da3f68 'x' 'uint8_t':'unsigned char'
+// |       `-ImplicitCastExpr 0x63e625da4268 <col:67> 'int' <IntegralCast>
+// |         `-ImplicitCastExpr 0x63e625da4238 <col:67> 'uint8_t':'unsigned char' <LValueToRValue>
+// |           `-DeclRefExpr 0x63e625da4200 <col:67> 'uint8_t':'unsigned char' lvalue ParmVar 0x63e625da3fe0 'y' 'uint8_t':'unsigned char'
+// `-AnnotateAttr 0x63e625da4130 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt8.t|END"
+// FunctionDecl 0x63e625da4438 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:65:18, col:71> col:26 cmp52 'uint8_t (uint8_t, uint8_t)'
+// |-ParmVarDecl 0x63e625da4328 <col:32, col:40> col:40 used x 'uint8_t':'unsigned char'
+// |-ParmVarDecl 0x63e625da43a0 <col:43, col:51> col:51 used y 'uint8_t':'unsigned char'
+// |-CompoundStmt 0x63e625da4678 <col:54, col:71>
+// | `-ReturnStmt 0x63e625da4668 <col:56, col:68>
+// |   `-ImplicitCastExpr 0x63e625da4650 <col:63, col:68> 'uint8_t':'unsigned char' <IntegralCast>
+// |     `-BinaryOperator 0x63e625da4630 <col:63, col:68> 'int' '<='
+// |       |-ImplicitCastExpr 0x63e625da4600 <col:63> 'int' <IntegralCast>
+// |       | `-ImplicitCastExpr 0x63e625da45d0 <col:63> 'uint8_t':'unsigned char' <LValueToRValue>
+// |       |   `-DeclRefExpr 0x63e625da4590 <col:63> 'uint8_t':'unsigned char' lvalue ParmVar 0x63e625da4328 'x' 'uint8_t':'unsigned char'
+// |       `-ImplicitCastExpr 0x63e625da4618 <col:68> 'int' <IntegralCast>
+// |         `-ImplicitCastExpr 0x63e625da45e8 <col:68> 'uint8_t':'unsigned char' <LValueToRValue>
+// |           `-DeclRefExpr 0x63e625da45b0 <col:68> 'uint8_t':'unsigned char' lvalue ParmVar 0x63e625da43a0 'y' 'uint8_t':'unsigned char'
+// `-AnnotateAttr 0x63e625da44f0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt8.t|END"
+// FunctionDecl 0x63e625da47e8 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:66:18, col:70> col:26 cmp53 'uint8_t (uint8_t, uint8_t)'
+// |-ParmVarDecl 0x63e625da46d8 <col:32, col:40> col:40 used x 'uint8_t':'unsigned char'
+// |-ParmVarDecl 0x63e625da4750 <col:43, col:51> col:51 used y 'uint8_t':'unsigned char'
+// |-CompoundStmt 0x63e625da4a28 <col:54, col:70>
+// | `-ReturnStmt 0x63e625da4a18 <col:56, col:67>
+// |   `-ImplicitCastExpr 0x63e625da4a00 <col:63, col:67> 'uint8_t':'unsigned char' <IntegralCast>
+// |     `-BinaryOperator 0x63e625da49e0 <col:63, col:67> 'int' '<'
+// |       |-ImplicitCastExpr 0x63e625da49b0 <col:63> 'int' <IntegralCast>
+// |       | `-ImplicitCastExpr 0x63e625da4980 <col:63> 'uint8_t':'unsigned char' <LValueToRValue>
+// |       |   `-DeclRefExpr 0x63e625da4940 <col:63> 'uint8_t':'unsigned char' lvalue ParmVar 0x63e625da46d8 'x' 'uint8_t':'unsigned char'
+// |       `-ImplicitCastExpr 0x63e625da49c8 <col:67> 'int' <IntegralCast>
+// |         `-ImplicitCastExpr 0x63e625da4998 <col:67> 'uint8_t':'unsigned char' <LValueToRValue>
+// |           `-DeclRefExpr 0x63e625da4960 <col:67> 'uint8_t':'unsigned char' lvalue ParmVar 0x63e625da4750 'y' 'uint8_t':'unsigned char'
+// `-AnnotateAttr 0x63e625da48a0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt8.t|END"
+// FunctionDecl 0x63e625da4b98 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:67:18, col:71> col:26 cmp54 'uint8_t (uint8_t, uint8_t)'
+// |-ParmVarDecl 0x63e625da4a88 <col:32, col:40> col:40 used x 'uint8_t':'unsigned char'
+// |-ParmVarDecl 0x63e625da4b00 <col:43, col:51> col:51 used y 'uint8_t':'unsigned char'
+// |-CompoundStmt 0x63e625da4dd8 <col:54, col:71>
+// | `-ReturnStmt 0x63e625da4dc8 <col:56, col:68>
+// |   `-ImplicitCastExpr 0x63e625da4db0 <col:63, col:68> 'uint8_t':'unsigned char' <IntegralCast>
+// |     `-BinaryOperator 0x63e625da4d90 <col:63, col:68> 'int' '!='
+// |       |-ImplicitCastExpr 0x63e625da4d60 <col:63> 'int' <IntegralCast>
+// |       | `-ImplicitCastExpr 0x63e625da4d30 <col:63> 'uint8_t':'unsigned char' <LValueToRValue>
+// |       |   `-DeclRefExpr 0x63e625da4cf0 <col:63> 'uint8_t':'unsigned char' lvalue ParmVar 0x63e625da4a88 'x' 'uint8_t':'unsigned char'
+// |       `-ImplicitCastExpr 0x63e625da4d78 <col:68> 'int' <IntegralCast>
+// |         `-ImplicitCastExpr 0x63e625da4d48 <col:68> 'uint8_t':'unsigned char' <LValueToRValue>
+// |           `-DeclRefExpr 0x63e625da4d10 <col:68> 'uint8_t':'unsigned char' lvalue ParmVar 0x63e625da4b00 'y' 'uint8_t':'unsigned char'
+// `-AnnotateAttr 0x63e625da4c50 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:UInt8.t|END"
+// FunctionDecl 0x63e625da4f90 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:70:59> col:20 cmp55 'bool (bool, bool)'
+// |-ParmVarDecl 0x63e625da4e38 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:70:31> col:31 used x 'bool'
+// |-ParmVarDecl 0x63e625da4eb0 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:70:39> col:39 used y 'bool'
+// |-CompoundStmt 0x63e625da51d8 <col:42, col:59>
+// | `-ReturnStmt 0x63e625da51c8 <col:44, col:56>
+// |   `-ImplicitCastExpr 0x63e625da51b0 <col:51, col:56> 'bool' <IntegralToBoolean>
+// |     `-BinaryOperator 0x63e625da5190 <col:51, col:56> 'int' '=='
+// |       |-ImplicitCastExpr 0x63e625da5160 <col:51> 'int' <IntegralCast>
+// |       | `-ImplicitCastExpr 0x63e625da5130 <col:51> 'bool' <LValueToRValue>
+// |       |   `-DeclRefExpr 0x63e625da50f0 <col:51> 'bool' lvalue ParmVar 0x63e625da4e38 'x' 'bool'
+// |       `-ImplicitCastExpr 0x63e625da5178 <col:56> 'int' <IntegralCast>
+// |         `-ImplicitCastExpr 0x63e625da5148 <col:56> 'bool' <LValueToRValue>
+// |           `-DeclRefExpr 0x63e625da5110 <col:56> 'bool' lvalue ParmVar 0x63e625da4eb0 'y' 'bool'
+// `-AnnotateAttr 0x63e625da5048 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:_Bool|END"
+// FunctionDecl 0x63e625da5368 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:71:59> col:20 cmp56 'bool (bool, bool)'
+// |-ParmVarDecl 0x63e625da5258 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:71:31> col:31 used x 'bool'
+// |-ParmVarDecl 0x63e625da52d0 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:71:39> col:39 used y 'bool'
+// |-CompoundStmt 0x63e625da55a8 <col:42, col:59>
+// | `-ReturnStmt 0x63e625da5598 <col:44, col:56>
+// |   `-ImplicitCastExpr 0x63e625da5580 <col:51, col:56> 'bool' <IntegralToBoolean>
+// |     `-BinaryOperator 0x63e625da5560 <col:51, col:56> 'int' '>='
+// |       |-ImplicitCastExpr 0x63e625da5530 <col:51> 'int' <IntegralCast>
+// |       | `-ImplicitCastExpr 0x63e625da5500 <col:51> 'bool' <LValueToRValue>
+// |       |   `-DeclRefExpr 0x63e625da54c0 <col:51> 'bool' lvalue ParmVar 0x63e625da5258 'x' 'bool'
+// |       `-ImplicitCastExpr 0x63e625da5548 <col:56> 'int' <IntegralCast>
+// |         `-ImplicitCastExpr 0x63e625da5518 <col:56> 'bool' <LValueToRValue>
+// |           `-DeclRefExpr 0x63e625da54e0 <col:56> 'bool' lvalue ParmVar 0x63e625da52d0 'y' 'bool'
+// `-AnnotateAttr 0x63e625da5420 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:_Bool|END"
+// FunctionDecl 0x63e625da5718 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:72:58> col:20 cmp57 'bool (bool, bool)'
+// |-ParmVarDecl 0x63e625da5608 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:72:31> col:31 used x 'bool'
+// |-ParmVarDecl 0x63e625da5680 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:72:39> col:39 used y 'bool'
+// |-CompoundStmt 0x63e625da5958 <col:42, col:58>
+// | `-ReturnStmt 0x63e625da5948 <col:44, col:55>
+// |   `-ImplicitCastExpr 0x63e625da5930 <col:51, col:55> 'bool' <IntegralToBoolean>
+// |     `-BinaryOperator 0x63e625da5910 <col:51, col:55> 'int' '>'
+// |       |-ImplicitCastExpr 0x63e625da58e0 <col:51> 'int' <IntegralCast>
+// |       | `-ImplicitCastExpr 0x63e625da58b0 <col:51> 'bool' <LValueToRValue>
+// |       |   `-DeclRefExpr 0x63e625da5870 <col:51> 'bool' lvalue ParmVar 0x63e625da5608 'x' 'bool'
+// |       `-ImplicitCastExpr 0x63e625da58f8 <col:55> 'int' <IntegralCast>
+// |         `-ImplicitCastExpr 0x63e625da58c8 <col:55> 'bool' <LValueToRValue>
+// |           `-DeclRefExpr 0x63e625da5890 <col:55> 'bool' lvalue ParmVar 0x63e625da5680 'y' 'bool'
+// `-AnnotateAttr 0x63e625da57d0 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:_Bool|END"
+// FunctionDecl 0x63e625da5ac8 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:73:59> col:20 cmp58 'bool (bool, bool)'
+// |-ParmVarDecl 0x63e625da59b8 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:73:31> col:31 used x 'bool'
+// |-ParmVarDecl 0x63e625da5a30 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:73:39> col:39 used y 'bool'
+// |-CompoundStmt 0x63e625da5d08 <col:42, col:59>
+// | `-ReturnStmt 0x63e625da5cf8 <col:44, col:56>
+// |   `-ImplicitCastExpr 0x63e625da5ce0 <col:51, col:56> 'bool' <IntegralToBoolean>
+// |     `-BinaryOperator 0x63e625da5cc0 <col:51, col:56> 'int' '<='
+// |       |-ImplicitCastExpr 0x63e625da5c90 <col:51> 'int' <IntegralCast>
+// |       | `-ImplicitCastExpr 0x63e625da5c60 <col:51> 'bool' <LValueToRValue>
+// |       |   `-DeclRefExpr 0x63e625da5c20 <col:51> 'bool' lvalue ParmVar 0x63e625da59b8 'x' 'bool'
+// |       `-ImplicitCastExpr 0x63e625da5ca8 <col:56> 'int' <IntegralCast>
+// |         `-ImplicitCastExpr 0x63e625da5c78 <col:56> 'bool' <LValueToRValue>
+// |           `-DeclRefExpr 0x63e625da5c40 <col:56> 'bool' lvalue ParmVar 0x63e625da5a30 'y' 'bool'
+// `-AnnotateAttr 0x63e625da5b80 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:_Bool|END"
+// FunctionDecl 0x63e625da5e78 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:74:58> col:20 cmp59 'bool (bool, bool)'
+// |-ParmVarDecl 0x63e625da5d68 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:74:31> col:31 used x 'bool'
+// |-ParmVarDecl 0x63e625da5de0 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:74:39> col:39 used y 'bool'
+// |-CompoundStmt 0x63e625da60b8 <col:42, col:58>
+// | `-ReturnStmt 0x63e625da60a8 <col:44, col:55>
+// |   `-ImplicitCastExpr 0x63e625da6090 <col:51, col:55> 'bool' <IntegralToBoolean>
+// |     `-BinaryOperator 0x63e625da6070 <col:51, col:55> 'int' '<'
+// |       |-ImplicitCastExpr 0x63e625da6040 <col:51> 'int' <IntegralCast>
+// |       | `-ImplicitCastExpr 0x63e625da6010 <col:51> 'bool' <LValueToRValue>
+// |       |   `-DeclRefExpr 0x63e625da5fd0 <col:51> 'bool' lvalue ParmVar 0x63e625da5d68 'x' 'bool'
+// |       `-ImplicitCastExpr 0x63e625da6058 <col:55> 'int' <IntegralCast>
+// |         `-ImplicitCastExpr 0x63e625da6028 <col:55> 'bool' <LValueToRValue>
+// |           `-DeclRefExpr 0x63e625da5ff0 <col:55> 'bool' lvalue ParmVar 0x63e625da5de0 'y' 'bool'
+// `-AnnotateAttr 0x63e625da5f30 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:_Bool|END"
+// FunctionDecl 0x63e625da7260 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:75:59> col:20 cmp60 'bool (bool, bool)'
+// |-ParmVarDecl 0x63e625da6118 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:75:31> col:31 used x 'bool'
+// |-ParmVarDecl 0x63e625da6190 </home/t-visinghal/Applications/src/c2pulse/external/llvm-project/build/lib/clang/21/include/stdbool.h:24:14, /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue51_test.c:75:39> col:39 used y 'bool'
+// |-CompoundStmt 0x63e625da74a8 <col:42, col:59>
+// | `-ReturnStmt 0x63e625da7498 <col:44, col:56>
+// |   `-ImplicitCastExpr 0x63e625da7480 <col:51, col:56> 'bool' <IntegralToBoolean>
+// |     `-BinaryOperator 0x63e625da7460 <col:51, col:56> 'int' '!='
+// |       |-ImplicitCastExpr 0x63e625da7430 <col:51> 'int' <IntegralCast>
+// |       | `-ImplicitCastExpr 0x63e625da7400 <col:51> 'bool' <LValueToRValue>
+// |       |   `-DeclRefExpr 0x63e625da73c0 <col:51> 'bool' lvalue ParmVar 0x63e625da6118 'x' 'bool'
+// |       `-ImplicitCastExpr 0x63e625da7448 <col:56> 'int' <IntegralCast>
+// |         `-ImplicitCastExpr 0x63e625da7418 <col:56> 'bool' <LValueToRValue>
+// |           `-DeclRefExpr 0x63e625da73e0 <col:56> 'bool' lvalue ParmVar 0x63e625da6190 'y' 'bool'
+// `-AnnotateAttr 0x63e625da7318 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/../include/PulseMacros.h:5:22, col:58> pulse "returns:_Bool|END"
