@@ -10,12 +10,14 @@
 
 #include <map>
 #include <memory>
+#include <nlohmann/json.hpp>
 #include <set>
 #include <string>
 #include <tuple>
 
 using CodegenStrTy = const char*;
 using CodegenPyTy = std::unique_ptr<llvm::raw_string_ostream>;
+using json = nlohmann::json;
 class PulseCodeGen {
 
 public:
@@ -44,6 +46,8 @@ public:
     unsigned *RowIdx);
   void printSourceLocations();
   void JsonifySourceRangeMap(std::string JsonOutputFile);
+  void PulseSourceRangeToJson(json &J, const PulseSourceRange &Range);
+  void SourceInfoToJson(json &J, const SourceInfo &Info);
 
 private:
   std::map<std::string, CodegenPyTy> emittedModules;

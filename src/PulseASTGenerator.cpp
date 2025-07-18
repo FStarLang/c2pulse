@@ -617,6 +617,7 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     }
 
     auto *AbstractType = new GenericDecl();
+    AbstractType->CInfo = getSourceInfoFromDecl(RD, Ctx, "");
     AbstractType->Ident = "noeq\n";
     AbstractType->Ident += "type ";
     AbstractType->Ident += StructName + " = {\n";
@@ -639,6 +640,7 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     // }
 
     auto *Tycon = new TyConDecl();
+    Tycon->CInfo = getSourceInfoFromDecl(RD, Ctx, "");
     auto *TyconRec = new TyConRecord();
     auto *ErasableAttr = new Name("[@@erasable]");
     auto *NoEqTerm = new Name("noeq");
@@ -669,7 +671,8 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     //     (y.first |-> s.first) **
     //     (y.second |-> s.second)
 
-    auto *GenericPredicate = new GenericDecl(); 
+    auto *GenericPredicate = new GenericDecl();
+    GenericPredicate->CInfo = getSourceInfoFromDecl(RD, Ctx, "");
     GenericPredicate->Ident = "let ";
     GenericPredicate->Ident += StructName + "_pred (x:ref " +  StructName + ") (s:" + StructName + "_spec) : slprop =\n";
     GenericPredicate->Ident += "exists* (y: " + StructName + "). (x |-> y) **\n";
@@ -706,6 +709,7 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     auto StructPrefixSpec = StructPrefix + "_spec";
 
     auto *StructSpecDefault = new GenericDecl();
+    StructSpecDefault->CInfo = getSourceInfoFromDecl(RD, Ctx, "");
     StructSpecDefault->Ident = "assume val " + StructName +
                                "_spec_default : " + StructName + "_spec\n";
     NewModul->Decls.push_back(StructSpecDefault);
@@ -713,6 +717,7 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     // assume val point_default (ps:point_spec) : point
 
     auto *StructDefault = new GenericDecl();
+    StructDefault->CInfo = getSourceInfoFromDecl(RD, Ctx, "");
     StructDefault->Ident = "assume val " + StructName + "_default ";
     StructDefault->Ident += "(" + StructPrefixSpec + ":" + StructName +
                             "_spec)" + " : " + StructName + "\n";
@@ -725,6 +730,7 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     // { admit() }
 
     auto *GhostPack = new GenericDecl();
+    GhostPack->CInfo = getSourceInfoFromDecl(RD, Ctx, "");
     GhostPack->Ident = "ghost\n";
     GhostPack->Ident += "fn " + StructName + "_pack (" + StructPrefix +
                         ":ref " + StructName + ") " + "(#" + StructPrefixSpec +
@@ -744,6 +750,7 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     // { admit() }
 
     auto *GhostUnpack = new GenericDecl();
+    GhostUnpack->CInfo = getSourceInfoFromDecl(RD, Ctx, "");
     GhostUnpack->Ident = "ghost\n";
     GhostUnpack->Ident += "fn " + StructName + "_unpack " + "(" + StructPrefix +
                           ":ref " + StructName + ")\n";
@@ -754,6 +761,7 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     NewModul->Decls.push_back(GhostUnpack);
 
     auto *UtilityFunctionHeap = new GenericDecl();
+    UtilityFunctionHeap->CInfo = getSourceInfoFromDecl(RD, Ctx, "");
     UtilityFunctionHeap->Ident += "fn " + StructName + "_alloc ()\n";
     UtilityFunctionHeap->Ident += "returns x:ref " + StructName + "\n";
     UtilityFunctionHeap->Ident += "ensures freeable x\n";
@@ -779,7 +787,8 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     //   ** (v.first |-> s.first) ** (v.second |-> s.second)
     // { unfold u32_pair_struct_pred }
 
-    auto *GhostExplode = new GenericDecl(); 
+    auto *GhostExplode = new GenericDecl();
+    GhostExplode->CInfo = getSourceInfoFromDecl(RD, Ctx, "");
     GhostExplode->Ident = "ghost fn " + StructName + "_explode (x:ref " + StructName + ") " + "(#s:" + StructName + "_spec)\n";
     GhostExplode->Ident += "requires " + StructName + "_pred x s\n";
     GhostExplode->Ident += "ensures exists* (v: " + StructName + "). " + "(x |-> v)";
@@ -813,6 +822,7 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
 
     std::string FieldPrefix = "a";
     auto *NewGhostFunction = new GenericDecl();
+    NewGhostFunction->CInfo = getSourceInfoFromDecl(RD, Ctx, "");
     NewGhostFunction->Ident = "ghost\n";
     NewGhostFunction->Ident += "fn " + StructName + "_recover ";
     NewGhostFunction->Ident += "(x:ref " + StructName + ") ";
@@ -1336,6 +1346,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
               llvm::SmallVector<StringRef, 4> CommaSeperatedItems;
               MatchRef.split(CommaSeperatedItems, ",");
               auto *NewAttr = new Name();
+              NewAttr->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
 
               if (CommaSeperatedItems.empty()) {
                 NewAttr->setName("[@@expect_failure]");
@@ -1371,24 +1382,28 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
             }
             case PulseAnnKind::Requires: {
               auto *NewRequires = new Requires();
+              NewRequires->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
               NewRequires->Ann = Match;
               FDefn->Annotation.push_back(NewRequires);
               break;
             }
             case PulseAnnKind::Ensures: {
               auto *NewEnsures = new Ensures();
+              NewEnsures->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
               NewEnsures->Ann = Match;
               FDefn->Annotation.push_back(NewEnsures);
               break;
             }
             case PulseAnnKind::Returns: {
               auto *ReturnSpec = new Returns();
+              ReturnSpec->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
               ReturnSpec->Ann = Match;
               FDefn->Annotation.push_back(ReturnSpec);
               break;
             }
             case PulseAnnKind::ErasedArg: {
               auto *NewErasedArgBinder = new Binder(Match);
+              NewErasedArgBinder->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
               NewErasedArgBinder->useFallBack = true;
               ErasedArgs.push_back(NewErasedArgBinder);
               break;
@@ -1404,6 +1419,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
               //  Module->insertModule(LTrimmed.str());
               //}
               auto *Inc = new GenericDecl();
+              Inc->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
               Inc->Ident = Match;
               Module->Decls.push_back(Inc);
               //If function name is the anchor dummy function. 
@@ -1489,6 +1505,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
               
               if (!Match.empty()) {
                 auto *NewRequires = new Requires();
+                NewRequires->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
                 NewRequires->Ann = "pure (length " + Param->getNameAsString() +
                                    " == SizeT.v " + Match + ")";
                 auto &Arr = FDefn->Annotation;
@@ -1502,6 +1519,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
               DeclTyMap.insert(std::make_pair(Param, ConstArrayTy));
               if (!Match.empty()) {
                 auto *NewRequires = new Requires();
+                NewRequires->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
                 NewRequires->Ann = "pure (length " + Param->getNameAsString() +
                                    " == SizeT.v " + Match + "sz)";
                 auto &Arr = FDefn->Annotation;
@@ -1526,6 +1544,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
       if (Ty->isArrayType() || Ty->isConstantArrayType() ||
           Ty->isVariableArrayType()) {
         auto *FArrTy = new FStarArrType();
+        FArrTy->CInfo = getSourceInfoFromDecl(Param, Ctx, "");
         FArrTy->ElementType =
             getPulseTyFromCTy(QualType(Ty->getPointeeOrArrayElementType(), 0));
         auto *CTyKeyStr = lookupSymbol(SymbolTable::Array);
@@ -1540,6 +1559,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
       if (It != DeclTyMap.end()) {
         auto Ty = It->second;
         auto *FArrTy = new FStarArrType();
+        FArrTy->CInfo = getSourceInfoFromDecl(Param, Ctx, "");
         FArrTy->ElementType =
             getPulseTyFromCTy(QualType(Ty->getPointeeOrArrayElementType(), 0));
         auto *CTyKeyStr = lookupSymbol(SymbolTable::Array);
@@ -1559,8 +1579,10 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
     }
 
     auto *Binder = new struct Binder(ParamName, ParamTy);
-    
-    auto *MutLetBindInit = new VarTerm(ParamName); 
+    Binder->CInfo = getSourceInfoFromDecl(Param, Ctx, "");
+
+    auto *MutLetBindInit = new VarTerm(ParamName);
+    MutLetBindInit->CInfo = getSourceInfoFromDecl(Param, Ctx, "");
     LetBinding *MutLetBindForParam = new LetBinding(ParamName,  MutLetBindInit , MutOrRef::MUT);
     MutLetBindForParam->VarTy = ParamTy->print();
     
@@ -1591,6 +1613,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
     NewFunDecl->Args = FDefn->Args;
 
     auto *PulseDecl = new PulseFnDecl();
+    PulseDecl->CInfo = getSourceInfoFromDecl(FD, Ctx, "");
     PulseDecl->Defn = NewFunDecl;
 
     PulseDecl->Kind = PulseDeclKind::FnDecl;
@@ -1685,6 +1708,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   }
 
   PulseFnDefn *PulseFn = new PulseFnDefn(FDefn);
+  PulseFn->CInfo = getSourceInfoFromDecl(FD, Ctx, "");
 
   DEBUG_WITH_TYPE(DEBUG_TYPE, {
     llvm::outs() << "=================================================";
@@ -1839,23 +1863,24 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
                                            VD->getType(), Module);
           
           auto *VDPulseTy = getPulseTyFromCTy(VD->getType());
-          //if (Analyzer->isMutated(D)) {
-          auto TempVarName = gensym(VarName);
-          auto *PulseLetTmp = new LetBinding(TempVarName, LetInit, MutOrRef::NOTMUT); 
-          PulseLetTmp->VarTy = VDPulseTy->print(); 
+          // if (Analyzer->isMutated(D)) {
+          // auto TempVarName = gensym(VarName);
+          // auto *PulseLetTmp = new LetBinding(TempVarName, LetInit,
+          // MutOrRef::NOTMUT); PulseLetTmp->CInfo = getSourceInfoFromStmt(S,
+          // Ctx, "", ""); PulseLetTmp->VarTy = VDPulseTy->print();
 
-          //Make the call to assert only for refs.
-          //Better to have this in pulse side.
-          auto *PulseLetSeq = new PulseSequence();
-          // if (auto *VDPulseTyToRef = dyn_cast<FStarPointerType>(VDPulseTy)){
-          //   auto *RewritesTo = new AppE("rewrites_to");
-          //   auto *Arg1 = new VarTerm(TempVarName);
-          //   RewritesTo->pushArg(Arg1);
-          //   RewritesTo->pushArg(LetInit);
-          //   auto *AssertCall = new AppE("assert");
-          //   AssertCall->pushArg(RewritesTo);
-          //   auto *AssertCallExpr = new PulseExpr();
-          //   AssertCallExpr->E = AssertCall;
+          // Make the call to assert only for refs.
+          // Better to have this in pulse side.
+          // auto *PulseLetSeq = new PulseSequence();
+          //  if (auto *VDPulseTyToRef = dyn_cast<FStarPointerType>(VDPulseTy)){
+          //    auto *RewritesTo = new AppE("rewrites_to");
+          //    auto *Arg1 = new VarTerm(TempVarName);
+          //    RewritesTo->pushArg(Arg1);
+          //    RewritesTo->pushArg(LetInit);
+          //    auto *AssertCall = new AppE("assert");
+          //    AssertCall->pushArg(RewritesTo);
+          //    auto *AssertCallExpr = new PulseExpr();
+          //    AssertCallExpr->E = AssertCall;
 
           //   auto *Seq1 = new PulseSequence(); 
           //   Seq1->assignS1(PulseLetTmp);
@@ -1864,16 +1889,19 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           //   LetBinding *PulseLet = new LetBinding(VarName, new VarTerm(TempVarName), MutOrRef::MUT);
           //   PulseLet->VarTy = VDPulseTy->print();
 
-           
           //   PulseLetSeq->assignS1(Seq1);
           //   PulseLetSeq->assignS2(PulseLet);
           // }
-         // else {
-            LetBinding *PulseLet = new LetBinding(VarName, new VarTerm(TempVarName), MutOrRef::MUT);
-            PulseLet->VarTy = VDPulseTy->print();
+          // else {
+          // LetBinding *PulseLet = new LetBinding(VarName, new
+          // VarTerm(TempVarName), MutOrRef::MUT);
+          LetBinding *PulseLet =
+              new LetBinding(VarName, LetInit, MutOrRef::MUT);
+          PulseLet->CInfo = getSourceInfoFromStmt(S, Ctx, "", "");
+          PulseLet->VarTy = VDPulseTy->print();
 
-            PulseLetSeq->assignS1(PulseLetTmp);
-            PulseLetSeq->assignS2(PulseLet);
+          // PulseLetSeq->assignS1(PulseLetTmp);
+          // PulseLetSeq->assignS2(PulseLet);
 
           //}
 
@@ -1910,7 +1938,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           assert(NewExprs.empty() && "Expected expressions to be released!");
 
           if (Start != nullptr) {
-            Start->assignS2(PulseLetSeq);
+            // Start->assignS2(PulseLetSeq);
+            Start->assignS2(PulseLet);
 
             // check for any lemmas to be released.
             auto Attrs = VD->attrs();
@@ -1924,6 +1953,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
                          "Expected a Lemma statement!\n");
                   
                   auto *LS = new LemmaStatement();
+                  LS->CInfo = getSourceInfoFromAttr(Att, Ctx, "");
                   LS->Lemma = Match;
                   auto *LSE = new PulseExpr();
                   LSE->E = LS;
@@ -1949,6 +1979,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
                 if (AnnKind == PulseAnnKind::LemmaStatement) {
                   auto *LS = new LemmaStatement();
+                  LS->CInfo = getSourceInfoFromAttr(Att, Ctx, "");
                   LS->Lemma = Match;
                   DEBUG_WITH_TYPE(DEBUG_TYPE , {
                   llvm::outs() << "Found Lemma: " << "\n";
@@ -1957,6 +1988,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
                   });
 
                   auto *LSE = new PulseExpr();
+                  LSE->CInfo = getSourceInfoFromAttr(Att, Ctx, "");
                   LSE->E = LS;
                   if (Start == nullptr) {
                     auto *NewS = new PulseSequence();
@@ -1975,11 +2007,11 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           }
 
           auto *AppendLet = new PulseSequence();
-          AppendLet->assignS1(Start);
-          AppendLet->assignS2(PulseLetSeq);
-
           AppendLet->CInfo = getSourceInfoFromStmt(S, Ctx, "", "");
 
+          AppendLet->assignS1(Start);
+          // AppendLet->assignS2(PulseLetSeq);
+          AppendLet->assignS2(PulseLet);
           return AppendLet;
         }
 
@@ -1996,19 +2028,21 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
               auto *Rhs = new Name(StructName.getAsString() + "_default " +
                                    StructName.getAsString() + "_spec_default");
+              Rhs->CInfo = getSourceInfoFromDecl(VD, Ctx, "");
 
               auto *NewMutLet =
                   new LetBinding(VD->getNameAsString(), Rhs, MutOrRef::MUT);
                   auto *PulseTy = getPulseTyFromCTy(VD->getType());
                   NewMutLet->VarTy = PulseTy->print();
-              return NewMutLet;
-            //}
-            
-            //Implement case when the allocation is not mutated.
-            // A normal let bind
-            emitErrorWithLocation(
-                "Did not implement case when struct allocation is not mutated!",
-                &Ctx, VD->getLocation());
+                  NewMutLet->CInfo = getSourceInfoFromDecl(VD, Ctx, "");
+                  return NewMutLet;
+                  //}
+
+                  // Implement case when the allocation is not mutated.
+                  //  A normal let bind
+                  emitErrorWithLocation("Did not implement case when struct "
+                                        "allocation is not mutated!",
+                                        &Ctx, VD->getLocation());
         }
 
         // Any uninitialized declaration that is not a struct
@@ -2017,6 +2051,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
         auto ClangVarName = VD->getNameAsString();
 
         auto *GenericDecl = new GenericStmt();
+        GenericDecl->CInfo = getSourceInfoFromDecl(VD, Ctx, "");
         //if (Analyzer->isMutated(VD)){
         GenericDecl->body =
             "let mut " + ClangVarName + ": " + PulseTy->print() + " = witness #_ #_;";
@@ -2064,6 +2099,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
         SmallVector<PulseStmt *> ExprsBef;
 
         auto *ArrayAssignExpr = new PulseArrayAssignment();
+        ArrayAssignExpr->CInfo = getSourceInfoFromExpr(ArrSub, Ctx, "", "");
         ArrayAssignExpr->Arr = getTermFromCExpr(
             ArrSub->getBase(), Analyzer, ExprsBef, Parent, BO->getType(), Module);
         ArrayAssignExpr->Index = getTermFromCExpr(
@@ -2279,8 +2315,11 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
           if (ME->isLValue()){
             auto *App = new AppE("!");
+            App->CInfo = getSourceInfoFromExpr(ME, Ctx, "", "");
             App->pushArg(PulseBaseExpr);
-            PulseBaseExpr = new Paren(App);
+            auto *NewParen = new Paren(App);
+            NewParen->CInfo = getSourceInfoFromExpr(ME, Ctx, "", "");
+            PulseBaseExpr = NewParen;
           }
 
           auto MemberName = LhsDecl->getDeclName();
@@ -2306,12 +2345,14 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
                 new AppE("Mk" + StructName + "?." + MemberName.getAsString());
             PulseCall->pushArg(PulseBaseExpr);
             Assignment = new PulseAssignment(PulseCall, PulseRhsTerm);
+            Assignment->CInfo = getSourceInfoFromExpr(BO, Ctx, "", "");
           }
           else {
             auto *NewProjection = new Project();
             NewProjection->BaseTerm = PulseBaseExpr;
             NewProjection->MemberName = MemberName.getAsString();
             Assignment = new PulseAssignment(NewProjection, PulseRhsTerm);
+            Assignment->CInfo = getSourceInfoFromExpr(BO, Ctx, "", "");
           }
 
           Assignment->CInfo = getSourceInfoFromExpr(ME, Ctx, "", "");
@@ -2407,6 +2448,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           //                          MemberName.getAsString() + ")");
 
           auto *ProjectRhs = new Project();
+          ProjectRhs->CInfo = getSourceInfoFromExpr(ME, Ctx, "", "");
           SmallVector<PulseStmt *> ExprsBef;
           ProjectRhs->MemberName = MemberName.getAsString();
           if (ME->isLValue()){
@@ -2414,8 +2456,11 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
                                               Parent, BO->getType(), Module, true);
 
             auto *BangCall = new AppE("!");
+            BangCall->CInfo = getSourceInfoFromExpr(ME, Ctx, "", "");
             BangCall->pushArg(PulseBaseTerm);
-            ProjectRhs->BaseTerm = new Paren(BangCall);
+            auto *NewParen = new Paren(BangCall);
+            NewParen->CInfo = getSourceInfoFromExpr(ME, Ctx, "", "");
+            ProjectRhs->BaseTerm = NewParen;
           }
           else{
             ProjectRhs->BaseTerm = getTermFromCExpr(BaseExpr, Analyzer, ExprsBef,
@@ -2497,13 +2542,13 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
       SmallVector<PulseStmt *> ExprsBefore;
 
       auto *PExpr = new PulseExpr();
+      PExpr->CInfo = getSourceInfoFromExpr(BO, Ctx, "", "");
       auto ExprTerm =
           getTermFromCExpr(BO, Analyzer, ExprsBefore, Parent, BO->getType(), Module);
       if (!ExprTerm)
         return nullptr;
 
       PExpr->E = ExprTerm;
-      PExpr->CInfo = getSourceInfoFromExpr(BO, Ctx, "", "");
 
       // We need to make a sequence of pulse statements.
       PulseSequence *Start = nullptr;
@@ -2589,9 +2634,11 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
       auto *CastCall = new AppE(getPulseStringForCType(Cond->getType(), Ctx)
                                                    + "_to_bool");
+      CastCall->CInfo = getSourceInfoFromExpr(Cond, Ctx, "", "");
       CastCall->pushArg(PulseCond);
-      PulseCond = new Paren(CastCall);
-
+      auto *NewParen = new Paren(CastCall);
+      NewParen->CInfo = getSourceInfoFromExpr(Cond, Ctx, "", "");
+      PulseCond = NewParen;
     }                                   
 
     PulseStmt *PulseThen;
@@ -2612,7 +2659,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
             switch (AnnKind) {
             case PulseAnnKind::Ensures: {
               auto *NewEnsures = new Ensures();
-              NewEnsures->CInfo = getSourceInfoFromStmt(Then, Ctx, "", "");
+              NewEnsures->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
               NewEnsures->Ann = Match;
               PulseIfStmt->IfLemmas.push_back(NewEnsures);
               break;
@@ -2651,8 +2698,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
       // if (auto *CastToStmt = dyn_cast<Stmt>(RS->getRetValue())){
       auto *RetStmt = getTermFromCExpr(RetVal, Analyzer, ExprsBefore, Parent, RetVal->getType(), Module);
       auto *RetExpr = new PulseExpr();
-      RetExpr->E = RetStmt;
       RetExpr->CInfo = getSourceInfoFromStmt(S, Ctx, "", "");
+      RetExpr->E = RetStmt;
       return RetExpr;
       // return RetStmt;
       //}
@@ -2780,9 +2827,10 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
     //Return a unit / void type
     auto *RetExpr = new PulseExpr();
-    auto *Unit = new Name("()");
-    RetExpr->E = Unit;
     RetExpr->CInfo = getSourceInfoFromStmt(S, Ctx, "", "");
+    auto *Unit = new Name("()");
+    Unit->CInfo = getSourceInfoFromStmt(RS, Ctx, "", "");
+    RetExpr->E = Unit;
     return RetExpr;
   } else if (auto *FS = dyn_cast<ForStmt>(S)) {
     S->dumpPretty(Ctx);
@@ -2834,8 +2882,8 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
             for (auto token : tokens) {
               //llvm::outs() << token << "\n";
               auto *NewLemmaTerm = new LemmaStatement();
-              NewLemmaTerm->Lemma.assign(token.c_str());
               NewLemmaTerm->CInfo = getSourceInfoFromStmt(AttrStmt, Ctx, "", "");
+              NewLemmaTerm->Lemma.assign(token.c_str());
               PulseWhile->Invariant.push_back(NewLemmaTerm);
             }
             // llvm::outs() << "\n";
@@ -2847,10 +2895,12 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
       auto *PulseWhileGuard =
           getTermFromCExpr(WhileCond, Analyzer, ExprsBef, Parent, WhileCond->getType(), Module, CS);
       auto *NewExprGuard = new PulseExpr();
+      NewExprGuard->CInfo = getSourceInfoFromExpr(WhileCond, Ctx, "", "");
       if (WhileCond->getType().getAsString() != "_Bool" || WhileCond->getType().getAsString() != "bool"){
 
         auto *CastCall = new AppE(getPulseStringForCType(WhileCond->getType(), Ctx)
                                                    + "_to_bool");
+        CastCall->CInfo = getSourceInfoFromExpr(WhileCond, Ctx, "", "");
         CastCall->pushArg(PulseWhileGuard);
         auto *NewParenCastCall =  new Paren(CastCall); 
         NewExprGuard->E = NewParenCastCall; 
@@ -2865,6 +2915,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
     } else {
 
       auto *PulseWhile = new PulseWhileStmt();
+      PulseWhile->CInfo = getSourceInfoFromStmt(WS, Ctx, "", "");
       PulseWhile->Guard =
           pulseFromStmt(WhileCond, Analyzer, Parent, Module, CS);
       PulseWhile->Body = pulseFromCompoundStmt(WhileBody, Analyzer, Module);
@@ -2895,13 +2946,16 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
               getPulseAnnKindFromString(AnnotAttr->getAnnotation(), Match);
             if (AttrKind == PulseAnnKind::LemmaStatement){
               auto *LS = new LemmaStatement();
+              LS->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
               LS->Lemma = Match;
               auto *PE = new PulseExpr();
+              PE->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
               PE->E = LS;
               return PE;
             }
             else if (AttrKind == PulseAnnKind::Assert){
-              auto *GenStmt = new GenericStmt(); 
+              auto *GenStmt = new GenericStmt();
+              GenStmt->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
               GenStmt->body = "assert(" + Match + ");";
               return GenStmt;
             }
@@ -2954,6 +3008,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
   if (auto *IL = dyn_cast<IntegerLiteral>(E)) {
 
     auto *NewConstTerm = new ConstTerm();
+    NewConstTerm->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
     NewConstTerm->ConstantValue = std::to_string(IL->getValue().getSExtValue());
 
     DEBUG_WITH_TYPE(DEBUG_TYPE , {
@@ -2963,7 +3018,6 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     });
 
     NewConstTerm->Symbol = getSymbolKeyForCType(IL->getType(), Ctx);
-    NewConstTerm->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
 
     return NewConstTerm;
   } else if (auto *FL = dyn_cast<FloatingLiteral>(E)) {
@@ -3006,30 +3060,38 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
         // Choosing a pulse Ast call node since its not a complicated call
         // expression.
         auto *IsNullCall = new AppE("is_null");
+        IsNullCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
         auto *RhsTerm = getTermFromCExpr(Rhs, MutAnalyzer, ExprsBefore, Parent,
                                          BO->getType(), Module);
         IsNullCall->pushArg(RhsTerm);
         if (BO->isKnownToHaveBooleanValue()){
             auto *CastCall = new AppE("bool_to_" + getPulseStringForCType(BO->getType(), Ctx));
+            CastCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
             CastCall->pushArg(new Paren(IsNullCall));
-            return new Paren(CastCall);
+            auto *NewParen = new Paren(CastCall);
+            NewParen->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+            return NewParen;
         }
-        IsNullCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+
         return IsNullCall;
       }
 
       if (checkIfExprIsNullPtr(Rhs)) {
 
         auto *IsNullCall = new AppE("is_null");
+        IsNullCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
         auto *LhsTerm = getTermFromCExpr(Lhs, MutAnalyzer, ExprsBefore, Parent,
                                          BO->getType(), Module);
         IsNullCall->pushArg(LhsTerm);
         if (BO->isKnownToHaveBooleanValue()){
             auto *CastCall = new AppE("bool_to_" + getPulseStringForCType(BO->getType(), Ctx));
+            CastCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
             CastCall->pushArg(new Paren(IsNullCall));
-            return new Paren(CastCall);
+            auto *NewParen = new Paren(CastCall);
+            NewParen->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+            return NewParen;
         }
-        IsNullCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+
         return IsNullCall;
       }
 
@@ -3043,24 +3105,29 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
        
         //Generate null call
         auto *IsNullCall = new AppE("is_null");
+        IsNullCall->CInfo = getSourceInfoFromExpr(Lhs, Ctx, "", "");
         auto *RhsTerm = getTermFromCExpr(Rhs, MutAnalyzer, ExprsBefore, Parent,
                                          BO->getType(), Module);
         IsNullCall->pushArg(RhsTerm);
 
         //Generate not call
         auto *NotCall = new AppE("not");
+        NotCall->CInfo = getSourceInfoFromExpr(Lhs, Ctx, "", "");
 
         //Wrap null call around parenthesis
         auto *ParenNullCall = new Paren(IsNullCall);
-
+        ParenNullCall->CInfo = getSourceInfoFromExpr(Lhs, Ctx, "", "");
         NotCall->pushArg(ParenNullCall);
 
         if (BO->isKnownToHaveBooleanValue()){
             auto *CastCall = new AppE("bool_to_" + getPulseStringForCType(BO->getType(), Ctx));
+            CastCall->CInfo = getSourceInfoFromExpr(Lhs, Ctx, "", "");
             CastCall->pushArg(new Paren(NotCall));
-            return new Paren(CastCall);
+            auto *NewParen = new Paren(CastCall);
+            NewParen->CInfo = getSourceInfoFromExpr(Lhs, Ctx, "", "");
+            return NewParen;
         }
-        NotCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+
         return NotCall;
       }
 
@@ -3068,21 +3135,27 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
         
         //Generate null call
         auto *IsNullCall = new AppE("is_null");
+        IsNullCall->CInfo = getSourceInfoFromExpr(Rhs, Ctx, "", "");
         auto *LhsTerm = getTermFromCExpr(Lhs, MutAnalyzer, ExprsBefore, Parent,
                                          BO->getType(), Module);
         IsNullCall->pushArg(LhsTerm);
         
         //Generate not call
         auto *NotCall = new AppE("not");
+        NotCall->CInfo = getSourceInfoFromExpr(Rhs, Ctx, "", "");
 
         //Wrap null call around parenthesis
         auto *ParenNullCall = new Paren(IsNullCall);
-
+        ParenNullCall->CInfo = getSourceInfoFromExpr(Rhs, Ctx, "", "");
         NotCall->pushArg(ParenNullCall);
+
         if (BO->isKnownToHaveBooleanValue()){
             auto *CastCall = new AppE("bool_to_" + getPulseStringForCType(BO->getType(), Ctx));
+            CastCall->CInfo = getSourceInfoFromExpr(Rhs, Ctx, "", "");
             CastCall->pushArg(new Paren(NotCall));
-            return new Paren(CastCall);
+            auto *NewParen = new Paren(CastCall);
+            NewParen->CInfo = getSourceInfoFromExpr(Rhs, Ctx, "", "");
+            return NewParen;
         }
         NotCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
         return NotCall;
@@ -3115,6 +3188,8 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       switch (Op){
         case BO_NE:{
           auto *NewAppENode = new AppE(OpKey);
+          NewAppENode->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+
           auto *LhsTerm = getTermFromCExpr(Lhs, MutAnalyzer, ExprsBefore, Parent,
                                        Lhs->getType(), Module);
           auto *RhsTerm = getTermFromCExpr(Rhs, MutAnalyzer, ExprsBefore, Parent,
@@ -3124,25 +3199,32 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
           
           // Wrap Call Expr into a Paren to be safe.
           auto *NewParen = new Paren(NewAppENode);
-
+          NewParen->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
 
           //Add not 
           auto *NotAppE = new AppE("not");
+          NotAppE->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
           NotAppE->pushArg(NewParen);
+
           auto *NotAppEParen = new Paren(NotAppE);
+          NotAppEParen->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
 
           if (BO->isKnownToHaveBooleanValue()){
             auto *CastCall = new AppE("bool_to_" + getPulseStringForCType(BO->getType(), Ctx));
+            CastCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
             CastCall->pushArg(NotAppEParen);
-            return new Paren(CastCall);
+            auto *NewParen = new Paren(CastCall);
+            NewParen->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+            return NewParen;
           }
 
-          NotAppEParen->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
           return NotAppEParen;
           break;
         }
         default: {
           auto *NewAppENode = new AppE(OpKey);
+          NewAppENode->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+
           auto *LhsTerm = getTermFromCExpr(Lhs, MutAnalyzer, ExprsBefore, Parent,
                                        Lhs->getType(), Module);
           auto *RhsTerm = getTermFromCExpr(Rhs, MutAnalyzer, ExprsBefore,
@@ -3154,6 +3236,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
                 Lhs->getType().getAsString() != "bool") {
               auto *CastCall = new AppE(
                   getPulseStringForCType(Lhs->getType(), Ctx) + "_to_bool");
+              CastCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
               CastCall->pushArg(LhsTerm);
               NewAppENode->pushArg(new Paren(CastCall));
             }
@@ -3161,6 +3244,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
                 Lhs->getType().getAsString() != "bool") {
               auto *CastCall = new AppE(
                   getPulseStringForCType(Rhs->getType(), Ctx) + "_to_bool");
+              CastCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
               CastCall->pushArg(RhsTerm);
               NewAppENode->pushArg(new Paren(CastCall));
             }
@@ -3171,10 +3255,12 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
 
           // Wrap Call Expr into a Paren to be safe.
           auto *NewParen = new Paren(NewAppENode);
+          NewParen->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
           //In case its know to have a boolean return value generate
           //the right kind of op here.
           if (BO->isKnownToHaveBooleanValue()){
             auto *CastCall = new AppE("bool_to_" + getPulseStringForCType(BO->getType(), Ctx));
+            CastCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
             CastCall->pushArg(NewParen);
             auto *NewParenRet = new Paren(CastCall);
             NewParenRet->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
@@ -3225,26 +3311,24 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
           //    new Name("(!" + Dec->getDecl()->getNameAsString() + ")." +
           //             Mem->getMemberDecl()->getDeclName().getAsString());
 
-          auto *NewProject = new Project(); 
-          NewProject->MemberName = Mem->getMemberDecl()->getDeclName().getAsString();
-          
-          NewProject->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
-          
-          auto *BaseTerm = getTermFromCExpr(BaseExpr, MutAnalyzer,
-                                               ExprsBefore, Parent, ParentType, Module); 
-          if (isLVal){
-            auto *App = new AppE("!");
-            App->pushArg(BaseTerm);
-            App->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
-            auto *NewParen = new Paren(App);
-            NewParen->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
-            NewProject->BaseTerm = NewParen; 
-          }
-          else {
-            NewProject->BaseTerm = BaseTerm;
-          }
+        auto *NewProject = new Project();
+        NewProject->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+        NewProject->MemberName =
+            Mem->getMemberDecl()->getDeclName().getAsString();
 
-                                              
+        auto *BaseTerm = getTermFromCExpr(BaseExpr, MutAnalyzer, ExprsBefore,
+                                          Parent, ParentType, Module);
+        if (isLVal) {
+          auto *App = new AppE("!");
+          App->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+          App->pushArg(BaseTerm);
+          auto *NewParen = new Paren(App);
+          NewParen->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+          NewProject->BaseTerm = NewParen;
+        } else {
+          NewProject->BaseTerm = BaseTerm;
+        }
+
           // auto It = TrackStructExplodeAndRecover.find(VD);
           // if (It == TrackStructExplodeAndRecover.end()) {
           //   auto *ExplodeStmt = new GenericStmt();
@@ -3274,34 +3358,39 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     else if (UO->getOpcode() == clang::UO_LNot){
 
       auto *NotCall = new AppE("not");
+      NotCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+
       auto *SubExpr = UO->getSubExpr();
-      
       auto *PulseSubExpr = getTermFromCExpr(SubExpr, MutAnalyzer,
                                                ExprsBefore, Parent, ParentType, Module);
 
       if (SubExpr->getType().getAsString() != "_Bool" || SubExpr->getType().getAsString() != "bool"){
         auto *CastCall = new AppE(getPulseStringForCType(SubExpr->getType(), Ctx) + "_to_bool");
+        CastCall->CInfo = getSourceInfoFromExpr(SubExpr, Ctx, "", "");
         CastCall->pushArg(PulseSubExpr);
-        PulseSubExpr = new Paren(CastCall);
+        auto *NewParen = new Paren(CastCall);
+        NewParen->CInfo = getSourceInfoFromExpr(SubExpr, Ctx, "", "");
+        PulseSubExpr = NewParen;
       }
 
       NotCall->pushArg(PulseSubExpr);
 
       if (UO->isKnownToHaveBooleanValue()){
          auto *CastCall = new AppE("bool_to_" + getPulseStringForCType(UO->getType(), Ctx));
+         CastCall->CInfo = getSourceInfoFromExpr(SubExpr, Ctx, "", "");
          CastCall->pushArg(new Paren(NotCall));
          auto *NewParenRet = new Paren(CastCall);
          NewParenRet->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
          return NewParenRet;
       }
 
-      NotCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
       return NotCall;
     }
     else if (UO->getOpcode() == clang::UO_Minus) {
-      //UO_MINUS should be compiled as 0 - x. 
-      //See: 
-      //https://github.com/FStarLang/c2pulse/issues/51#issuecomment-3076469809
+      // UO_MINUS should be compiled as 0 - x.
+      // See:
+      // https://github.com/FStarLang/c2pulse/issues/51#issuecomment-3076469809
+      // TODO: Special handling for Uints.
 
       auto SymbolForBase = getSymbolKeyForCType(UO->getSubExpr()->getType(), Ctx);
       auto BinOp = clang::BO_Sub;
@@ -3321,7 +3410,9 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       //   }
       // };
       auto *UOMinus = new AppE(OpStr);
+      UOMinus->CInfo = getSourceInfoFromExpr(UO, Ctx, "", "");
       auto *ConstrZeroTerm = new ConstTerm();
+      ConstrZeroTerm->CInfo = getSourceInfoFromExpr(UO, Ctx, "", "");
       ConstrZeroTerm->Symbol = SymbolForBase;
       ConstrZeroTerm->ConstantValue = "0";
       UOMinus->pushArg(ConstrZeroTerm);
@@ -3332,8 +3423,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
 
       // Wrap this deref in a parenthesis.
       auto *Parenthesis = new Paren(UOMinus);
-
-      Parenthesis->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+      Parenthesis->CInfo = getSourceInfoFromExpr(UO, Ctx, "", "");
       return Parenthesis;
 
     }
@@ -3404,7 +3494,6 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
 
     auto CallName = CE->getDirectCallee()->getNameAsString();
     auto *CallAppE = new AppE();
-
     CallAppE->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
 
     if (CallName != "free") {
@@ -3504,11 +3593,14 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       }
 
       auto *BangNode = new AppE("!");
+      BangNode->CInfo = getSourceInfoFromExpr(SubExpr, Ctx, "", "");
 
       auto *PulseSubExpr = getTermFromCExpr(SubExpr, MutAnalyzer, ExprsBefore, Parent,
                             ParentType, Module);
       BangNode->pushArg(PulseSubExpr);
       auto *NewParen = new Paren(BangNode);
+      NewParen->CInfo = getSourceInfoFromExpr(SubExpr, Ctx, "", "");
+
       return NewParen;
     }
     
@@ -3532,6 +3624,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     
     ///make a call expr
     auto *CastCall = new AppE(getPulseStringForCType(sourceType, Ctx) + "_to_" + getPulseStringForCType(destType, Ctx));
+    CastCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
 
     SmallVector<PulseStmt *> ExprsBefore;
     auto *RetTerm = getTermFromCExpr(SubExpr, MutAnalyzer, ExprsBefore, Parent,
@@ -3602,6 +3695,8 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     llvm::outs() << "End dump arr sub expression.\n";
 
     auto *PulseCall = new AppE("op_Array_Access");
+    PulseCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+
     PulseCall->pushArg(getTermFromCExpr(ArrBase, MutAnalyzer, ExprsBefore,
                                         Parent, ParentType, Module));
 
@@ -3617,7 +3712,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     }                                    
 
     PulseCall->pushArg(PulseArrIdx);
-    PulseCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+
     // wrap PulseCall in Paren
     auto *NewParen = new Paren(PulseCall);
     NewParen->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
@@ -3740,17 +3835,21 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       //auto *GenStmt =
       //    new Name("(!(!" + NameOfDecl + ")." + MemberName.getAsString() + ")");
 
-      auto *NewProject = new Project(); 
+      auto *NewProject = new Project();
+      NewProject->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+
       NewProject->MemberName = MemberName.getAsString();
 
-      NewProject->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
-      
       auto *BaseTerm = getTermFromCExpr(BaseExpr, MutAnalyzer, ExprsBefore, Parent, ParentType,
                               Module);         
       if (IsLVal){
         auto *App = new AppE("!");
+        App->CInfo = getSourceInfoFromExpr(BaseExpr, Ctx, "", "");
         App->pushArg(BaseTerm);
-        App->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+
+        auto *NewParen = new Paren(App);
+        NewParen->CInfo = getSourceInfoFromExpr(BaseExpr, Ctx, "", "");
+
         NewProject->BaseTerm = new Paren(App);
       } 
       else {
@@ -3787,9 +3886,12 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
 
       auto *CastCall = new AppE(getPulseStringForCType(Cond->getType(), Ctx)
                                                    + "_to_bool");
+      CastCall->CInfo = getSourceInfoFromExpr(Cond, Ctx, "", "");
       CastCall->pushArg(PulseCond);
-      PulseCond = new Paren(CastCall);
 
+      auto *NewParen = new Paren(CastCall);
+      NewParen->CInfo = getSourceInfoFromExpr(Cond, Ctx, "", "");
+      PulseCond = NewParen;
     }                                   
 
     //PulseStmt *PulseThen;

@@ -1,12 +1,14 @@
 #include "ExprLocationAnalyzer.h"
 
+#include "clang/AST/ASTContext.h"
+#include "clang/AST/Attr.h"
 #include "clang/AST/Decl.h"
 #include "clang/AST/Expr.h"
-#include "clang/AST/ASTContext.h"
-#include "clang/AST/PrettyPrinter.h"
 #include "clang/AST/ParentMapContext.h"
+#include "clang/AST/PrettyPrinter.h"
 #include "clang/AST/Stmt.h"
 #include "clang/Basic/SourceManager.h"
+#include "clang/Interpreter/Value.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -37,6 +39,8 @@ bool ExprLocationAnalyzer::TraverseFunctionDecl(FunctionDecl *FD){
 
   return RecursiveASTVisitor::TraverseFunctionDecl(FD);
 }
+
+SourceInfo::SourceInfo() { isValid = false; }
 
 void SourceInfo::setLine(unsigned LineNum) { Line = LineNum; }
 
@@ -371,7 +375,7 @@ const  std::map<const clang::Stmt*, SourceInfo>  &ExprLocationAnalyzer::getNodeI
   return NodeInfoMap;
 }
 
-void SourceInfo::dumpPretty(){
+void SourceInfo::dumpPretty(clang::ASTContext &Ctx) {
   llvm::outs() << "------------------------------------------------------\n";
   llvm::outs() << "Pretty:    " << PrettyString << "\n";
   llvm::outs() << "Location:  Line " << Line << ", Column " << Column << "\n";
@@ -380,6 +384,11 @@ void SourceInfo::dumpPretty(){
   llvm::outs() << "Context:   " << Context << "\n";
   if (!Operation.empty())
       llvm::outs() << "Operation: " << Operation << "\n";
+  if (range.isValid()) {
+    llvm::outs() << "RangeInfo (Valid): ";
+    range.print(llvm::outs(), Ctx.getSourceManager());
+    llvm::outs() << "\n";
+  }
   llvm::outs() << "------------------------------------------------------\n";
 }
 
@@ -451,6 +460,7 @@ SourceInfo getSourceInfoFromExpr(clang::Expr *ExprNode, clang::ASTContext &Conte
   std::optional<std::string> srcLine = getSourceLine(loc, SM);
 
   SourceInfo info;
+  info.isValid = true;
   info.PrettyString = rso.str();
   info.Line = line;
   info.Column = column;
@@ -459,6 +469,36 @@ SourceInfo getSourceInfoFromExpr(clang::Expr *ExprNode, clang::ASTContext &Conte
   info.Context = CtxString;
   info.Operation = Op;
   info.range = ExprNode->getSourceRange();
+  return info;
+}
+
+SourceInfo getSourceInfoFromAttr(const clang::Attr *AttrNode,
+                                 clang::ASTContext &Context,
+                                 std::string CtxString) {
+
+  auto &SM = Context.getSourceManager();
+  SourceLocation loc = SM.getSpellingLoc(AttrNode->getLocation());
+
+  unsigned line = SM.getSpellingLineNumber(loc);
+  unsigned column = SM.getSpellingColumnNumber(loc);
+  QualType QT;
+
+  std::string pretty;
+  llvm::raw_string_ostream rso(pretty);
+  AttrNode->printPretty(rso, Context.getPrintingPolicy());
+
+  std::optional<std::string> srcLine = getSourceLine(loc, SM);
+
+  SourceInfo info;
+  info.isValid = true;
+  info.PrettyString = rso.str();
+  info.Line = line;
+  info.Column = column;
+  info.Type = QT.getAsString();
+  info.SourceLine = srcLine.value_or("[Unavailable]");
+  info.Context = CtxString;
+  info.Operation = "Attribute";
+  info.range = AttrNode->getRange();
   return info;
 }
 
@@ -483,6 +523,7 @@ SourceInfo getSourceInfoFromStmt(clang::Stmt *StmtNode, clang::ASTContext &Conte
   std::optional<std::string> srcLine = getSourceLine(loc, SM);
 
   SourceInfo info;
+  info.isValid = true;
   info.PrettyString = rso.str();
   info.Line = line;
   info.Column = column;
@@ -494,8 +535,53 @@ SourceInfo getSourceInfoFromStmt(clang::Stmt *StmtNode, clang::ASTContext &Conte
   return info;
 }
 
+SourceInfo getSourceInfoFromDecl(const clang::Decl *Decl,
+                                 clang::ASTContext &Context,
+                                 std::string CtxString) {
 
-SourceInfo getSourceInfoFromFuncDecl(clang::FunctionDecl *S){}
+  // Vidush: maybe we should change these to pointers.
+  if (!Decl)
+    return SourceInfo();
 
-SourceInfo getSourceInfoFromRecordDecl(clang::RecordDecl *S){}
+  auto &SM = Context.getSourceManager();
+  SourceLocation loc = SM.getSpellingLoc(Decl->getBeginLoc());
 
+  unsigned line = SM.getSpellingLineNumber(loc);
+  unsigned column = SM.getSpellingColumnNumber(loc);
+
+  QualType QT;
+  std::string pretty;
+  llvm::raw_string_ostream rso(pretty);
+
+  if (auto *VD = dyn_cast<VarDecl>(Decl)) {
+    QT = VD->getType();
+  } else if (auto *FD = dyn_cast<FieldDecl>(Decl)) {
+    QT = FD->getType();
+  } else if (auto *PD = dyn_cast<ParmVarDecl>(Decl)) {
+    QT = PD->getType();
+  } else if (auto *FunD = dyn_cast<FunctionDecl>(Decl)) {
+    QT = FunD->getReturnType();
+  } else if (auto *TD = dyn_cast<TypedefNameDecl>(Decl)) {
+    QT = TD->getUnderlyingType();
+  } else if (auto *ED = dyn_cast<EnumDecl>(Decl)) {
+    QT = ED->getIntegerType();
+  } else if (auto *TTP = dyn_cast<TemplateTypeParmDecl>(Decl)) {
+    QT = TTP->getTypeForDecl()->getCanonicalTypeUnqualified();
+  }
+
+  Decl->print(rso, Context.getPrintingPolicy());
+
+  std::optional<std::string> srcLine = getSourceLine(loc, SM);
+
+  SourceInfo info;
+  info.isValid = true;
+  info.PrettyString = rso.str();
+  info.Line = line;
+  info.Column = column;
+  info.Type = QT.getAsString();
+  info.SourceLine = srcLine.value_or("[Unavailable]");
+  info.Context = CtxString;
+  info.Operation = "";
+  info.range = Decl->getSourceRange();
+  return info;
+}

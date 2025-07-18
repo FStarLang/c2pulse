@@ -18,37 +18,55 @@ extern llvm::cl::opt<std::string> TransformMode;
 /// Struct that captures detailed source information for an AST node.
 class SourceInfo {
   public:
-  std::string PrettyString;  // Formatted string representation of the AST node or expression
-  unsigned Line;             // Line number in the source code where the node/expression appears
-  unsigned Column;           // Column number in the source code for precise location
-  std::string Type;          // The data type of the expression or node (e.g., int, float)
-  std::string SourceLine;    // The full source code line text where the node/expression is located
-  std::string Context;       // Semantic or syntactic context describing the node's role (e.g., "RHS")
-  std::string Operation;     // Operation or operator associated with the node (e.g., "+", "=")
+    SourceInfo();
+    bool isValid;
+    std::string PrettyString; // Formatted string representation of the AST node
+                              // or expression
+    unsigned Line;   // Line number in the source code where the node/expression
+                     // appears
+    unsigned Column; // Column number in the source code for precise location
+    std::string
+        Type; // The data type of the expression or node (e.g., int, float)
+    std::string SourceLine; // The full source code line text where the
+                            // node/expression is located
+    std::string Context; // Semantic or syntactic context describing the node's
+                         // role (e.g., "RHS")
+    std::string Operation; // Operation or operator associated with the node
+                           // (e.g., "+", "=")
 
-  clang::SourceRange range; // please refer to MacroCommentTracker.h 
-                            // for details how I envision persisting the source location.
-                            // I think it is easier to get the begin and end, we know the nodes that
-                            // do not have a range, so you will get the range.start() only
-                            // I agree with other design decision but I think it is 
-                            // easier to persist only the range.
+    clang::SourceRange
+        range; // please refer to MacroCommentTracker.h
+               // for details how I envision persisting the source location.
+               // I think it is easier to get the begin and end, we know the
+               // nodes that do not have a range, so you will get the
+               // range.start() only I agree with other design decision but I
+               // think it is easier to persist only the range.
 
-  void setLine(unsigned Line);
-  void setColumn(unsigned Column);
-  clang::SourceLocation getBeginLoc(); 
-  clang::SourceLocation getEndLoc();
-  void setBeginLoc(clang::SourceLocation b);
-  void setEndLoc(clang::SourceLocation e);
-  bool isSingleLocation();
-  void dumpPretty();
+    void setLine(unsigned Line);
+    void setColumn(unsigned Column);
+    clang::SourceLocation getBeginLoc();
+    clang::SourceLocation getEndLoc();
+    void setBeginLoc(clang::SourceLocation b);
+    void setEndLoc(clang::SourceLocation e);
+    bool isSingleLocation();
+    void dumpPretty(clang::ASTContext &Ctx);
 };
 
 
 SourceInfo getSourceInfoFromExpr(clang::Expr *ExprNode, clang::ASTContext &Context, 
     std::string CtxString, std::string Op);
 
-    SourceInfo getSourceInfoFromStmt(clang::Stmt *StmtNode, clang::ASTContext &Context, 
-    std::string CtxString, std::string Op);
+SourceInfo getSourceInfoFromStmt(clang::Stmt *StmtNode,
+                                 clang::ASTContext &Context,
+                                 std::string CtxString, std::string Op);
+
+SourceInfo getSourceInfoFromDecl(const clang::Decl *Decl,
+                                 clang::ASTContext &Context,
+                                 std::string CtxString);
+
+SourceInfo getSourceInfoFromAttr(const clang::Attr *AttrNode,
+                                 clang::ASTContext &Context,
+                                 std::string CtxString);
 
 SourceInfo getSourceInfoFromFuncDecl(clang::FunctionDecl *S);
 SourceInfo getSourceInfoFromRecordDecl(clang::RecordDecl *S);

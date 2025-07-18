@@ -1,7 +1,6 @@
 #include "PulseCodeGen.h"
 #include "Globals.h"
 #include "PulseIR.h"
-#include <nlohmann/json.hpp>
 #include "clang/AST/ASTContext.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
@@ -14,8 +13,6 @@
 
 using namespace clang;
 using namespace llvm;
-using json = nlohmann::json;
-
 
 PulseCodeGen::PulseCodeGen(clang::ASTContext &Ctx) : ClangCtx(Ctx){}
 
@@ -1117,41 +1114,52 @@ void PulseCodeGen::generateCodeFromPulseStmt(llvm::raw_string_ostream &OS,
 }
 
 // Define how to convert PulseSourceRange to JSON
-void PulseSourceRangeToJson(json& J, const PulseSourceRange& Range) {
-    J = json{
-        {"start_line", Range.Begin.Line},
-        {"start_column", Range.Begin.Column},
-        {"end_line", Range.End.Line},
-        {"end_column", Range.End.Column},
-    };
+void PulseCodeGen::PulseSourceRangeToJson(json &J,
+                                          const PulseSourceRange &Range) {
+  J = json{
+      {"start_line", Range.Begin.Line},
+      {"start_column", Range.Begin.Column},
+      {"end_line", Range.End.Line},
+      {"end_column", Range.End.Column},
+  };
 }
 
-void SourceInfoToJson(json& J, const SourceInfo &Info){
-   J = json{
-        {"Line", Info.Line},
-        {"Column", Info.Column},
-        {"Type", Info.Context},
-        {"Source", Info.SourceLine},
-        {"Context", Info.Context},
-        {"Operations", Info.Operation},
-    };
+void PulseCodeGen::SourceInfoToJson(json &J, const SourceInfo &Info) {
+
+  std::string Buffer;
+  llvm::raw_string_ostream RangInfoStream(Buffer);
+
+  Info.range.print(RangInfoStream, ClangCtx.getSourceManager());
+  J = json{{"Line", Info.Line},
+           {"Column", Info.Column},
+           {"Type", Info.Context},
+           {"Source", Info.SourceLine},
+           {"Context", Info.Context},
+           {"Operations", Info.Operation},
+           {"CRangeInfo", RangInfoStream.str()}};
 }
 
 void PulseCodeGen::JsonifySourceRangeMap(std::string JsonOutputFile){
 
     nlohmann::ordered_json JSonArray = nlohmann::ordered_json::array();
-    for (const auto& [Key, Value] : PulseLocsToCLocs) {
-        nlohmann::ordered_json Entry;
-        json JsonKey;
-        json JsonVal;
+    for (const auto &[Key, Value] : PulseLocsToCLocs) {
 
-        PulseSourceRangeToJson(JsonKey, Key);
-        Entry["PulseSourceRange"] =  JsonKey;
+      // Skip generating entry for this.
+      if (!Value.isValid) {
+        continue;
+      }
 
-        SourceInfoToJson(JsonVal, Value);
-        Entry["CSourceRangeInfo"] = JsonVal;
+      nlohmann::ordered_json Entry;
+      json JsonKey;
+      json JsonVal;
 
-        JSonArray.push_back(Entry);
+      PulseSourceRangeToJson(JsonKey, Key);
+      Entry["PulseSourceRange"] = JsonKey;
+
+      SourceInfoToJson(JsonVal, Value);
+      Entry["CSourceRangeInfo"] = JsonVal;
+
+      JSonArray.push_back(Entry);
     }
 
     std::ofstream JsonStream(JsonOutputFile);
@@ -1176,7 +1184,7 @@ void PulseCodeGen::printSourceLocations(){
     llvm::outs() << "==================================================\n\n";
     llvm::outs() << "Print C Info:\n";
     llvm::outs() << "\n";
-    LocationPair.second.dumpPretty();
+    LocationPair.second.dumpPretty(ClangCtx);
     llvm::outs() << "==================================================\n\n";
   }
 
