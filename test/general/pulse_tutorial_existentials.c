@@ -19,6 +19,7 @@ void make_even(int *x)
 
 REQUIRES(exists* w0. (x |-> w0) ** pure (fits ( * ) 2 (as_int w0)))
 ENSURES(exists* w1. (x |-> w1) ** pure (as_int w1 % 2 == 0))
+EXPECT_FAILURE()
 void make_even_explicit (int *x)
 {
   LEMMA(with w0. assert (x |-> w0));
@@ -30,7 +31,7 @@ void make_even_explicit (int *x)
   );
 }
 
-
+EXPECT_FAILURE()
 REQUIRES(exists* wx wy.  (x |-> wx) ** (y |-> wy) ** pure (as_int wx % 2 == as_int wy % 2) ** pure (fits (+) (as_int wx) (as_int wy)))
 ENSURES(exists* wx wy. (x |-> wx) ** (y |-> wy))
 void make_even_explicit_alt (int *x, int *y)

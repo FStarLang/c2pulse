@@ -79,7 +79,7 @@ int isum (int n)
 {
   int acc = 0;
   int ctr = 0;
-  LEMMA(sum_lemma(as_int n));
+  LEMMA(sum_lemma(as_int !n));
   while (ctr < n)
   INVARIANTS(invariant b.
     exists* c a.

@@ -6,9 +6,12 @@ struct list {
     struct list *next;
 };
 
-int foo(struct list *list){
+
+//Vidush there is a bug here
+// if i write list *list then this will fail
+int foo(struct list *lst){
   LEMMA(admit());
-  list->next->next = list->next;
+  lst->next->next = lst->next;
 }
 
 

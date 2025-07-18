@@ -19,8 +19,8 @@ int compare_elt(ISARRAY(len)int *a1, ISARRAY(len)int *a2, size_t i, size_t len)
 {
     if (i < len)
     {   
-        LEMMA(pts_to_len a1);
-        LEMMA(pts_to_len a2);
+        LEMMA(pts_to_len !a1);
+        LEMMA(pts_to_len !a2);
         return (a1[i] == a2[i]);
     }
     else

@@ -15,10 +15,10 @@ ENSURES((_u32_pair_struct_pred x { first = 0ul; second = 1ul }))
 struct _u32_pair_struct* new_u32_pair_struct ()
 {
   struct _u32_pair_struct* x = ( struct _u32_pair_struct* )malloc(sizeof(struct _u32_pair_struct));
-  LEMMA(_u32_pair_struct_explode x);
+  LEMMA(_u32_pair_struct_explode !x);
   x->first = 0ul;
   x->second = 1ul;
-  LEMMA(_u32_pair_struct_recover x);
+  LEMMA(_u32_pair_struct_recover !x);
   return x;
 }
 
@@ -26,11 +26,11 @@ ERASED_ARG(#s : _u32_pair_struct_spec)
 REQUIRES(_u32_pair_struct_pred x s)
 ENSURES("exists* (s':_u32_pair_struct_spec). _u32_pair_struct_pred x s' ** pure (s' == ({first = s.second; second = s.first}))")
 void swap_fields(struct _u32_pair_struct *x) {
-  LEMMA(_u32_pair_struct_explode x);
+  LEMMA(_u32_pair_struct_explode !x);
   uint32_t f1 = x->first;
   x->first = x->second;
   x->second = f1;
-  LEMMA(_u32_pair_struct_recover x);
+  LEMMA(_u32_pair_struct_recover !x);
 }
 
 REQUIRES("x |-> 'x")
@@ -47,15 +47,15 @@ ERASED_ARG(#s : _u32_pair_struct_spec)
 REQUIRES(_u32_pair_struct_pred x s)
 ENSURES("exists* (s':_u32_pair_struct_spec). _u32_pair_struct_pred x s' ** pure (s' == {first = s.second; second = s.first})")
 void swap_fields_alt(struct _u32_pair_struct *x) { 
-  LEMMA(_u32_pair_struct_explode x);
+  LEMMA(_u32_pair_struct_explode !x);
   swap_refs(&x->first, &x->second); 
-  LEMMA(_u32_pair_struct_recover x);
+  LEMMA(_u32_pair_struct_recover !x);
 }
 
 int main() {
   struct _u32_pair_struct *x = new_u32_pair_struct();
   swap_fields(x);
   swap_fields_alt(x);
-  ASSERT(_u32_pair_struct_pred x {first = 0ul; second = 1ul});
+  LEMMA(with vx. assert ((x |-> vx) ** _u32_pair_struct_pred vx {first = 0ul; second = 1ul}));
   free( x);
 }

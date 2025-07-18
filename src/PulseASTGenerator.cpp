@@ -1430,7 +1430,10 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
       }
     }
   }
-
+  
+  ///Vidush: Also construct let mut for all function parameters
+  PulseSequence *ParamLetMutSequence = nullptr;
+  PulseSequence *ParamLetMutSequenceHead = nullptr;
   for (unsigned i = 0; i < FD->getNumParams(); i++) {
     auto *Param = FD->getParamDecl(i);
     auto ParamName = Param->getNameAsString();
@@ -1555,6 +1558,22 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
     }
 
     auto *Binder = new struct Binder(ParamName, ParamTy);
+    
+    auto *MutLetBindInit = new VarTerm(ParamName); 
+    LetBinding *MutLetBindForParam = new LetBinding(ParamName,  MutLetBindInit , MutOrRef::MUT);
+    MutLetBindForParam->VarTy = ParamTy->print();
+    
+    if (ParamLetMutSequence == nullptr){
+      ParamLetMutSequence = new PulseSequence();
+      ParamLetMutSequenceHead = ParamLetMutSequence;
+      ParamLetMutSequence->assignS1(MutLetBindForParam);
+    }
+    else{
+      auto *NextSequence = new PulseSequence();
+      NextSequence->assignS1(MutLetBindForParam);
+      ParamLetMutSequence->assignS2(NextSequence);
+      ParamLetMutSequence = NextSequence;
+    }
     PulseArgs.push_back(Binder);
   }
   std::copy(ErasedArgs.begin(), ErasedArgs.end(),
@@ -1586,12 +1605,21 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
       // Track struct variables per function.
       //TrackStructExplodeAndRecover.clear();
       auto *PulseBody = pulseFromCompoundStmt(CS, &Analyzer, Module);
+      
+      //Make a void return type ()
+      if (PulseBody == nullptr){
+        auto *ReturnExpr = new PulseExpr(); 
+        auto *VoidRetTerm = new Name("()");
+        ReturnExpr->E = VoidRetTerm;
+        PulseBody = ReturnExpr;
+      }
+
 
       // Release declarations that are function parameters.
       //TODO: Vidush Eventually we should get rid of these.
       //This is just in case there are release expressions left and we need to release them.
-      PulseSequence *NewSeq = nullptr;
-      PulseSequence *Head = nullptr;
+      //PulseSequence *NewSeq = nullptr;
+      //PulseSequence *Head = nullptr;
       // for (auto It = TrackStructExplodeAndRecover.begin(); It != TrackStructExplodeAndRecover.end();) {
       //   auto ItElem = *It;
       //   auto &Decl = ItElem.first;
@@ -1632,17 +1660,26 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
 
       // assert(TrackStructExplodeAndRecover.empty() && "Failed to recover all structure types in the function!\n");
 
-      if (Head != nullptr) {
-        DEBUG_WITH_TYPE(DEBUG_TYPE, {
-        Head->dumpPretty();
-        });
-        FDefn->Body = Head;
-      } else if (PulseBody != nullptr) {
-        DEBUG_WITH_TYPE(DEBUG_TYPE, {
-        PulseBody->dumpPretty();
-        });
+      //if (Head != nullptr) {
+      //  DEBUG_WITH_TYPE(DEBUG_TYPE, {
+      //  Head->dumpPretty();
+      //  });
+      //  FDefn->Body = Head;
+      //} else if (PulseBody != nullptr) {
+      //  DEBUG_WITH_TYPE(DEBUG_TYPE, {
+      //  PulseBody->dumpPretty();
+      //  });
+      if (ParamLetMutSequenceHead != nullptr){
+
+        auto *NewBodySeq = new PulseSequence(); 
+        NewBodySeq->assignS1(ParamLetMutSequenceHead);
+        NewBodySeq->assignS2(PulseBody);
+        FDefn->Body = NewBodySeq;
+      }
+      else {
         FDefn->Body = PulseBody;
       }
+      //}
     }
   }
 
@@ -1799,15 +1836,51 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           SmallVector<PulseStmt *> NewExprs;
           Term *LetInit = getTermFromCExpr(Init, Analyzer, NewExprs, Parent,
                                            VD->getType(), Module);
-
-          LetBinding *PulseLet;
-          if (Analyzer->isMutated(D)) {
-            PulseLet = new LetBinding(VarName, LetInit, MutOrRef::MUT);
-          } else {
-            PulseLet = new LetBinding(VarName, LetInit, MutOrRef::NOTMUT);
-          }
+          
           auto *VDPulseTy = getPulseTyFromCTy(VD->getType());
-          PulseLet->VarTy = VDPulseTy->print(); 
+          //if (Analyzer->isMutated(D)) {
+          auto TempVarName = gensym(VarName);
+          auto *PulseLetTmp = new LetBinding(TempVarName, LetInit, MutOrRef::NOTMUT); 
+          PulseLetTmp->VarTy = VDPulseTy->print(); 
+
+          //Make the call to assert only for refs.
+          //Better to have this in pulse side.
+          auto *PulseLetSeq = new PulseSequence();
+          // if (auto *VDPulseTyToRef = dyn_cast<FStarPointerType>(VDPulseTy)){
+          //   auto *RewritesTo = new AppE("rewrites_to");
+          //   auto *Arg1 = new VarTerm(TempVarName);
+          //   RewritesTo->pushArg(Arg1);
+          //   RewritesTo->pushArg(LetInit);
+          //   auto *AssertCall = new AppE("assert");
+          //   AssertCall->pushArg(RewritesTo);
+          //   auto *AssertCallExpr = new PulseExpr();
+          //   AssertCallExpr->E = AssertCall;
+
+          //   auto *Seq1 = new PulseSequence(); 
+          //   Seq1->assignS1(PulseLetTmp);
+          //   Seq1->assignS2(AssertCallExpr);
+
+          //   LetBinding *PulseLet = new LetBinding(VarName, new VarTerm(TempVarName), MutOrRef::MUT);
+          //   PulseLet->VarTy = VDPulseTy->print();
+
+           
+          //   PulseLetSeq->assignS1(Seq1);
+          //   PulseLetSeq->assignS2(PulseLet);
+          // }
+         // else {
+            LetBinding *PulseLet = new LetBinding(VarName, new VarTerm(TempVarName), MutOrRef::MUT);
+            PulseLet->VarTy = VDPulseTy->print();
+
+            PulseLetSeq->assignS1(PulseLetTmp);
+            PulseLetSeq->assignS2(PulseLet);
+
+          //}
+
+
+          //} else {
+          //  PulseLet = new LetBinding(VarName, LetInit, MutOrRef::NOTMUT);
+          //}
+
           //PulseLet->CInfo = getSourceInfoFromExpr(VD, Ctx, "", "");
 
           //Set the corresponding source location for the C ast node. 
@@ -1836,7 +1909,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           assert(NewExprs.empty() && "Expected expressions to be released!");
 
           if (Start != nullptr) {
-            Start->assignS2(PulseLet);
+            Start->assignS2(PulseLetSeq);
 
             // check for any lemmas to be released.
             auto Attrs = VD->attrs();
@@ -1902,7 +1975,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
           auto *AppendLet = new PulseSequence();
           AppendLet->assignS1(Start);
-          AppendLet->assignS2(PulseLet);
+          AppendLet->assignS2(PulseLetSeq);
 
           AppendLet->CInfo = getSourceInfoFromStmt(S, Ctx, "", "");
 
@@ -1918,7 +1991,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
             DEBUG_WITH_TYPE(DEBUG_TYPE , {
             llvm::outs() << "Typedef name: " << StructName << "\n";
             });
-            if (Analyzer->isMutated(VD)){
+            //if (Analyzer->isMutated(VD)){
 
               auto *Rhs = new Name(StructName.getAsString() + "_default " +
                                    StructName.getAsString() + "_spec_default");
@@ -1928,7 +2001,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
                   auto *PulseTy = getPulseTyFromCTy(VD->getType());
                   NewMutLet->VarTy = PulseTy->print();
               return NewMutLet;
-            }
+            //}
             
             //Implement case when the allocation is not mutated.
             // A normal let bind
@@ -1939,19 +2012,18 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
         // Any uninitialized declaration that is not a struct
         auto CType = VD->getType();
-        auto PulseTySymbol = getSymbolKeyForCType(CType, Ctx);
-        auto *PulseTyStr = lookupSymbol(PulseTySymbol);
+        auto *PulseTy = getPulseTyFromCTy(CType);
         auto ClangVarName = VD->getNameAsString();
 
         auto *GenericDecl = new GenericStmt();
-        if (Analyzer->isMutated(VD)){
+        //if (Analyzer->isMutated(VD)){
         GenericDecl->body =
-            "let mut " + ClangVarName + ": " + PulseTyStr + " = witness #_ #_;";
-        }
-        else {
-          GenericDecl->body =
-            "let " + ClangVarName + ": " + PulseTyStr + " = witness #_ #_;";
-        }
+            "let mut " + ClangVarName + ": " + PulseTy->print() + " = witness #_ #_;";
+        //}
+        //else {
+        //  GenericDecl->body =
+        //    "let " + ClangVarName + ": " + PulseTyStr + " = witness #_ #_;";
+        //}
         return GenericDecl;
       }
       emitErrorWithLocation(
@@ -2034,151 +2106,151 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
         // We are ignoring implicit casts here
         // However, we should check if that' the right approach.
         //  casts may need to be handled and translated into !
-        auto *BaseExpr = ME->getBase()->IgnoreParens()->IgnoreImpCasts();
+        auto *BaseExpr = ME->getBase();
         DEBUG_WITH_TYPE(DEBUG_TYPE, {
         ME->dump();
         BaseExpr->dump();
         });
 
-        std::string NameOfDecl;
-        std::string StructName;
-        if (const clang::DeclRefExpr *DRE =
-                llvm::dyn_cast<clang::DeclRefExpr>(BaseExpr)) {
-          const clang::ValueDecl *VD = DRE->getDecl();
-          // Now you can safely cast VD to a more specific Decl type if needed
-          DEBUG_WITH_TYPE(DEBUG_TYPE , {
-          VD->dump();
-          llvm::outs() << VD->getDeclName() << "End\n";
-          });
-          NameOfDecl = VD->getDeclName().getAsString();
+        //std::string NameOfDecl;
+        //std::string StructName;
+        // if (const clang::DeclRefExpr *DRE =
+        //         llvm::dyn_cast<clang::DeclRefExpr>(BaseExpr)) {
+        //   const clang::ValueDecl *VD = DRE->getDecl();
+        //   // Now you can safely cast VD to a more specific Decl type if needed
+        //   DEBUG_WITH_TYPE(DEBUG_TYPE , {
+        //   VD->dump();
+        //   llvm::outs() << VD->getDeclName() << "End\n";
+        //   });
+        //   NameOfDecl = VD->getDeclName().getAsString();
 
-          auto TyOfDecl = VD->getType();
-          QualType StructTy;
-          // Step 1: If it's a pointer, unwrap it
-          if (TyOfDecl->isPointerType()) {
-            StructTy = TyOfDecl->getPointeeType();
-          } else {
-            StructTy = TyOfDecl;
-          }
+        //   auto TyOfDecl = VD->getType();
+        //   QualType StructTy;
+        //   // Step 1: If it's a pointer, unwrap it
+        //   if (TyOfDecl->isPointerType()) {
+        //     StructTy = TyOfDecl->getPointeeType();
+        //   } else {
+        //     StructTy = TyOfDecl;
+        //   }
 
-          DEBUG_WITH_TYPE(DEBUG_TYPE , {
-          llvm::outs() << StructTy.getAsString() << "\n";
-          });
+        //   DEBUG_WITH_TYPE(DEBUG_TYPE , {
+        //   llvm::outs() << StructTy.getAsString() << "\n";
+        //   });
 
-          // Step 2: Desugar the type (handles typedefs, elaborated types, etc.)
-          clang::QualType StrucTyDesugared = StructTy.getDesugaredType(Ctx);
+        //   // Step 2: Desugar the type (handles typedefs, elaborated types, etc.)
+        //   clang::QualType StrucTyDesugared = StructTy.getDesugaredType(Ctx);
 
-          // Step 3: Try to get the RecordType
-          const auto *recordType = StrucTyDesugared->getAs<clang::RecordType>();
+        //   // Step 3: Try to get the RecordType
+        //   const auto *recordType = StrucTyDesugared->getAs<clang::RecordType>();
 
-          const clang::RecordDecl *RecordDec = recordType->getDecl();
-          llvm::outs() << "Struct name: " << RecordDec->getNameAsString()
-                       << "\n";
+        //   const clang::RecordDecl *RecordDec = recordType->getDecl();
+        //   llvm::outs() << "Struct name: " << RecordDec->getNameAsString()
+        //                << "\n";
 
-          if (!RecordDec) {
-            emitErrorWithLocation("Could not find record declaration!", &Ctx,
-                                  ME->getBeginLoc());
-          }
+        //   if (!RecordDec) {
+        //     emitErrorWithLocation("Could not find record declaration!", &Ctx,
+        //                           ME->getBeginLoc());
+        //   }
 
-          // auto It = MapRecordDeclsToTypedefDecls.find(RecordDec);
-          // if (It == MapRecordDeclsToTypedefDecls)
-          auto It = RecordToRecordName.find(RecordDec);
-          if (It == RecordToRecordName.end()) {
-            emitErrorWithLocation("Could not find name of record!", &Ctx,
-                                  BO->getBeginLoc());
-          }
-          StructName = It->second;
-          auto MemberName = LhsDecl->getDeclName();
+        //   // auto It = MapRecordDeclsToTypedefDecls.find(RecordDec);
+        //   // if (It == MapRecordDeclsToTypedefDecls)
+        //   auto It = RecordToRecordName.find(RecordDec);
+        //   if (It == RecordToRecordName.end()) {
+        //     emitErrorWithLocation("Could not find name of record!", &Ctx,
+        //                           BO->getBeginLoc());
+        //   }
+        //   StructName = It->second;
+        //   auto MemberName = LhsDecl->getDeclName();
 
-          // UPDATE: Vidush: Releasing expresssions may be required in certain cases. 
-          //Especially when you want to add calls to explode struct.
-          SmallVector<PulseStmt *> ExprsBef;
-          auto *PulseRhsTerm =
-              getTermFromCExpr(Rhs, Analyzer, ExprsBef, Parent,BO->getType(), Module);
-          PulseAssignment *Assignment;
+        //   // UPDATE: Vidush: Releasing expresssions may be required in certain cases. 
+        //   //Especially when you want to add calls to explode struct.
+        //   SmallVector<PulseStmt *> ExprsBef;
+        //   auto *PulseRhsTerm =
+        //       getTermFromCExpr(Rhs, Analyzer, ExprsBef, Parent,BO->getType(), Module);
+        //   PulseAssignment *Assignment;
 
-          auto *DerefAppE = new AppE("!");
+        //   auto *DerefAppE = new AppE("!");
 
-          auto *InnerTermCallArg = new VarTerm(NameOfDecl);
-          DerefAppE->pushArg(InnerTermCallArg);
+        //   auto *InnerTermCallArg = new VarTerm(NameOfDecl);
+        //   DerefAppE->pushArg(InnerTermCallArg);
 
-          // Wrap this deref in a parenthesis.
-          auto *ParenthesisDeref = new Paren(DerefAppE);
+        //   // Wrap this deref in a parenthesis.
+        //   auto *ParenthesisDeref = new Paren(DerefAppE);
 
-          //Hack to check if the base type is a pointer. 
-          //Leveraging the C syntax.
-          bool BaseIsPointer = ME->isArrow() ? true : false;
+        //   //Hack to check if the base type is a pointer. 
+        //   //Leveraging the C syntax.
+        //   bool BaseIsPointer = ME->isArrow() ? true : false;
 
-          if (BaseIsPointer){
-            auto *PulseCall =
-                new AppE("Mk" + StructName + "?." + MemberName.getAsString());
-            PulseCall->pushArg(ParenthesisDeref);
-            Assignment = new PulseAssignment(PulseCall, PulseRhsTerm);
-          }
-          else {
-            auto *NewProjection = new Project();
-            NewProjection->BaseTerm = ParenthesisDeref;
-            NewProjection->MemberName = MemberName.getAsString();
-            Assignment = new PulseAssignment(NewProjection, PulseRhsTerm);
-          }
+        //   if (BaseIsPointer){
+        //     auto *PulseCall =
+        //         new AppE("Mk" + StructName + "?." + MemberName.getAsString());
+        //     PulseCall->pushArg(ParenthesisDeref);
+        //     Assignment = new PulseAssignment(PulseCall, PulseRhsTerm);
+        //   }
+        //   else {
+        //     auto *NewProjection = new Project();
+        //     NewProjection->BaseTerm = ParenthesisDeref;
+        //     NewProjection->MemberName = MemberName.getAsString();
+        //     Assignment = new PulseAssignment(NewProjection, PulseRhsTerm);
+        //   }
 
-          Assignment->CInfo = getSourceInfoFromExpr(ME, Ctx, "", "");
+        //   Assignment->CInfo = getSourceInfoFromExpr(ME, Ctx, "", "");
 
-          // auto It = TrackStructExplodeAndRecover.find(VD);
-          // if (It == TrackStructExplodeAndRecover.end()){
-          //   auto *NewSeq = new PulseSequence();
-          //   NewSeq->assignS2(Assignment);
-          //   auto *ExplodeStmt = new GenericStmt();
-          //   ExplodeStmt->body = StructName + "_explode " + VD->getNameAsString() + ";";
-          //   NewSeq->assignS1(ExplodeStmt);
-          //   TrackStructExplodeAndRecover.insert(std::make_pair(VD, std::make_pair(true, false)));
-          //   return NewSeq;
-          // }
+        //   // auto It = TrackStructExplodeAndRecover.find(VD);
+        //   // if (It == TrackStructExplodeAndRecover.end()){
+        //   //   auto *NewSeq = new PulseSequence();
+        //   //   NewSeq->assignS2(Assignment);
+        //   //   auto *ExplodeStmt = new GenericStmt();
+        //   //   ExplodeStmt->body = StructName + "_explode " + VD->getNameAsString() + ";";
+        //   //   NewSeq->assignS1(ExplodeStmt);
+        //   //   TrackStructExplodeAndRecover.insert(std::make_pair(VD, std::make_pair(true, false)));
+        //   //   return NewSeq;
+        //   // }
 
-          auto *RetSeq = releaseExprs(ExprsBef);
+        //   auto *RetSeq = releaseExprs(ExprsBef);
 
-          assert(ExprsBef.empty() && "Expected ExprsBefore to be empty!\n");
+        //   assert(ExprsBef.empty() && "Expected ExprsBefore to be empty!\n");
 
-          // if (checkIfLastStructAccess(ME, CS, Ctx)) {
+        //   // if (checkIfLastStructAccess(ME, CS, Ctx)) {
 
-          //   auto It = TrackStructExplodeAndRecover.find(VD);
-          //   auto ItElem = *It;
-          //   auto &Decl = ItElem.first;
-          //   auto &Info = ItElem.second;
-          //   // recover not released.
-          //   // In fact assert that a recover should not be released before.
-          //   assert(!Info.second && "A recover was released for the struct when "
-          //                          "there are accesses remaining!\n");
-          //   if (auto *ParamD = dyn_cast<ParmVarDecl>(Decl)) {
+        //   //   auto It = TrackStructExplodeAndRecover.find(VD);
+        //   //   auto ItElem = *It;
+        //   //   auto &Decl = ItElem.first;
+        //   //   auto &Info = ItElem.second;
+        //   //   // recover not released.
+        //   //   // In fact assert that a recover should not be released before.
+        //   //   assert(!Info.second && "A recover was released for the struct when "
+        //   //                          "there are accesses remaining!\n");
+        //   //   if (auto *ParamD = dyn_cast<ParmVarDecl>(Decl)) {
 
-          //     auto StructName =
-          //         ParamD->getType()->getPointeeType().getAsString();
+        //   //     auto StructName =
+        //   //         ParamD->getType()->getPointeeType().getAsString();
 
-          //     auto *RecoverStatememt = new GenericStmt();
-          //     RecoverStatememt->body =
-          //         StructName + "_recover " + ParamD->getNameAsString() + ";";
-          //     TrackStructExplodeAndRecover.erase(It);
+        //   //     auto *RecoverStatememt = new GenericStmt();
+        //   //     RecoverStatememt->body =
+        //   //         StructName + "_recover " + ParamD->getNameAsString() + ";";
+        //   //     TrackStructExplodeAndRecover.erase(It);
 
-          //     auto *NewSeq = new PulseSequence();
-          //     NewSeq->assignS1(Assignment);
-          //     NewSeq->assignS2(RecoverStatememt);
-          //     if (RetSeq) {
-          //       RetSeq->assignS2(NewSeq);
-          //       return RetSeq;
-          //     }
+        //   //     auto *NewSeq = new PulseSequence();
+        //   //     NewSeq->assignS1(Assignment);
+        //   //     NewSeq->assignS2(RecoverStatememt);
+        //   //     if (RetSeq) {
+        //   //       RetSeq->assignS2(NewSeq);
+        //   //       return RetSeq;
+        //   //     }
 
-          //     return NewSeq;
-          //   }
-          // }
+        //   //     return NewSeq;
+        //   //   }
+        //   // }
 
-          if (RetSeq) {
-            RetSeq->assignS2(Assignment);
-            return RetSeq;
-          }
+        //   if (RetSeq) {
+        //     RetSeq->assignS2(Assignment);
+        //     return RetSeq;
+        //   }
 
-          return Assignment;
-        }
-        else {
+        //   return Assignment;
+        // }
+        //else {
 
           //assert base expression to typedef type.
           ValueDecl *MemberDecl = ME->getMemberDecl();
@@ -2204,6 +2276,12 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
               getTermFromCExpr(BaseExpr, Analyzer, ExprsBef, Parent,
                                BaseExpr->getType(), Module, false);
 
+          if (ME->isLValue()){
+            auto *App = new AppE("!");
+            App->pushArg(PulseBaseExpr);
+            PulseBaseExpr = new Paren(App);
+          }
+
           auto MemberName = LhsDecl->getDeclName();
 
           auto *PulseRhsTerm =
@@ -2211,27 +2289,26 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
           PulseAssignment *Assignment;
 
-          auto *DerefAppE = new AppE("!");
+          //auto *DerefAppE = new AppE("!");
 
-          auto *InnerTermCallArg = new Paren(PulseBaseExpr);
-          DerefAppE->pushArg(InnerTermCallArg);
+          //auto *InnerTermCallArg = new Paren(PulseBaseExpr);
+          //DerefAppE->pushArg(InnerTermCallArg);
 
           // Wrap this deref in a parenthesis.
-          auto *ParenthesisDeref = new Paren(DerefAppE);
+          //auto *ParenthesisDeref = new Paren(DerefAppE);
 
           //Hack to check if the base type is a pointer. 
           //Leveraging the C syntax.
           bool BaseIsPointer = ME->isArrow() ? true : false;
-
           if (BaseIsPointer){
             auto *PulseCall =
                 new AppE("Mk" + StructName + "?." + MemberName.getAsString());
-            PulseCall->pushArg(ParenthesisDeref);
+            PulseCall->pushArg(PulseBaseExpr);
             Assignment = new PulseAssignment(PulseCall, PulseRhsTerm);
           }
           else {
             auto *NewProjection = new Project();
-            NewProjection->BaseTerm = ParenthesisDeref;
+            NewProjection->BaseTerm = PulseBaseExpr;
             NewProjection->MemberName = MemberName.getAsString();
             Assignment = new PulseAssignment(NewProjection, PulseRhsTerm);
           }
@@ -2294,7 +2371,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
 
 
-        }
+        //}
 
         DEBUG_WITH_TYPE(DEBUG_TYPE, {
         ME->dump();
@@ -2307,33 +2384,49 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
         auto *RhsDecl = ME->getMemberDecl();
         /// TODO: Vidush, handle casts and check if it is safe to ignore them
-        auto *BaseExpr = ME->getBase()->IgnoreParens()->IgnoreImpCasts();
+        auto *BaseExpr = ME->getBase();
         DEBUG_WITH_TYPE(DEBUG_TYPE, {
         BaseExpr->dump();
         });
 
-        std::string NameOfDecl;
-        QualType TyOfDecl;
-        std::string StructName;
-        if (const clang::DeclRefExpr *DRE =
-                llvm::dyn_cast<clang::DeclRefExpr>(BaseExpr)) {
-          const clang::ValueDecl *VD = DRE->getDecl();
-          NameOfDecl = VD->getDeclName().getAsString();
-          TyOfDecl = VD->getType();
-          StructName = TyOfDecl->getPointeeType().getAsString();
+        //std::string NameOfDecl;
+        //QualType TyOfDecl;
+        //std::string StructName;
+        //if (const clang::DeclRefExpr *DRE =
+        //        llvm::dyn_cast<clang::DeclRefExpr>(BaseExpr)) {
+          //const clang::ValueDecl *VD = DRE->getDecl();
+          //NameOfDecl = VD->getDeclName().getAsString();
+          //TyOfDecl = VD->getType();
+          //StructName = TyOfDecl->getPointeeType().getAsString();
 
           auto MemberName = RhsDecl->getDeclName();
 
           //x->f translates to (!(!x).f)
-          auto *GenStmt = new Name("(!(!" + NameOfDecl + ")." +
-                                   MemberName.getAsString() + ")");
+          // auto *GenStmt = new Name("(!(!" + NameOfDecl + ")." +
+          //                          MemberName.getAsString() + ")");
 
+          auto *ProjectRhs = new Project();
           SmallVector<PulseStmt *> ExprsBef;
+          ProjectRhs->MemberName = MemberName.getAsString();
+          if (ME->isLValue()){
+            auto *PulseBaseTerm = getTermFromCExpr(BaseExpr, Analyzer, ExprsBef,
+                                              Parent, BO->getType(), Module, true);
+
+            auto *BangCall = new AppE("!");
+            BangCall->pushArg(PulseBaseTerm);
+            ProjectRhs->BaseTerm = new Paren(BangCall);
+          }
+          else{
+            ProjectRhs->BaseTerm = getTermFromCExpr(BaseExpr, Analyzer, ExprsBef,
+                                              Parent, BO->getType(), Module, true);
+
+          }
+
           auto *PulseLhsTerm = getTermFromCExpr(Lhs, Analyzer, ExprsBef,
                                               Parent, BO->getType(), Module, true);
 
           PulseAssignment *Assignment =
-              new PulseAssignment(PulseLhsTerm, GenStmt);
+              new PulseAssignment(PulseLhsTerm, ProjectRhs);
 
           // auto It = TrackStructExplodeAndRecover.find(VD);
           // if (It == TrackStructExplodeAndRecover.end()) {
@@ -2351,7 +2444,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           assert(ExprsBef.empty() && "Expected ExprsBefore to be empty!\n");
 
           return Assignment;
-        }
+        //}
 
       }
       // TODO:
@@ -3098,16 +3191,18 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
 
   } else if (auto *UO = dyn_cast<UnaryOperator>(E)) {
     if (UO->getOpcode() == UO_Deref) {
-      auto *DerefAppE = new AppE("!");
+      // auto *DerefAppE = new AppE("!");
 
       auto *TermForBaseExpr = getTermFromCExpr(UO->getSubExpr(), MutAnalyzer,
                                                ExprsBefore, Parent, ParentType, Module);
-      DerefAppE->pushArg(TermForBaseExpr);
+      // DerefAppE->pushArg(TermForBaseExpr);
 
-      // Wrap this deref in a parenthesis.
-      auto *Parenthesis = new Paren(DerefAppE);
-      Parenthesis->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
-      return Parenthesis;
+      // // Wrap this deref in a parenthesis.
+      // auto *Parenthesis = new Paren(DerefAppE);
+      // Parenthesis->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+      // return Parenthesis;
+
+      return TermForBaseExpr;
 
     } 
     else if (UO->getOpcode() == UO_AddrOf){
@@ -3116,18 +3211,39 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       if (auto *Mem = dyn_cast<MemberExpr>(SubExpr)) {
 
         auto *BaseExpr = Mem->getBase();
+        auto isLVal = Mem->isLValue();
         // TODO: Vidush, I am ignoring casts here.
         // But the ! is added in GenStmt which comes because of the imp cast.
-        if (auto *Dec = dyn_cast<DeclRefExpr>(
-                BaseExpr->IgnoreParenImpCasts()->IgnoreImpCasts())) {
-          auto *VD = Dec->getDecl();
-          auto VDTy = VD->getType();
-          auto StructName = VDTy->getPointeeType().getAsString();
+        //if (auto *Dec = dyn_cast<DeclRefExpr>(
+        //        BaseExpr->IgnoreParenImpCasts()->IgnoreImpCasts())) {
+        //  auto *VD = Dec->getDecl();
+        //  auto VDTy = VD->getType();
+        //  auto StructName = VDTy->getPointeeType().getAsString();
 
-          auto *GenStmt =
-              new Name("(!" + Dec->getDecl()->getNameAsString() + ")." +
-                       Mem->getMemberDecl()->getDeclName().getAsString());
+          //auto *GenStmt =
+          //    new Name("(!" + Dec->getDecl()->getNameAsString() + ")." +
+          //             Mem->getMemberDecl()->getDeclName().getAsString());
 
+          auto *NewProject = new Project(); 
+          NewProject->MemberName = Mem->getMemberDecl()->getDeclName().getAsString();
+          
+          NewProject->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+          
+          auto *BaseTerm = getTermFromCExpr(BaseExpr, MutAnalyzer,
+                                               ExprsBefore, Parent, ParentType, Module); 
+          if (isLVal){
+            auto *App = new AppE("!");
+            App->pushArg(BaseTerm);
+            App->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+            auto *NewParen = new Paren(App);
+            NewParen->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+            NewProject->BaseTerm = NewParen; 
+          }
+          else {
+            NewProject->BaseTerm = BaseTerm;
+          }
+
+                                              
           // auto It = TrackStructExplodeAndRecover.find(VD);
           // if (It == TrackStructExplodeAndRecover.end()) {
           //   auto *ExplodeStmt = new GenericStmt();
@@ -3137,9 +3253,9 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
           //   TrackStructExplodeAndRecover.insert(
           //       std::make_pair(VD, std::make_pair(true, false)));
           // }
-          GenStmt->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
-          return GenStmt;
-        }
+          
+          return NewProject;
+        //}
       }
       else {
 
@@ -3305,17 +3421,17 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
         auto *Param = CallE->getParamDecl(i);
 
         //check if this is an addr of.
-        if (auto *UO_Arg = dyn_cast<UnaryOperator>(Arg)){
-          if (UO_Arg->getOpcode() == UO_AddrOf){
-            assert(Param->getType()->isPointerType() && "Expect to pass a reference since function param expects it!");
-            auto *BaseExpr = UO_Arg->getSubExpr();
-            if (auto *DeclSub = dyn_cast<DeclRefExpr>(BaseExpr)){
-              auto *NewVar = new VarTerm(DeclSub->getDecl()->getNameAsString());
-              CallAppE->pushArg(NewVar);
-              continue;
-            }
-          }
-        }
+        // if (auto *UO_Arg = dyn_cast<UnaryOperator>(Arg)){
+        //   if (UO_Arg->getOpcode() == UO_AddrOf){
+        //     assert(Param->getType()->isPointerType() && "Expect to pass a reference since function param expects it!");
+        //     auto *BaseExpr = UO_Arg->getSubExpr();
+        //     if (auto *DeclSub = dyn_cast<DeclRefExpr>(BaseExpr)){
+        //       auto *NewVar = new VarTerm(DeclSub->getDecl()->getNameAsString());
+        //       CallAppE->pushArg(NewVar);
+        //       continue;
+        //     }
+        //   }
+        // }
 
         auto *ArgTerm = getTermFromCExpr(Arg, MutAnalyzer, ExprsBefore, CE,
                                          Arg->getType(), Module);
@@ -3326,10 +3442,14 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       // check argument type.
       assert(CE->getNumArgs() == 1 &&
              "Did not expect free to have more than one argument!");
-      ///Vidush: I ignore all casts and parens here. 
-      ///Since free expects void* there may be implicit casts here that won't be handled by pulse.
-      ///Hence we just ignore them here.       
-      auto *Arg = CE->getArg(0)->IgnoreParens()->IgnoreCasts()->IgnoreImpCasts();
+      ///Vidush: Ignore implicit casts that are bitcasts (for instance to void*). 
+      ///For free this is a special case.      
+      auto *Arg = CE->getArg(0);
+      if (auto *ICArg = dyn_cast<ImplicitCastExpr>(Arg)){
+        if (ICArg->getCastKind() == clang::CK_BitCast){
+          Arg = ICArg->getSubExpr();
+        }
+      }
       // Vidush: TODO, check if we should ignore implicit casts here!
       if (auto *ArgDeclR =
               dyn_cast<DeclRefExpr>(Arg->IgnoreParens()->IgnoreImpCasts())) {
@@ -3364,11 +3484,31 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     return NewParen;
   } else if (auto *IC = dyn_cast<ImplicitCastExpr>(E)) {
 
-
     if (checkIfExprIsNullPtr(IC)) {
       auto *NullValue = new Name("null");
       NullValue->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
       return NullValue;
+    }
+
+    if (IC->getCastKind() == clang::CK_LValueToRValue){
+      
+      auto *SubExpr = IC->getSubExpr(); 
+      //TODO: Vidush: These should be changed to Arr_At later on.
+      //Check for Array subscript expression. 
+      if (auto *ArrSub = dyn_cast<ArraySubscriptExpr>(SubExpr->IgnoreParens())){
+        //We ignore the cast. 
+        auto *PulseSubExpr = getTermFromCExpr(SubExpr, MutAnalyzer, ExprsBefore, Parent,
+                            ParentType, Module);
+        return PulseSubExpr;
+      }
+
+      auto *BangNode = new AppE("!");
+
+      auto *PulseSubExpr = getTermFromCExpr(SubExpr, MutAnalyzer, ExprsBefore, Parent,
+                            ParentType, Module);
+      BangNode->pushArg(PulseSubExpr);
+      auto *NewParen = new Paren(BangNode);
+      return NewParen;
     }
     
     IC->dump();
@@ -3432,21 +3572,21 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     //TODO: FIXME: 
     //If the Variable is mutated and If the variable is a boxed. 
     //We cannot just use ! to retrieve its value.
-    if (MutAnalyzer->isMutated(DreDecl) && !isWrite) {
-      // Create a new variable to be returned.
-      // TODO: Vidush create a gensym for to get variable name.
+    // if (MutAnalyzer->isMutated(DreDecl) && !isWrite) {
+    //   // Create a new variable to be returned.
+    //   // TODO: Vidush create a gensym for to get variable name.
 
-      auto *InitAppE = new AppE("!");
+    //   auto *InitAppE = new AppE("!");
 
-      // The actual variable whose value we want
-      VarTerm *VTerm = new VarTerm(DRE->getDecl()->getNameAsString());
-      InitAppE->pushArg(VTerm);
+    //   // The actual variable whose value we want
+    //   VarTerm *VTerm = new VarTerm(DRE->getDecl()->getNameAsString());
+    //   InitAppE->pushArg(VTerm);
 
-      // Wrap this AppE in a Parenthesis.
-      auto *PulseParenthesis = new Paren(InitAppE);
-      PulseParenthesis->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
-      return PulseParenthesis;
-    }
+    //   // Wrap this AppE in a Parenthesis.
+    //   auto *PulseParenthesis = new Paren(InitAppE);
+    //   PulseParenthesis->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+    //   return PulseParenthesis;
+    // }
 
     VarTerm *VTerm = new VarTerm(DRE->getDecl()->getNameAsString());
     VTerm->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
@@ -3572,33 +3712,49 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     // TODO: check if we should ignore cases here
     // Casts may need to be translated to !.
     // But we need a principled approach for this.
-    auto *BaseExpr = ME->getBase()->IgnoreParens()->IgnoreImpCasts();
+    auto *BaseExpr = ME->getBase();
+    auto IsLVal = ME->isLValue();
 
-    std::string NameOfDecl;
-    QualType TyOfDecl;
-    std::string StructName;
-    if (const clang::DeclRefExpr *DRE =
-            llvm::dyn_cast<clang::DeclRefExpr>(BaseExpr)) {
-      const ValueDecl *VD = DRE->getDecl();
-      // Now you can safely cast VD to a more specific Decl type if needed
-      DEBUG_WITH_TYPE(DEBUG_TYPE , {
-      VD->dump();
-      llvm::outs() << VD->getDeclName() << "End\n";
-      });
+    //std::string NameOfDecl;
+    //QualType TyOfDecl;
+    //std::string StructName;
+    //if (const clang::DeclRefExpr *DRE =
+    //        llvm::dyn_cast<clang::DeclRefExpr>(BaseExpr)) {
+    //  const ValueDecl *VD = DRE->getDecl();
+    //  // Now you can safely cast VD to a more specific Decl type if needed
+    //  DEBUG_WITH_TYPE(DEBUG_TYPE , {
+    //  VD->dump();
+    //  llvm::outs() << VD->getDeclName() << "End\n";
+    //  });
 
-      NameOfDecl = VD->getDeclName().getAsString();
-      TyOfDecl = VD->getType();
+    //  NameOfDecl = VD->getDeclName().getAsString();
+    //  TyOfDecl = VD->getType();
       
-      DEBUG_WITH_TYPE(DEBUG_TYPE , {
-      llvm::outs() << TyOfDecl->getPointeeType().getAsString() << "\n";
-      });
-      StructName = TyOfDecl->getPointeeType().getAsString();
+    //  DEBUG_WITH_TYPE(DEBUG_TYPE , {
+    //  llvm::outs() << TyOfDecl->getPointeeType().getAsString() << "\n";
+    //  });
+    //  StructName = TyOfDecl->getPointeeType().getAsString();
 
       auto MemberName = MemberExprDecl->getDeclName();
-      assert(!isWrite && "expected isWrite to be false");
-      auto *GenStmt =
-          new Name("(!(!" + NameOfDecl + ")." + MemberName.getAsString() + ")");
+      //auto *GenStmt =
+      //    new Name("(!(!" + NameOfDecl + ")." + MemberName.getAsString() + ")");
 
+      auto *NewProject = new Project(); 
+      NewProject->MemberName = MemberName.getAsString();
+
+      NewProject->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+      
+      auto *BaseTerm = getTermFromCExpr(BaseExpr, MutAnalyzer, ExprsBefore, Parent, ParentType,
+                              Module);         
+      if (IsLVal){
+        auto *App = new AppE("!");
+        App->pushArg(BaseTerm);
+        App->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+        NewProject->BaseTerm = new Paren(App);
+      } 
+      else {
+        NewProject->BaseTerm = BaseTerm;
+      }                       
       //TODO: Vidush, ensure heuristic is correct.
       //check if we already added an explode for the struct here. 
       // auto It = TrackStructExplodeAndRecover.find(VD);
@@ -3610,11 +3766,11 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       //   ExprsBefore.push_back(ExplodeStmt);
       //   TrackStructExplodeAndRecover.insert(std::make_pair(VD, std::make_pair(true, false)));
       // }
-      GenStmt->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
-      return GenStmt;
-    }
+      
+      return NewProject;
+    //}
 
-    return nullptr;
+    //return nullptr;
   }
   else if (auto *CondOperator = dyn_cast<ConditionalOperator>(E)){
     auto *Cond = CondOperator->getCond();
@@ -3702,7 +3858,8 @@ PulseTransformer::PulseTransformer(ASTContext &Ctx) : AstCtx(Ctx), CodeGen(Ctx) 
 // TODO: Make this return a bool instead of a string.
 // Bool says if the function passed or failed. instead of exiting.
 std::string PulseTransformer::writeToFile() {
-
+  
+  
   clang::SourceManager &SM = RewriterForPlugin.getSourceMgr();
   auto *FileEnt = SM.getFileEntryForID(SM.getMainFileID());
   if (!FileEnt) {
@@ -3727,30 +3884,60 @@ std::string PulseTransformer::writeToFile() {
   NewPath += "/";
 
   auto &ModulesToBeOutputted = CodeGen.getEmittedModules();
-  for (auto &M : ModulesToBeOutputted) {
+  assert(ModulesToBeOutputted.size() == 1 && "Expected one Moudle per AST unit!");
+  auto M = (ModulesToBeOutputted.begin());
+  //for (auto &M : ModulesToBeOutputted) {
 
     // ASSUME: The module name if the file name atm.
-    auto ModuleName = M.first;
-    auto &OutputString = M.second;
+    auto ModuleName = M->first;
+    auto &OutputString = M->second;
 
     // Calculate path and then add NewFileName
-    auto FilePath = NewPath.string() + ModuleName;
+    auto FilePathN = NewPath.string() + ModuleName;
     // Don't remove these since the run.sh script
     // depends on printing the output path of the filename.
     llvm::outs() << "Print the filename!\n";
-    llvm::outs() << FilePath << "\n";
+    llvm::outs() << FilePathN << "\n";
     llvm::outs() << "End printing the filename!\n";
-    std::ofstream OutFile(FilePath);
-    if (!OutFile.is_open()) {
+    std::error_code EC;
+    llvm::raw_fd_ostream OutFile(FilePathN, EC);
+    if (EC) {
       llvm::errs()
           << "Error: Failed to create temporary file for transformed code.\n";
     }
 
     OutFile << OutputString->str();
-    OutFile.close();
-  }
+    
 
+    //Write the Clang C AST at the very end for debugging!
+    std::string Buffer;
+    llvm::raw_string_ostream TempStream(Buffer);
+    const clang::Decl *TUDecl = AstCtx.getTranslationUnitDecl();
+
+    if (const auto *DC = llvm::dyn_cast<clang::DeclContext>(TUDecl)) {
+      for (const auto *D : DC->decls()) {
+          clang::SourceLocation Loc = D->getLocation();
+          if (Loc.isValid()) {
+              std::string fileName = SM.getFilename(Loc).str();
+              if (fileName == FilePath) {
+                 D->dump(TempStream);
+              }
+          }
+      }
+    }
+    
+    OutFile << "\n";
+    OutFile << "//Dumping the Clang AST.\n"; 
+    std::istringstream Input(Buffer);
+    std::string Line;
+    while (std::getline(Input, Line)) {
+        OutFile << "// " << Line << "\n";
+    }
+   
   CodeGen.printSourceLocations();
+
+  CodeGen.JsonifySourceRangeMap(NewPath.string() + "/" + FileNameStr +  "_source_range_info.json");
+
 
   // TODO what should we return for writeToFile
   return "";

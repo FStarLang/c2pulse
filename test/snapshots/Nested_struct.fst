@@ -64,8 +64,29 @@ ensures exists* w. list_pred x w ** pure (w == {next = a0})
 {fold list_pred x ({next = a0}) }
 
 fn foo
-(list : ref list)
+(lst : ref list)
 {
+let mut lst : (ref list) = lst;
 admit();
-Mklist?.next (! ((!(!list).next))) := (!(!list).next);
+Mklist?.next (! (! (! (! lst)).next)) := (! (! (! lst)).next);
 }
+
+//Dumping the Clang AST.
+// RecordDecl 0x5e52fa66c288 </home/t-visinghal/Applications/src/c2pulse/test/general/nested_struct.c:5:1, line:7:1> line:5:8 struct list definition
+// `-FieldDecl 0x5e52fa66c3e8 <line:6:5, col:18> col:18 referenced next 'struct list *'
+// FunctionDecl 0x5e52fa66c578 </home/t-visinghal/Applications/src/c2pulse/test/general/nested_struct.c:12:1, line:15:1> line:12:5 foo 'int (struct list *)'
+// |-ParmVarDecl 0x5e52fa66c460 <col:9, col:22> col:22 used lst 'struct list *'
+// `-CompoundStmt 0x5e52fa66c848 <col:26, line:15:1>
+//   |-AttributedStmt 0x5e52fa66c6e0 </home/t-visinghal/Applications/src/c2pulse/test/general/../include/PulseMacros.h:8:18, /home/t-visinghal/Applications/src/c2pulse/test/general/nested_struct.c:13:17>
+//   | |-AnnotateAttr 0x5e52fa66c668 </home/t-visinghal/Applications/src/c2pulse/test/general/../include/PulseMacros.h:8:20, col:54> pulse "lemma:admit()|END"
+//   | `-NullStmt 0x5e52fa66c660 </home/t-visinghal/Applications/src/c2pulse/test/general/nested_struct.c:13:17>
+//   `-BinaryOperator 0x5e52fa66c828 <line:14:3, col:26> 'struct list *' '='
+//     |-MemberExpr 0x5e52fa66c778 <col:3, col:14> 'struct list *' lvalue ->next 0x5e52fa66c3e8
+//     | `-ImplicitCastExpr 0x5e52fa66c760 <col:3, col:8> 'struct list *' <LValueToRValue>
+//     |   `-MemberExpr 0x5e52fa66c730 <col:3, col:8> 'struct list *' lvalue ->next 0x5e52fa66c3e8
+//     |     `-ImplicitCastExpr 0x5e52fa66c718 <col:3> 'struct list *' <LValueToRValue>
+//     |       `-DeclRefExpr 0x5e52fa66c6f8 <col:3> 'struct list *' lvalue ParmVar 0x5e52fa66c460 'lst' 'struct list *'
+//     `-ImplicitCastExpr 0x5e52fa66c810 <col:21, col:26> 'struct list *' <LValueToRValue>
+//       `-MemberExpr 0x5e52fa66c7e0 <col:21, col:26> 'struct list *' lvalue ->next 0x5e52fa66c3e8
+//         `-ImplicitCastExpr 0x5e52fa66c7c8 <col:21> 'struct list *' <LValueToRValue>
+//           `-DeclRefExpr 0x5e52fa66c7a8 <col:21> 'struct list *' lvalue ParmVar 0x5e52fa66c460 'lst' 'struct list *'

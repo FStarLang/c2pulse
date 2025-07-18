@@ -71,11 +71,12 @@ bool compare(ISARRAY() int *a1, ISARRAY() int *a2, size_t l)
     size_t i = 0;
     while( compare_elements(a1, a2, l, i) == 1 )
     INVARIANTS("invariant b.\
-        exists* vi.\
+        exists* vi vl.\
             (i |-> vi) ** (a1 |-> Frac p s1) ** (a2 |-> Frac p s2) **\
+            (l |-> vl) **\
             pure (\
-                SZ.as_int vi <= SZ.as_int l /\ \
-                (b == (SZ.as_int vi < SZ.as_int l && Seq.index s1 (SZ.as_int vi) = Seq.index s2 (SZ.as_int vi))) /\ \
+                SZ.as_int vi <= SZ.as_int vl /\ \
+                (b == (SZ.as_int vi < SZ.as_int vl && Seq.index s1 (SZ.as_int vi) = Seq.index s2 (SZ.as_int vi))) /\ \
                 (forall (i:nat). i < SZ.as_int vi ==> Seq.index s1 i == Seq.index s2 i)            \
             )"
     )

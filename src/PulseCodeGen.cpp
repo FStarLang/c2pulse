@@ -734,10 +734,10 @@ std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
   } else if (Project *P = dyn_cast<Project>(T)) {
     PulseSourceLocation Start(*RowCounter, *ColCounter);
 
-    OS << generateCodeFromTerm(OS, P->BaseTerm, RowCounter, ColCounter);
-    OS << PulseSyntax::Dot;
+    TermString += generateCodeFromTerm(OS, P->BaseTerm, RowCounter, ColCounter);
+    TermString += PulseSyntax::Dot;
     *ColCounter += strlen(PulseSyntax::Dot);
-    OS << P->MemberName;
+    TermString += P->MemberName;
     *ColCounter += P->MemberName.length();
 
     PulseSourceLocation End(*RowCounter, *ColCounter);

@@ -883,6 +883,15 @@ void FStarArrType::dumpPretty() {
   ElementType->dumpPretty();
 }
 
+std::string FStarArrType::print(){
+  std::string Out = "";
+  Out += "(array ";
+  Out += ElementType->print();
+  Out += ")";
+  return Out;
+
+}
+
 void FStarPointerType::dumpPretty() {
   llvm::outs() << "ref ";
   PointerTo->dumpPretty();
@@ -1012,6 +1021,7 @@ PulseArrayAssignment::PulseArrayAssignment() {
 
 LetBinding::LetBinding() { Tag = PulseStmtTag::LetBinding; }
 
+//Vidush: As per tiny C doc all let bindings are let mut
 LetBinding::LetBinding(std::string Lhs, Term *Rhs, MutOrRef Qual) {
   Tag = PulseStmtTag::LetBinding;
   VarName = Lhs;

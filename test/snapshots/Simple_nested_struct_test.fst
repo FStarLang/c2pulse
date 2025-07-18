@@ -124,3 +124,19 @@ fn u64_pair_struct_recover (x:ref u64_pair_struct) (#a0 : UInt64.t) (#a1 : (ref 
 requires exists* (y: u64_pair_struct). (x |-> y) ** (y.first |-> a0) ** (y.second |-> a1)
 ensures exists* w. u64_pair_struct_pred x w ** pure (w == {first = a0; second = a1})
 {fold u64_pair_struct_pred x ({first = a0; second = a1}) }
+
+//Dumping the Clang AST.
+// RecordDecl 0x5f3a70b38cc8 </home/t-visinghal/Applications/src/c2pulse/test/general/simple_nested_struct_test.c:5:9, line:8:1> line:5:16 struct _u32_pair_struct definition
+// |-FieldDecl 0x5f3a70b38de0 <line:6:3, col:12> col:12 first 'uint32_t':'unsigned int'
+// `-FieldDecl 0x5f3a70b38e40 <line:7:3, col:12> col:12 second 'uint32_t':'unsigned int'
+// TypedefDecl 0x5f3a70b38ee8 </home/t-visinghal/Applications/src/c2pulse/test/general/simple_nested_struct_test.c:5:1, line:8:3> col:3 referenced u32_pair_struct 'struct _u32_pair_struct'
+// `-ElaboratedType 0x5f3a70b38e90 'struct _u32_pair_struct' sugar
+//   `-RecordType 0x5f3a70b38d50 'struct _u32_pair_struct'
+//     `-Record 0x5f3a70b38cc8 '_u32_pair_struct'
+// RecordDecl 0x5f3a70b38f58 </home/t-visinghal/Applications/src/c2pulse/test/general/simple_nested_struct_test.c:10:9, line:13:1> line:10:16 struct _u64_pair_struct definition
+// |-FieldDecl 0x5f3a70b39070 <line:11:3, col:12> col:12 first 'uint64_t':'unsigned long'
+// `-FieldDecl 0x5f3a70b39198 <line:12:3, col:20> col:20 second 'u32_pair_struct *'
+// TypedefDecl 0x5f3a70b39248 </home/t-visinghal/Applications/src/c2pulse/test/general/simple_nested_struct_test.c:10:1, line:13:3> col:3 u64_pair_struct 'struct _u64_pair_struct'
+// `-ElaboratedType 0x5f3a70b391f0 'struct _u64_pair_struct' sugar
+//   `-RecordType 0x5f3a70b38fe0 'struct _u64_pair_struct'
+//     `-Record 0x5f3a70b38f58 '_u64_pair_struct'

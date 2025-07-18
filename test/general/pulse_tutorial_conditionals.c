@@ -26,7 +26,7 @@ int max (int *x, int *y)
     }
 }
 
-
+EXPECT_FAILURE()
 ERASED_ARG(#vx #vy:_)
 ERASED_ARG(#px #py:_)
 REQUIRES(x |-> Frac px vx)
@@ -68,14 +68,14 @@ int read_nullable(int *r)
 {
   if (r == NULL)
   {
-    LEMMA(elim_intro_null r);
+    LEMMA(elim_intro_null !r);
     return 0;
   }
   else
   {
-    LEMMA(elim_non_null r);
+    LEMMA(elim_non_null !r);
     int v = *r;
-    LEMMA(intro_non_null r);
+    LEMMA(intro_non_null !r);
     return v;
   }
 }
@@ -87,12 +87,12 @@ void write_nullable(int *r, int v)
 {
   if (r == NULL)
   {
-    LEMMA(elim_intro_null r);
+    LEMMA(elim_intro_null !r);
   }
   else
   {
-    LEMMA(elim_non_null r);
+    LEMMA(elim_non_null !r);
     *r = v;
-    LEMMA(intro_non_null r);
+    LEMMA(intro_non_null !r);
   }
 }

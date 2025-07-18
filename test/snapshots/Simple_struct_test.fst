@@ -65,3 +65,12 @@ fn u32_pair_struct_recover (x:ref u32_pair_struct) (#a0 : UInt32.t) (#a1 : UInt3
 requires exists* (y: u32_pair_struct). (x |-> y) ** (y.first |-> a0) ** (y.second |-> a1)
 ensures exists* w. u32_pair_struct_pred x w ** pure (w == {first = a0; second = a1})
 {fold u32_pair_struct_pred x ({first = a0; second = a1}) }
+
+//Dumping the Clang AST.
+// RecordDecl 0x57172fb14798 </home/t-visinghal/Applications/src/c2pulse/test/general/simple_struct_test.c:5:9, line:8:1> line:5:16 struct _u32_pair_struct definition
+// |-FieldDecl 0x57172fb148b0 <line:6:3, col:12> col:12 first 'uint32_t':'unsigned int'
+// `-FieldDecl 0x57172fb14910 <line:7:3, col:12> col:12 second 'uint32_t':'unsigned int'
+// TypedefDecl 0x57172fb149b8 </home/t-visinghal/Applications/src/c2pulse/test/general/simple_struct_test.c:5:1, line:8:3> col:3 u32_pair_struct 'struct _u32_pair_struct'
+// `-ElaboratedType 0x57172fb14960 'struct _u32_pair_struct' sugar
+//   `-RecordType 0x57172fb14820 'struct _u32_pair_struct'
+//     `-Record 0x57172fb14798 '_u32_pair_struct'

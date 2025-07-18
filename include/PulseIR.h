@@ -519,6 +519,7 @@ class FStarArrType : public FStarType {
     virtual void setName(std::string Name) override;
     virtual ~FStarArrType() = default;
     virtual void dumpPretty() override;
+    virtual std::string print() override;
     void setElementTy(FStarType *Ty);
     static bool classof(const Term *T) {
       return T->Tag == TermTag::FStarArrType;

@@ -121,3 +121,10 @@ fn foo_recover (x:ref foo) (#a0 : anon_name0_spec)
 requires exists* (y: foo). (x |-> y) ** (y.s  `anon_name0_pred` a0)
 ensures exists* w. foo_pred x w ** pure (w == {s = a0})
 {fold foo_pred x ({s = a0}) }
+
+//Dumping the Clang AST.
+// RecordDecl 0x5a02a23c4b30 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue38_test_anon.c:1:1, line:6:1> line:1:8 struct foo definition
+// |-RecordDecl 0x5a02a23c4bd0 <line:2:3, line:5:3> line:2:3 struct definition
+// | |-FieldDecl 0x5a02a23c4c88 <line:3:5, col:9> col:9 x 'int'
+// | `-FieldDecl 0x5a02a23c4cf0 <line:4:5, col:9> col:9 y 'int'
+// `-FieldDecl 0x5a02a23c4d98 <line:2:3, line:5:5> col:5 s 'struct (unnamed struct at /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue38_test_anon.c:2:3)':'struct foo::(unnamed at /home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue38_test_anon.c:2:3)'
