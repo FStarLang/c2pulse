@@ -38,8 +38,7 @@ ensures exists* v. (a2 |-> v)
 let mut a1 : (array Int32.t) = a1;
 let mut a2 : (array Int32.t) = a2;
 let mut len : SizeT.t = len;
-let i0 : SizeT.t = (int32_to_sizet 0l);
-let mut i : SizeT.t = i0;
+let mut i : SizeT.t = (int32_to_sizet 0l);
 if((int32_to_bool (bool_to_int32 (SizeT.lt (! i) (! len)))))
 {
 pts_to_len !a1;

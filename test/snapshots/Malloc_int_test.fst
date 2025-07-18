@@ -14,8 +14,7 @@ ensures r |-> v
 ensures freeable r
 {
 let mut v : Int32.t = v;
-let r0 : (ref Int32.t) = alloc_ref #Int32.t ();
-let mut r : (ref Int32.t) = r0;
+let mut r : (ref Int32.t) = alloc_ref #Int32.t ();
 (! r) := (! v);
 (! r);
 }

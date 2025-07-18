@@ -72,8 +72,7 @@ returns x:ref u32_pair_struct
 ensures freeable x
 ensures (u32_pair_struct_pred x { first = 0ul; second = 1ul })
 {
-let x0 : (ref u32_pair_struct) = u32_pair_struct_alloc ();
-let mut x : (ref u32_pair_struct) = x0;
+let mut x : (ref u32_pair_struct) = u32_pair_struct_alloc ();
 u32_pair_struct_explode !x;
 Mku32_pair_struct?.first (! (! x)) := (uint64_to_uint32 0UL);
 Mku32_pair_struct?.second (! (! x)) := (uint64_to_uint32 1UL);
@@ -89,8 +88,7 @@ ensures exists* (s':u32_pair_struct_spec). u32_pair_struct_pred x s' ** pure (s'
 {
 let mut x : (ref u32_pair_struct) = x;
 u32_pair_struct_explode !x;
-let f11 : UInt32.t = (! (! (! x)).first);
-let mut f1 : UInt32.t = f11;
+let mut f1 : UInt32.t = (! (! (! x)).first);
 Mku32_pair_struct?.first (! (! x)) := (! (! (! x)).second);
 Mku32_pair_struct?.second (! (! x)) := (! f1);
 u32_pair_struct_recover !x;
@@ -106,8 +104,7 @@ ensures y |-> 'x
 {
 let mut x : (ref UInt32.t) = x;
 let mut y : (ref UInt32.t) = y;
-let tmp2 : UInt32.t = (! (! x));
-let mut tmp : UInt32.t = tmp2;
+let mut tmp : UInt32.t = (! (! x));
 (! x) := (! (! y));
 (! y) := (! tmp);
 }
@@ -126,8 +123,7 @@ u32_pair_struct_recover !x;
 
 fn main ()
 {
-let x3 : (ref u32_pair_struct) = (new_u32_pair_struct ());
-let mut x : (ref u32_pair_struct) = x3;
+let mut x : (ref u32_pair_struct) = (new_u32_pair_struct ());
 (swap_fields (! x));
 (swap_fields_alt (! x));
 with vx. assert x |-> vx;

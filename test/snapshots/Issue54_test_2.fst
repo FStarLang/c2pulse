@@ -10,10 +10,8 @@ open Pulse.Lib.C
 fn add ()
 returns Int32.t
 {
-let x0 : Int32.t = 1l;
-let mut x : Int32.t = x0;
-let y1 : Int32.t = 0l;
-let mut y : Int32.t = y1;
+let mut x : Int32.t = 1l;
+let mut y : Int32.t = 0l;
 (Int32.add (bool_to_int32 (not (int32_to_bool (bool_to_int32 (not (int32_to_bool (! x))))))) (bool_to_int32 (not (int32_to_bool (bool_to_int32 (not (int32_to_bool (! y))))))));
 }
 

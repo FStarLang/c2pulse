@@ -96,8 +96,7 @@ ensures freeable p
 {
 let mut x : Int32.t = x;
 let mut y : Int32.t = y;
-let p0 : (ref point) = point_alloc ();
-let mut p : (ref point) = p0;
+let mut p : (ref point) = point_alloc ();
 point_explode !p;
 Mkpoint?.px (! (! p)) := (! x);
 Mkpoint?.py (! (! p)) := (! y);
@@ -107,8 +106,7 @@ point_recover !p; fold_is_point !p;
 
 fn create_and_move ()
 {
-let p1 : (ref point) = (create_point 0l 0l);
-let mut p : (ref point) = p1;
+let mut p : (ref point) = (create_point 0l 0l);
 (move_alt (! p) 1l 1l);
 unfold(is_point); point_explode !p; point_recover !p;
 (point_free (! p));

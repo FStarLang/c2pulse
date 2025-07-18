@@ -18,8 +18,7 @@ requires pure (length a1 == SizeT.v l)
 let mut a1 : (array Int32.t) = a1;
 let mut a2 : (array Int32.t) = a2;
 let mut l : SizeT.t = l;
-let i0 : SizeT.t = (int32_to_sizet 0l);
-let mut i : SizeT.t = i0;
+let mut i : SizeT.t = (int32_to_sizet 0l);
 while((int32_to_bool (if (int32_to_bool ((bool_to_int32 (SizeT.lt (! i) (! l)))))
 then (bool_to_int32 (Int32.eq (op_Array_Access (! a1) (! i)) (op_Array_Access (! a2) (! i))))
 else 0l));

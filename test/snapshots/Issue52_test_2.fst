@@ -15,8 +15,7 @@ returns Int32.t
 ensures exists* v. (x |-> v)
 {
 let mut x : (array Int32.t) = x;
-let idx0 : Int32.t = 0l;
-let mut idx : Int32.t = idx0;
+let mut idx : Int32.t = 0l;
 pts_to_len !x;
 (op_Array_Access (! x) (int32_to_sizet (! idx)));
 }

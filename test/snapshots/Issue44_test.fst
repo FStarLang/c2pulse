@@ -9,7 +9,6 @@ open Pulse.Lib.C
 
 fn bar ()
 {
-let x0 : Int32.t = 1l;
-let mut x : Int32.t = x0;
+let mut x : Int32.t = 1l;
 ();
 }

@@ -47,12 +47,9 @@ ensures pure (as_int n == max_spec (as_int vx) (as_int vy))
 {
 let mut x : (ref Int32.t) = x;
 let mut y : (ref Int32.t) = y;
-let result0 : Int32.t = 0l;
-let mut result : Int32.t = result0;
-let vx1 : Int32.t = (! (! x));
-let mut vx : Int32.t = vx1;
-let vy2 : Int32.t = (! (! y));
-let mut vy : Int32.t = vy2;
+let mut result : Int32.t = 0l;
+let mut vx : Int32.t = (! (! x));
+let mut vy : Int32.t = (! (! y));
 if((int32_to_bool (bool_to_int32 (Int32.gt (! vx) (! vy)))))
 ensures exists* r. (x |-> Frac px vx) ** (y |-> Frac py vy) ** (result |-> r) ** pure (as_int r == max_spec (as_int vx) (as_int vy))
 {
@@ -83,8 +80,7 @@ elim_intro_null !r;
 else
 {
 elim_non_null !r;
-let v3 : Int32.t = (! (! r));
-let mut v : Int32.t = v3;
+let mut v : Int32.t = (! (! r));
 intro_non_null !r;
 (! v);
 };
