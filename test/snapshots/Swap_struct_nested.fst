@@ -121,18 +121,3 @@ fn foo_recover (x:ref foo) (#a0 : bar_spec)
 requires exists* (y: foo). (x |-> y) ** (y.c  `bar_pred` a0)
 ensures exists* w. foo_pred x w ** pure (w == {c = a0})
 {fold foo_pred x ({c = a0}) }
-
-//Dumping the Clang AST.
-// RecordDecl 0x58b06eabb510 </home/t-visinghal/Applications/src/c2pulse/test/general/swap_struct_nested.c:1:9, line:4:1> line:1:16 struct _bar definition
-// |-FieldDecl 0x58b06eabb5c8 <line:2:9, col:13> col:13 x 'int'
-// `-FieldDecl 0x58b06eabb630 <line:3:9, col:13> col:13 y 'int'
-// TypedefDecl 0x58b06eabb6d8 </home/t-visinghal/Applications/src/c2pulse/test/general/swap_struct_nested.c:1:1, line:4:3> col:3 referenced bar 'struct _bar'
-// `-ElaboratedType 0x58b06eabb680 'struct _bar' sugar
-//   `-RecordType 0x58b06eabb590 'struct _bar'
-//     `-Record 0x58b06eabb510 '_bar'
-// RecordDecl 0x58b06eabb748 </home/t-visinghal/Applications/src/c2pulse/test/general/swap_struct_nested.c:7:9, line:9:1> line:7:16 struct _foo definition
-// `-FieldDecl 0x58b06eabb860 <line:8:5, col:9> col:9 c 'bar':'struct _bar'
-// TypedefDecl 0x58b06eabb968 </home/t-visinghal/Applications/src/c2pulse/test/general/swap_struct_nested.c:7:1, line:9:3> col:3 foo 'struct _foo'
-// `-ElaboratedType 0x58b06eabb910 'struct _foo' sugar
-//   `-RecordType 0x58b06eabb7d0 'struct _foo'
-//     `-Record 0x58b06eabb748 '_foo'

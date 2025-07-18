@@ -2,6 +2,7 @@
 #include "Globals.h"
 #include "PulseIR.h"
 #include "clang/AST/ASTContext.h"
+#include "clang/AST/ASTDumperUtils.h"
 #include "clang/AST/Attrs.inc"
 #include "clang/AST/Comment.h"
 #include "clang/AST/CurrentSourceLocExprScope.h"
@@ -3909,30 +3910,34 @@ std::string PulseTransformer::writeToFile() {
     OutFile << OutputString->str();
     
 
-    //Write the Clang C AST at the very end for debugging!
-    std::string Buffer;
-    llvm::raw_string_ostream TempStream(Buffer);
-    const clang::Decl *TUDecl = AstCtx.getTranslationUnitDecl();
+    // //Write the Clang C AST at the very end for debugging!
+    // std::string Buffer;
+    // llvm::raw_string_ostream TempStream(Buffer);
+    // const clang::Decl *TUDecl = AstCtx.getTranslationUnitDecl();
 
-    if (const auto *DC = llvm::dyn_cast<clang::DeclContext>(TUDecl)) {
-      for (const auto *D : DC->decls()) {
-          clang::SourceLocation Loc = D->getLocation();
-          if (Loc.isValid()) {
-              std::string fileName = SM.getFilename(Loc).str();
-              if (fileName == FilePath) {
-                 D->dump(TempStream);
-              }
-          }
-      }
-    }
+    // NoPointerTextDumper NodeDumper(TempStream, AstCtx);
+
+
+    // if (const auto *DC = llvm::dyn_cast<clang::DeclContext>(TUDecl)) {
+    //   for (const auto *D : DC->decls()) {
+    //       clang::SourceLocation Loc = D->getLocation();
+    //       if (Loc.isValid()) {
+    //           std::string fileName = SM.getFilename(Loc).str();
+    //           if (fileName == FilePath) {
+    //              //NodeDumper.dumpBareDeclRef(D);
+    //              D->dump(TempStream);
+    //           }
+    //       }
+    //   }
+    // }
     
-    OutFile << "\n";
-    OutFile << "//Dumping the Clang AST.\n"; 
-    std::istringstream Input(Buffer);
-    std::string Line;
-    while (std::getline(Input, Line)) {
-        OutFile << "// " << Line << "\n";
-    }
+    // OutFile << "\n";
+    // OutFile << "//Dumping the Clang AST.\n"; 
+    // std::istringstream Input(Buffer);
+    // std::string Line;
+    // while (std::getline(Input, Line)) {
+    //     OutFile << "// " << Line << "\n";
+    // }
    
   CodeGen.printSourceLocations();
 

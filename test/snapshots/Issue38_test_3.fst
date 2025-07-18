@@ -62,12 +62,3 @@ fn foo_recover (x:ref foo) (#a0 : Int32.t)
 requires exists* (y: foo). (x |-> y) ** (y.left |-> a0)
 ensures exists* w. foo_pred x w ** pure (w == {left = a0})
 {fold foo_pred x ({left = a0}) }
-
-//Dumping the Clang AST.
-// RecordDecl 0x577584ed0730 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue38_test_3.c:1:9, line:3:1> line:1:16 struct foo definition
-// `-FieldDecl 0x577584ed07e8 <line:2:9, col:13> col:13 left 'int'
-// TypedefDecl 0x577584ed0908 </home/t-visinghal/Applications/src/c2pulse/test/issue-related/issue38_test_3.c:1:1, line:3:4> col:4 foo_ptr 'struct foo *'
-// `-PointerType 0x577584ed08b0 'struct foo *'
-//   `-ElaboratedType 0x577584ed0840 'struct foo' sugar
-//     `-RecordType 0x577584ed07b0 'struct foo'
-//       `-Record 0x577584ed0730 'foo'
