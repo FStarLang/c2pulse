@@ -1352,20 +1352,20 @@ bool PulseVisitor::VisitVarDecl(VarDecl *VD) {
 
 void PulseVisitor::addArrayTy(std::string Match, const Decl *ArrDecl) {
 
-  QualType ElementType;
-  QualType ElementPointeeType;
+  QualType ArrTy;
+  QualType ArrElementType;
   if (auto *ParamDecl = dyn_cast<ParmVarDecl>(ArrDecl)) {
-    ElementType = ParamDecl->getType();
-    ElementPointeeType = ElementType->getPointeeType();
+    ArrTy = ParamDecl->getType();
+    ArrElementType = ArrTy->getPointeeType();
   } else if (auto *Field = dyn_cast<FieldDecl>(ArrDecl)) {
-    ElementType = Field->getType();
-    ElementPointeeType = ElementType->getPointeeType();
+    ArrTy = Field->getType();
+    ArrElementType = ArrTy->getPointeeType();
   }
   else {
     emitErrorWithLocation("Not implemented for declaration type!", &Ctx, ArrDecl->getLocation());
   }
 
-  if (!ElementType->isPointerType() && !ElementType->isArrayType()) {
+  if (!ArrTy->isPointerType() && !ArrTy->isArrayType()) {
     emitErrorWithLocation("Expected type to be a ref or an array!", &Ctx,
                           ArrDecl->getLocation());
   }
@@ -1383,16 +1383,16 @@ void PulseVisitor::addArrayTy(std::string Match, const Decl *ArrDecl) {
     DeclRefExpr *SizeExpr = DeclRefExpr::Create(
         Ctx, NestedNameSpecifierLoc(), SourceLocation(), SizeVar, false,
         SourceLocation(), Ctx.IntTy,
-        clang::Expr::getValueKindForType(ElementPointeeType));
+        clang::Expr::getValueKindForType(ArrElementType));
 
     // Step 4: Create the VLA type
-    QualType VLAType = Ctx.getVariableArrayType(ElementPointeeType, SizeExpr,
+    QualType VLAType = Ctx.getVariableArrayType(ArrElementType, SizeExpr,
                                                 ArraySizeModifier::Normal, 0);
     DeclTyMap.insert(std::make_pair(ArrDecl, VLAType));
 
   } else {
     clang::QualType ConstArrayTy = Ctx.getConstantArrayType(
-        ElementPointeeType, llvm::APInt(32, std::stoi(Match)), nullptr,
+        ArrElementType, llvm::APInt(32, std::stoi(Match)), nullptr,
         ArraySizeModifier::Normal, 0);
     DeclTyMap.insert(std::make_pair(ArrDecl, ConstArrayTy));
   }
