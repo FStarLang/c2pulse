@@ -6,3 +6,5 @@
 !/snapshots/*.fst
 
 .lit_test_times.txt
+
+*_source_range_info.json
