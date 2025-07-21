@@ -344,7 +344,7 @@ void PulseVisitor::inferArrayTypesExpr(Expr *ExprPtr) {
         llvm::outs() << "Found array type!\n";
       } else {
         BaseDecl->dump();
-        emitErrorWithLocation("could not case to VD!", &Ctx,
+        emitErrorWithLocation("could not cast Base to a variable declaration!", &Ctx,
                               ExprPtr->getExprLoc());
       }
     }
@@ -2040,9 +2040,9 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
                   // Implement case when the allocation is not mutated.
                   //  A normal let bind
-                  emitErrorWithLocation("Did not implement case when struct "
-                                        "allocation is not mutated!",
-                                        &Ctx, VD->getLocation());
+                  // emitErrorWithLocation("Did not implement case when struct "
+                  //                       "allocation is not mutated!",
+                  //                       &Ctx, VD->getLocation());
         }
 
         // Any uninitialized declaration that is not a struct
@@ -2299,7 +2299,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
             auto It = RecordToRecordName.find(RecordDecl);
             if (It == RecordToRecordName.end()) {
               emitErrorWithLocation(
-                  "Not implemented record type without typedef decl!", &Ctx,
+                  "Did not find a Name for Struct Declaration!", &Ctx,
                   ME->getBeginLoc());
             }
 
@@ -3022,16 +3022,30 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     return NewConstTerm;
   } else if (auto *FL = dyn_cast<FloatingLiteral>(E)) {
     E->dumpPretty(Ctx);
-    emitErrorWithLocation("Floating Literal not implemented!", &Ctx,
+    emitErrorWithLocation("No support for floats in Pulse!", &Ctx,
                           E->getExprLoc());
   } else if (auto *SL = dyn_cast<StringLiteral>(E)) {
     E->dumpPretty(Ctx);
     emitErrorWithLocation("String Literal not implemented!", &Ctx,
                           E->getExprLoc());
   } else if (auto *CL = dyn_cast<CharacterLiteral>(E)) {
+    
+    // CL->dump();
+    // llvm::outs() << "break\n";
+    // CL->getType().dump();
+    // exit(0);
+    // auto *NewCharConstant = new ConstTerm();
+    // NewCharConstant->CInfo = getSourceInfoFromExpr(CL, Ctx, "", "");
+    // auto CharVal = CL->getValue();
+    // char CVal = static_cast<char>(CharVal);
+    // NewCharConstant->ConstantValue = "'" + std::string(1, CVal) + "'";
+    // NewCharConstant->Symbol = getSymbolKeyForCType(CL->getType(), Ctx);
+    // return NewCharConstant;
+
     E->dumpPretty(Ctx);
-    emitErrorWithLocation("Character Liternal not implemented!", &Ctx,
+    emitErrorWithLocation("Char Literal not implemented!", &Ctx,
                           E->getExprLoc());
+
   } else if (auto *BO = dyn_cast<BinaryOperator>(E)) {
 
     auto *Lhs = BO->getLHS();
