@@ -700,8 +700,7 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
       auto *GenericRelations = new GenericDecl(); 
       GenericRelations->CInfo = getSourceInfoFromDecl(RD, Ctx, "");
       GenericRelations->Ident = "let ";
-      GenericRelations->Ident += StructName + "_relations (s:" + StructName + "_spec) : slprop = \n";
-      GenericRelations->Ident += "pure (\n";
+      GenericRelations->Ident += StructName + "_relations (s:" + StructName + "_spec) : prop = \n";
       //Only for fields that are array.
       for (auto *Fld : RD->fields()){
 
@@ -734,7 +733,7 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
           Counter++;
         }
     }
-    GenericRelations->Ident += ")\n";
+    GenericRelations->Ident += "\n";
     NewModul->Decls.push_back(GenericRelations);
   }
 
@@ -778,7 +777,7 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     }
 
     if (HasArrayTypeFields){
-      GenericPredicate->Ident += "** " + StructName + "_relations s\n";
+      GenericPredicate->Ident += "** pure (" + StructName + "_relations s)\n";
     }
 
 
@@ -894,7 +893,7 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     }
     GhostExplode->Ident += "\n";
     if (HasArrayTypeFields){
-      GhostExplode->Ident += "** " + StructName + "_relations s\n";
+      GhostExplode->Ident += "** pure (" + StructName + "_relations s)\n";
     }
     GhostExplode->Ident += "{unfold " + StructName + "_pred" + "}\n\n";
     NewModul->Decls.push_back(GhostExplode);
@@ -966,7 +965,7 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     if (HasArrayTypeFields){
   
     Counter = 0;
-    NewGhostFunction->Ident += "** (" + StructName + "_relations {\n";
+    NewGhostFunction->Ident += "** pure (" + StructName + "_relations {\n";
     for (auto *Fld : RD->fields()){
       NewGhostFunction->Ident += FieldToUniqueNames[Fld] + " = " + FieldPrefix + std::to_string(Counter);
       if (Counter < NumRecordFields - 1){
