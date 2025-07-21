@@ -63,7 +63,9 @@ ensures exists* (v: anon_name0). (x |-> v) ** (v.x |-> s.x) **
 
 
 ghost
-fn anon_name0_recover (x:ref anon_name0) (#a0 : Int32.t) (#a1 : Int32.t) 
+fn anon_name0_recover (x:ref anon_name0) (#a0 : Int32.t)
+(#a1 : Int32.t)
+
 requires exists* (y: anon_name0). (x |-> y) ** 
 (y.x |-> a0) **
 (y.y |-> a1)
@@ -124,7 +126,8 @@ ensures exists* (v: foo). (x |-> v) ** (v.s `anon_name0_pred` s.s)
 
 
 ghost
-fn foo_recover (x:ref foo) (#a0 : anon_name0_spec) 
+fn foo_recover (x:ref foo) (#a0 : anon_name0_spec)
+
 requires exists* (y: foo). (x |-> y) ** 
 (y.s  `anon_name0_pred` a0)
 ensures exists* w. foo_pred x w ** pure (w == {s = a0})

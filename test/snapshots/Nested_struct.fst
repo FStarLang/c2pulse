@@ -59,7 +59,8 @@ ensures exists* (v: list). (x |-> v) ** (v.next |-> s.next)
 
 
 ghost
-fn list_recover (x:ref list) (#a0 : (ref list)) 
+fn list_recover (x:ref list) (#a0 : (ref list))
+
 requires exists* (y: list). (x |-> y) ** 
 (y.next |-> a0)
 ensures exists* w. list_pred x w ** pure (w == {next = a0})

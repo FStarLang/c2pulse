@@ -63,7 +63,9 @@ ensures exists* (v: bar). (x |-> v) ** (v.x |-> s.x) **
 
 
 ghost
-fn bar_recover (x:ref bar) (#a0 : Int32.t) (#a1 : Int32.t) 
+fn bar_recover (x:ref bar) (#a0 : Int32.t)
+(#a1 : Int32.t)
+
 requires exists* (y: bar). (x |-> y) ** 
 (y.x |-> a0) **
 (y.y |-> a1)
@@ -124,7 +126,8 @@ ensures exists* (v: foo). (x |-> v) ** (v.c `bar_pred` s.c)
 
 
 ghost
-fn foo_recover (x:ref foo) (#a0 : bar_spec) 
+fn foo_recover (x:ref foo) (#a0 : bar_spec)
+
 requires exists* (y: foo). (x |-> y) ** 
 (y.c  `bar_pred` a0)
 ensures exists* w. foo_pred x w ** pure (w == {c = a0})

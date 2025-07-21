@@ -63,7 +63,9 @@ ensures exists* (v: foo). (x |-> v) ** (v.v |-> s.v) **
 
 
 ghost
-fn foo_recover (x:ref foo) (#a0 : Int32.t) (#a1 : (ref foo)) 
+fn foo_recover (x:ref foo) (#a0 : Int32.t)
+(#a1 : (ref foo))
+
 requires exists* (y: foo). (x |-> y) ** 
 (y.v |-> a0) **
 (y.foo0 |-> a1)

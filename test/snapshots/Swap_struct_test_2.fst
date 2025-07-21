@@ -63,7 +63,9 @@ ensures exists* (v: _u32_pair_struct). (x |-> v) ** (v.first |-> s.first) **
 
 
 ghost
-fn _u32_pair_struct_recover (x:ref _u32_pair_struct) (#a0 : UInt32.t) (#a1 : UInt32.t) 
+fn _u32_pair_struct_recover (x:ref _u32_pair_struct) (#a0 : UInt32.t)
+(#a1 : UInt32.t)
+
 requires exists* (y: _u32_pair_struct). (x |-> y) ** 
 (y.first |-> a0) **
 (y.second |-> a1)

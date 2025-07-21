@@ -1411,7 +1411,7 @@ FStarType *PulseVisitor::pulseTyFromDecl(const Decl* D){
     emitErrorWithLocation("Did not expect declaration type!", &Ctx, D->getLocation());
    }
   
-    FStarType *ParamTy;
+    FStarType *PulseTy;
     auto It = DeclTyMap.find(D);
     if (It != DeclTyMap.end()) {
       // Get the qualification
@@ -1424,15 +1424,15 @@ FStarType *PulseVisitor::pulseTyFromDecl(const Decl* D){
             getPulseTyFromCTy(QualType(Ty->getPointeeOrArrayElementType(), 0));
         auto *CTyKeyStr = lookupSymbol(SymbolTable::Array);
         FArrTy->setName(CTyKeyStr);
-        ParamTy = FArrTy;
+        PulseTy = FArrTy;
       } else {
-        ParamTy = getPulseTyFromCTy(DeclTy);
+        PulseTy = getPulseTyFromCTy(DeclTy);
       }
     }
     else {
-      ParamTy = getPulseTyFromCTy(DeclTy);
+      PulseTy = getPulseTyFromCTy(DeclTy);
     }
-    return ParamTy;
+    return PulseTy;
 }
 
 

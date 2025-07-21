@@ -59,7 +59,8 @@ ensures exists* (v: foo). (x |-> v) ** (v.left |-> s.left)
 
 
 ghost
-fn foo_recover (x:ref foo) (#a0 : Int32.t) 
+fn foo_recover (x:ref foo) (#a0 : Int32.t)
+
 requires exists* (y: foo). (x |-> y) ** 
 (y.left |-> a0)
 ensures exists* w. foo_pred x w ** pure (w == {left = a0})

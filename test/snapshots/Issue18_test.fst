@@ -71,7 +71,9 @@ ensures exists* (v: point). (x |-> v) ** (v.px |-> s.px) **
 
 
 ghost
-fn point_recover (x:ref point) (#a0 : Int32.t) (#a1 : Int32.t) 
+fn point_recover (x:ref point) (#a0 : Int32.t)
+(#a1 : Int32.t)
+
 requires exists* (y: point). (x |-> y) ** 
 (y.px |-> a0) **
 (y.py |-> a1)
