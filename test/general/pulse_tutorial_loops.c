@@ -7,11 +7,13 @@ ENSURES(x |-> 0l)
 void count_down (int *x)
 {
   int keep_going = 1;
+  LEMMA (with vx. assert (x |-> vx));
   while (keep_going == 1)
   INVARIANTS(invariant b.
     exists* k v.
       (keep_going |-> k) **
-      (x |-> v) **
+      (x |-> vx) ** (* tedious *)
+      (vx |-> v) **
       pure (as_int v >= 0) **
       pure (b==(k=1l)) **
       pure (k<>1l ==> v==0l)
@@ -36,14 +38,16 @@ int multiply_by_repeated_addition (int x, int y)
 {
   int ctr = 0;
   int acc = 0;
+  LEMMA(with vx vy. assert (x |-> vx) ** (y |-> vy));
   while (ctr < x)
   INVARIANTS(invariant b. 
     exists* c a.
+      (x |-> vx) ** (y |-> vy) ** (* tedious *)
       (ctr |-> c) **
       (acc |-> a) **
-      pure (as_int c <= as_int x) **
-      pure (as_int a == (as_int c * as_int y)) **
-      pure (b == (as_int c < as_int x))
+      pure (as_int c <= as_int vx) **
+      pure (as_int a == (as_int c * as_int vy)) **
+      pure (b == (as_int c < as_int vx))
   )
   {
     ctr = ctr + 1;
@@ -80,15 +84,17 @@ int isum (int n)
   int acc = 0;
   int ctr = 0;
   LEMMA(sum_lemma(as_int !n));
+  LEMMA(with vn. assert (n |-> vn));
   while (ctr < n)
   INVARIANTS(invariant b.
     exists* c a.
+      (n |-> vn) ** (* tedious *)
       (ctr |-> c) **
       (acc |-> a) **
-      pure (as_int c <= as_int n) **
+      pure (as_int c <= as_int vn) **
       pure (as_int c >= 0) **
       pure (as_int c >= 0 ==> as_int a == sum (as_int c)) **
-      pure (b == (as_int c < as_int n))
+      pure (b == (as_int c < as_int vn))
   )
   {
     ctr = ctr + 1;
@@ -126,7 +132,8 @@ void fib_rec (int n, int *cur, int *prev)
   }
   else
   {
-    LEMMA(fib_mono(as_int n) (as_int n - 1));
+    LEMMA (with vn. assert n |-> vn);
+    LEMMA(fib_mono(as_int vn) (as_int vn - 1));
     fib_rec(n - 1, cur, prev);
     int tmp = *cur;
     *cur = *cur + *prev;

@@ -16,10 +16,12 @@ REQUIRES(pts_to_diag r0 r1 v)
 ENSURES(exists* w. pts_to_diag r0 r1 w ** pure (as_int w = 2 * as_int v))
 void double_int(int *r0, int *r1)
 {
-    LEMMA(unfold (pts_to_diag r0 r1 v));
+    LEMMA(with vr0. assert (r0 |-> vr0));
+    LEMMA(with vr1. assert (r1 |-> vr1));
+    LEMMA(unfold (pts_to_diag vr0 vr1 v));
     *r0 = *r0 + *r1;
     *r1 = *r0;
-    LEMMA(fold (pts_to_diag r0 r1));
+    LEMMA(fold (pts_to_diag vr0 vr1));
 }
 
 
@@ -42,10 +44,13 @@ REQUIRES(pure <| fits (+) (snd v) (as_int dy))
 ENSURES(is_point p (fst v + as_int dx, snd v + as_int dy))
 void move(point *p, int dx, int dy)
 {
-  LEMMA(unfold(is_point); point_explode p);
+  LEMMA(with vp. assert (p |-> vp));
+  LEMMA(with vdx. assert (dx |-> vdx));
+  LEMMA(with vdy. assert (dy |-> vdy));
+  LEMMA(unfold(is_point); point_explode vp);
   p->px = p->px + dx;
   p->py = p->py + dy;
-  LEMMA(point_recover p; fold (is_point p (fst v + as_int dx, snd v + as_int dy)));
+  LEMMA(point_recover vp; fold (is_point vp (fst v + as_int vdx, snd v + as_int vdy)));
 }
 
 INCLUDE (
@@ -65,10 +70,11 @@ REQUIRES(pure <| fits (+) (snd v) (as_int dy))
 ENSURES(is_point p (fst v + as_int dx, snd v + as_int dy))
 void move_alt(point *p, int dx, int dy)
 {
-  LEMMA(unfold(is_point); point_explode p);
+  LEMMA(with vp. assert (p |-> vp));
+  LEMMA(unfold(is_point); point_explode vp);
   p->px = p->px + dx;
   p->py = p->py + dy;
-  LEMMA(point_recover p; fold_is_point p);
+  LEMMA(point_recover vp; fold_is_point vp);
 }
 
 
@@ -78,10 +84,11 @@ ENSURES(freeable p)
 point* create_point(int x, int y)
 {
   point* p = (point*)malloc(sizeof(point));
-  LEMMA(point_explode p);
+  LEMMA(with vp. assert (p |-> vp));
+  LEMMA(point_explode vp);
   p->px = x;
   p->py = y;
-  LEMMA(point_recover p; fold_is_point p);
+  LEMMA(point_recover vp; fold_is_point vp);
   return p;
 }
 
@@ -89,7 +96,8 @@ void create_and_move()
 {
   point *p = create_point(0, 0);
   move_alt(p, 1, 1);
-  ASSERT(is_point p (1, 1));
+  LEMMA(with vp. assert (p |-> vp));
+  ASSERT(is_point vp (1, 1));
   LEMMA(unfold is_point);
   free(p);
 }
@@ -107,8 +115,9 @@ REQUIRES(pure <| fits (+) y (as_int dy))
 ENSURES(is_point_curry p (x + as_int dx) (y + as_int dy))
 void move_curry(point *p, int dx, int dy)
 {
-  LEMMA(unfold is_point_curry; point_explode p);
+  LEMMA(with vp. assert (p |-> vp));
+  LEMMA(unfold is_point_curry; point_explode vp);
   p->px = p->px + dx;
   p->py = p->py + dy;
-  LEMMA(point_recover p; fold is_point_curry);
+  LEMMA(point_recover vp; fold is_point_curry);
 }

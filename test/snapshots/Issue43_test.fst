@@ -16,12 +16,11 @@ let mut p : (ref Int32.t) = p;
 
 fn bar ()
 {
-(foo null);
+(foo (null #_));
 }
 
 fn baz ()
 {
-let p0 : (ref Int32.t) = null;
-let mut p : (ref Int32.t) = p0;
+let mut p : (ref Int32.t) = (null #_);
 (foo (! p));
 }

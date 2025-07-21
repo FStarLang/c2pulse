@@ -69,14 +69,19 @@ ENSURES(pure (res <==> Seq.equal s1 s2))
 bool compare(ISARRAY() int *a1, ISARRAY() int *a2, size_t l)
 {
     size_t i = 0;
+    LEMMA(with va1. assert (a1 |-> va1));
+    LEMMA(with va2. assert (a2 |-> va2));
     while( compare_elements(a1, a2, l, i) == 1 )
     INVARIANTS("invariant b.\
         exists* vi vl.\
-            (i |-> vi) ** (a1 |-> Frac p s1) ** (a2 |-> Frac p s2) **\
+            (a1 |-> va1) ** (a2 |-> va2) ** (* tedious *) \
+            (i |-> vi) ** (va1 |-> Frac p s1) ** (va2 |-> Frac p s2) **\
             (l |-> vl) **\
             pure (\
-                SZ.as_int vi <= SZ.as_int vl /\ \
-                (b == (SZ.as_int vi < SZ.as_int vl && Seq.index s1 (SZ.as_int vi) = Seq.index s2 (SZ.as_int vi))) /\ \
+                Seq.length s1 = SZ.as_int vl /\\
+                Seq.length s2 = SZ.as_int vl /\\
+                SZ.as_int vi <= SZ.as_int vl /\\
+                (b == (SZ.as_int vi < SZ.as_int vl && Seq.index s1 (SZ.as_int vi) = Seq.index s2 (SZ.as_int vi))) /\\
                 (forall (i:nat). i < SZ.as_int vi ==> Seq.index s1 i == Seq.index s2 i)            \
             )"
     )

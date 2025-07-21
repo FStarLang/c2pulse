@@ -18,7 +18,9 @@ returns v:int32
 ensures arr |-> Frac p s
 ensures pure (v == Seq.index s (SZ.as_int i) )
 {
-(op_Array_Access arr i);
+let mut arr : (array Int32.t) = arr;
+let mut i : SizeT.t = i;
+(op_Array_Access (! arr) (! i));
 }
 
 fn write_i
@@ -29,7 +31,10 @@ fn write_i
 requires arr |-> s
 ensures exists* s1. (arr |-> s1) ** pure (s1 == Seq.upd s (SZ.as_int i) v)
 {
-arr.(i) <- v;
+let mut arr : (array Int32.t) = arr;
+let mut i : SizeT.t = i;
+let mut v : Int32.t = v;
+(! arr).((! i)) <- (! v);
 }
 
 fn compare_elements
@@ -46,9 +51,13 @@ ensures a1 |-> Frac p s1
 ensures a2 |-> Frac p s2
 ensures pure (res==1l <==> (SZ.as_int i < SZ.as_int l && Seq.index s1 (SZ.as_int i) = Seq.index s2 (SZ.as_int i)))
 {
-if((int32_to_bool (bool_to_int32 (SizeT.lt i l))))
+let mut a1 : (array Int32.t) = a1;
+let mut a2 : (array Int32.t) = a2;
+let mut l : SizeT.t = l;
+let mut i : SizeT.t = i;
+if((int32_to_bool (bool_to_int32 (SizeT.lt (! i) (! l)))))
 {
-if((int32_to_bool (bool_to_int32 (Int32.eq (op_Array_Access a1 i) (op_Array_Access a2 i)))))
+if((int32_to_bool (bool_to_int32 (Int32.eq (op_Array_Access (! a1) (! i)) (op_Array_Access (! a2) (! i))))))
 {
 1l;
 }
@@ -77,11 +86,16 @@ ensures a1 |-> Frac p s1
 ensures a2 |-> Frac p s2
 ensures pure (res <==> Seq.equal s1 s2)
 {
+let mut a1 : (array Int32.t) = a1;
+let mut a2 : (array Int32.t) = a2;
+let mut l : SizeT.t = l;
 let mut i : SizeT.t = (int32_to_sizet 0l);
-while((int32_to_bool (bool_to_int32 (Int32.eq (compare_elements a1 a2 l (! i)) 1l)));
+with va1. assert (a1 |-> va1);
+with va2. assert (a2 |-> va2);
+while((int32_to_bool (bool_to_int32 (Int32.eq (compare_elements (! a1) (! a2) (! l) (! i)) 1l)));
 )
-invariant b.        exists* vi.            (i |-> vi) ** (a1 |-> Frac p s1) ** (a2 |-> Frac p s2) **            pure (                SZ.as_int vi <= SZ.as_int l /\                 (b == (SZ.as_int vi < SZ.as_int l && Seq.index s1 (SZ.as_int vi) = Seq.index s2 (SZ.as_int vi))) /\                 (forall (i:nat). i < SZ.as_int vi ==> Seq.index s1 i == Seq.index s2 i)                        )
+invariant b.        exists* vi vl.            (a1 |-> va1) ** (a2 |-> va2) ** (* tedious *)             (i |-> vi) ** (va1 |-> Frac p s1) ** (va2 |-> Frac p s2) **            (l |-> vl) **            pure (                Seq.length s1 = SZ.as_int vl /\                Seq.length s2 = SZ.as_int vl /\                SZ.as_int vi <= SZ.as_int vl /\                (b == (SZ.as_int vi < SZ.as_int vl && Seq.index s1 (SZ.as_int vi) = Seq.index s2 (SZ.as_int vi))) /\                (forall (i:nat). i < SZ.as_int vi ==> Seq.index s1 i == Seq.index s2 i)                        )
 {
 i := (SizeT.add (! i) (int32_to_sizet 1l));
-};(int32_to_bool ((bool_to_int32 (SizeT.eq (! i) l))));
+};(int32_to_bool ((bool_to_int32 (SizeT.eq (! i) (! l)))));
 }

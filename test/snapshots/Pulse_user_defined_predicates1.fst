@@ -15,10 +15,14 @@ fn double_int
 requires pts_to_diag r0 r1 v
 ensures exists* w. pts_to_diag r0 r1 w ** pure (as_int w = 2 * as_int v)
 {
-unfold (pts_to_diag r0 r1 v);
-r0 := (Int32.add (! r0) (! r1));
-r1 := (! r0);
-fold (pts_to_diag r0 r1);
+let mut r0 : (ref Int32.t) = r0;
+let mut r1 : (ref Int32.t) = r1;
+with vr0. assert (r0 |-> vr0);
+with vr1. assert (r1 |-> vr1);
+unfold (pts_to_diag vr0 vr1 v);
+(! r0) := (Int32.add (! (! r0)) (! (! r1)));
+(! r1) := (! (! r0));
+fold (pts_to_diag vr0 vr1);
 }
 
 noeq
@@ -91,10 +95,16 @@ requires pure <| fits (+) (fst v) (as_int dx)
 requires pure <| fits (+) (snd v) (as_int dy)
 ensures is_point p (fst v + as_int dx, snd v + as_int dy)
 {
-unfold(is_point); point_explode p;
-Mkpoint?.px (! p) := (Int32.add (!(!p).px) dx);
-Mkpoint?.py (! p) := (Int32.add (!(!p).py) dy);
-point_recover p; fold (is_point p (fst v + as_int dx, snd v + as_int dy));
+let mut p : (ref point) = p;
+let mut dx : Int32.t = dx;
+let mut dy : Int32.t = dy;
+with vp. assert (p |-> vp);
+with vdx. assert (dx |-> vdx);
+with vdy. assert (dy |-> vdy);
+unfold(is_point); point_explode vp;
+Mkpoint?.px (! (! p)) := (Int32.add (! (! (! p)).px) (! dx));
+Mkpoint?.py (! (! p)) := (Int32.add (! (! (! p)).py) (! dy));
+point_recover vp; fold (is_point vp (fst v + as_int vdx, snd v + as_int vdy));
 }
 
 ghost fn fold_is_point (p:ref point) (#s:point_spec) requires point_pred p s ensures exists* v. is_point p v ** pure (v == (as_int s.px, as_int s.py)) { fold (is_point p (as_int s.px, as_int s.py)); }
@@ -108,10 +118,14 @@ requires pure <| fits (+) (fst v) (as_int dx)
 requires pure <| fits (+) (snd v) (as_int dy)
 ensures is_point p (fst v + as_int dx, snd v + as_int dy)
 {
-unfold(is_point); point_explode p;
-Mkpoint?.px (! p) := (Int32.add (!(!p).px) dx);
-Mkpoint?.py (! p) := (Int32.add (!(!p).py) dy);
-point_recover p; fold_is_point p;
+let mut p : (ref point) = p;
+let mut dx : Int32.t = dx;
+let mut dy : Int32.t = dy;
+with vp. assert (p |-> vp);
+unfold(is_point); point_explode vp;
+Mkpoint?.px (! (! p)) := (Int32.add (! (! (! p)).px) (! dx));
+Mkpoint?.py (! (! p)) := (Int32.add (! (! (! p)).py) (! dy));
+point_recover vp; fold_is_point vp;
 }
 
 fn create_point
@@ -121,21 +135,25 @@ returns p:ref point
 ensures is_point p (as_int x, as_int y)
 ensures freeable p
 {
-let p : (ref point) = point_alloc ();
-point_explode p;
-Mkpoint?.px (! p) := x;
-Mkpoint?.py (! p) := y;
-point_recover p; fold_is_point p;
-p;
+let mut x : Int32.t = x;
+let mut y : Int32.t = y;
+let mut p : (ref point) = point_alloc ();
+with vp. assert (p |-> vp);
+point_explode vp;
+Mkpoint?.px (! (! p)) := (! x);
+Mkpoint?.py (! (! p)) := (! y);
+point_recover vp; fold_is_point vp;
+(! p);
 }
 
 fn create_and_move ()
 {
-let p : (ref point) = (create_point 0l 0l);
-(move_alt p 1l 1l);
-assert(is_point p (1, 1));
+let mut p : (ref point) = (create_point 0l 0l);
+(move_alt (! p) 1l 1l);
+with vp. assert (p |-> vp);
+assert(is_point vp (1, 1));
 unfold is_point;
-(point_free p);
+(point_free (! p));
 }
 
 let is_point_curry (p:ref point) (x y : int) : slprop = exists* v. point_pred p v ** pure (as_int v.px == x) ** pure (as_int v.py == y)
@@ -149,8 +167,12 @@ requires pure <| fits (+) x (as_int dx)
 requires pure <| fits (+) y (as_int dy)
 ensures is_point_curry p (x + as_int dx) (y + as_int dy)
 {
-unfold is_point_curry; point_explode p;
-Mkpoint?.px (! p) := (Int32.add (!(!p).px) dx);
-Mkpoint?.py (! p) := (Int32.add (!(!p).py) dy);
-point_recover p; fold is_point_curry;
+let mut p : (ref point) = p;
+let mut dx : Int32.t = dx;
+let mut dy : Int32.t = dy;
+with vp. assert (p |-> vp);
+unfold is_point_curry; point_explode vp;
+Mkpoint?.px (! (! p)) := (Int32.add (! (! (! p)).px) (! dx));
+Mkpoint?.py (! (! p)) := (Int32.add (! (! (! p)).py) (! dy));
+point_recover vp; fold is_point_curry;
 }

@@ -14,7 +14,8 @@ returns v:int32
 ensures r |-> 'v
 ensures pure (v == 'v)
 {
-(! r);
+let mut r : (ref Int32.t) = r;
+(! (! r));
 }
 
 fn value_of_explicit
@@ -25,7 +26,8 @@ returns v:int32
 ensures r |-> w
 ensures pure (v == w)
 {
-(! r);
+let mut r : (ref Int32.t) = r;
+(! (! r));
 }
 
 fn assign
@@ -34,7 +36,9 @@ fn assign
 requires r |-> 'v
 ensures r |-> v
 {
-r := v;
+let mut r : (ref Int32.t) = r;
+let mut v : Int32.t = v;
+(! r) := (! v);
 }
 
 fn assign_alt
@@ -43,7 +47,9 @@ fn assign_alt
 requires exists* w. r |-> w
 ensures r |-> v
 {
-r := v;
+let mut r : (ref Int32.t) = r;
+let mut v : Int32.t = v;
+(! r) := (! v);
 }
 
 fn add
@@ -54,7 +60,9 @@ requires r |-> w
 requires pure (fits (+) (as_int w) (as_int n))
 ensures exists* ww. (r |-> ww) ** pure (as_int ww == as_int w + as_int n)
 {
-r := (Int32.add (! r) n);
+let mut r : (ref Int32.t) = r;
+let mut n : Int32.t = n;
+(! r) := (Int32.add (! (! r)) (! n));
 }
 
 fn add_alt
@@ -64,7 +72,9 @@ fn add_alt
 requires r |-> w
 ensures r |-> (w +^ n)
 {
-r := (Int32.add (! r) n);
+let mut r : (ref Int32.t) = r;
+let mut n : Int32.t = n;
+(! r) := (Int32.add (! (! r)) (! n));
 }
 
 fn quadruple
@@ -73,8 +83,9 @@ fn quadruple
 requires r |-> w
 ensures exists* ww. (r |-> ww) ** pure (as_int ww == 4 * as_int w)
 {
-(add r (! r));
-(add r (! r));
+let mut r : (ref Int32.t) = r;
+(add (! r) (! (! r)));
+(add (! r) (! (! r)));
 }
 
 fn value_of_perm
@@ -86,7 +97,8 @@ returns i:int32
 ensures x |-> Frac p w
 ensures pure (i == w)
 {
-(! x);
+let mut x : (ref Int32.t) = x;
+(! (! x));
 }
 
 fn share_ref
@@ -97,7 +109,9 @@ requires x |-> Frac p v
 ensures x |-> Frac (p /. 2.0R) v
 ensures x |-> Frac (p /. 2.0R) v
 {
-share(x);
+let mut x : (ref Int32.t) = x;
+with vx. assert (x |-> vx);
+share(vx);
 }
 
 fn gather_ref
@@ -110,7 +124,9 @@ requires x |-> Frac (p /. 2.0R) v1
 ensures x |-> Frac p v0
 ensures pure (v0 == v1)
 {
-gather(x);
+let mut x : (ref Int32.t) = x;
+with vx. assert (x |-> vx);
+gather(vx);
 }
 
 fn max_perm
@@ -121,7 +137,9 @@ requires x |-> Frac p v
 requires pure (~(p <=. 1.0R))
 ensures pure False
 {
-pts_to_perm_bound x;
+let mut x : (ref Int32.t) = x;
+with vx. assert (x |-> vx);
+pts_to_perm_bound vx;
 unreachable();
 }
 
@@ -135,8 +153,10 @@ ensures s |-> Frac (p /. 2.0R) v
 ensures s |-> Frac (p /. 2.0R) v
 ensures pure (s == r)
 {
-share r;
-r;
+let mut r : (ref Int32.t) = r;
+with vr. assert (r |-> vr);
+share vr;
+(! r);
 }
 
 fn incr
@@ -146,7 +166,8 @@ requires r |-> vr
 requires pure (fits (+) (as_int vr) 1)
 ensures exists* w. (r |-> w) ** pure (as_int w == as_int vr + 1)
 {
-r := (Int32.add (! r) 1l);
+let mut r : (ref Int32.t) = r;
+(! r) := (Int32.add (! (! r)) 1l);
 }
 
 fn one ()
@@ -155,6 +176,6 @@ returns i:int32
 ensures pure (as_int i == 1)
 {
 let mut i : Int32.t = 0l;
-(incr i);
+(incr (i));
 (! i);
 }

@@ -80,7 +80,8 @@ ENSURES(x |-> Frac (p /. 2.0R) v)
 ENSURES(x |-> Frac (p /. 2.0R) v)
 void share_ref(int *x)
 {
-    LEMMA(share(x));
+    LEMMA(with vx. assert (x |-> vx));
+    LEMMA(share(vx));
 }
 
 
@@ -93,7 +94,8 @@ ENSURES(x |-> Frac p v0)
 ENSURES(pure (v0 == v1))
 void gather_ref(int *x)
 {
-    LEMMA(gather(x));
+    LEMMA(with vx. assert (x |-> vx));
+    LEMMA(gather(vx));
 }
 
 
@@ -104,7 +106,8 @@ REQUIRES(pure (~(p <=. 1.0R)))
 ENSURES(pure False)
 void max_perm (int *x)
 {
-    LEMMA(pts_to_perm_bound x);
+    LEMMA(with vx. assert (x |-> vx));
+    LEMMA(pts_to_perm_bound vx);
     LEMMA(unreachable());
 }
 
@@ -117,7 +120,8 @@ ENSURES(s |-> Frac (p /. 2.0R) v)
 ENSURES(pure (s == r))
 int* alias_ref(int *r)
 {
-    LEMMA(share r);
+    LEMMA(with vr. assert (r |-> vr));
+    LEMMA(share vr);
     return r;
 }
 
