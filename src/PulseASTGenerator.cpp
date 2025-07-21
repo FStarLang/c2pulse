@@ -3575,7 +3575,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
   } else if (auto *IC = dyn_cast<ImplicitCastExpr>(E)) {
 
     if (checkIfExprIsNullPtr(IC)) {
-      auto *NullValue = new Name("null");
+      auto *NullValue = new Name("(null #_)");
       NullValue->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
       return NullValue;
     }
@@ -3784,7 +3784,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
         }
       }
     } else if (checkIfExprIsNullPtr(CCastExpr)) {
-      auto NullValue = new Name("null");
+      auto NullValue = new Name("(null #_)");
       NullValue->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
       return NullValue;
     } else {
