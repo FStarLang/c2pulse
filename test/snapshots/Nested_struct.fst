@@ -54,12 +54,14 @@ requires exists* v. list_pred x v
 ghost fn list_explode (x:ref list) (#s:list_spec)
 requires list_pred x s
 ensures exists* (v: list). (x |-> v) ** (v.next |-> s.next)
+
 {unfold list_pred}
 
 
 ghost
 fn list_recover (x:ref list) (#a0 : (ref list)) 
-requires exists* (y: list). (x |-> y) ** (y.next |-> a0)
+requires exists* (y: list). (x |-> y) ** 
+(y.next |-> a0)
 ensures exists* w. list_pred x w ** pure (w == {next = a0})
 {fold list_pred x ({next = a0}) }
 

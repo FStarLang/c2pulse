@@ -56,12 +56,18 @@ requires exists* v. foo_pred x v
 
 ghost fn foo_explode (x:ref foo) (#s:foo_spec)
 requires foo_pred x s
-ensures exists* (v: foo). (x |-> v) ** (v.v |-> s.v) ** (v.foo0 |-> s.foo0)
+ensures exists* (v: foo). (x |-> v) ** (v.v |-> s.v) ** 
+(v.foo0 |-> s.foo0)
+
 {unfold foo_pred}
 
 
 ghost
 fn foo_recover (x:ref foo) (#a0 : Int32.t) (#a1 : (ref foo)) 
-requires exists* (y: foo). (x |-> y) ** (y.v |-> a0) ** (y.foo0 |-> a1)
-ensures exists* w. foo_pred x w ** pure (w == {v = a0; foo0 = a1})
-{fold foo_pred x ({v = a0; foo0 = a1}) }
+requires exists* (y: foo). (x |-> y) ** 
+(y.v |-> a0) **
+(y.foo0 |-> a1)
+ensures exists* w. foo_pred x w ** pure (w == {v = a0;
+foo0 = a1})
+{fold foo_pred x ({v = a0;
+foo0 = a1}) }

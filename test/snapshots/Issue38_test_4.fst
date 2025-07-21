@@ -54,11 +54,13 @@ requires exists* v. foo_pred x v
 ghost fn foo_explode (x:ref foo) (#s:foo_spec)
 requires foo_pred x s
 ensures exists* (v: foo). (x |-> v) ** (v.left |-> s.left)
+
 {unfold foo_pred}
 
 
 ghost
 fn foo_recover (x:ref foo) (#a0 : (ref foo)) 
-requires exists* (y: foo). (x |-> y) ** (y.left |-> a0)
+requires exists* (y: foo). (x |-> y) ** 
+(y.left |-> a0)
 ensures exists* w. foo_pred x w ** pure (w == {left = a0})
 {fold foo_pred x ({left = a0}) }

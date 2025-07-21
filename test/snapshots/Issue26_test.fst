@@ -56,15 +56,21 @@ requires exists* v. point_pred x v
 
 ghost fn point_explode (x:ref point) (#s:point_spec)
 requires point_pred x s
-ensures exists* (v: point). (x |-> v) ** (v.px |-> s.px) ** (v.py |-> s.py)
+ensures exists* (v: point). (x |-> v) ** (v.px |-> s.px) ** 
+(v.py |-> s.py)
+
 {unfold point_pred}
 
 
 ghost
 fn point_recover (x:ref point) (#a0 : Int32.t) (#a1 : Int32.t) 
-requires exists* (y: point). (x |-> y) ** (y.px |-> a0) ** (y.py |-> a1)
-ensures exists* w. point_pred x w ** pure (w == {px = a0; py = a1})
-{fold point_pred x ({px = a0; py = a1}) }
+requires exists* (y: point). (x |-> y) ** 
+(y.px |-> a0) **
+(y.py |-> a1)
+ensures exists* w. point_pred x w ** pure (w == {px = a0;
+py = a1})
+{fold point_pred x ({px = a0;
+py = a1}) }
 
 let is_point (p:ref point) (xy : (int & int)) : slprop = exists* v. point_pred p v ** pure (as_int v.px == fst xy) ** pure (as_int v.py == snd xy)
 ghost fn fold_is_point (p:ref point) (#s:point_spec) requires point_pred p s ensures exists* v. is_point p v ** pure (v == (as_int s.px, as_int s.py)) { fold (is_point p (as_int s.px, as_int s.py)); }

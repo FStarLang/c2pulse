@@ -56,15 +56,21 @@ requires exists* v. bar_pred x v
 
 ghost fn bar_explode (x:ref bar) (#s:bar_spec)
 requires bar_pred x s
-ensures exists* (v: bar). (x |-> v) ** (v.x |-> s.x) ** (v.y |-> s.y)
+ensures exists* (v: bar). (x |-> v) ** (v.x |-> s.x) ** 
+(v.y |-> s.y)
+
 {unfold bar_pred}
 
 
 ghost
 fn bar_recover (x:ref bar) (#a0 : Int32.t) (#a1 : Int32.t) 
-requires exists* (y: bar). (x |-> y) ** (y.x |-> a0) ** (y.y |-> a1)
-ensures exists* w. bar_pred x w ** pure (w == {x = a0; y = a1})
-{fold bar_pred x ({x = a0; y = a1}) }
+requires exists* (y: bar). (x |-> y) ** 
+(y.x |-> a0) **
+(y.y |-> a1)
+ensures exists* w. bar_pred x w ** pure (w == {x = a0;
+y = a1})
+{fold bar_pred x ({x = a0;
+y = a1}) }
 
 noeq
 type foo = {
@@ -113,11 +119,13 @@ requires exists* v. foo_pred x v
 ghost fn foo_explode (x:ref foo) (#s:foo_spec)
 requires foo_pred x s
 ensures exists* (v: foo). (x |-> v) ** (v.c `bar_pred` s.c)
+
 {unfold foo_pred}
 
 
 ghost
 fn foo_recover (x:ref foo) (#a0 : bar_spec) 
-requires exists* (y: foo). (x |-> y) ** (y.c  `bar_pred` a0)
+requires exists* (y: foo). (x |-> y) ** 
+(y.c  `bar_pred` a0)
 ensures exists* w. foo_pred x w ** pure (w == {c = a0})
 {fold foo_pred x ({c = a0}) }

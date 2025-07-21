@@ -48,23 +48,25 @@ public:
 
   void inferArrayTypesStmt(clang::Stmt *InnerStmt);
   void inferArrayTypesExpr(clang::Expr *ExprPtr);
-  void inferDeclType(clang::Decl *Dec, clang::Stmt *InnerStmt);
+  void inferDeclType(const clang::Decl *Dec, clang::Stmt *InnerStmt);
   std::map<clang::Decl *, clang::QualType>
   inferArrayTypes(clang::FunctionDecl *FD);
-  void InferDeclType(clang::Decl *Dec, clang::FunctionDecl *FD);
+  void InferDeclType(const clang::Decl *Dec, clang::FunctionDecl *FD);
   bool checkIsRecursiveExpr(clang::Expr *ExprPtr,
                             clang::FunctionDecl *CurrFunction);
   bool checkIsRecursiveStmt(clang::Stmt *InnerStmt,
                             clang::FunctionDecl *CurrFunction);
   bool checkIsRecursiveFunction(clang::FunctionDecl *FD);
   std::string getNameForRecordDecl(const clang::RecordDecl *RD);
+  void addArrayTy(std::string Match, const clang::Decl *ArrDecl);
+  FStarType *pulseTyFromDecl(const clang::Decl* D);
 
 private:
   std::map<std::string, PulseModul *> Modules;
   clang::Rewriter &TheRewriter;
   clang::ASTContext &Ctx;
   clang::SourceManager &SM;
-  std::map<clang::Decl*, clang::QualType> DeclTyMap;
+  std::map<const clang::Decl*, clang::QualType> DeclTyMap;
   std::map<const clang::Stmt*, std::vector<Slprop*>> StmtToLemmas;
   std::set<const clang::Decl*> IsAllocatedOnHeap;
   std::map<clang::FunctionDecl*, PulseDecl*> DeclarationsMap;

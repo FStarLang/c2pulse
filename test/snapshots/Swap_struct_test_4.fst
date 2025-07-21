@@ -56,15 +56,21 @@ requires exists* v. u32_pair_struct_pred x v
 
 ghost fn u32_pair_struct_explode (x:ref u32_pair_struct) (#s:u32_pair_struct_spec)
 requires u32_pair_struct_pred x s
-ensures exists* (v: u32_pair_struct). (x |-> v) ** (v.first |-> s.first) ** (v.second |-> s.second)
+ensures exists* (v: u32_pair_struct). (x |-> v) ** (v.first |-> s.first) ** 
+(v.second |-> s.second)
+
 {unfold u32_pair_struct_pred}
 
 
 ghost
 fn u32_pair_struct_recover (x:ref u32_pair_struct) (#a0 : UInt32.t) (#a1 : UInt32.t) 
-requires exists* (y: u32_pair_struct). (x |-> y) ** (y.first |-> a0) ** (y.second |-> a1)
-ensures exists* w. u32_pair_struct_pred x w ** pure (w == {first = a0; second = a1})
-{fold u32_pair_struct_pred x ({first = a0; second = a1}) }
+requires exists* (y: u32_pair_struct). (x |-> y) ** 
+(y.first |-> a0) **
+(y.second |-> a1)
+ensures exists* w. u32_pair_struct_pred x w ** pure (w == {first = a0;
+second = a1})
+{fold u32_pair_struct_pred x ({first = a0;
+second = a1}) }
 
 fn new_u32_pair_struct ()
 requires emp

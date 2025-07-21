@@ -55,7 +55,7 @@ std::map<std::string, PulseModul *> &PulseVisitor::getPulseModules() {
   return Modules;
 }
 
-void PulseVisitor::InferDeclType(Decl *Dec, FunctionDecl *FD) {
+void PulseVisitor::InferDeclType(const Decl *Dec, FunctionDecl *FD) {
 
   if (Stmt *Body = FD->getBody()) {
     if (auto *CS = dyn_cast<CompoundStmt>(Body)) {
@@ -181,7 +181,7 @@ bool PulseVisitor::checkIsRecursiveFunction(FunctionDecl *FD) {
   return result;
 }
 
-void PulseVisitor::inferDeclType(Decl *Dec, Stmt *InnerStmt) {
+void PulseVisitor::inferDeclType(const Decl *Dec, Stmt *InnerStmt) {
 
   /// Check the types of the statements here.
   if (auto *DS = dyn_cast<DeclStmt>(InnerStmt)) {
@@ -596,6 +596,8 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     }
 
     //Get Unique Field Names in scope.
+    bool HasArrayTypeFields = false;
+    size_t NumArrayFields = 0;
     llvm::SmallDenseMap<const FieldDecl*, std::string> FieldToUniqueNames;
     for (const FieldDecl *FD : RD->fields()){
 
@@ -614,6 +616,25 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
       }
       //Make sure name of the field is made unique.
       FieldToUniqueNames.insert(std::make_pair(FD, FName));
+
+
+      //Check for Attrs attached to Field declarations. 
+      if (FD->hasAttrs()){
+      for (auto Attr : FD->getAttrs()){
+        if (auto *AnnAttr = dyn_cast<AnnotateAttr>(Attr)){
+          auto AttrName = AnnAttr->getAttrName();
+          auto Annotation = AnnAttr->getAnnotation();
+          std::string Match;
+          auto AnnKind = getPulseAnnKindFromString(Annotation, Match);
+          if (AnnKind != PulseAnnKind::IsArray){
+            emitError("Did not expect an annotation other that ISARRAY!\n");
+          }
+          HasArrayTypeFields = true;
+          NumArrayFields++;
+          addArrayTy(Match, FD);
+        }
+      }
+    }
     }
 
     auto *AbstractType = new GenericDecl();
@@ -622,7 +643,7 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     AbstractType->Ident += "type ";
     AbstractType->Ident += StructName + " = {\n";
     for (const FieldDecl *FD : RD->fields()) {
-      auto *PulseTy = getPulseTyFromCTy(FD->getType());
+      auto *PulseTy = pulseTyFromDecl(FD);
       AbstractType->Ident += FieldToUniqueNames[FD] + ": ref ";
       AbstractType->Ident += PulseTy->print() + ";";
       AbstractType->Ident += "\n";
@@ -651,7 +672,7 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     std::vector<RecordElement *> Fields;
     for (const FieldDecl *FD : RD->fields()) {
       auto *Element = new RecordElement();
-      auto FieldTy = getPulseTyFromCTy(FD->getType());
+      auto FieldTy = pulseTyFromDecl(FD);
       if (FD->getType()->isRecordType()){
         FieldTy->NamedValue += "_spec";
       }
@@ -663,6 +684,61 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     TyconRec->RecordFields = Fields;
     Tycon->TyCons.push_back(TyconRec);
     NewModul->Decls.push_back(Tycon);
+
+
+    //Issue: https://github.com/FStarLang/c2pulse/issues/58
+    // let engine_record_t_relations (s:engine_record_t_spec) : slprop =
+    //   pure (
+    //     Pulse.Lib.Array.length s.l0_image_header == Pulse.Lib.C.SizeT.as_int s.l0_image_header_size /\
+    //     Pulse.Lib.Array.length s.l0_image_header_sig == 64 /\
+    //     Pulse.Lib.Array.length s.l0_binary == Pulse.Lib.C.SizeT.as_int s.l0_binary_size /\
+    //     Pulse.Lib.Array.length s.l0_binary_hash == 64 /\ //<MACRO EXPANSION OF DICE_DIGEST_LEN> /\
+    //     Pulse.Lib.Array.length s.l0_image_auth_pubkey == 32  
+    //   )
+    size_t Counter = 0; 
+    if (HasArrayTypeFields){
+      auto *GenericRelations = new GenericDecl(); 
+      GenericRelations->CInfo = getSourceInfoFromDecl(RD, Ctx, "");
+      GenericRelations->Ident = "let ";
+      GenericRelations->Ident += StructName + "_relations (s:" + StructName + "_spec) : slprop = \n";
+      GenericRelations->Ident += "pure (\n";
+      //Only for fields that are array.
+      for (auto *Fld : RD->fields()){
+
+        auto It = DeclTyMap.find(Fld);
+        if (It != DeclTyMap.end()){
+          auto Len = It->second;
+          auto *ArrType = Len->getAsArrayTypeUnsafe();
+          if (!ArrType){
+            emitErrorWithLocation("Could not get Type of Array", &Ctx, Fld->getLocation());
+          }
+          if (const auto *constArray = dyn_cast<ConstantArrayType>(ArrType)) {
+            llvm::APInt size = constArray->getSize();
+            uint64_t ArraySize = size.getLimitedValue();
+            GenericRelations->Ident += "Pulse.Lib.Array.length s." + Fld->getNameAsString() + " == " + std::to_string(ArraySize);
+            if (Counter < NumArrayFields - 1){
+              GenericRelations->Ident += " /\\\n";
+            }
+          }
+          else if (const auto *VarArray = dyn_cast<VariableArrayType>(ArrType)){
+            auto ArrSize = VarArray->getSizeExpr();
+            std::string ArrSizeStr;
+            llvm::raw_string_ostream ArrSizeStream(ArrSizeStr);
+            PrintingPolicy policy(Ctx.getLangOpts());
+            ArrSize->printPretty(ArrSizeStream, nullptr, policy);
+            GenericRelations->Ident += "Pulse.Lib.Array.length s." + Fld->getNameAsString() + " == " + "Pulse.Lib.C.SizeT.as_int s." + ArrSizeStream.str();
+            if (Counter < NumArrayFields - 1){
+              GenericRelations->Ident += " /\\\n";
+            }
+          }
+          Counter++;
+        }
+    }
+    GenericRelations->Ident += ")\n";
+    NewModul->Decls.push_back(GenericRelations);
+  }
+
+
 
     // Generate predicate
     // 3. A predicate that relates a u32_pair_struct to its specification
@@ -676,11 +752,11 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     GenericPredicate->Ident = "let ";
     GenericPredicate->Ident += StructName + "_pred (x:ref " +  StructName + ") (s:" + StructName + "_spec) : slprop =\n";
     GenericPredicate->Ident += "exists* (y: " + StructName + "). (x |-> y) **\n";
-    size_t Counter = 0;
+    Counter = 0;
     for (auto *Fld : RD->fields()){
 
         if (Fld->getType()->isRecordType()){
-          auto FieldTy = getPulseTyFromCTy(Fld->getType());
+          auto FieldTy = pulseTyFromDecl(Fld);
           GenericPredicate->Ident += FieldTy->print() + "_pred ";
           GenericPredicate->Ident += "y.";
           GenericPredicate->Ident += FieldToUniqueNames[Fld]; 
@@ -700,6 +776,12 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
         Counter++;
         GenericPredicate->Ident += "\n";
     }
+
+    if (HasArrayTypeFields){
+      GenericPredicate->Ident += "** " + StructName + "_relations s\n";
+    }
+
+
     NewModul->Decls.push_back(GenericPredicate);
 
     // Auto Generated functions for Stack Allocated Structs.
@@ -797,7 +879,7 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     for (auto *Fld : RD->fields()){
       GhostExplode->Ident += "(v." + FieldToUniqueNames[Fld];
       if (Fld->getType()->isRecordType()){
-        auto *FieldTy = getPulseTyFromCTy(Fld->getType());
+        auto *FieldTy = pulseTyFromDecl(Fld);
         GhostExplode->Ident += " `" + FieldTy->print() + "_pred` ";
       }
       else {
@@ -807,9 +889,13 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
       if (Counter < NumRecordFields - 1){
         GhostExplode->Ident += " ** ";
       }
+      GhostExplode->Ident += "\n";
       Counter++;
     }
     GhostExplode->Ident += "\n";
+    if (HasArrayTypeFields){
+      GhostExplode->Ident += "** " + StructName + "_relations s\n";
+    }
     GhostExplode->Ident += "{unfold " + StructName + "_pred" + "}\n\n";
     NewModul->Decls.push_back(GhostExplode);
 
@@ -830,7 +916,7 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     Counter = 0;
     for (auto *Fld : RD->fields()) {
       auto Ty = Fld->getType(); 
-      auto *PulseTy = getPulseTyFromCTy(Ty);
+      auto *PulseTy = pulseTyFromDecl(Fld);
       NewGhostFunction->Ident += "(";
       NewGhostFunction->Ident += "#" + FieldPrefix + std::to_string(Counter) + " : ";
       if (Fld->getType()->isRecordType()){
@@ -839,19 +925,19 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
       else {
         NewGhostFunction->Ident += PulseTy->print();
       }
-      NewGhostFunction->Ident += ") ";
+      NewGhostFunction->Ident += ")\n";
       Counter++;
     }
     NewGhostFunction->Ident += "\n";
 
-    NewGhostFunction->Ident += "requires exists* (y: " + StructName + "). (x |-> y) ** ";
+    NewGhostFunction->Ident += "requires exists* (y: " + StructName + "). (x |-> y) ** \n";
     Counter = 0;
     for (auto *Fld : RD->fields()){
       NewGhostFunction->Ident += "(";
       NewGhostFunction->Ident += "y.";
       NewGhostFunction->Ident += FieldToUniqueNames[Fld] + " ";
       if (Fld->getType()->isRecordType()){
-        auto *FieldTy = getPulseTyFromCTy(Fld->getType());
+        auto *FieldTy = pulseTyFromDecl(Fld);
         NewGhostFunction->Ident += " `" + FieldTy->print() + "_pred` ";
       }
       else{
@@ -861,10 +947,37 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
       NewGhostFunction->Ident += ")";
 
       if (Counter < NumRecordFields - 1){
-        NewGhostFunction->Ident += " ** ";
+        NewGhostFunction->Ident += " **\n";
+      }
+      // NewGhostFunction->Ident += "\n";
+      Counter++;
+    }
+
+  //   (engine_record_t_relations {
+  //   l0_image_header_size = a0;
+  //   l0_image_header = a1;
+  //   l0_image_header_sig = a2; 
+  //   l0_binary_size = a3; 
+  //   l0_binary = a4; 
+  //   l0_binary_hash = a5;
+  //   l0_image_auth_pubkey = a6
+  // })
+
+    if (HasArrayTypeFields){
+  
+    Counter = 0;
+    NewGhostFunction->Ident += "** (" + StructName + "_relations {\n";
+    for (auto *Fld : RD->fields()){
+      NewGhostFunction->Ident += FieldToUniqueNames[Fld] + " = " + FieldPrefix + std::to_string(Counter);
+      if (Counter < NumRecordFields - 1){
+        NewGhostFunction->Ident += ";\n";
       }
       Counter++;
     }
+    NewGhostFunction->Ident += "})\n";
+  }
+
+
     NewGhostFunction->Ident += "\n";
 
     NewGhostFunction->Ident += "ensures exists* w. " + StructName + "_pred x w ** pure (w == {";
@@ -877,7 +990,7 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
       TempStr += std::to_string(Counter);
 
       if (Counter < NumRecordFields - 1){
-        TempStr += "; ";
+        TempStr += ";\n";
       }
       Counter++;
     }
@@ -1237,6 +1350,135 @@ bool PulseVisitor::VisitVarDecl(VarDecl *VD) {
   return true;
 }
 
+
+
+void PulseVisitor::addArrayTy(std::string Match, const Decl *ArrDecl){
+   
+    QualType ElementType;
+    if (auto *ParamDecl = dyn_cast<ParmVarDecl>(ArrDecl)){
+          ElementType = ParamDecl->getType()->getPointeeType();
+    }
+    else if (auto *Field = dyn_cast<FieldDecl>(ArrDecl)){
+      ElementType = Field->getType()->getPointeeType();
+    }
+
+
+            //   // Add type to map.
+            // // Make a clang Array Type
+            // // Try to get element type
+            // if (!ArrDecl->getType()->isPointerType() &&
+            //     !ArrDecl->getType()->isArrayType()) {
+            //   emitErrorWithLocation(
+            //       "Expected parameter to be a ref or an array!", &Ctx,
+            //       ArrDecl->getExprLoc());
+            // }
+
+
+            if (!std::regex_match(Match, std::regex("[-+]?[0-9]+"))) {
+
+              // Step 2: Create a VarDecl for the size variable 'n'
+              // We should check here is the length is a constant or of variable
+              // array type.
+              IdentifierInfo &Id = Ctx.Idents.get(Match);
+              VarDecl *SizeVar = VarDecl::Create(
+                  Ctx, Ctx.getTranslationUnitDecl(), SourceLocation(),
+                  SourceLocation(), &Id, Ctx.IntTy, nullptr, SC_Auto);
+
+              // Step 3: Create a DeclRefExpr to refer to 'n'
+              DeclRefExpr *SizeExpr = DeclRefExpr::Create(
+                  Ctx, NestedNameSpecifierLoc(), SourceLocation(), SizeVar,
+                  false, SourceLocation(), Ctx.IntTy,
+                  clang::Expr::getValueKindForType(ElementType));
+
+              // Step 4: Create the VLA type
+              QualType VLAType = Ctx.getVariableArrayType(
+                  ElementType, SizeExpr, ArraySizeModifier::Normal, 0);
+              // llvm::outs() << "Print the element type here!!!\n";
+              // llvm::outs() <<
+              // QualType(VLAType->getPointeeOrArrayElementType(), 0);
+              // llvm::outs() << "End of element type!" << "\n"; exit(1);
+              DeclTyMap.insert(std::make_pair(ArrDecl, VLAType));
+              
+              // if (!Match.empty()) {
+              //   auto *NewRequires = new Requires();
+              //   NewRequires->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
+              //   NewRequires->Ann = "pure (length " + Param->getNameAsString() +
+              //                      " == SizeT.v " + Match + ")";
+              //   auto &Arr = FDefn->Annotation;
+              //   Arr.insert(Arr.begin(), NewRequires);
+              // }
+
+            } else {
+              clang::QualType ConstArrayTy = Ctx.getConstantArrayType(
+                  ElementType, llvm::APInt(32, std::stoi(Match)), nullptr,
+                  ArraySizeModifier::Normal, 0);
+              DeclTyMap.insert(std::make_pair(ArrDecl, ConstArrayTy));
+              // if (!Match.empty()) {
+              //   auto *NewRequires = new Requires();
+              //   NewRequires->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
+              //   NewRequires->Ann = "pure (length " + ArrDecl->getNameAsString() +
+              //                      " == SizeT.v " + Match + "sz)";
+              //   auto &Arr = FDefn->Annotation;
+              //   Arr.insert(Arr.begin(), NewRequires);
+              // }
+            }
+          }
+
+FStarType *PulseVisitor::pulseTyFromDecl(const Decl* D){
+
+   QualType DeclTy; 
+   if (auto *P = dyn_cast<ParmVarDecl>(D)){
+    DeclTy = P->getType();
+   }
+   else if (auto *FD = dyn_cast<FieldDecl>(D)){
+    DeclTy = FD->getType();
+   }
+   else {
+    emitErrorWithLocation("Did not expect declaration type!", &Ctx, D->getLocation());
+   }
+  
+    FStarType *ParamTy;
+    auto It = DeclTyMap.find(D);
+    if (It != DeclTyMap.end()) {
+      // Get the qualification
+      auto Ty = It->second;
+      if (Ty->isArrayType() || Ty->isConstantArrayType() ||
+          Ty->isVariableArrayType()) {
+        auto *FArrTy = new FStarArrType();
+        FArrTy->CInfo = getSourceInfoFromDecl(D, Ctx, "");
+        FArrTy->ElementType =
+            getPulseTyFromCTy(QualType(Ty->getPointeeOrArrayElementType(), 0));
+        auto *CTyKeyStr = lookupSymbol(SymbolTable::Array);
+        FArrTy->setName(CTyKeyStr);
+        ParamTy = FArrTy;
+      } else {
+        ParamTy = getPulseTyFromCTy(DeclTy);
+      }
+    // } else {
+    //   InferDeclType(D, D->getParentFunctionOrMethod());
+    //   auto It = DeclTyMap.find(D);
+    //   if (It != DeclTyMap.end()) {
+    //     auto Ty = It->second;
+    //     auto *FArrTy = new FStarArrType();
+    //     FArrTy->CInfo = getSourceInfoFromDecl(D, Ctx, "");
+    //     FArrTy->ElementType =
+    //         getPulseTyFromCTy(QualType(Ty->getPointeeOrArrayElementType(), 0));
+    //     auto *CTyKeyStr = lookupSymbol(SymbolTable::Array);
+    //     FArrTy->setName(CTyKeyStr);
+    //     ParamTy = FArrTy;
+
+    //   } else {
+    //     ParamTy = getPulseTyFromCTy(Param->getType());
+    //   }
+    }
+    else {
+      ParamTy = getPulseTyFromCTy(DeclTy);
+    }
+    return ParamTy;
+}
+
+
+
 bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   
   //If this is a declaration and it does have a function body, we ignore it.
@@ -1275,7 +1517,8 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   std::replace(FileNameStr.begin(), FileNameStr.end(), '.', '_');
 
   std::string ClangModuleName = FileNameStr;
-  inferArrayTypes(FD);
+  //Don't infer array types automatically but get that from ISARRAY
+  //inferArrayTypes(FD);
 
   auto *FDefn = new _PulseFnDefn();
   FDefn->Name = FuncName;
@@ -1554,7 +1797,8 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
         ParamTy = getPulseTyFromCTy(Param->getType());
       }
     } else {
-      InferDeclType(Param, FD);
+      //Try to infer automatically but this is commented out for now.
+      //InferDeclType(Param, FD);
       auto It = DeclTyMap.find(Param);
       if (It != DeclTyMap.end()) {
         auto Ty = It->second;
