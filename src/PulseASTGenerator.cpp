@@ -1350,79 +1350,50 @@ bool PulseVisitor::VisitVarDecl(VarDecl *VD) {
   return true;
 }
 
+void PulseVisitor::addArrayTy(std::string Match, const Decl *ArrDecl) {
 
+  QualType ElementType;
+  if (auto *ParamDecl = dyn_cast<ParmVarDecl>(ArrDecl)) {
+    ElementType = ParamDecl->getType()->getPointeeType();
+  } else if (auto *Field = dyn_cast<FieldDecl>(ArrDecl)) {
+    ElementType = Field->getType()->getPointeeType();
+  }
+  else {
+    emitErrorWithLocation("Not implemented for declaration type!", &Ctx, ArrDecl->getLocation());
+  }
 
-void PulseVisitor::addArrayTy(std::string Match, const Decl *ArrDecl){
-   
-    QualType ElementType;
-    if (auto *ParamDecl = dyn_cast<ParmVarDecl>(ArrDecl)){
-          ElementType = ParamDecl->getType()->getPointeeType();
-    }
-    else if (auto *Field = dyn_cast<FieldDecl>(ArrDecl)){
-      ElementType = Field->getType()->getPointeeType();
-    }
+  if (!ElementType->isPointerType() && !ElementType->isArrayType()) {
+    emitErrorWithLocation("Expected type to be a ref or an array!", &Ctx,
+                          ArrDecl->getLocation());
+  }
 
+  if (!std::regex_match(Match, std::regex("[-+]?[0-9]+"))) {
+    // Step 2: Create a VarDecl for the size variable 'n'
+    // We should check here is the length is a constant or of variable
+    // array type.
+    IdentifierInfo &Id = Ctx.Idents.get(Match);
+    VarDecl *SizeVar =
+        VarDecl::Create(Ctx, Ctx.getTranslationUnitDecl(), SourceLocation(),
+                        SourceLocation(), &Id, Ctx.IntTy, nullptr, SC_Auto);
 
-            //   // Add type to map.
-            // // Make a clang Array Type
-            // // Try to get element type
-            // if (!ArrDecl->getType()->isPointerType() &&
-            //     !ArrDecl->getType()->isArrayType()) {
-            //   emitErrorWithLocation(
-            //       "Expected parameter to be a ref or an array!", &Ctx,
-            //       ArrDecl->getExprLoc());
-            // }
+    // Step 3: Create a DeclRefExpr to refer to 'n'
+    DeclRefExpr *SizeExpr =
+        DeclRefExpr::Create(Ctx, NestedNameSpecifierLoc(), SourceLocation(),
+                            SizeVar, false, SourceLocation(), Ctx.IntTy,
+                            clang::Expr::getValueKindForType(ElementType));
 
+    // Step 4: Create the VLA type
+    QualType VLAType = Ctx.getVariableArrayType(ElementType, SizeExpr,
+                                                ArraySizeModifier::Normal, 0);
+    DeclTyMap.insert(std::make_pair(ArrDecl, VLAType));
 
-            if (!std::regex_match(Match, std::regex("[-+]?[0-9]+"))) {
-
-              // Step 2: Create a VarDecl for the size variable 'n'
-              // We should check here is the length is a constant or of variable
-              // array type.
-              IdentifierInfo &Id = Ctx.Idents.get(Match);
-              VarDecl *SizeVar = VarDecl::Create(
-                  Ctx, Ctx.getTranslationUnitDecl(), SourceLocation(),
-                  SourceLocation(), &Id, Ctx.IntTy, nullptr, SC_Auto);
-
-              // Step 3: Create a DeclRefExpr to refer to 'n'
-              DeclRefExpr *SizeExpr = DeclRefExpr::Create(
-                  Ctx, NestedNameSpecifierLoc(), SourceLocation(), SizeVar,
-                  false, SourceLocation(), Ctx.IntTy,
-                  clang::Expr::getValueKindForType(ElementType));
-
-              // Step 4: Create the VLA type
-              QualType VLAType = Ctx.getVariableArrayType(
-                  ElementType, SizeExpr, ArraySizeModifier::Normal, 0);
-              // llvm::outs() << "Print the element type here!!!\n";
-              // llvm::outs() <<
-              // QualType(VLAType->getPointeeOrArrayElementType(), 0);
-              // llvm::outs() << "End of element type!" << "\n"; exit(1);
-              DeclTyMap.insert(std::make_pair(ArrDecl, VLAType));
-              
-              // if (!Match.empty()) {
-              //   auto *NewRequires = new Requires();
-              //   NewRequires->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
-              //   NewRequires->Ann = "pure (length " + Param->getNameAsString() +
-              //                      " == SizeT.v " + Match + ")";
-              //   auto &Arr = FDefn->Annotation;
-              //   Arr.insert(Arr.begin(), NewRequires);
-              // }
-
-            } else {
-              clang::QualType ConstArrayTy = Ctx.getConstantArrayType(
-                  ElementType, llvm::APInt(32, std::stoi(Match)), nullptr,
-                  ArraySizeModifier::Normal, 0);
-              DeclTyMap.insert(std::make_pair(ArrDecl, ConstArrayTy));
-              // if (!Match.empty()) {
-              //   auto *NewRequires = new Requires();
-              //   NewRequires->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
-              //   NewRequires->Ann = "pure (length " + ArrDecl->getNameAsString() +
-              //                      " == SizeT.v " + Match + "sz)";
-              //   auto &Arr = FDefn->Annotation;
-              //   Arr.insert(Arr.begin(), NewRequires);
-              // }
-            }
-          }
+  } else {
+    clang::QualType ConstArrayTy =
+        Ctx.getConstantArrayType(ElementType, llvm::APInt(32, std::stoi(Match)),
+                                 nullptr, ArraySizeModifier::Normal, 0);
+    DeclTyMap.insert(std::make_pair(ArrDecl, ConstArrayTy));
+  }
+}
 
 FStarType *PulseVisitor::pulseTyFromDecl(const Decl* D){
 
@@ -1454,22 +1425,6 @@ FStarType *PulseVisitor::pulseTyFromDecl(const Decl* D){
       } else {
         ParamTy = getPulseTyFromCTy(DeclTy);
       }
-    // } else {
-    //   InferDeclType(D, D->getParentFunctionOrMethod());
-    //   auto It = DeclTyMap.find(D);
-    //   if (It != DeclTyMap.end()) {
-    //     auto Ty = It->second;
-    //     auto *FArrTy = new FStarArrType();
-    //     FArrTy->CInfo = getSourceInfoFromDecl(D, Ctx, "");
-    //     FArrTy->ElementType =
-    //         getPulseTyFromCTy(QualType(Ty->getPointeeOrArrayElementType(), 0));
-    //     auto *CTyKeyStr = lookupSymbol(SymbolTable::Array);
-    //     FArrTy->setName(CTyKeyStr);
-    //     ParamTy = FArrTy;
-
-    //   } else {
-    //     ParamTy = getPulseTyFromCTy(Param->getType());
-    //   }
     }
     else {
       ParamTy = getPulseTyFromCTy(DeclTy);
