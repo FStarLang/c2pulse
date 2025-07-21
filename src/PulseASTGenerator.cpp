@@ -1353,10 +1353,13 @@ bool PulseVisitor::VisitVarDecl(VarDecl *VD) {
 void PulseVisitor::addArrayTy(std::string Match, const Decl *ArrDecl) {
 
   QualType ElementType;
+  QualType ElementPointeeType;
   if (auto *ParamDecl = dyn_cast<ParmVarDecl>(ArrDecl)) {
-    ElementType = ParamDecl->getType()->getPointeeType();
+    ElementType = ParamDecl->getType();
+    ElementPointeeType = ElementType->getPointeeType();
   } else if (auto *Field = dyn_cast<FieldDecl>(ArrDecl)) {
-    ElementType = Field->getType()->getPointeeType();
+    ElementType = Field->getType();
+    ElementPointeeType = ElementType->getPointeeType();
   }
   else {
     emitErrorWithLocation("Not implemented for declaration type!", &Ctx, ArrDecl->getLocation());
@@ -1377,20 +1380,20 @@ void PulseVisitor::addArrayTy(std::string Match, const Decl *ArrDecl) {
                         SourceLocation(), &Id, Ctx.IntTy, nullptr, SC_Auto);
 
     // Step 3: Create a DeclRefExpr to refer to 'n'
-    DeclRefExpr *SizeExpr =
-        DeclRefExpr::Create(Ctx, NestedNameSpecifierLoc(), SourceLocation(),
-                            SizeVar, false, SourceLocation(), Ctx.IntTy,
-                            clang::Expr::getValueKindForType(ElementType));
+    DeclRefExpr *SizeExpr = DeclRefExpr::Create(
+        Ctx, NestedNameSpecifierLoc(), SourceLocation(), SizeVar, false,
+        SourceLocation(), Ctx.IntTy,
+        clang::Expr::getValueKindForType(ElementPointeeType));
 
     // Step 4: Create the VLA type
-    QualType VLAType = Ctx.getVariableArrayType(ElementType, SizeExpr,
+    QualType VLAType = Ctx.getVariableArrayType(ElementPointeeType, SizeExpr,
                                                 ArraySizeModifier::Normal, 0);
     DeclTyMap.insert(std::make_pair(ArrDecl, VLAType));
 
   } else {
-    clang::QualType ConstArrayTy =
-        Ctx.getConstantArrayType(ElementType, llvm::APInt(32, std::stoi(Match)),
-                                 nullptr, ArraySizeModifier::Normal, 0);
+    clang::QualType ConstArrayTy = Ctx.getConstantArrayType(
+        ElementPointeeType, llvm::APInt(32, std::stoi(Match)), nullptr,
+        ArraySizeModifier::Normal, 0);
     DeclTyMap.insert(std::make_pair(ArrDecl, ConstArrayTy));
   }
 }
