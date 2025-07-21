@@ -162,7 +162,10 @@ for file in "${SRC_FILES[@]}"; do
 
   echo "  Checking: [ $file ] against snapshot [ $snapshot ]"
 
-  if diff_output=$(diff -u "$file" "$snapshot"); then
+  if [ -v ACCEPT_DIFF ]; then
+    cp "$file" "$snapshot"
+    echo "    ✔ OK: updated $file snapshot."
+  elif diff_output=$(diff -u "$file" "$snapshot"); then
     echo "    ✔ OK: $file matches snapshot."
   else
     echo "    ❌ Mismatch found in $file!"
