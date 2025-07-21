@@ -550,7 +550,7 @@ std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
       break;
     }
     default: {
-      CT->dumpPretty();
+      //CT->dumpPretty();
       emitError("Did not expect pulse type!");
       break;
     }
@@ -777,7 +777,6 @@ std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
     PulseLocsToCLocs.push_back(std::make_pair(Range, T->getCSourceInfo()));
 
   }
-
   else {
     T->dumpPretty();
     emitError("Did not expect Pulse AST Node!");

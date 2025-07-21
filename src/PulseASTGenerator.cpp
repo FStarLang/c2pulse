@@ -3580,6 +3580,29 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
           CallAppE->pushArg(ArgTerm);
         }
       }
+      else {
+        auto Ty = Arg->getType();
+        auto PointeeType = Ty->getPointeeType();
+        if (Ty->isPointerType() && PointeeType->isStructureType()) {
+          auto *RecordTy = PointeeType->getAsStructureType();
+          auto *RecDec = RecordTy->getDecl();
+          auto It = RecordToRecordName.find(RecDec);
+          if (It == RecordToRecordName.end()) {
+            emitError("Could not find type name for Record!");
+          }
+          auto StructName = It->second;
+          auto NewCallName = StructName + "_free";
+          CallAppE->makeCallName(NewCallName);
+          auto *ArgTerm = getTermFromCExpr(Arg, MutAnalyzer, ExprsBefore, CE,
+                                           ParentType, Module);
+          CallAppE->pushArg(ArgTerm);
+        } else {
+          CallAppE->makeCallName(CallName + "_ref");
+          auto *ArgTerm = getTermFromCExpr(Arg, MutAnalyzer, ExprsBefore, CE,
+                                           ParentType, Module);
+          CallAppE->pushArg(ArgTerm);
+        }
+      }
     }
 
     // Wrap Call expr in Paren Node
