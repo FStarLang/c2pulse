@@ -83,6 +83,13 @@ jobs:
         path: external/llvm-project/build
         key: llvm-${{ runner.os }}-${{ runner.arch }}-${{ steps.commits.outputs.LLVMCOMMIT }}
 
+    - name: Save ccache
+      if: always()
+      uses: actions/cache/save@v4
+      with:
+        path: ccache
+        key: ccache-${{ runner.os }}-${{ runner.arch }}
+
     - name: Try fetch built F*
       id: cache-fstar
       uses: actions/cache/restore@v4
@@ -128,14 +135,14 @@ jobs:
         eval $(opam env)
         ./build.sh
 
-    - name: Run tests
-      run: |
-        eval $(opam env)
-        ./test_runner.sh
-
-    - name: Save ccache
+    - name: Save ccache, again
       if: always()
       uses: actions/cache/save@v4
       with:
         path: ccache
         key: ccache-${{ runner.os }}-${{ runner.arch }}
+
+    - name: Run tests
+      run: |
+        eval $(opam env)
+        ./test_runner.sh
