@@ -60,7 +60,8 @@ public:
   std::string getNameForRecordDecl(const clang::RecordDecl *RD);
   void addArrayTy(std::string Match, const clang::Decl *ArrDecl);
   FStarType *pulseTyFromDecl(const clang::Decl* D);
-
+  bool checkAndAddIsArrayTy(const clang::AttrVec &Attrs, const clang::Decl* D);
+  bool isKnownArrayType(const clang::Decl *D);
 private:
   std::map<std::string, PulseModul *> Modules;
   clang::Rewriter &TheRewriter;
