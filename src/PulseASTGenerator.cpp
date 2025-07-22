@@ -1406,6 +1406,9 @@ FStarType *PulseVisitor::pulseTyFromDecl(const Decl* D){
    else if (auto *FD = dyn_cast<FieldDecl>(D)){
     DeclTy = FD->getType();
    }
+   else if (auto *VD = dyn_cast<VarDecl>(D)){
+    DeclTy = VD->getType();
+   }
    else {
     emitErrorWithLocation("Did not expect declaration type!", &Ctx, D->getLocation());
    }
@@ -1969,6 +1972,14 @@ FStarType *PulseVisitor::getPulseTyFromCTy(clang::QualType CType) {
     PulsePointerTy->setPointerToTy(FStartUnderLyingType);
     return PulsePointerTy;
   }
+  else if (CType->isConstantArrayType() || CType->isVariableArrayType()){
+
+    auto *ArrTy = new FStarArrType(); 
+    auto BaseTy = CType->getPointeeOrArrayElementType();
+    auto BaseTyQual = QualType(BaseTy, 0);
+    ArrTy->ElementType = getPulseTyFromCTy(BaseTyQual);
+    return ArrTy;
+  }
 
   PulseTy = new FStarType();
   auto CTyKey = getSymbolKeyForCType(CType, Ctx);
@@ -2244,6 +2255,60 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
                   // emitErrorWithLocation("Did not implement case when struct "
                   //                       "allocation is not mutated!",
                   //                       &Ctx, VD->getLocation());
+        }
+        
+        //Handle non initalized arrays.
+        if (const auto *ArrTy = VD->getType()->getAsArrayTypeUnsafe()) {
+          if (const auto *ConstArrTy = llvm::dyn_cast<ConstantArrayType>(ArrTy)) {
+            // Constant-sized array
+            // Stack Allocated
+            if (VD->hasLocalStorage()){
+              auto *PulseTy = pulseTyFromDecl(VD);
+              auto ArrSize = ConstArrTy->getSize();
+              //[| witness #_ #_; 10sz |]
+              auto *LetInit = new Name("[| witness #_ #_; " + std::to_string(ArrSize.getSExtValue()) + "sz" + " |]");
+              auto Lhs = VD->getNameAsString(); 
+              auto *ConstantArrLet = new LetBinding(Lhs, LetInit, MutOrRef::MUT);
+              ConstantArrLet->VarTy = PulseTy->print();
+              return ConstantArrLet;
+            }
+            else {
+              emitErrorWithLocation("Not implemented non local storage constant array!", &Ctx, VD->getLocation());
+            }
+          } else if (const auto *VarArrTy = llvm::dyn_cast<VariableArrayType>(ArrTy)) {
+            if (VD->hasLocalStorage()){
+              auto *PulseTy = pulseTyFromDecl(VD);
+              auto *SizeExpr = VarArrTy->getSizeExpr(); 
+              SmallVector<PulseStmt*> ExprsBef;
+              auto *PulseSizeExpr = getTermFromCExpr(SizeExpr, Analyzer, ExprsBef, Parent, VD->getType(), Module);
+              auto NewNameForSizeExpr = gensym("size_expr");
+              //This should ideally be casted to a sizeTy. 
+              //Add a cast here if the expression type is not sizet. 
+              //Vidush: TODO check if this is correct.
+              if (SizeExpr->getType().getAsString() != "size_t"){
+                auto *Cast = new AppE(getPulseStringForCType(SizeExpr->getType(), Ctx) + "_to_sizet");
+                Cast->pushArg(PulseSizeExpr);
+                PulseSizeExpr = Cast;
+              }
+              auto *LetSizeExpr = new LetBinding(NewNameForSizeExpr, PulseSizeExpr, MutOrRef::MUT);
+              //hardcoding it because of the cast.
+              LetSizeExpr->VarTy = "SizeT.t";
+              auto *LetInit = new Name("[| witness #_ #_; !" + NewNameForSizeExpr + " |]");
+              auto *NewLetBind = new LetBinding(VD->getNameAsString(), LetInit, MutOrRef::MUT);
+              NewLetBind->VarTy = PulseTy->print();
+              auto *RetSeq = new PulseSequence(); 
+              RetSeq->assignS1(LetSizeExpr);
+              RetSeq->assignS2(NewLetBind);
+              return RetSeq;
+
+            }
+            else {
+              emitErrorWithLocation("Not implemented non local storage constant array!", &Ctx, VD->getLocation());
+            }
+          }
+          else {
+            emitErrorWithLocation("Not implemented array type!", &Ctx, VD->getLocation());
+          }
         }
 
         // Any uninitialized declaration that is not a struct
