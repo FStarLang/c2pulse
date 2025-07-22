@@ -80,4 +80,5 @@ exec "$FSTAR_BIN" \
   --include "$PULSE_DIR" \
   --include "$PULSE_LIB_C_DIR" \
   --query_stats --z3version 4.13.3 \
+  $OTHERFLAGS \
   "${SRC_FILES[@]}" 

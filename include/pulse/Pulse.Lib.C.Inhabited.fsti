@@ -12,3 +12,7 @@ instance inhabited_pair (a:Type) (b:Type) {| wa : inhabited a |} {| wb : inhabit
 instance inhabited_option (a:Type) : inhabited (option a) = {
   witness = None
 }
+
+instance inhabited_uint8 : inhabited FStar.UInt8.t = {
+  witness = 0uy
+}
