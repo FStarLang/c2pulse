@@ -3957,6 +3957,9 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
         if (ICArg->getCastKind() == clang::CK_BitCast){
           Arg = ICArg->getSubExpr();
         }
+        else if (ICArg->getCastKind() == clang::CK_ArrayToPointerDecay){
+          Arg = ICArg->getSubExpr();
+        }
       }
       // Vidush: TODO, check if we should ignore implicit casts here!
       if (auto *ArgDeclR =
