@@ -16,7 +16,7 @@ fn alloc_ref (#a:Type) {| inhabited a |} ()
   ensures  exists* x. r |-> x
   ensures  freeable r
 
-fn free_ref (#a:Type) ([@@@mkey] r:ref a)
+fn free_ref (#a:Type) (r:ref a)
   requires freeable r
   requires exists* x. r |-> x
 

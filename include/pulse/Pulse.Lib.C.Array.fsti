@@ -1,5 +1,7 @@
 module Pulse.Lib.C.Array
 open Pulse
+open Pulse.Lib.C.Inhabited
+
 #lang-pulse
 
 val pts_to_mask #t (arr: array t) (#[full_default()] f: perm) (v: erased (Seq.seq t)) (mask: nat -> prop) : slprop
@@ -113,3 +115,16 @@ ghost fn return_array_at #t (arr: array t) (sub: ref t) #f (#v: erased (Seq.seq 
   requires pure (~(mask i))
   ensures exists* v'. pts_to_mask arr #f v' (fun k -> mask k \/ k == i)
     ** pure (i < Seq.length v /\ v' == Seq.upd v i vsub)
+
+val freeable (#a:Type) (r:array a) : slprop
+
+fn alloc_array (#a:Type) {| inhabited a |} (sz:SizeT.t)
+  returns  r : array a
+  ensures  exists* x. r |-> x
+  ensures  freeable r
+  ensures  pure (length r == SizeT.as_int sz)
+
+fn free_array (#a:Type) (r:array a)
+  requires  exists* x. r |-> x
+  requires  freeable r
+  ensures emp
