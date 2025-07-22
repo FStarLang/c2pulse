@@ -4040,6 +4040,13 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     NewParen->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
     return NewParen;
   } else if (auto *IC = dyn_cast<ImplicitCastExpr>(E)) {
+    
+    //Skip ArrayToPointer Decay casts for now.
+    if (IC->getCastKind() == clang::CK_ArrayToPointerDecay){
+      auto *SubExpr = IC->getSubExpr(); 
+      return getTermFromCExpr(SubExpr, MutAnalyzer, ExprsBefore, Parent,
+                            ParentType, Module);
+    }
 
     if (checkIfExprIsNullPtr(IC)) {
       auto *NullValue = new Name("(null #_)");

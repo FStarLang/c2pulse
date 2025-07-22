@@ -110,17 +110,18 @@ uint8_t* new_array(size_t len)
 ERASED_ARG(#repr:erased _)
 ERASED_ARG(#p:_)
 REQUIRES(is_engine_record record p repr)
-REQUIRES(exists* s. scratch |-> s)
+//REQUIRES(exists* s. scratch |-> s)
 RETURNS(b:bool)
 ENSURES(is_engine_record record p repr)
-ENSURES(exists* s. scratch |-> s) //remove scratch parameter and all its uses once array allocation is supported
-bool authenticate_l0_image (engine_record_t *record, ISARRAY(DICE_DIGEST_LEN)uint8_t *scratch)
+//ENSURES(exists* s. scratch |-> s) //remove scratch parameter and all its uses once array allocation is supported
+bool authenticate_l0_image (engine_record_t *record/*, ISARRAY(DICE_DIGEST_LEN)uint8_t *scratch*/)
 {
     LEMMA(unfold is_engine_record);
     LEMMA(engine_record_t_explode (!record));
     bool valid_header_sig = ed25519_verify(record->l0_image_auth_pubkey, record->l0_image_header, record->l0_image_header_size, record->l0_image_header_sig);
     if (valid_header_sig)
-    {
+    {   
+        ISARRAY(DICE_DIGEST_LEN) uint8_t scratch[DICE_DIGEST_LEN];
         //allocate a scratch of size DICE_HASH_ALG here and use it
         hacl_hash(DICE_HASH_ALG, record->l0_binary_size, record->l0_binary, scratch);
         bool res = compare(DICE_DIGEST_LEN, scratch, record->l0_binary_hash);
