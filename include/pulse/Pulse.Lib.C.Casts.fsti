@@ -28,3 +28,13 @@ let uint64_to_bool (i:UInt64.t) = UInt64.ne i 0UL
 val int32_to_sizet (x: FStar.Int32.t {FStar.Int32.gte x 0l}) : Pure t
   (requires True)
   (ensures fun y -> v y == FStar.Int32.v x)
+
+
+// val int64_to_sizet (x: FStar.Int64.t {FStar.Int64.gte x 0L}) : Pure t
+//   (requires True)
+//   (ensures fun y -> v y == FStar.Int64.v x)
+
+
+// val uint64_to_sizet (x: FStar.UInt64.t {FStar.UInt64.gte x 0UL}) : Pure t
+//   (requires True)
+//   (ensures fun y -> v y == FStar.UInt64.v x)

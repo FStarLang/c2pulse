@@ -1360,6 +1360,10 @@ void PulseVisitor::addArrayTy(std::string Match, const Decl *ArrDecl) {
     ArrTy = Field->getType();
     ArrElementType = ArrTy->getPointeeType();
   }
+  else if (auto *VD = dyn_cast<VarDecl>(ArrDecl)){
+    ArrTy = VD->getType();
+    ArrElementType = ArrTy->getPointeeType();
+  }
   else {
     emitErrorWithLocation("Not implemented for declaration type!", &Ctx, ArrDecl->getLocation());
   }
@@ -1405,6 +1409,9 @@ FStarType *PulseVisitor::pulseTyFromDecl(const Decl* D){
    }
    else if (auto *FD = dyn_cast<FieldDecl>(D)){
     DeclTy = FD->getType();
+   }
+   else if (auto *VD = dyn_cast<VarDecl>(D)){
+    DeclTy = VD->getType();
    }
    else {
     emitErrorWithLocation("Did not expect declaration type!", &Ctx, D->getLocation());
@@ -1925,6 +1932,18 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   return true;
 }
 
+bool PulseVisitor::isKnownArrayType(const Decl *D){
+
+  auto It = DeclTyMap.find(D);
+  if (It != DeclTyMap.end()){
+    auto Ty = It->second; 
+    if (Ty->isArrayType()){
+      return true;
+    }
+  }
+  return false;
+}
+
 
 FStarType *PulseVisitor::getPulseTyFromCTy(clang::QualType CType) {
   // TODO: Check if Ctype is a pointer type, if so, use FStarPointerType.
@@ -1968,6 +1987,14 @@ FStarType *PulseVisitor::getPulseTyFromCTy(clang::QualType CType) {
     auto *FStartUnderLyingType = getPulseTyFromCTy(UnderLyingType);
     PulsePointerTy->setPointerToTy(FStartUnderLyingType);
     return PulsePointerTy;
+  }
+  else if (CType->isConstantArrayType() || CType->isVariableArrayType()){
+
+    auto *ArrTy = new FStarArrType(); 
+    auto BaseTy = CType->getPointeeOrArrayElementType();
+    auto BaseTyQual = QualType(BaseTy, 0);
+    ArrTy->ElementType = getPulseTyFromCTy(BaseTyQual);
+    return ArrTy;
   }
 
   PulseTy = new FStarType();
@@ -2040,6 +2067,28 @@ PulseStmt *PulseVisitor::pulseFromCompoundStmt(Stmt *S,
   return Head;
 }
 
+
+
+bool PulseVisitor::checkAndAddIsArrayTy(const AttrVec &Attrs, const Decl* D){
+  
+  bool IsArray = false;
+  for (auto *Att : Attrs) {
+    if (AnnotateAttr *AnnonAttr = dyn_cast<AnnotateAttr>(Att)) {
+      if (AnnonAttr->getAttrName()->getName() == "pulse") {
+        std::string Match;
+        auto AnnKind = getPulseAnnKindFromString(AnnonAttr->getAnnotation(), Match);
+        if (AnnKind != PulseAnnKind::IsArray){
+          continue;
+        }
+        IsArray = true;
+        addArrayTy(Match, D);
+      }
+    }
+  }
+
+  return IsArray;
+}
+
 PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
                                        Stmt *Parent, PulseModul *Module,
                                        CompoundStmt *CS) {
@@ -2053,121 +2102,200 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
         if (VD->hasInit()) {
           auto *Init = VD->getInit();
-          auto VarName = VD->getNameAsString();
-          // Unsure if we really need the type here.
-          // Though it may be usefuel checking invalid casting operations.
-          // auto VarType = VD->getType();
+          if (auto *Call = dyn_cast<CallExpr>(Init->IgnoreCasts()->IgnoreParens()->IgnoreCasts())){
+            if (Call->getDirectCallee()->getNameAsString() == "malloc"){
 
-          // Don't forget to release these exprs.
-          SmallVector<PulseStmt *> NewExprs;
-          Term *LetInit = getTermFromCExpr(Init, Analyzer, NewExprs, Parent,
-                                           VD->getType(), Module);
-          
-          auto *VDPulseTy = getPulseTyFromCTy(VD->getType());
-          // if (Analyzer->isMutated(D)) {
-          // auto TempVarName = gensym(VarName);
-          // auto *PulseLetTmp = new LetBinding(TempVarName, LetInit,
-          // MutOrRef::NOTMUT); PulseLetTmp->CInfo = getSourceInfoFromStmt(S,
-          // Ctx, "", ""); PulseLetTmp->VarTy = VDPulseTy->print();
+              //Check if the user wanted this allocation to be an array
+              if (VD->hasAttrs() && checkAndAddIsArrayTy(VD->getAttrs(), D)){
 
-          // Make the call to assert only for refs.
-          // Better to have this in pulse side.
-          // auto *PulseLetSeq = new PulseSequence();
-          //  if (auto *VDPulseTyToRef = dyn_cast<FStarPointerType>(VDPulseTy)){
-          //    auto *RewritesTo = new AppE("rewrites_to");
-          //    auto *Arg1 = new VarTerm(TempVarName);
-          //    RewritesTo->pushArg(Arg1);
-          //    RewritesTo->pushArg(LetInit);
-          //    auto *AssertCall = new AppE("assert");
-          //    AssertCall->pushArg(RewritesTo);
-          //    auto *AssertCallExpr = new PulseExpr();
-          //    AssertCallExpr->E = AssertCall;
+                //get the size of the allocation
+                Expr::EvalResult Result;
+                auto *SizeExpr = Call->getArg(0);
+                if (SizeExpr->EvaluateAsInt(Result, Ctx)) {
+                  llvm::APSInt val = Result.Val.getInt();
+                  uint64_t SizeVal = val.getZExtValue();
+                  auto *AllocationCall = new AppE(); 
+                  AllocationCall->makeCallName("alloc_array");
+                  auto *PulseTy = pulseTyFromDecl(VD);
+                  if (auto *PulseArrTy = dyn_cast<FStarArrType>(PulseTy)){
 
-          //   auto *Seq1 = new PulseSequence(); 
-          //   Seq1->assignS1(PulseLetTmp);
-          //   Seq1->assignS2(AssertCallExpr);
+                    auto *ElemTy = PulseArrTy->ElementType;
+                    auto SymbolElemTy = ElemTy->print();
+                    auto *Arg1 = new Name("#" + SymbolElemTy);
+                    AllocationCall->pushArg(Arg1);
+                    auto *Arg2 = new Name(std::to_string(SizeVal) + "sz");
+                    AllocationCall->pushArg(Arg2);
+                    auto *NewLet = new LetBinding(VD->getNameAsString(), AllocationCall, MutOrRef::MUT);
+                    NewLet->VarTy = PulseArrTy->print();
+                    return NewLet;
+                  }
+                  else{
+                    emitError("Expected Array type!");
+                  }
+                }
+                else {
+                  auto *PulseTy = pulseTyFromDecl(VD);
+                  if (auto *PulseArrTy = dyn_cast<FStarArrType>(PulseTy)){
+                      
+                    SmallVector<PulseStmt*> ExprsBef;
+                    auto *TermForSizeExpr = getTermFromCExpr(SizeExpr, 
+                    Analyzer, ExprsBef, DS, VD->getType(), Module);
 
-          //   LetBinding *PulseLet = new LetBinding(VarName, new VarTerm(TempVarName), MutOrRef::MUT);
-          //   PulseLet->VarTy = VDPulseTy->print();
+                    if (SizeExpr->getType().getAsString() != "size_t"){
+                      auto *CastCall = new AppE(getPulseStringForCType(SizeExpr->getType(), Ctx) + "_to_sizet");
+                      CastCall->pushArg(TermForSizeExpr);
+                      auto *NewParen = new Paren(CastCall);
+                      TermForSizeExpr = NewParen;
+                    }
 
-          //   PulseLetSeq->assignS1(Seq1);
-          //   PulseLetSeq->assignS2(PulseLet);
-          // }
-          // else {
-          // LetBinding *PulseLet = new LetBinding(VarName, new
-          // VarTerm(TempVarName), MutOrRef::MUT);
-          LetBinding *PulseLet =
-              new LetBinding(VarName, LetInit, MutOrRef::MUT);
-          PulseLet->CInfo = getSourceInfoFromStmt(S, Ctx, "", "");
-          PulseLet->VarTy = VDPulseTy->print();
-
-          // PulseLetSeq->assignS1(PulseLetTmp);
-          // PulseLetSeq->assignS2(PulseLet);
-
-          //}
+                    auto SizeName = gensym("size_expr");
+                    auto *LetBindSize = new LetBinding(SizeName, TermForSizeExpr, MutOrRef::MUT);
+                    //Since we added a cast this is fine to hardcode.
+                    LetBindSize->VarTy = "SizeT.t";
 
 
-          //} else {
-          //  PulseLet = new LetBinding(VarName, LetInit, MutOrRef::NOTMUT);
-          //}
+                    auto *AllocationCall = new AppE("alloc_array");
+                   
+                    auto *ElemTy = PulseArrTy->ElementType;
+                    auto SymbolElemTy = ElemTy->print();
+                    auto *Arg1 = new Name("#" + SymbolElemTy);
+                    AllocationCall->pushArg(Arg1);
+                    //Since this is a LetMut.
+                    auto *Arg2 = new Name("!" + SizeName);
+                    AllocationCall->pushArg(Arg2);
+                    auto *NewLet = new LetBinding(VD->getNameAsString(), AllocationCall, MutOrRef::MUT);
+                    NewLet->VarTy = PulseArrTy->print();
 
-          //PulseLet->CInfo = getSourceInfoFromExpr(VD, Ctx, "", "");
-
-          //Set the corresponding source location for the C ast node. 
-          //PulseLet->RegInfo = new RegionMapping();
-          //PulseLet->RegInfo->CInfo = 
-
-          // We need to make a sequence of pulse statements.
-          PulseSequence *Start = nullptr;
-          if (!NewExprs.empty()) {
-
-            for (size_t Idx = 0; Idx < NewExprs.size(); Idx++) {
-              if (Start == nullptr) {
-                auto *Seq = new PulseSequence();
-                Seq->assignS1(NewExprs[Idx]);
-                Start = Seq;
-              }
-
-              auto *NextSeq = new PulseSequence();
-              NextSeq->assignS1(NewExprs[Idx]);
-              Start->assignS2(NextSeq);
-              Start = NextSeq;
-            }
-          }
-
-          NewExprs.clear();
-          assert(NewExprs.empty() && "Expected expressions to be released!");
-
-          if (Start != nullptr) {
-            // Start->assignS2(PulseLetSeq);
-            Start->assignS2(PulseLet);
-
-            // check for any lemmas to be released.
-            auto Attrs = VD->attrs();
-            for (auto *Att : Attrs) {
-              if (AnnotateAttr *AnnonAttr = dyn_cast<AnnotateAttr>(Att)) {
-                if (AnnonAttr->getAttrName()->getName() == "pulse") {
-                  std::string Match;
-                  auto AnnKind = getPulseAnnKindFromString(
-                      AnnonAttr->getAnnotation(), Match);
-                  assert((AnnKind == PulseAnnKind::LemmaStatement) &&
-                         "Expected a Lemma statement!\n");
-                  
-                  auto *LS = new LemmaStatement();
-                  LS->CInfo = getSourceInfoFromAttr(Att, Ctx, "");
-                  LS->Lemma = Match;
-                  auto *LSE = new PulseExpr();
-                  LSE->E = LS;
-
-                  auto *NewS = new PulseSequence();
-                  NewS->assignS1(LSE);
-                  NewS->assignS2(Start);
-                  Start = NewS;
+                    auto *NewSeq = new PulseSequence(); 
+                    NewSeq->assignS1(LetBindSize);
+                    NewSeq->assignS2(NewLet);
+                    return NewSeq;
+                  }
+                  else{
+                    emitErrorWithLocation("Expected Array type!", &Ctx, Call->getBeginLoc());
+                  }
+                  emitErrorWithLocation("Variable malloc not implemeted!", &Ctx, Call->getBeginLoc());
                 }
               }
+              //translate it as a ref
+              else {
+                goto init_standard;
+              }
             }
-            return Start;
           }
+          
+          init_standard:
+            auto VarName = VD->getNameAsString();
+            // Unsure if we really need the type here.
+            // Though it may be usefuel checking invalid casting operations.
+            // auto VarType = VD->getType();
+
+            // Don't forget to release these exprs.
+            SmallVector<PulseStmt *> NewExprs;
+            Term *LetInit = getTermFromCExpr(Init, Analyzer, NewExprs, Parent,
+                                           VD->getType(), Module);
+          
+            auto *VDPulseTy = getPulseTyFromCTy(VD->getType());
+            // if (Analyzer->isMutated(D)) {
+            // auto TempVarName = gensym(VarName);
+            // auto *PulseLetTmp = new LetBinding(TempVarName, LetInit,
+            // MutOrRef::NOTMUT); PulseLetTmp->CInfo = getSourceInfoFromStmt(S,
+            // Ctx, "", ""); PulseLetTmp->VarTy = VDPulseTy->print();
+
+            // Make the call to assert only for refs.
+            // Better to have this in pulse side.
+            // auto *PulseLetSeq = new PulseSequence();
+            //  if (auto *VDPulseTyToRef = dyn_cast<FStarPointerType>(VDPulseTy)){
+            //    auto *RewritesTo = new AppE("rewrites_to");
+            //    auto *Arg1 = new VarTerm(TempVarName);
+            //    RewritesTo->pushArg(Arg1);
+            //    RewritesTo->pushArg(LetInit);
+            //    auto *AssertCall = new AppE("assert");
+            //    AssertCall->pushArg(RewritesTo);
+            //    auto *AssertCallExpr = new PulseExpr();
+            //    AssertCallExpr->E = AssertCall;
+
+            //   auto *Seq1 = new PulseSequence(); 
+            //   Seq1->assignS1(PulseLetTmp);
+            //   Seq1->assignS2(AssertCallExpr);
+
+            //   LetBinding *PulseLet = new LetBinding(VarName, new VarTerm(TempVarName), MutOrRef::MUT);
+            //   PulseLet->VarTy = VDPulseTy->print();
+
+            //   PulseLetSeq->assignS1(Seq1);
+            //   PulseLetSeq->assignS2(PulseLet);
+            // }
+            // else {
+            // LetBinding *PulseLet = new LetBinding(VarName, new
+            // VarTerm(TempVarName), MutOrRef::MUT);
+            LetBinding *PulseLet = new LetBinding(VarName, LetInit, MutOrRef::MUT);
+            PulseLet->CInfo = getSourceInfoFromStmt(S, Ctx, "", "");
+            PulseLet->VarTy = VDPulseTy->print();
+
+            // PulseLetSeq->assignS1(PulseLetTmp);
+            // PulseLetSeq->assignS2(PulseLet);
+            //}
+
+            //} else {
+            //  PulseLet = new LetBinding(VarName, LetInit, MutOrRef::NOTMUT);
+            //}
+
+            //PulseLet->CInfo = getSourceInfoFromExpr(VD, Ctx, "", "");
+
+            //Set the corresponding source location for the C ast node. 
+            //PulseLet->RegInfo = new RegionMapping();
+            //PulseLet->RegInfo->CInfo = 
+
+            // We need to make a sequence of pulse statements.
+            PulseSequence *Start = nullptr;
+            if (!NewExprs.empty()) {
+              for (size_t Idx = 0; Idx < NewExprs.size(); Idx++) {
+                if (Start == nullptr) {
+                  auto *Seq = new PulseSequence();
+                  Seq->assignS1(NewExprs[Idx]);
+                  Start = Seq;
+                }
+
+                auto *NextSeq = new PulseSequence();
+                NextSeq->assignS1(NewExprs[Idx]);
+                Start->assignS2(NextSeq);
+                Start = NextSeq;
+              }
+            }
+
+            NewExprs.clear();
+            assert(NewExprs.empty() && "Expected expressions to be released!");
+
+            if (Start != nullptr) {
+              // Start->assignS2(PulseLetSeq);
+              Start->assignS2(PulseLet);
+
+              // check for any lemmas to be released.
+              auto Attrs = VD->attrs();
+              for (auto *Att : Attrs) {
+                if (AnnotateAttr *AnnonAttr = dyn_cast<AnnotateAttr>(Att)) {
+                  if (AnnonAttr->getAttrName()->getName() == "pulse") {
+                    std::string Match;
+                    auto AnnKind = getPulseAnnKindFromString(
+                      AnnonAttr->getAnnotation(), Match);
+                    if (AnnKind == PulseAnnKind::LemmaStatement){
+                  
+                      auto *LS = new LemmaStatement();
+                      LS->CInfo = getSourceInfoFromAttr(Att, Ctx, "");
+                      LS->Lemma = Match;
+                      auto *LSE = new PulseExpr();
+                      LSE->E = LS;
+
+                      auto *NewS = new PulseSequence();
+                      NewS->assignS1(LSE);
+                      NewS->assignS2(Start);
+                      Start = NewS;
+                    }
+                  }
+                }
+              }
+              return Start;
+            }
 
           // check for any lemmas to be released.
           auto Attrs = VD->attrs();
@@ -2244,6 +2372,60 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
                   // emitErrorWithLocation("Did not implement case when struct "
                   //                       "allocation is not mutated!",
                   //                       &Ctx, VD->getLocation());
+        }
+        
+        //Handle non initalized arrays.
+        if (const auto *ArrTy = VD->getType()->getAsArrayTypeUnsafe()) {
+          if (const auto *ConstArrTy = llvm::dyn_cast<ConstantArrayType>(ArrTy)) {
+            // Constant-sized array
+            // Stack Allocated
+            if (VD->hasLocalStorage()){
+              auto *PulseTy = pulseTyFromDecl(VD);
+              auto ArrSize = ConstArrTy->getSize();
+              //[| witness #_ #_; 10sz |]
+              auto *LetInit = new Name("[| witness #_ #_; " + std::to_string(ArrSize.getSExtValue()) + "sz" + " |]");
+              auto Lhs = VD->getNameAsString(); 
+              auto *ConstantArrLet = new LetBinding(Lhs, LetInit, MutOrRef::MUT);
+              ConstantArrLet->VarTy = PulseTy->print();
+              return ConstantArrLet;
+            }
+            else {
+              emitErrorWithLocation("Not implemented non local storage constant array!", &Ctx, VD->getLocation());
+            }
+          } else if (const auto *VarArrTy = llvm::dyn_cast<VariableArrayType>(ArrTy)) {
+            if (VD->hasLocalStorage()){
+              auto *PulseTy = pulseTyFromDecl(VD);
+              auto *SizeExpr = VarArrTy->getSizeExpr(); 
+              SmallVector<PulseStmt*> ExprsBef;
+              auto *PulseSizeExpr = getTermFromCExpr(SizeExpr, Analyzer, ExprsBef, Parent, VD->getType(), Module);
+              auto NewNameForSizeExpr = gensym("size_expr");
+              //This should ideally be casted to a sizeTy. 
+              //Add a cast here if the expression type is not sizet. 
+              //Vidush: TODO check if this is correct.
+              if (SizeExpr->getType().getAsString() != "size_t"){
+                auto *Cast = new AppE(getPulseStringForCType(SizeExpr->getType(), Ctx) + "_to_sizet");
+                Cast->pushArg(PulseSizeExpr);
+                PulseSizeExpr = Cast;
+              }
+              auto *LetSizeExpr = new LetBinding(NewNameForSizeExpr, PulseSizeExpr, MutOrRef::MUT);
+              //hardcoding it because of the cast.
+              LetSizeExpr->VarTy = "SizeT.t";
+              auto *LetInit = new Name("[| witness #_ #_; !" + NewNameForSizeExpr + " |]");
+              auto *NewLetBind = new LetBinding(VD->getNameAsString(), LetInit, MutOrRef::MUT);
+              NewLetBind->VarTy = PulseTy->print();
+              auto *RetSeq = new PulseSequence(); 
+              RetSeq->assignS1(LetSizeExpr);
+              RetSeq->assignS2(NewLetBind);
+              return RetSeq;
+
+            }
+            else {
+              emitErrorWithLocation("Not implemented non local storage constant array!", &Ctx, VD->getLocation());
+            }
+          }
+          else {
+            emitErrorWithLocation("Not implemented array type!", &Ctx, VD->getLocation());
+          }
         }
 
         // Any uninitialized declaration that is not a struct
@@ -3464,7 +3646,28 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
               NewAppENode->pushArg(new Paren(CastCall));
             }
           } else {
+            if (Lhs->getType() != BO->getType()){
+              //add cast
+              auto *CastCall = new AppE(
+                  getPulseStringForCType(Lhs->getType(), Ctx) + "_to_" + getPulseStringForCType(BO->getType(), Ctx));  
+              CastCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+              CastCall->pushArg(LhsTerm);
+              auto *NewParen = new Paren(CastCall);
+              LhsTerm = NewParen;
+            }
             NewAppENode->pushArg(LhsTerm);
+
+
+            if (Rhs->getType() != BO->getType()){
+              //add cast
+              auto *CastCall = new AppE(
+                  getPulseStringForCType(Rhs->getType(), Ctx) + "_to_" + getPulseStringForCType(BO->getType(), Ctx));  
+              CastCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+              CastCall->pushArg(RhsTerm);
+              auto *NewParen = new Paren(CastCall);
+              RhsTerm = NewParen;
+
+            }
             NewAppENode->pushArg(RhsTerm);
           }
 
@@ -3774,7 +3977,18 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
           auto *ArgTerm = getTermFromCExpr(Arg, MutAnalyzer, ExprsBefore, CE,
                                            ParentType, Module);
           CallAppE->pushArg(ArgTerm);
-        } else {
+        } 
+        else if (auto *ArrTy = dyn_cast<FStarArrType>(pulseTyFromDecl(ArgDecl))){
+          auto *ElemTy = ArrTy->ElementType; 
+          CallAppE->makeCallName("free_array");
+          auto *Arg1 = new Name("#" + ElemTy->print());
+          auto *ArgTerm = getTermFromCExpr(Arg, MutAnalyzer, ExprsBefore, CE,
+                                           ParentType, Module);
+          CallAppE->pushArg(Arg1);
+          CallAppE->pushArg(ArgTerm);
+          
+        }
+        else {
           CallAppE->makeCallName(CallName + "_ref");
           auto *ArgTerm = getTermFromCExpr(Arg, MutAnalyzer, ExprsBefore, CE,
                                            ParentType, Module);
@@ -3797,7 +4011,19 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
           auto *ArgTerm = getTermFromCExpr(Arg, MutAnalyzer, ExprsBefore, CE,
                                            ParentType, Module);
           CallAppE->pushArg(ArgTerm);
-        } else {
+        }
+        //TODO: This needs more examples to test.
+        else if (auto *ArrTy = dyn_cast<FStarArrType>(getPulseTyFromCTy(Ty))){
+          auto *ElemTy = ArrTy->ElementType; 
+          CallAppE->makeCallName("free_array");
+          auto *Arg1 = new Name("#" + ElemTy->print());
+          auto *ArgTerm = getTermFromCExpr(Arg, MutAnalyzer, ExprsBefore, CE,
+                                           ParentType, Module);
+          CallAppE->pushArg(Arg1);
+          CallAppE->pushArg(ArgTerm);
+          
+        }
+        else {
           CallAppE->makeCallName(CallName + "_ref");
           auto *ArgTerm = getTermFromCExpr(Arg, MutAnalyzer, ExprsBefore, CE,
                                            ParentType, Module);
@@ -4009,6 +4235,24 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
           llvm::outs() << PulseTy->print() << "\n";
           });
           if (auto *PulsePointerTy = dyn_cast<FStarPointerType>(PulseTy)){
+
+            //Check size. 
+            //Vidush: For now, if a ref asks for a larger size than the type of the cast,
+            //We error out. 
+            //Also if we can't tell the size staically we error out. 
+            auto *SizeExpr = Call->getArg(0);
+            Expr::EvalResult Result;
+            if (SizeExpr->EvaluateAsInt(Result, Ctx)) {
+              llvm::APSInt val = Result.Val.getInt();
+              int64_t SizeVal = val.getZExtValue();
+              if (SizeVal != Ctx.getTypeSizeInChars(CastType->getPointeeType()).getQuantity()){
+                emitErrorWithLocation("Allocating incorrect size for reference. Did you want an array instead, if so, annotate with ISARRAY.\n", &Ctx, E->getExprLoc());
+              }
+            }
+            else{
+              emitErrorWithLocation("Could not deduce constant size for reference. Did you want an array instead, if so, annotate with ISARRAY.\n", &Ctx, E->getExprLoc());
+            }
+
             auto *NewCall =
                 new AppE("alloc_ref #" + PulsePointerTy->PointerTo->print());
             NewCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
@@ -4180,6 +4424,32 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     AddParen->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
 
     return AddParen;
+
+  }
+  else if (auto *SizeOfExpr = dyn_cast<UnaryExprOrTypeTraitExpr>(E)){
+    if (SizeOfExpr->getKind() == UETT_SizeOf){
+       llvm::APSInt SizeValue = SizeOfExpr->EvaluateKnownConstInt(Ctx);
+       uint64_t Size = SizeValue.getZExtValue();
+       auto *Const = new ConstTerm(); 
+       auto Ty = SizeOfExpr->getType();
+       auto PulseTy = getPulseTyFromCTy(Ty);
+       Const->Symbol = getSymbolKeyForCType(Ty, Ctx);
+       Const->ConstantValue = std::to_string(Size);
+       
+      //  //add a cast
+      //Don't add a cast here but handle at the array site.
+      //  if (Ty.getAsString() != "size_t"){
+      //   auto *CastCall = new AppE(getPulseStringForCType(Ty, Ctx) + "_to_size_t");
+      //   CastCall->pushArg(Const);
+      //   auto *NewParen = new Paren(CastCall);
+      //   return NewParen;
+      //  }
+
+       return Const;
+    }
+    else {
+      emitErrorWithLocation("Not implemented!", &Ctx, E->getExprLoc());
+    }
 
   }
   else {

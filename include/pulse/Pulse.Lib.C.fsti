@@ -8,3 +8,6 @@ include Pulse.Lib.C.Array
 include FStar.Int.Cast
 include Pulse.Lib.C.Casts
 let _Bool = bool
+
+// We assume size_t is at least 64 bits.
+assume SizeTFitsU64 : fits_u64
