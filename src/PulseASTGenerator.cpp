@@ -3646,28 +3646,28 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
               NewAppENode->pushArg(new Paren(CastCall));
             }
           } else {
-            if (Lhs->getType() != BO->getType()){
-              //add cast
-              auto *CastCall = new AppE(
-                  getPulseStringForCType(Lhs->getType(), Ctx) + "_to_" + getPulseStringForCType(BO->getType(), Ctx));  
-              CastCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
-              CastCall->pushArg(LhsTerm);
-              auto *NewParen = new Paren(CastCall);
-              LhsTerm = NewParen;
-            }
+            // if (Lhs->getType() != BO->getType()){
+            //   //add cast
+            //   auto *CastCall = new AppE(
+            //       getPulseStringForCType(Lhs->getType(), Ctx) + "_to_" + getPulseStringForCType(BO->getType(), Ctx));  
+            //   CastCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+            //   CastCall->pushArg(LhsTerm);
+            //   auto *NewParen = new Paren(CastCall);
+            //   LhsTerm = NewParen;
+            // }
             NewAppENode->pushArg(LhsTerm);
 
 
-            if (Rhs->getType() != BO->getType()){
-              //add cast
-              auto *CastCall = new AppE(
-                  getPulseStringForCType(Rhs->getType(), Ctx) + "_to_" + getPulseStringForCType(BO->getType(), Ctx));  
-              CastCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
-              CastCall->pushArg(RhsTerm);
-              auto *NewParen = new Paren(CastCall);
-              RhsTerm = NewParen;
+            // if (Rhs->getType() != BO->getType()){
+            //   //add cast
+            //   auto *CastCall = new AppE(
+            //       getPulseStringForCType(Rhs->getType(), Ctx) + "_to_" + getPulseStringForCType(BO->getType(), Ctx));  
+            //   CastCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+            //   CastCall->pushArg(RhsTerm);
+            //   auto *NewParen = new Paren(CastCall);
+            //   RhsTerm = NewParen;
 
-            }
+            // }
             NewAppENode->pushArg(RhsTerm);
           }
 

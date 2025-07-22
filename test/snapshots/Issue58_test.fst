@@ -31,13 +31,12 @@ l0_image_auth_pubkey : array UInt8.t
 
 }
 
-let engine_record_t_relations (s:engine_record_t_spec) : slprop = 
-pure (
+let engine_record_t_relations (s:engine_record_t_spec) : prop = 
 Pulse.Lib.Array.length s.l0_image_header == Pulse.Lib.C.SizeT.as_int s.l0_image_header_size /\
 Pulse.Lib.Array.length s.l0_image_header_sig == 64 /\
 Pulse.Lib.Array.length s.l0_binary == Pulse.Lib.C.SizeT.as_int s.l0_binary_size /\
 Pulse.Lib.Array.length s.l0_binary_hash == 64 /\
-Pulse.Lib.Array.length s.l0_image_auth_pubkey == 32)
+Pulse.Lib.Array.length s.l0_image_auth_pubkey == 32
 
 let engine_record_t_pred (x:ref engine_record_t) (s:engine_record_t_spec) : slprop =
 exists* (y: engine_record_t). (x |-> y) **
@@ -48,7 +47,7 @@ exists* (y: engine_record_t). (x |-> y) **
 (y.l0_binary |-> s.l0_binary) **
 (y.l0_binary_hash |-> s.l0_binary_hash) **
 (y.l0_image_auth_pubkey |-> s.l0_image_auth_pubkey)
-** engine_record_t_relations s
+** pure (engine_record_t_relations s)
 
 assume val engine_record_t_spec_default : engine_record_t_spec
 
@@ -88,7 +87,7 @@ ensures exists* (v: engine_record_t). (x |-> v) ** (v.l0_image_header_size |-> s
 (v.l0_binary_hash |-> s.l0_binary_hash) ** 
 (v.l0_image_auth_pubkey |-> s.l0_image_auth_pubkey)
 
-** engine_record_t_relations s
+** pure (engine_record_t_relations s)
 {unfold engine_record_t_pred}
 
 
@@ -108,7 +107,7 @@ requires exists* (y: engine_record_t). (x |-> y) **
 (y.l0_binary_size |-> a3) **
 (y.l0_binary |-> a4) **
 (y.l0_binary_hash |-> a5) **
-(y.l0_image_auth_pubkey |-> a6)** (engine_record_t_relations {
+(y.l0_image_auth_pubkey |-> a6)** pure (engine_record_t_relations {
 l0_image_header_size = a0;
 l0_image_header = a1;
 l0_image_header_sig = a2;
