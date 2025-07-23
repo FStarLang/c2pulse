@@ -23,21 +23,24 @@ def contained(r1, r2):
   return ret
 
 def best_match(r, map):
-    best = None
+    cbest = None
+    pbest = None
     for point in map:
       cr = point[0]
       pr = point[1]
       if contained(r, pr):
-        if best == None:
-          best = cr
-        elif contained(cr, best):
-          best = cr
-        elif contained(best, cr):
+        if cbest == None:
+          cbest = cr
+          pbest = pr
+        elif contained(pr, pbest):
+          cbest = cr
+          pbest = pr
+        elif contained(pbest, pr):
           # nop, best is already better
           continue
         else:
           print(f"Warning: found incomparable source ranges for {r}: {best} and {cr}")
-    return best
+    return cbest
 
 def main():
   if len(sys.argv) != 2:
