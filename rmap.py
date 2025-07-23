@@ -4,6 +4,7 @@ import sys
 import json
 import argparse
 import re
+import os
 
 debug = False
 
@@ -41,7 +42,7 @@ def best_match(r, map):
           # nop, best is already better
           continue
         else:
-          print(f"Warning: found incomparable source ranges for {r}: {best} and {cr}")
+          print(f"Warning: found incomparable source ranges for {r}: {pbest} and {pr}")
     return cbest
 
 #  parser = argparse.ArgumentParser()
@@ -93,21 +94,28 @@ def loopmode():
 #    - See also Pulse_tutorial_conditionals.fst(27,0-27,5)
 
 def stdin_mode(fst, c):
+  fst = os.path.basename(fst)
   try:
     lines = sys.stdin.readlines()
     for line in lines:
-      res = re.search(r".*Error ([0-9]*) at ([^ ]*)\(([0-9]*),([0-9]*)-([0-9]*),([0-9]*)\):", line)
+      regexp = fr"^(.*){fst}\((\d*),(\d*)-(\d*),(\d*)\)(.*)$"
+      # print(f"Using regexp: {regexp}")
+      res = re.search(regexp, line)
       if res:
-        code = res[1]
-        file = res[2]
-        sl = int(res[3])
-        sc = int(res[4])
-        el = int(res[5])
-        ec = int(res[6])
+        pre = res[1]
+        sl = int(res[2])
+        sc = int(res[3])
+        el = int(res[4])
+        ec = int(res[5])
+        post = res[6]
+
         pr = ((sl, sc+1), (el, ec+1))
         cr = best_match(pr, rmap)
-        cr_str = f"{cr[0][0]}.{cr[0][1]}-{cr[1][0]}.{cr[1][1]}"
-        print(f"Error {code} at {c}:{cr_str}:")
+        if cr:
+          cr_str = f"{cr[0][0]}.{cr[0][1]}-{cr[1][0]}.{cr[1][1]}"
+          print(f"{pre}{c}:{cr_str}{post}")
+        else:
+          print(line + " ## COULD NOT BACKTRANSLATE")
 
       else:
         print(line, end="")
