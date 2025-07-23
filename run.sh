@@ -91,11 +91,13 @@ set +e
   --include "$PULSE_DIR" \
   --include "$PULSE_LIB_C_DIR" \
   --query_stats --z3version 4.13.3 \
- "$FSTAR_FILE" >$tmp 2>&1
+ "$FSTAR_FILE" |& tee $tmp
 rc=$?
 set -e
 
 # Backtranslate error ranges
+echo
+echo
 ./rmap.py $RANGE_MAP $FSTAR_FILE $CFILE < $tmp
 
 exit $rc
