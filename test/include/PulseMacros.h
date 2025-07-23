@@ -2,6 +2,7 @@
 #define STR(...) #__VA_ARGS__
 #define REQUIRES(s) [[clang::pulse("requires:" STR(s) "|END")]]
 #define ENSURES(...) [[clang::pulse("ensures:" STR(__VA_ARGS__) "|END")]]
+#define PRESERVES(...) [[clang::pulse("preserves:" STR(__VA_ARGS__) "|END")]]
 #define RETURNS(s) [[clang::pulse("returns:" STR(s)"|END")]]
 #define ISARRAY(len) [[clang::pulse("array:" STR(len)"|END")]]
 #define INVARIANTS(...) [[clang::pulse("invariants:" STR(__VA_ARGS__)"|END")]]

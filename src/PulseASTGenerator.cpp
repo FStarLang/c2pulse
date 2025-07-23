@@ -1594,6 +1594,13 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
               FDefn->Annotation.push_back(NewRequires);
               break;
             }
+            case PulseAnnKind::Preserves: {
+              auto *NewPreserves = new Preserves();
+              NewPreserves->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
+              NewPreserves->Ann = Match;
+              FDefn->Annotation.push_back(NewPreserves);
+              break;
+            }
             case PulseAnnKind::Ensures: {
               auto *NewEnsures = new Ensures();
               NewEnsures->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
@@ -4053,13 +4060,13 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       }
 
       auto *BangNode = new AppE("!");
-      BangNode->CInfo = getSourceInfoFromExpr(SubExpr, Ctx, "", "");
+      BangNode->CInfo = getSourceInfoFromExpr(IC, Ctx, "", "");
 
       auto *PulseSubExpr = getTermFromCExpr(SubExpr, MutAnalyzer, ExprsBefore, Parent,
                             ParentType, Module);
       BangNode->pushArg(PulseSubExpr);
       auto *NewParen = new Paren(BangNode);
-      NewParen->CInfo = getSourceInfoFromExpr(SubExpr, Ctx, "", "");
+      NewParen->CInfo = getSourceInfoFromExpr(IC, Ctx, "", "");
 
       return NewParen;
     }

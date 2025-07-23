@@ -102,6 +102,7 @@ inline constexpr CodegenStrTy PulseWhile = "while";
 inline constexpr CodegenStrTy Dot = ".";
 inline constexpr CodegenStrTy ArrAssignment = "<-";
 inline constexpr CodegenStrTy Requires = "requires";
+inline constexpr CodegenStrTy Preserves = "preserves";
 inline constexpr CodegenStrTy Ensures = "ensures";
 inline constexpr CodegenStrTy Returns = "returns";
 inline constexpr CodegenStrTy Val = "val";

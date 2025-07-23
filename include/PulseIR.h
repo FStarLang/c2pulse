@@ -18,6 +18,7 @@ enum class PulseAnnKind {
   ErasedArg,
   Requires,
   Ensures,
+  Preserves,
   Returns,
   IsArray,
   Invariants,
@@ -364,6 +365,7 @@ enum class TermTag {Const, Paren, Var, Name, AppE, FStarType, FStarPointerType, 
                     Ensures, 
                     Requires,
                     Returns,
+                    Preserves,
                     Lemma, 
                     Project,
                     LemmaStatement, 
@@ -448,6 +450,15 @@ class Requires : public Term {
     virtual void dumpPretty() override;
     static bool classof(const Term *T) { return T->Tag == TermTag::Requires; }
 
+};
+
+/// An IR node for representing a pulse preserves.
+class Preserves : public Term {
+  public: 
+    std::string Ann;
+    Preserves();
+    virtual void dumpPretty() override;
+    static bool classof(const Term *T) { return T->Tag == TermTag::Preserves; }
 };
 
 /// An IR node for representing a pulse return.

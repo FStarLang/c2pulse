@@ -167,16 +167,16 @@ PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data,
     }
   }
 
-  std::array<std::string, 10> StartOfAnnotations = {
-      "requires:", "ensures:",       "array:",          "lemma:",
+  std::array<std::string, 11> StartOfAnnotations = {
+      "requires:", "ensures:",   "preserves:",    "array:",          "lemma:",
       "returns:",  "erased_arg:",    "heap_allocated:", "assert:",
       "includes:", "expect_failure:"};
 
-  std::array<PulseAnnKind, 10> ArrayAnnotationKinds = {
+  std::array<PulseAnnKind, 11> ArrayAnnotationKinds = {
       PulseAnnKind::Requires,      PulseAnnKind::Ensures,
-      PulseAnnKind::IsArray,       PulseAnnKind::LemmaStatement,
-      PulseAnnKind::Returns,       PulseAnnKind::ErasedArg,
-      PulseAnnKind::HeapAllocated, PulseAnnKind::Assert,
+          PulseAnnKind::Preserves,PulseAnnKind::IsArray,       
+          PulseAnnKind::LemmaStatement, PulseAnnKind::Returns,       
+          PulseAnnKind::ErasedArg, PulseAnnKind::HeapAllocated, PulseAnnKind::Assert,
       PulseAnnKind::Includes,      PulseAnnKind::ExpectFailure};
 
   std::string EndDelimiter = "|END";
@@ -834,6 +834,17 @@ void Returns::dumpPretty() {
 Requires::Requires() {
   Tag = TermTag::Requires;
   Ann = "";
+}
+
+
+Preserves::Preserves() {
+  Tag = TermTag::Preserves;
+  Ann = "";
+}
+
+void Preserves::dumpPretty() {
+  llvm::outs() << "Preserves ";
+  llvm::outs() << Ann;
 }
 
 void ConstTerm::dumpPretty() { llvm::outs() << ConstantValue; }

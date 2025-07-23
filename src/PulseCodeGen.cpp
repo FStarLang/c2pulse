@@ -687,7 +687,27 @@ std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
     *RowCounter += 1; 
     *ColCounter = 1;
 
-  } else if (Returns *Return = dyn_cast<Returns>(T)) {
+  } else if (Preserves *Preserve = dyn_cast<Preserves>(T)) {
+    
+    PulseSourceLocation Start(*RowCounter, *ColCounter);
+
+    OS << PulseSyntax::Preserves;
+    *ColCounter += strlen(PulseSyntax::Preserves);
+    OS << PulseSyntax::Space;
+    *ColCounter += strlen(PulseSyntax::Space);
+    OS << Preserve->Ann;
+    *ColCounter += Preserve->Ann.length();
+    //End
+    PulseSourceLocation End(*RowCounter, *ColCounter);
+    PulseSourceRange Range(Start, End);
+    PulseLocsToCLocs.push_back(std::make_pair(Range, T->getCSourceInfo()));
+
+    OS << PulseSyntax::NewLine;
+    *RowCounter += 1; 
+    *ColCounter = 1;
+
+  }
+  else if (Returns *Return = dyn_cast<Returns>(T)) {
 
     PulseSourceLocation Start(*RowCounter, *ColCounter);
 
