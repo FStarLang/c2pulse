@@ -75,6 +75,10 @@ def main():
     except Exception as e:
       print(f"Error parsing line {e}")
 
+    # F* reports error with zero-based columns, but 
+    # c2pulse computes column numbers as 1-based
+    sc += 1
+    ec += 1
     c_range = best_match (((sl,sc),(el,ec)), rmap)
     print(c_range)
 
