@@ -3020,7 +3020,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
     auto *PulseCond = getTermFromCExpr(Cond, Analyzer, ExprsBefore, Parent,
                                        Cond->getType(), Module);
 
-    if (Cond->getType().getAsString() != "_Bool" || Cond->getType().getAsString() != "bool"){
+    if (Cond->getType().getAsString() != "_Bool" && Cond->getType().getAsString() != "bool"){
 
       auto *CastCall = new AppE(getPulseStringForCType(Cond->getType(), Ctx)
                                                    + "_to_bool");
@@ -3286,7 +3286,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           getTermFromCExpr(WhileCond, Analyzer, ExprsBef, Parent, WhileCond->getType(), Module, CS);
       auto *NewExprGuard = new PulseExpr();
       NewExprGuard->CInfo = getSourceInfoFromExpr(WhileCond, Ctx, "", "");
-      if (WhileCond->getType().getAsString() != "_Bool" || WhileCond->getType().getAsString() != "bool"){
+      if (WhileCond->getType().getAsString() != "_Bool" && WhileCond->getType().getAsString() != "bool"){
 
         auto *CastCall = new AppE(getPulseStringForCType(WhileCond->getType(), Ctx)
                                                    + "_to_bool");
@@ -3635,7 +3635,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
 
           // For logical ops make sure type of argument is bool if not cast them
           if (BO->isLogicalOp()) {
-            if (Lhs->getType().getAsString() != "_Bool" ||
+            if (Lhs->getType().getAsString() != "_Bool" &&
                 Lhs->getType().getAsString() != "bool") {
               auto *CastCall = new AppE(
                   getPulseStringForCType(Lhs->getType(), Ctx) + "_to_bool");
@@ -3643,7 +3643,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
               CastCall->pushArg(LhsTerm);
               NewAppENode->pushArg(new Paren(CastCall));
             }
-            if (Lhs->getType().getAsString() != "_Bool" ||
+            if (Lhs->getType().getAsString() != "_Bool" &&
                 Lhs->getType().getAsString() != "bool") {
               auto *CastCall = new AppE(
                   getPulseStringForCType(Rhs->getType(), Ctx) + "_to_bool");
@@ -3778,7 +3778,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       auto *PulseSubExpr = getTermFromCExpr(SubExpr, MutAnalyzer,
                                                ExprsBefore, Parent, ParentType, Module);
 
-      if (SubExpr->getType().getAsString() != "_Bool" || SubExpr->getType().getAsString() != "bool"){
+      if (SubExpr->getType().getAsString() != "_Bool" && SubExpr->getType().getAsString() != "bool"){
         auto *CastCall = new AppE(getPulseStringForCType(SubExpr->getType(), Ctx) + "_to_bool");
         CastCall->CInfo = getSourceInfoFromExpr(SubExpr, Ctx, "", "");
         CastCall->pushArg(PulseSubExpr);
@@ -4367,7 +4367,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     auto *PulseCond = getTermFromCExpr(Cond, MutAnalyzer, ExprsBefore, Parent,
                                        Cond->getType(), Module);
 
-    if (Cond->getType().getAsString() != "_Bool" || Cond->getType().getAsString() != "bool"){
+    if (Cond->getType().getAsString() != "_Bool" && Cond->getType().getAsString() != "bool"){
 
       auto *CastCall = new AppE(getPulseStringForCType(Cond->getType(), Ctx)
                                                    + "_to_bool");

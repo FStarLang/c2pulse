@@ -114,6 +114,7 @@ REQUIRES(is_engine_record record p repr)
 RETURNS(b:bool)
 ENSURES(is_engine_record record p repr)
 //ENSURES(exists* s. scratch |-> s) //remove scratch parameter and all its uses once array allocation is supported
+//Vidush: Removed the scratch parameter since we have support for stack allocate array.
 bool authenticate_l0_image (engine_record_t *record/*, ISARRAY(DICE_DIGEST_LEN)uint8_t *scratch*/)
 {
     LEMMA(unfold is_engine_record);
