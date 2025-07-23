@@ -1,5 +1,6 @@
 module Pulse.Lib.C.Int32
-open FStar.Int32
+
+include FStar.Int32
 module I32 = FStar.Int32
 
 let int32 = FStar.Int32.t

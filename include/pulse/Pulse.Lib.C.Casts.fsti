@@ -3,31 +3,30 @@ module Pulse.Lib.C.Casts
 open Pulse
 #lang-pulse
 open FStar.Mul
-open FStar.Int32
-open FStar.Int.Cast
-open FStar.SizeT
+include Pulse.Lib.C.Casts.Bool
+include FStar.Int.Cast
 
-let bool_to_int64 (b:bool) = if b then 1L else 0L
-let bool_to_uint64 (b:bool) = if b then 1UL else 0UL
-let bool_to_int32 (b:bool) = if b then 1l else 0l
-let bool_to_uint32 (b:bool) = if b then 1ul else 0ul
-let bool_to_int16 (b:bool) = if b then 1s else 0s
-let bool_to_uint16 (b:bool) = if b then 1us else 0us
-let bool_to_int8 (b:bool) = if b then 1y else 0y
-let bool_to_uint8 (b:bool) = if b then 1uy else 0uy
+val int32_to_sizet (x: Int32.t) : Pure SizeT.t
+  (requires Int32.v x >= 0)
+  (ensures fun y -> SizeT.v y == FStar.Int32.v x)
 
-let int8_to_bool (i:Int8.t) = Int8.ne i 0y
-let int16_to_bool (i:Int16.t) = Int16.ne i 0s
-let int32_to_bool (i:FStar.Int32.t) = FStar.Int32.ne i 0l
-let int64_to_bool (i:Int64.t) = Int64.ne i 0L
-let uint8_to_bool (i:UInt8.t) = UInt8.ne i 0uy
-let uint16_to_bool (i:UInt16.t) = UInt16.ne i 0us
-let uint32_to_bool (i:UInt32.t) = UInt32.ne i 0ul
-let uint64_to_bool (i:UInt64.t) = UInt64.ne i 0UL
+val int64_to_sizet (x: Int64.t) : Pure SizeT.t
+  (requires Int64.v x >= 0)
+  (ensures fun y -> SizeT.v y == Int64.v x)
 
-val int32_to_sizet (x: FStar.Int32.t {FStar.Int32.gte x 0l}) : Pure t
-  (requires True)
-  (ensures fun y -> v y == FStar.Int32.v x)
+val sizet_to_int32 (x: SizeT.t) : Pure Int32.t
+  (requires SizeT.v x < pow2 31) // make sure to not overflow the signed int
+  (ensures fun y -> Int32.v y == SizeT.v x % pow2 32)
+
+val sizet_to_int64 (x: SizeT.t) : Pure Int64.t
+  (requires SizeT.v x < pow2 63) // make sure to not overflow the signed int
+  (ensures fun y -> Int64.v y == FStar.SizeT.v x % pow2 64)
+
+
+// val uint64_to_sizet (x: FStar.UInt64.t {FStar.UInt64.gte x 0UL}) : Pure t
+//   (requires True)
+//   (ensures fun y -> v y == FStar.UInt64.v x)
+
 
 
 // val int64_to_sizet (x: FStar.Int64.t {FStar.Int64.gte x 0L}) : Pure t

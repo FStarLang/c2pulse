@@ -3577,7 +3577,6 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       //Ignore casts to get underlying type!
 
      // auto *RemoveCastsLhs = Lhs->IgnoreParens()->IgnoreCasts()->IgnoreImpCasts();
-
       SymbolTable TypeKey = getSymbolKeyForCType(Lhs->getType(), Ctx);
       //SymbolTable RetTy = getSymbolKeyForCType(BO->getType(), Ctx);
       auto *OpKey = getSymbolKeyForOperator(TypeKey, Op);
@@ -3646,28 +3645,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
               NewAppENode->pushArg(new Paren(CastCall));
             }
           } else {
-            // if (Lhs->getType() != BO->getType()){
-            //   //add cast
-            //   auto *CastCall = new AppE(
-            //       getPulseStringForCType(Lhs->getType(), Ctx) + "_to_" + getPulseStringForCType(BO->getType(), Ctx));  
-            //   CastCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
-            //   CastCall->pushArg(LhsTerm);
-            //   auto *NewParen = new Paren(CastCall);
-            //   LhsTerm = NewParen;
-            // }
             NewAppENode->pushArg(LhsTerm);
-
-
-            // if (Rhs->getType() != BO->getType()){
-            //   //add cast
-            //   auto *CastCall = new AppE(
-            //       getPulseStringForCType(Rhs->getType(), Ctx) + "_to_" + getPulseStringForCType(BO->getType(), Ctx));  
-            //   CastCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
-            //   CastCall->pushArg(RhsTerm);
-            //   auto *NewParen = new Paren(CastCall);
-            //   RhsTerm = NewParen;
-
-            // }
             NewAppENode->pushArg(RhsTerm);
           }
 
@@ -4050,9 +4028,9 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       NullValue->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
       return NullValue;
     }
-
-    if (IC->getCastKind() == clang::CK_LValueToRValue){
-      
+    
+    //TODO: These might require additional casts.
+    if (IC->getCastKind() == clang::CK_LValueToRValue){      
       auto *SubExpr = IC->getSubExpr(); 
       //TODO: Vidush: These should be changed to Arr_At later on.
       //Check for Array subscript expression. 
