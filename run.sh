@@ -75,9 +75,27 @@ for file in "${SRC_FILES[@]}"; do
   echo "  $file"
 done
 
+tmp=$(mktemp)
+
+CFILE=$1
+FSTAR_FILE=${SRC_FILES[@]}
+RANGE_MAP=${FSTAR_FILE/.fst/_source_range_info.json}
+
+echo "CFILE = $CFILE"
+echo "FSTAR_FILE = $FSTAR_FILE"
+echo "RANGE_MAP = $RANGE_MAP"
+
 # Run fstar on all files at once
-exec "$FSTAR_BIN" \
+set +e
+"$FSTAR_BIN" \
   --include "$PULSE_DIR" \
   --include "$PULSE_LIB_C_DIR" \
   --query_stats --z3version 4.13.3 \
-  "${SRC_FILES[@]}" 
+ "$FSTAR_FILE" >$tmp 2>&1
+rc=$?
+set -e
+
+# Backtranslate error ranges
+./rmap.py $RANGE_MAP $FSTAR_FILE $CFILE < $tmp
+
+exit $rc

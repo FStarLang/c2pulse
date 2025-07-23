@@ -2,6 +2,8 @@
 
 import sys
 import json
+import argparse
+import re
 
 debug = False
 
@@ -42,23 +44,23 @@ def best_match(r, map):
           print(f"Warning: found incomparable source ranges for {r}: {best} and {cr}")
     return cbest
 
-def main():
-  if len(sys.argv) != 2:
-    print("Usage: python3 script.py <filename>")
-    sys.exit(1)
+#  parser = argparse.ArgumentParser()
+#  parser.add_argument('--stdin', action='store_true')
+#  parser.add_argument('file', help='The range source map (*_source_range_info.json)')
+#  args = parser.parse_args()
 
-  filename = sys.argv[1]
+rmap = []
 
+def setup(filename):
   try:
     with open(filename, 'r') as f:
       data = json.load(f)
-      if debug:
-        print("Parsed JSON:")
-        print(json.dumps(data, indent=2))  # Pretty print the JSON
+      #  if debug:
+      #    print("Parsed JSON:")
+      #    print(json.dumps(data, indent=2))  # Pretty print the JSON
   except Exception as e:
     print(f"Error reading {filename}: {e}")
 
-  rmap = []
   for pair in data:
     pj = pair['PulseSourceRange']
     cj = pair['CSourceRangeInfo']
@@ -69,6 +71,7 @@ def main():
     
     rmap.append((cr, pr))
 
+def loopmode():
   while True:
     try:
       sl, sc, el, ec = map(int, input("Enter 4 start line / start col / end line / end col: ").split())
@@ -79,10 +82,52 @@ def main():
     # c2pulse computes column numbers as 1-based
     sc += 1
     ec += 1
-    c_range = best_match (((sl,sc),(el,ec)), rmap)
+    r = ((sl,sc),(el,ec))
+
+    c_range = best_match (r, rmap)
     print(c_range)
+
+#  * Error 228 at Pulse_tutorial_conditionals.fst(27,1-27,4):
+#    - Leftover resources: Pulse.Lib.Reference.pts_to x vx
+#    - Did you forget to free this resource?
+#    - See also Pulse_tutorial_conditionals.fst(27,0-27,5)
+
+def stdin_mode(fst, c):
+  try:
+    lines = sys.stdin.readlines()
+    for line in lines:
+      res = re.search(r".*Error ([0-9]*) at ([^ ]*)\(([0-9]*),([0-9]*)-([0-9]*),([0-9]*)\):", line)
+      if res:
+        code = res[1]
+        file = res[2]
+        sl = int(res[3])
+        sc = int(res[4])
+        el = int(res[5])
+        ec = int(res[6])
+        pr = ((sl, sc+1), (el, ec+1))
+        cr = best_match(pr, rmap)
+        cr_str = f"{cr[0][0]}.{cr[0][1]}-{cr[1][0]}.{cr[1][1]}"
+        print(f"Error {code} at {c}:{cr_str}:")
+
+      else:
+        print(line, end="")
+
+  except Exception as e:
+    print(f"Error in stdin_mode: {e}")
+
+def main():
+  #  if len(sys.argv) != 2:
+  #    print("Usage: python3 script.py <filename>")
+  #    sys.exit(1)
+
+  filename = sys.argv[1]
+  setup(filename)
+
+  #  if args.stdin:
+  stdin_mode(sys.argv[2], sys.argv[3])
+  #  else:
+    #  loopmode()
 
 
 if __name__ == "__main__":
   main()
-
