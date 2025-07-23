@@ -3646,6 +3646,17 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
             }
           } else {
             NewAppENode->pushArg(LhsTerm);
+
+            //If rhs is not same type as Lhs, we need to cast it.
+            if (Lhs->getType().getAsString() != Rhs->getType().getAsString()){
+              auto *CastCall = new AppE(
+                  getPulseStringForCType(Rhs->getType(), Ctx) + "_to_" + getPulseStringForCType(Lhs->getType(), Ctx));
+              CastCall->pushArg(RhsTerm);
+              CastCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+              auto *NewParen = new Paren(CastCall);
+              RhsTerm = NewParen;
+
+            }
             NewAppENode->pushArg(RhsTerm);
           }
 
