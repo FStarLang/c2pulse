@@ -5,9 +5,14 @@ open Pulse.Lib.C.Inhabited
 include Pulse.Lib.Reference
 open FStar.Tactics.Typeclasses { noinst }
 
-instance inhabited_ref (#a:Type) ([@@@mkey] r:ref a) : Pulse.Lib.C.Inhabited.inhabited (ref a) = {
+instance inhabited_ref (a:Type) : Pulse.Lib.C.Inhabited.inhabited (ref a) = {
   witness = null
 }
+
+instance inhabited_array (a:Type) : Pulse.Lib.C.Inhabited.inhabited (array a) = {
+  witness = magic(); // update to Array.null once it's added
+}
+
 
 val freeable (#a:Type) ([@@@mkey] r:ref a) : slprop
 

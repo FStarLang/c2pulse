@@ -26,5 +26,6 @@ else 0l));
 invariant c. emp
 {
 i := (SizeT.add (! i) (int32_to_sizet 1l));
-};(int32_to_bool ((bool_to_int32 (SizeT.eq (! i) (! l)))));
+};
+(int32_to_bool ((bool_to_int32 (SizeT.eq (! i) (! l)))));
 }

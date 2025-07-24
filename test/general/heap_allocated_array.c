@@ -4,24 +4,24 @@
 
 REQUIRES(pure (SizeT.v length < 100))
 RETURNS(Int32.t)
-int foo(size_t length){
-  ISARRAY(10)int *a = (int*) malloc(sizeof(int) * 10);
+unsigned long foo(size_t length){
+  //ISARRAY(10)int *a = (int*) malloc(sizeof(int) * 10);
   //This should pass since the call allocates int of sizeof(int)
-  int *b0 = (int*) malloc(sizeof(int));
+  //int *b0 = (int*) malloc(sizeof(int));
   //int64_t *b3 = (int64_t*) malloc(sizeof(int64_t));
   //This should Fail since the call allocates int of sizeof(int)
   //int *b1 = (int*) malloc(sizeof(int) * 10);
   //This should Fail since the call allocates int of non constant size
   //Mark this with ISARRAY to tell the compiler its an array 
   //int *b2 = (int*) malloc(sizeof(int) * length);
-  ISARRAY(length)int *b = (int*) malloc(sizeof(int) * length);
+  //ISARRAY(length)int *b = (int*) malloc(sizeof(int) * length);
   //ISARRAY(length)int *c = (int*) malloc(sizeof(int) * length);
   
-  free(a);
-  free(b0);
+  //free(a);
+  //free(b0);
   //free(b3);
   //free(b1); 
   //free(b2);
-  free(b);
-  return 1;
+  //free(b);
+  return length;
 }

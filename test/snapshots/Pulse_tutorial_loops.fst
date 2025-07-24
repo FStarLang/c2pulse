@@ -27,7 +27,8 @@ else
 {
 (! x) := (Int32.sub (! (! x)) 1l);
 };
-};}
+};
+}
 
 fn multiply_by_repeated_addition
 (x : Int32.t)
@@ -48,7 +49,8 @@ invariant b. exists* c a. (x |-> vx) ** (y |-> vy) ** (* tedious *) (ctr |-> c) 
 {
 ctr := (Int32.add (! ctr) 1l);
 acc := (Int32.add (! acc) (! y));
-};(! acc);
+};
+(! acc);
 }
 
 let rec sum (n:nat) : nat = if n = 0 then 0 else n + sum (n - 1) let rec sum_lemma (n:nat) : Lemma (sum n == n * (n + 1) / 2) = if n = 0 then () else sum_lemma (n - 1) let rec sum_mono (c n:nat) : Lemma (requires c <= n) (ensures sum c <= sum n) [SMTPat (sum c); SMTPat (sum n)] = sum_lemma c; sum_lemma n
@@ -71,7 +73,8 @@ invariant b. exists* c a. (n |-> vn) ** (* tedious *) (ctr |-> c) ** (acc |-> a)
 {
 ctr := (Int32.add (! ctr) 1l);
 acc := (Int32.add (! acc) (! ctr));
-};(! acc);
+};
+(! acc);
 }
 
 let rec fib (n:nat) : nat = if n <= 1 then 1 else fib (n - 1) + fib (n - 2) let rec fib_mono (n:nat) (m:nat { m <= n}) : Lemma (ensures fib m <= fib n) = if n = m then () else fib_mono (n - 1) m

@@ -1088,6 +1088,9 @@ void PulseCodeGen::generateCodeFromPulseStmt(llvm::raw_string_ostream &OS,
     *ColCounter += strlen(PulseSyntax::ClosingCurlyBrace);
     OS << PulseSyntax::Semicolon;
     *ColCounter += strlen(PulseSyntax::Semicolon);
+    OS << PulseSyntax::NewLine;
+    *RowCounter += 1; 
+    *ColCounter = 1;
 
     //End
     PulseSourceLocation End(*RowCounter, *ColCounter);

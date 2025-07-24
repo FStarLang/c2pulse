@@ -30,4 +30,5 @@ let mut tmp : UInt32.t = (op_Array_Access (! arr) (! i));
 (! arr).((! i)) <- (op_Array_Access (! arr) (! j));
 (! arr).((! j)) <- (! tmp);
 i := (SizeT.add (! i) (int32_to_sizet 1l));
-};}
+};
+}

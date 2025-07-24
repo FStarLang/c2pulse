@@ -20,6 +20,7 @@
 #define STR(...)
 #define REQUIRES(s)
 #define ENSURES(...)
+#define PRESERVES(...)
 #define RETURNS(s)
 #define ISARRAY(len)
 #define INVARIANTS(...)

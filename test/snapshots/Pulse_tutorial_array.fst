@@ -97,5 +97,6 @@ while((int32_to_bool (bool_to_int32 (Int32.eq (compare_elements (! a1) (! a2) (!
 invariant b.        exists* vi vl.            (a1 |-> va1) ** (a2 |-> va2) ** (* tedious *)             (i |-> vi) ** (va1 |-> Frac p s1) ** (va2 |-> Frac p s2) **            (l |-> vl) **            pure (                Seq.length s1 = SZ.as_int vl /\                Seq.length s2 = SZ.as_int vl /\                SZ.as_int vi <= SZ.as_int vl /\                (b == (SZ.as_int vi < SZ.as_int vl && Seq.index s1 (SZ.as_int vi) = Seq.index s2 (SZ.as_int vi))) /\                (forall (i:nat). i < SZ.as_int vi ==> Seq.index s1 i == Seq.index s2 i)                        )
 {
 i := (SizeT.add (! i) (int32_to_sizet 1l));
-};(int32_to_bool ((bool_to_int32 (SizeT.eq (! i) (! l)))));
+};
+(int32_to_bool ((bool_to_int32 (SizeT.eq (! i) (! l)))));
 }

@@ -624,6 +624,7 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
         if (auto *AnnAttr = dyn_cast<AnnotateAttr>(Attr)){
           auto AttrName = AnnAttr->getAttrName();
           auto Annotation = AnnAttr->getAnnotation();
+          //Match has the length
           std::string Match;
           auto AnnKind = getPulseAnnKindFromString(Annotation, Match);
           if (AnnKind != PulseAnnKind::IsArray){
@@ -2434,6 +2435,20 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
             emitErrorWithLocation("Not implemented array type!", &Ctx, VD->getLocation());
           }
         }
+        
+        //Uninitialized array that is a pointer.
+        //Check if it has been marked as an array by the user. 
+        if (VD->hasAttrs() && checkAndAddIsArrayTy(VD->getAttrs(), D)){
+          auto *PulseTy = pulseTyFromDecl(VD);
+          auto VarDeclName = VD->getNameAsString(); 
+
+          auto *GenericDecl = new GenericStmt();
+          GenericDecl->CInfo = getSourceInfoFromDecl(VD, Ctx, "");
+
+          GenericDecl->body =
+            "let mut " + VarDeclName + ": " + PulseTy->print() + " = witness #_ #_;";
+          return GenericDecl;
+        }
 
         // Any uninitialized declaration that is not a struct
         auto CType = VD->getType();
@@ -2492,8 +2507,19 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
         ArrayAssignExpr->CInfo = getSourceInfoFromExpr(ArrSub, Ctx, "", "");
         ArrayAssignExpr->Arr = getTermFromCExpr(
             ArrSub->getBase(), Analyzer, ExprsBef, Parent, BO->getType(), Module);
-        ArrayAssignExpr->Index = getTermFromCExpr(
-            ArrSub->getIdx(), Analyzer, ExprsBef, Parent, BO->getType(), Module);
+        
+        auto IdxExpr = ArrSub->getIdx();
+        auto *ArrIdxExpr = getTermFromCExpr(
+            IdxExpr, Analyzer, ExprsBef, Parent, BO->getType(), Module);
+
+        if (IdxExpr->getType().getAsString() != "size_t"){
+          auto *CastCall = new AppE(getPulseStringForCType(IdxExpr->getType(), Ctx) + "_to_sizet");
+          CastCall->CInfo = getSourceInfoFromExpr(IdxExpr, Ctx, "", "");
+          CastCall->pushArg(ArrIdxExpr);
+          ArrIdxExpr = CastCall;
+        }
+
+        ArrayAssignExpr->Index = ArrIdxExpr;
         ArrayAssignExpr->Value =
             getTermFromCExpr(Rhs, Analyzer, ExprsBef, Parent, BO->getType(), Module);
         ArrayAssignExpr->CInfo = getSourceInfoFromStmt(Lhs, Ctx, "", "");
