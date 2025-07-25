@@ -57,7 +57,6 @@ def pos_from_json(d):
 
 def range_from_json(d):
     r = (pos_from_json(d['start']), pos_from_json(d['end']))
-    print(f"range_from_json({d}) = {r}")
     return r
 
 def setup(filename):
