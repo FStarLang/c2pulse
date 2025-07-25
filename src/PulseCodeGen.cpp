@@ -1139,10 +1139,18 @@ void PulseCodeGen::generateCodeFromPulseStmt(llvm::raw_string_ostream &OS,
 void PulseCodeGen::PulseSourceRangeToJson(json &J,
                                           const PulseSourceRange &Range) {
   J = json{
-      {"start_line", Range.Begin.Line},
-      {"start_column", Range.Begin.Column},
-      {"end_line", Range.End.Line},
-      {"end_column", Range.End.Column},
+      { "start", 
+        {
+        { "line", Range.Begin.Line },
+        { "column", Range.Begin.Column }
+            }
+          },
+      { "end", 
+        {
+        { "line", Range.End.Line },
+        { "column", Range.End.Column }
+            }
+          }
   };
 }
 
@@ -1152,13 +1160,19 @@ void PulseCodeGen::SourceInfoToJson(json &J, const SourceInfo &Info) {
   llvm::raw_string_ostream RangInfoStream(Buffer);
 
   Info.range.print(RangInfoStream, ClangCtx.getSourceManager());
-  J = json{{"Line", Info.Line},
-           {"Column", Info.Column},
-           {"Type", Info.Context},
-           {"Source", Info.SourceLine},
-           {"Context", Info.Context},
-           {"Operations", Info.Operation},
-           {"CRangeInfo", RangInfoStream.str()}};
+  J = json{
+    { "fileName", Info.FileName },
+    { "start", {
+        { "line", Info.StartLine },
+        { "column", Info.StartColumn }
+    }},
+    { "end", {
+        { "line", Info.EndLine },
+        { "column", Info.EndColumn }
+    }},
+    { "isVerbatim", Info.IsVerbatim }
+};
+
 }
 
 void PulseCodeGen::JsonifySourceRangeMap(std::string JsonOutputFile){
@@ -1176,10 +1190,10 @@ void PulseCodeGen::JsonifySourceRangeMap(std::string JsonOutputFile){
       json JsonVal;
 
       PulseSourceRangeToJson(JsonKey, Key);
-      Entry["PulseSourceRange"] = JsonKey;
+      Entry["pulseRange"] = JsonKey;
 
       SourceInfoToJson(JsonVal, Value);
-      Entry["CSourceRangeInfo"] = JsonVal;
+      Entry["cRange"] = JsonVal;
 
       JSonArray.push_back(Entry);
     }

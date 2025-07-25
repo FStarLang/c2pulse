@@ -447,17 +447,27 @@ SourceInfo getSourceInfoFromExpr(clang::Expr *ExprNode, clang::ASTContext &Conte
     std::string CtxString, std::string Op){
 
   auto &SM = Context.getSourceManager();
-  SourceLocation loc = SM.getSpellingLoc(ExprNode->getExprLoc());
+  SourceLocation BeginLoc = SM.getSpellingLoc(ExprNode->getBeginLoc());
+  SourceLocation EndLoc = SM.getSpellingLoc(ExprNode->getEndLoc());
 
-  unsigned line = SM.getSpellingLineNumber(loc);
-  unsigned column = SM.getSpellingColumnNumber(loc);
+  unsigned BeginLine = SM.getSpellingLineNumber(BeginLoc);
+  unsigned BeginCol = SM.getSpellingColumnNumber(BeginLoc);
+  
+  unsigned EndLine = SM.getSpellingLineNumber(EndLoc);
+  unsigned EndCol = SM.getSpellingColumnNumber(EndLoc);
+
+  unsigned line = SM.getSpellingLineNumber(BeginLoc);
+  unsigned column = SM.getSpellingColumnNumber(BeginLoc);
+
   QualType QT = ExprNode->getType();
+
+  auto PresumedLoc = SM.getPresumedLoc(BeginLoc);
 
   std::string pretty;
   llvm::raw_string_ostream rso(pretty);
   ExprNode->printPretty(rso, nullptr, Context.getPrintingPolicy());
 
-  std::optional<std::string> srcLine = getSourceLine(loc, SM);
+  std::optional<std::string> srcLine = getSourceLine(BeginLoc, SM);
 
   SourceInfo info;
   info.isValid = true;
@@ -469,6 +479,12 @@ SourceInfo getSourceInfoFromExpr(clang::Expr *ExprNode, clang::ASTContext &Conte
   info.Context = CtxString;
   info.Operation = Op;
   info.range = ExprNode->getSourceRange();
+  info.StartLine = BeginLine;
+  info.StartColumn = BeginCol;
+  info.EndLine = EndLine;
+  info.EndColumn = EndCol;
+  info.FileName = PresumedLoc.getFilename();
+  info.IsVerbatim = false;
   return info;
 }
 
@@ -477,17 +493,27 @@ SourceInfo getSourceInfoFromAttr(const clang::Attr *AttrNode,
                                  std::string CtxString) {
 
   auto &SM = Context.getSourceManager();
-  SourceLocation loc = SM.getSpellingLoc(AttrNode->getLocation());
+  SourceLocation BeginLoc = SM.getSpellingLoc(AttrNode->getLocation());
+  SourceLocation EndLoc = SM.getSpellingLoc(AttrNode->getLocation());
 
-  unsigned line = SM.getSpellingLineNumber(loc);
-  unsigned column = SM.getSpellingColumnNumber(loc);
+  unsigned BeginLine = SM.getSpellingLineNumber(BeginLoc);
+  unsigned BeginCol = SM.getSpellingColumnNumber(BeginLoc);
+  
+  unsigned EndLine = SM.getSpellingLineNumber(EndLoc);
+  unsigned EndCol = SM.getSpellingColumnNumber(EndLoc);
+
+  unsigned line = SM.getSpellingLineNumber(BeginLoc);
+  unsigned column = SM.getSpellingColumnNumber(BeginLoc);
+
+  auto PresumedLoc = SM.getPresumedLoc(BeginLoc);
+
   QualType QT;
 
   std::string pretty;
   llvm::raw_string_ostream rso(pretty);
   AttrNode->printPretty(rso, Context.getPrintingPolicy());
 
-  std::optional<std::string> srcLine = getSourceLine(loc, SM);
+  std::optional<std::string> srcLine = getSourceLine(BeginLoc, SM);
 
   SourceInfo info;
   info.isValid = true;
@@ -499,6 +525,13 @@ SourceInfo getSourceInfoFromAttr(const clang::Attr *AttrNode,
   info.Context = CtxString;
   info.Operation = "Attribute";
   info.range = AttrNode->getRange();
+  info.StartLine = BeginLine;
+  info.StartColumn = BeginCol;
+  info.EndLine = EndLine;
+  info.EndColumn = EndCol;
+  info.FileName = PresumedLoc.getFilename();
+  info.IsVerbatim = true;
+  
   return info;
 }
 
@@ -506,10 +539,19 @@ SourceInfo getSourceInfoFromStmt(clang::Stmt *StmtNode, clang::ASTContext &Conte
     std::string CtxString, std::string Op){
 
   auto &SM = Context.getSourceManager();
-  SourceLocation loc = SM.getSpellingLoc(StmtNode->getBeginLoc());
+  SourceLocation BeginLoc = SM.getSpellingLoc(StmtNode->getBeginLoc());
+  SourceLocation EndLoc = SM.getSpellingLoc(StmtNode->getEndLoc());
 
-  unsigned line = SM.getSpellingLineNumber(loc);
-  unsigned column = SM.getSpellingColumnNumber(loc);
+  unsigned BeginLine = SM.getSpellingLineNumber(BeginLoc);
+  unsigned BeginCol = SM.getSpellingColumnNumber(BeginLoc);
+  
+  unsigned EndLine = SM.getSpellingLineNumber(EndLoc);
+  unsigned EndCol = SM.getSpellingColumnNumber(EndLoc);
+
+  unsigned line = SM.getSpellingLineNumber(BeginLoc);
+  unsigned column = SM.getSpellingColumnNumber(BeginLoc);
+
+  auto PresumedLoc = SM.getPresumedLoc(BeginLoc);
   
   QualType QT;
   if (auto *Expr = llvm::dyn_cast<clang::Expr>(StmtNode)) {
@@ -520,7 +562,7 @@ SourceInfo getSourceInfoFromStmt(clang::Stmt *StmtNode, clang::ASTContext &Conte
   llvm::raw_string_ostream rso(pretty);
   StmtNode->printPretty(rso, nullptr, Context.getPrintingPolicy());
 
-  std::optional<std::string> srcLine = getSourceLine(loc, SM);
+  std::optional<std::string> srcLine = getSourceLine(BeginLoc, SM);
 
   SourceInfo info;
   info.isValid = true;
@@ -532,6 +574,12 @@ SourceInfo getSourceInfoFromStmt(clang::Stmt *StmtNode, clang::ASTContext &Conte
   info.Context = CtxString;
   info.Operation = Op;
   info.range = StmtNode->getSourceRange();
+  info.StartLine = BeginLine;
+  info.StartColumn = BeginCol;
+  info.EndLine = EndLine;
+  info.EndColumn = EndCol;
+  info.FileName = PresumedLoc.getFilename();
+  info.IsVerbatim = false;
   return info;
 }
 
@@ -544,10 +592,16 @@ SourceInfo getSourceInfoFromDecl(const clang::Decl *Decl,
     return SourceInfo();
 
   auto &SM = Context.getSourceManager();
-  SourceLocation loc = SM.getSpellingLoc(Decl->getBeginLoc());
+  SourceLocation BeginLoc = SM.getSpellingLoc(Decl->getBeginLoc());
+  SourceLocation EndLoc = SM.getSpellingLoc(Decl->getEndLoc());
 
-  unsigned line = SM.getSpellingLineNumber(loc);
-  unsigned column = SM.getSpellingColumnNumber(loc);
+  unsigned BeginLine = SM.getSpellingLineNumber(BeginLoc);
+  unsigned BeginCol = SM.getSpellingColumnNumber(BeginLoc);
+  
+  unsigned EndLine = SM.getSpellingLineNumber(EndLoc);
+  unsigned EndCol = SM.getSpellingColumnNumber(EndLoc);
+
+  auto PresumedLoc = SM.getPresumedLoc(BeginLoc);
 
   QualType QT;
   std::string pretty;
@@ -571,17 +625,24 @@ SourceInfo getSourceInfoFromDecl(const clang::Decl *Decl,
 
   Decl->print(rso, Context.getPrintingPolicy());
 
-  std::optional<std::string> srcLine = getSourceLine(loc, SM);
+  std::optional<std::string> srcLine = getSourceLine(BeginLoc, SM);
 
   SourceInfo info;
   info.isValid = true;
   info.PrettyString = rso.str();
-  info.Line = line;
-  info.Column = column;
+  info.Line = BeginLine;
+  info.Column = BeginCol;
   info.Type = QT.getAsString();
   info.SourceLine = srcLine.value_or("[Unavailable]");
   info.Context = CtxString;
   info.Operation = "";
   info.range = Decl->getSourceRange();
+  info.StartLine = BeginLine;
+  info.StartColumn = BeginCol;
+  info.EndLine = EndLine;
+  info.EndColumn = EndCol;
+  info.FileName = PresumedLoc.getFilename();
+  info.IsVerbatim = false;
+
   return info;
 }

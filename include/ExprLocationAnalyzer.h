@@ -41,6 +41,18 @@ class SourceInfo {
                // nodes that do not have a range, so you will get the
                // range.start() only I agree with other design decision but I
                // think it is easier to persist only the range.
+    
+    unsigned StartLine;   // Line number in the source code where the node/expression
+                          // appears
+    unsigned StartColumn; // Column number in the source code for precise location
+
+    unsigned EndLine;   // Line number in the source code where the node/expression
+                          // appears
+    unsigned EndColumn; // Column number in the source code for precise location
+
+    std::string FileName; 
+
+    bool IsVerbatim;
 
     void setLine(unsigned Line);
     void setColumn(unsigned Column);

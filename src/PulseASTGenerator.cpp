@@ -967,47 +967,47 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     // { fold u32_pair_struct_pred x ({first = a0; second = a1}) }
 
     std::string FieldPrefix = "a";
-    auto *NewGhostFunction = new GenericDecl();
-    NewGhostFunction->CInfo = getSourceInfoFromDecl(RD, Ctx, "");
-    NewGhostFunction->Ident = "ghost\n";
-    NewGhostFunction->Ident += "fn " + StructName + "_recover ";
-    NewGhostFunction->Ident += "(x:ref " + StructName + ") ";
+    auto *NewGhostFunctionRecover = new GenericDecl();
+    NewGhostFunctionRecover->CInfo = getSourceInfoFromDecl(RD, Ctx, "");
+    NewGhostFunctionRecover->Ident = "ghost\n";
+    NewGhostFunctionRecover->Ident += "fn " + StructName + "_recover ";
+    NewGhostFunctionRecover->Ident += "(x:ref " + StructName + ") ";
     
     Counter = 0;
     for (auto *Fld : RD->fields()) {
       auto Ty = Fld->getType(); 
       auto *PulseTy = pulseTyFromDecl(Fld);
-      NewGhostFunction->Ident += "(";
-      NewGhostFunction->Ident += "#" + FieldPrefix + std::to_string(Counter) + " : ";
+      NewGhostFunctionRecover->Ident += "(";
+      NewGhostFunctionRecover->Ident += "#" + FieldPrefix + std::to_string(Counter) + " : ";
       if (Fld->getType()->isRecordType()){
-        NewGhostFunction->Ident += PulseTy->print() + "_spec";
+        NewGhostFunctionRecover->Ident += PulseTy->print() + "_spec";
       } 
       else {
-        NewGhostFunction->Ident += PulseTy->print();
+        NewGhostFunctionRecover->Ident += PulseTy->print();
       }
-      NewGhostFunction->Ident += ")\n";
+      NewGhostFunctionRecover->Ident += ")\n";
       Counter++;
     }
-    NewGhostFunction->Ident += "\n";
+    NewGhostFunctionRecover->Ident += "\n";
 
-    NewGhostFunction->Ident += "requires exists* (y: " + StructName + "). (x |-> y) ** \n";
+    NewGhostFunctionRecover->Ident += "requires exists* (y: " + StructName + "). (x |-> y) ** \n";
     Counter = 0;
     for (auto *Fld : RD->fields()){
-      NewGhostFunction->Ident += "(";
-      NewGhostFunction->Ident += "y.";
-      NewGhostFunction->Ident += FieldToUniqueNames[Fld] + " ";
+      NewGhostFunctionRecover->Ident += "(";
+      NewGhostFunctionRecover->Ident += "y.";
+      NewGhostFunctionRecover->Ident += FieldToUniqueNames[Fld] + " ";
       if (Fld->getType()->isRecordType()){
         auto *FieldTy = pulseTyFromDecl(Fld);
-        NewGhostFunction->Ident += " `" + FieldTy->print() + "_pred` ";
+        NewGhostFunctionRecover->Ident += " `" + FieldTy->print() + "_pred` ";
       }
       else{
-        NewGhostFunction->Ident += "|-> ";
+        NewGhostFunctionRecover->Ident += "|-> ";
       }
-      NewGhostFunction->Ident += FieldPrefix + std::to_string(Counter);
-      NewGhostFunction->Ident += ")";
+      NewGhostFunctionRecover->Ident += FieldPrefix + std::to_string(Counter);
+      NewGhostFunctionRecover->Ident += ")";
 
       if (Counter < NumRecordFields - 1){
-        NewGhostFunction->Ident += " **\n";
+        NewGhostFunctionRecover->Ident += " **\n";
       }
       // NewGhostFunction->Ident += "\n";
       Counter++;
@@ -1026,21 +1026,21 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     if (HasArrayTypeFields){
   
     Counter = 0;
-    NewGhostFunction->Ident += "** pure (" + StructName + "_relations {\n";
+    NewGhostFunctionRecover->Ident += "** pure (" + StructName + "_relations {\n";
     for (auto *Fld : RD->fields()){
-      NewGhostFunction->Ident += FieldToUniqueNames[Fld] + " = " + FieldPrefix + std::to_string(Counter);
+      NewGhostFunctionRecover->Ident += FieldToUniqueNames[Fld] + " = " + FieldPrefix + std::to_string(Counter);
       if (Counter < NumRecordFields - 1){
-        NewGhostFunction->Ident += ";\n";
+        NewGhostFunctionRecover->Ident += ";\n";
       }
       Counter++;
     }
-    NewGhostFunction->Ident += "})\n";
+    NewGhostFunctionRecover->Ident += "})\n";
   }
 
 
-    NewGhostFunction->Ident += "\n";
+    NewGhostFunctionRecover->Ident += "\n";
 
-    NewGhostFunction->Ident += "ensures exists* w. " + StructName + "_pred x w ** pure (w == {";
+    NewGhostFunctionRecover->Ident += "ensures exists* w. " + StructName + "_pred x w ** pure (w == {";
     Counter = 0;
     std::string TempStr = "";
     for (auto *Fld : RD->fields()){
@@ -1054,13 +1054,13 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
       }
       Counter++;
     }
-    NewGhostFunction->Ident += TempStr;
-    NewGhostFunction->Ident += "})\n";
+    NewGhostFunctionRecover->Ident += TempStr;
+    NewGhostFunctionRecover->Ident += "})\n";
 
-    NewGhostFunction->Ident += "{fold " + StructName + "_pred x ({";
-    NewGhostFunction->Ident += TempStr + "}) }\n";
+    NewGhostFunctionRecover->Ident += "{fold " + StructName + "_pred x ({";
+    NewGhostFunctionRecover->Ident += TempStr + "}) }\n";
 
-    NewModul->Decls.push_back(NewGhostFunction);
+    NewModul->Decls.push_back(NewGhostFunctionRecover);
   }
   else if (RD->isUnion()){
 
@@ -1964,6 +1964,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
     auto *MutLetBindInit = new VarTerm(ParamName);
     MutLetBindInit->CInfo = getSourceInfoFromDecl(Param, Ctx, "");
     LetBinding *MutLetBindForParam = new LetBinding(ParamName,  MutLetBindInit , MutOrRef::MUT);
+    MutLetBindForParam->CInfo = getSourceInfoFromDecl(Param, Ctx, "");
     MutLetBindForParam->VarTy = ParamTy->print();
     
     if (ParamLetMutSequence == nullptr){
@@ -2353,26 +2354,33 @@ PulseStmt* PulseVisitor::handleMallocs(
           auto *TermForSizeExpr = getPulseTermForMallocSize(SizeExpr, ArrayElemType, A, ExprsBef, DS, VD->getType(), Module);
           if (SizeExpr->getType().getCanonicalType().getAsString() != "size_t"){
             auto *CastCall = new AppE(getPulseStringForCType(SizeExpr->getType(), Ctx) + "_to_sizet");
+            CastCall->CInfo = getSourceInfoFromExpr(SizeExpr, Ctx, "", "");
             CastCall->pushArg(TermForSizeExpr);
             auto *NewParen = new Paren(CastCall);
+            NewParen->CInfo = getSourceInfoFromExpr(SizeExpr, Ctx, "", "");
             TermForSizeExpr = NewParen;
           }
       
           auto SizeName = gensym("size_expr");
           auto *LetBindSize = new LetBinding(SizeName, TermForSizeExpr, MutOrRef::MUT);
+          LetBindSize->CInfo = getSourceInfoFromExpr(SizeExpr, Ctx, "", "");
           //Since we added a cast this is fine to hardcode.
           LetBindSize->VarTy = "SizeT.t";
       
           auto *AllocationCall = new AppE("alloc_array");
+          AllocationCall->CInfo = getSourceInfoFromExpr(Call, Ctx, "", "");
           auto *ElemTy = PulseArrTy->ElementType;
           auto SymbolElemTy = ElemTy->print();
           auto *Arg1 = new Name("#" + SymbolElemTy);
+          Arg1->CInfo = getSourceInfoFromExpr(Call, Ctx, "", "");
           AllocationCall->pushArg(Arg1);
       
           //Since this is a LetMut add a !.
           auto *Arg2 = new Name("!" + SizeName);
+          Arg2->CInfo = getSourceInfoFromExpr(Call, Ctx, "", "");
           AllocationCall->pushArg(Arg2);
           auto *NewLet = new LetBinding(VD->getNameAsString(), AllocationCall, MutOrRef::MUT);
+          NewLet->CInfo = getSourceInfoFromExpr(Call, Ctx, "", "");
           NewLet->VarTy = PulseArrTy->print();
 
           auto *NewSeq = new PulseSequence(); 
@@ -2735,12 +2743,12 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           //TODO: Vidush
           //check if the dereference is to a ref or an array.
           //We can do some shape analysis here to determine if 
-          // the dereference is of the following types: 
-          // *x where x is a known array 
+          // the dereference is of the following types:
+          // *x where x is a known array
           // *(x + constant) where x is a known array
           // *(var + constant + x + var + constant)
           // We should be able to generalize these as 
-          // A base array + some constant or variable offset. 
+          // A base array + some constant or variable offset.
 
           auto *PulseLhsTerm = getTermFromCExpr(
               SubExpr, Analyzer, ExprsBef, Parent, BO->getType(), Module);
@@ -2755,6 +2763,11 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
 
           return Assignment;
         }
+      //TODO: We should also handle pointer arithmetic that are to arrays. 
+      //Vidush: For starters, we can start with expressions such as: 
+      //*x -> x[0];
+      //*(x + constant) -> x[constant];
+      //*(x + i) -> x[i]
       } else if (auto *ArrSub = dyn_cast<ArraySubscriptExpr>(Lhs)) {
 
         // TODO: Make sure to release these expressions
@@ -3941,9 +3954,10 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
             if (Lhs->getType().getAsString() != Rhs->getType().getAsString()){
               auto *CastCall = new AppE(
                   getPulseStringForCType(Rhs->getType(), Ctx) + "_to_" + getPulseStringForCType(Lhs->getType(), Ctx));
-              CastCall->pushArg(RhsTerm);
               CastCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+              CastCall->pushArg(RhsTerm);
               auto *NewParen = new Paren(CastCall);
+              NewParen->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
               RhsTerm = NewParen;
 
             }
@@ -4458,9 +4472,11 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
     //Add a cast to size_t if it is needed                                    
     if (ArrIdx->getType().getCanonicalType().getAsString() != "size_t"){
        auto *CastCall = new AppE(getPulseStringForCType(ArrIdx->getType(), Ctx) + "_to_sizet");
-
+       CastCall->CInfo = getSourceInfoFromExpr(ArrIdx, Ctx, "", "");
        CastCall->pushArg(PulseArrIdx);
-       PulseArrIdx = new Paren(CastCall);
+       auto *NewParen = new Paren(CastCall);
+       NewParen->CInfo = getSourceInfoFromExpr(ArrIdx, Ctx, "", "");
+       PulseArrIdx = NewParen;
     }                                    
 
     PulseCall->pushArg(PulseArrIdx);
@@ -4619,8 +4635,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
 
         auto *NewParen = new Paren(App);
         NewParen->CInfo = getSourceInfoFromExpr(BaseExpr, Ctx, "", "");
-
-        NewProject->BaseTerm = new Paren(App);
+        NewProject->BaseTerm = NewParen;
       } 
       else {
         NewProject->BaseTerm = BaseTerm;
