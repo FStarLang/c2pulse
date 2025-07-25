@@ -3384,8 +3384,12 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
       // if (auto *CastToStmt = dyn_cast<Stmt>(RS->getRetValue())){
       auto *RetStmt = getTermFromCExpr(RetVal, Analyzer, ExprsBefore, Parent, RetVal->getType(), Module);
       auto *RetExpr = new PulseExpr();
-      RetExpr->CInfo = getSourceInfoFromStmt(S, Ctx, "", "");
+      RetExpr->CInfo = getSourceInfoFromStmt(RS, Ctx, "", "");
       RetExpr->E = RetStmt;
+
+      //Overide location of RetStmt
+      RetStmt->CInfo = RetExpr->CInfo;
+
       return RetExpr;
       // return RetStmt;
       //}
