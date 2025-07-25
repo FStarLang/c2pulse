@@ -17,7 +17,7 @@ int square(int x) {
 REQUIRES(pure (Int32.fits (Int32.v x * 2)))
 RETURNS(res : Int32.t)
 ENSURES(pure (Int32.v x * 2 == Int32.v res))
-int doubleValue(int x) { 
+int doubleValue(int x) {
     return x * 2; 
 }
 

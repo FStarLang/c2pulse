@@ -63,13 +63,14 @@ def setup(filename):
     print(f"Error reading {filename}: {e}")
 
   for pair in data:
-    pj = pair['PulseSourceRange']
-    cj = pair['CSourceRangeInfo']
-    pr = ((pj['start_line'], pj['start_column']),
-          (pj['end_line'],   pj['end_column']))
-    cr = ((cj['Line'], cj['Column']),
-          (cj['Line'], cj['Column']))
+    pj = pair['pulseRange']
+    cj = pair['cRange']
+    pr = ((pj['start']['line'], pj['start']['column']),
+          (pj['end']['line'],   pj['end']['column']))
+    cr = ((cj['start']['line'], cj['start']['column']),
+          (cj['end']['line'], cj['end']['column']))
     
+    #print(cr, pr)
     rmap.append((cr, pr))
 
 def loopmode():
