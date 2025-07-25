@@ -52,6 +52,14 @@ def best_match(r, map):
 
 rmap = []
 
+def pos_from_json(d):
+    return (int(d['line']), int(d['column']))
+
+def range_from_json(d):
+    r = (pos_from_json(d['start']), pos_from_json(d['end']))
+    print(f"range_from_json({d}) = {r}")
+    return r
+
 def setup(filename):
   try:
     with open(filename, 'r') as f:
@@ -63,12 +71,8 @@ def setup(filename):
     print(f"Error reading {filename}: {e}")
 
   for pair in data:
-    pj = pair['pulseRange']
-    cj = pair['cRange']
-    pr = ((pj['start']['line'], pj['start']['column']),
-          (pj['end']['line'],   pj['end']['column']))
-    cr = ((cj['start']['line'], cj['start']['column']),
-          (cj['end']['line'], cj['end']['column']))
+    pr = range_from_json(pair['pulseRange'])
+    cr = range_from_json(pair['cRange'])
     
     #print(cr, pr)
     rmap.append((cr, pr))
