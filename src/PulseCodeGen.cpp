@@ -1170,7 +1170,8 @@ void PulseCodeGen::SourceInfoToJson(json &J, const SourceInfo &Info) {
         { "line", Info.EndLine },
         { "column", Info.EndColumn }
     }},
-    { "isVerbatim", Info.IsVerbatim }
+    { "isVerbatim", Info.IsVerbatim },
+    {"clangAstNode", Info.ClangAstNode}
 };
 
 }

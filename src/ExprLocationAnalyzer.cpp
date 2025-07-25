@@ -485,6 +485,8 @@ SourceInfo getSourceInfoFromExpr(clang::Expr *ExprNode, clang::ASTContext &Conte
   info.EndColumn = EndCol;
   info.FileName = PresumedLoc.getFilename();
   info.IsVerbatim = false;
+  llvm::raw_string_ostream S(info.ClangAstNode);
+  ExprNode->printPretty(S, nullptr, Context.getPrintingPolicy());
   return info;
 }
 
@@ -531,6 +533,8 @@ SourceInfo getSourceInfoFromAttr(const clang::Attr *AttrNode,
   info.EndColumn = EndCol;
   info.FileName = PresumedLoc.getFilename();
   info.IsVerbatim = true;
+  llvm::raw_string_ostream S(info.ClangAstNode);
+  AttrNode->printPretty(S, Context.getPrintingPolicy());
   
   return info;
 }
@@ -580,6 +584,9 @@ SourceInfo getSourceInfoFromStmt(clang::Stmt *StmtNode, clang::ASTContext &Conte
   info.EndColumn = EndCol;
   info.FileName = PresumedLoc.getFilename();
   info.IsVerbatim = false;
+  llvm::raw_string_ostream S(info.ClangAstNode);
+  StmtNode->printPretty(S, nullptr, Context.getPrintingPolicy());
+
   return info;
 }
 
@@ -643,6 +650,8 @@ SourceInfo getSourceInfoFromDecl(const clang::Decl *Decl,
   info.EndColumn = EndCol;
   info.FileName = PresumedLoc.getFilename();
   info.IsVerbatim = false;
+  llvm::raw_string_ostream S(info.ClangAstNode);
+  Decl->print(S, Context.getPrintingPolicy());
 
   return info;
 }

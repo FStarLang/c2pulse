@@ -54,6 +54,8 @@ class SourceInfo {
 
     bool IsVerbatim;
 
+    std::string ClangAstNode;
+
     void setLine(unsigned Line);
     void setColumn(unsigned Column);
     clang::SourceLocation getBeginLoc();
