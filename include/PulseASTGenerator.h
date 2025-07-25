@@ -62,6 +62,30 @@ public:
   FStarType *pulseTyFromDecl(const clang::Decl* D);
   bool checkAndAddIsArrayTy(const clang::AttrVec &Attrs, const clang::Decl* D);
   bool isKnownArrayType(const clang::Decl *D);
+  clang::QualType getTypeFromDecl(const clang::Decl *D);
+  
+  Term *getPulseTermForMallocSize(
+    clang::Expr *SizeExpr, 
+    clang::QualType ArrayElemType, 
+    clang::ExprMutationAnalyzer *A, 
+    llvm::SmallVector<PulseStmt *> &ExprsBef, 
+    clang::Stmt *Parent, 
+    clang::QualType ParentType, 
+    PulseModul *Module
+  );
+
+  PulseStmt* handleMallocs(
+    clang::Expr *E, 
+    const clang::VarDecl* VD,
+    clang::DeclStmt *DS, 
+    clang::Decl *D,
+    clang::ExprMutationAnalyzer *A, 
+    llvm::SmallVector<PulseStmt *> &ExprsBef, 
+    clang::Stmt *Parent, 
+    clang::QualType ParentType, 
+    PulseModul *Module
+  );
+
 private:
   std::map<std::string, PulseModul *> Modules;
   clang::Rewriter &TheRewriter;

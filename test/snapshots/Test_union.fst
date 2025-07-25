@@ -1,0 +1,132 @@
+module Test_union
+
+#lang-pulse
+
+open Pulse
+open Pulse.Lib.C
+
+
+
+noeq
+type ab = {
+a: ref UInt32.t;
+b: ref bool;
+}
+
+type ab_spec = 
+ | Case_a of UInt32.t
+ | Case_b of bool
+
+let ab_pred(u : ref ab) (s : ab_spec) : slprop =
+exists* uv. (u |-> uv) **
+begin match s with
+ | Case_a v -> uv.a |-> v
+ | Case_b v -> uv.b |-> v
+end
+
+fn ab_explode (x : ref ab) (#s : ab_spec)
+requires ab_pred x s
+ensures exists* (v : ab). (x |-> v) **
+begin match s with
+ | Case_a w -> v.a |-> w
+ | Case_b w -> v.b |-> w
+end
+{
+unfold ab_pred;
+}
+
+ghost
+fn ab_recover (x : ref ab) (#s : ab_spec)
+requires exists* (v : ab). (x |-> v) **
+begin match s with
+ | Case_a w -> v.a|-> w
+ | Case_b w -> v.b|-> w
+end
+ensures ab_pred x s
+{
+fold (ab_pred x s);
+}
+
+fn incr_a
+(x : ref ab)
+(s:_)
+requires pure (Case_a? s)
+requires ab_pred x s
+requires pure (UInt32.fits (UInt32.v (Case_a?._0 s) + 1))
+ensures exists* s'. ab_pred x s'
+{
+let mut x : (ref ab) = x;
+ab_explode !x;
+rewrite each s as Case_a (Case_a?._0 s);
+Mkab?.a (! (! x)) := (UInt32.add (! (! (! x)).a) (int32_to_uint32 1l));
+ab_recover !x #(Case_a _);
+}
+
+noeq
+type stru = {
+tag: ref Int8.t;
+payload: ref ab;
+}
+
+[@@erasable]
+noeq
+type stru_spec = {
+tag : Int8.t;
+payload : ab_spec
+
+}
+
+let stru_pred (x:ref stru) (s:stru_spec) : slprop =
+exists* (y: stru). (x |-> y) **
+(y.tag |-> s.tag) **
+ab_pred y.payload s.payload
+
+assume val stru_spec_default : stru_spec
+
+assume val stru_default (stru_var_spec:stru_spec) : stru
+
+ghost
+fn stru_pack (stru_var:ref stru) (#stru_var_spec:stru_spec)
+requires stru_var|-> stru_default stru_var_spec
+ensures exists* v. stru_pred stru_var v ** pure (v == stru_var_spec)
+{ admit() }
+
+ghost
+fn stru_unpack (stru_var:ref stru)
+requires exists* v. stru_pred stru_var v 
+ensures exists* u. stru_var |-> u
+{ admit() }
+
+fn stru_alloc ()
+returns x:ref stru
+ensures freeable x
+ensures exists* v. stru_pred x v
+{ admit () }
+
+fn stru_free (x:ref stru)
+requires freeable x
+requires exists* v. stru_pred x v
+{ admit() }
+
+
+ghost fn stru_explode (x:ref stru) (#s:stru_spec)
+requires stru_pred x s
+ensures exists* (v: stru). (x |-> v) ** (v.tag |-> s.tag) ** 
+(v.payload `ab_pred` s.payload)
+
+{unfold stru_pred}
+
+
+ghost
+fn stru_recover (x:ref stru) (#a0 : Int8.t)
+(#a1 : ab_spec)
+
+requires exists* (y: stru). (x |-> y) ** 
+(y.tag |-> a0) **
+(y.payload  `ab_pred` a1)
+ensures exists* w. stru_pred x w ** pure (w == {tag = a0;
+payload = a1})
+{fold stru_pred x ({tag = a0;
+payload = a1}) }
+
+let stru_ok (u : ref stru) (s : stru_spec) : slprop =stru_pred u s **pure (match s.tag with| 0y -> Case_a? s.payload| 1y -> Case_b? s.payload| _ -> false)

@@ -4,7 +4,7 @@
 #include "../include/PulseMacros.h"
 
 REQUIRES(exists* s.arr |-> s)
-REQUIRES(pure (length arr == SizeT.v len))
+REQUIRES(pure (length arr == UInt64.v len))
 ENSURES(exists* s.arr |-> s)
 void reverse(ISARRAY(len) uint32_t *arr, size_t len) {
   size_t i = 0;
@@ -14,7 +14,7 @@ void reverse(ISARRAY(len) uint32_t *arr, size_t len) {
     INVARIANTS( invariant c.
                 (arr |-> varr) **
                 (len |-> vlen) ** (
-                exists* vi. (i |->vi) ** (exists* s. varr |->s) ** pure (c == (vi `SizeT.lt` SizeT.div vlen 2sz)) 
+                exists* vi. (i |->vi) ** (exists* s. varr |->s) ** pure (c == (vi `UInt64.lt` UInt64.div vlen 2UL)) 
               ) )
         {
                 size_t j = len - 1 - i;  

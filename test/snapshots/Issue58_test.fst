@@ -9,10 +9,10 @@ open Pulse.Lib.C
 
 noeq
 type engine_record_t = {
-l0_image_header_size: ref SizeT.t;
+l0_image_header_size: ref UInt64.t;
 l0_image_header: ref (array UInt8.t);
 l0_image_header_sig: ref (array UInt8.t);
-l0_binary_size: ref SizeT.t;
+l0_binary_size: ref UInt64.t;
 l0_binary: ref (array UInt8.t);
 l0_binary_hash: ref (array UInt8.t);
 l0_image_auth_pubkey: ref (array UInt8.t);
@@ -21,10 +21,10 @@ l0_image_auth_pubkey: ref (array UInt8.t);
 [@@erasable]
 noeq
 type engine_record_t_spec = {
-l0_image_header_size : SizeT.t;
+l0_image_header_size : UInt64.t;
 l0_image_header : array UInt8.t;
 l0_image_header_sig : array UInt8.t;
-l0_binary_size : SizeT.t;
+l0_binary_size : UInt64.t;
 l0_binary : array UInt8.t;
 l0_binary_hash : array UInt8.t;
 l0_image_auth_pubkey : array UInt8.t
@@ -32,9 +32,9 @@ l0_image_auth_pubkey : array UInt8.t
 }
 
 let engine_record_t_relations (s:engine_record_t_spec) : prop = 
-Pulse.Lib.Array.length s.l0_image_header == Pulse.Lib.C.SizeT.as_int s.l0_image_header_size /\
+Pulse.Lib.Array.length s.l0_image_header == UInt64.v s.l0_image_header_size /\
 Pulse.Lib.Array.length s.l0_image_header_sig == 64 /\
-Pulse.Lib.Array.length s.l0_binary == Pulse.Lib.C.SizeT.as_int s.l0_binary_size /\
+Pulse.Lib.Array.length s.l0_binary == UInt64.v s.l0_binary_size /\
 Pulse.Lib.Array.length s.l0_binary_hash == 64 /\
 Pulse.Lib.Array.length s.l0_image_auth_pubkey == 32
 
@@ -92,10 +92,10 @@ ensures exists* (v: engine_record_t). (x |-> v) ** (v.l0_image_header_size |-> s
 
 
 ghost
-fn engine_record_t_recover (x:ref engine_record_t) (#a0 : SizeT.t)
+fn engine_record_t_recover (x:ref engine_record_t) (#a0 : UInt64.t)
 (#a1 : (array UInt8.t))
 (#a2 : (array UInt8.t))
-(#a3 : SizeT.t)
+(#a3 : UInt64.t)
 (#a4 : (array UInt8.t))
 (#a5 : (array UInt8.t))
 (#a6 : (array UInt8.t))

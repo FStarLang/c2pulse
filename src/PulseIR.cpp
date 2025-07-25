@@ -215,9 +215,10 @@ std::string getPulseStringForCType(clang::QualType Ty, clang::ASTContext &Ctx) {
   } else if (Ty->isUnsignedIntegerType()) {
 
     // check explicitly if it is size_t
-    if (Ty.getAsString() == "size_t") {
-      return "sizet";
-    }
+    //Vidush: Don't make size_t its own type, rather use its canonical representation.
+    //if (Ty.getAsString() == "size_t") {
+    //  return "sizet";
+    //}
 
     if (Ty.getAsString() == "_Bool") {
       return "bool";
@@ -237,9 +238,11 @@ std::string getPulseStringForCType(clang::QualType Ty, clang::ASTContext &Ctx) {
       emitError("(getPulseStringForCType): did not expect C type!\n");
     }
 
-  } else if (Ty.getAsString() == "size_t") {
-    return "sizet";
-  } else if (Ty.getAsString() == "_Bool") {
+  } 
+  //else if (Ty.getAsString() == "size_t") {
+  //  return "sizet";
+  //} 
+  else if (Ty.getAsString() == "_Bool") {
     return "bool";
   } else if (Ty->isArrayType()) {
     return "array";
@@ -258,6 +261,61 @@ std::string getPulseStringForCType(clang::QualType Ty, clang::ASTContext &Ctx) {
 
   Ty->dump();
   emitError("(getPulseStringForCType): Did not expect C type!\n");
+}
+
+std::string getPulseModuleNameForCType(clang::QualType Ty, clang::ASTContext &Ctx) {
+
+  if (Ty->isSignedIntegerType()) {
+    
+    if (Ctx.getTypeSize(Ty) == 8) {
+      return "Int8";
+    } else if (Ctx.getTypeSize(Ty) == 16) {
+      return "Int16";
+    } else if (Ctx.getTypeSize(Ty) == 32) {
+      return "Int32";
+    } else if (Ctx.getTypeSize(Ty) == 64) {
+      return "Int64";
+    } else {
+      emitError("(getPulseModuleNameForCType): Module name unknown!\n");
+    }
+
+  } else if (Ty->isUnsignedIntegerType()) {
+
+    // check explicitly if it is size_t
+    //Vidush: Don't make size_t its own type, rather use its canonical representation.
+    //if (Ty.getAsString() == "size_t") {
+    //  return "SizeT";
+    //}
+    
+    //TODO: Vidush check what bool modules are called in pulse?
+    if (Ty.getAsString() == "_Bool") {
+      return "bool";
+    }
+
+    if (Ctx.getTypeSize(Ty) == 8) {
+      return "UInt8";
+    } else if (Ctx.getTypeSize(Ty) == 16) {
+      return "UInt16";
+    } else if (Ctx.getTypeSize(Ty) == 32) {
+      return "UInt32";
+    } else if (Ctx.getTypeSize(Ty) == 64) {
+      return "UInt64";
+    } else if (Ctx.getTypeSize(Ty) == 128) {
+      return "UInt128";
+    } else {
+      emitError("(getPulseModuleNameForCType): Module name unknown!\n");
+    }
+
+  } 
+  //else if (Ty.getAsString() == "size_t") {
+  //  return "sizet";
+  //} 
+  else if (Ty.getAsString() == "_Bool") {
+    return "bool";
+  }
+
+  Ty->dump();
+  emitError("(getPulseModuleNameForCType): Module name unknown!\n");
 }
 
 SymbolTable getSymbolKeyForCType(clang::QualType Ty, clang::ASTContext &Ctx) {
@@ -279,9 +337,9 @@ SymbolTable getSymbolKeyForCType(clang::QualType Ty, clang::ASTContext &Ctx) {
   } else if (Ty->isUnsignedIntegerType()) {
 
     // check explicitly if it is size_t
-    if (Ty.getAsString() == "size_t") {
-      return SymbolTable::SizeT;
-    }
+    //if (Ty.getAsString() == "size_t") {
+    //  return SymbolTable::SizeT;
+    //}
 
     if (Ty.getAsString() == "_Bool") {
       return SymbolTable::Bool;
@@ -301,9 +359,11 @@ SymbolTable getSymbolKeyForCType(clang::QualType Ty, clang::ASTContext &Ctx) {
       emitError("(getSymbolKeyForType): did not expect C type!\n");
     }
 
-  } else if (Ty.getAsString() == "size_t") {
-    return SymbolTable::SizeT;
-  } else if (Ty.getAsString() == "_Bool") {
+  } 
+  //else if (Ty.getAsString() == "size_t") {
+  //  return SymbolTable::SizeT;
+  //} 
+  else if (Ty.getAsString() == "_Bool") {
     return SymbolTable::Bool;
   } else if (Ty->isArrayType()) {
     return SymbolTable::Array;

@@ -898,3 +898,6 @@ PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data, std::string &match)
 
 /// A function to get the string for the C type.
 std::string getPulseStringForCType(clang::QualType Ty, clang::ASTContext &Ctx);
+
+/// A function to get the pulse module name from the Ctype.
+std::string getPulseModuleNameForCType(clang::QualType Ty, clang::ASTContext &Ctx);

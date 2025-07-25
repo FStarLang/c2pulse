@@ -527,6 +527,23 @@ std::string PulseVisitor::getNameForRecordDecl(const RecordDecl *RD){
 
 }
 
+
+QualType PulseVisitor::getTypeFromDecl(const Decl *D){
+
+  if (auto *FD = dyn_cast<FieldDecl>(D)){
+    return FD->getType();
+  }
+  else if (auto *RD = dyn_cast<RecordDecl>(D)){
+    return QualType(RD->getTypeForDecl(), 0);
+  }
+  else if (auto *VD = dyn_cast<VarDecl>(D)){
+    return VD->getType();
+  }
+  else{
+    emitErrorWithLocation("Declaration Type not handled!", &Ctx, D->getLocation());
+  }
+}
+
 bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
 
   auto SourceLoc = RD->getLocation();
@@ -538,7 +555,11 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
   if (!RD->isThisDeclarationADefinition())
     return true;
   
-  std::set<std::string> VarNamesInScope;  
+  //Vidush: 
+  //TODO: Expand this map to also include globals. 
+  //Since pulse does not support globals right now, 
+  //This map does not require to store globals.  
+  std::map<std::string, const Decl *> VarNamesInScope;  
   
   std::string StructName;
   auto ItRecName = RecordToRecordName.find(RD);
@@ -549,7 +570,7 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
   }
 
   StructName = getNameForRecordDecl(RD);
-  VarNamesInScope.insert(StructName);
+  VarNamesInScope.insert(std::make_pair(StructName, RD));
 
   // auto *Def = TypeDefDec->getUnderlyingDecl();
 
@@ -598,7 +619,7 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     //Get Unique Field Names in scope.
     bool HasArrayTypeFields = false;
     size_t NumArrayFields = 0;
-    llvm::SmallDenseMap<const FieldDecl*, std::string> FieldToUniqueNames;
+    llvm::SmallDenseMap<const Decl*, std::string> FieldToUniqueNames;
     for (const FieldDecl *FD : RD->fields()){
 
       auto FName = FD->getNameAsString();
@@ -612,10 +633,10 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
 
       if (VarNamesInScope.count(FName) > 0){
         FName = gensym(FName);
-        VarNamesInScope.insert(FName);
       }
       //Make sure name of the field is made unique.
       FieldToUniqueNames.insert(std::make_pair(FD, FName));
+      VarNamesInScope.insert(std::make_pair(FName, FD));
 
 
       //Check for Attrs attached to Field declarations. 
@@ -652,6 +673,11 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     }
     AbstractType->Ident += "}\n";
     NewModul->Decls.push_back(AbstractType);
+
+
+
+    //If the Record is a Struct/Typedef/Anon struct
+    if (RD->isStruct()){
 
     //2. A purely functional specification type for the struct
     // [@@erasable]
@@ -722,14 +748,48 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
           }
           else if (const auto *VarArray = dyn_cast<VariableArrayType>(ArrType)){
             auto ArrSize = VarArray->getSizeExpr();
-            std::string ArrSizeStr;
-            llvm::raw_string_ostream ArrSizeStream(ArrSizeStr);
-            PrintingPolicy policy(Ctx.getLangOpts());
-            ArrSize->printPretty(ArrSizeStream, nullptr, policy);
-            GenericRelations->Ident += "Pulse.Lib.Array.length s." + Fld->getNameAsString() + " == " + "Pulse.Lib.C.SizeT.as_int s." + ArrSizeStream.str();
-            if (Counter < NumArrayFields - 1){
-              GenericRelations->Ident += " /\\\n";
+
+            //Only implemented for single variables, no complex expressions.
+            if (auto *Decl = dyn_cast<DeclRefExpr>(ArrSize)){
+              //std::string ArrSizeStr;
+              //llvm::raw_string_ostream ArrSizeStream(ArrSizeStr);
+              //PrintingPolicy policy(Ctx.getLangOpts());
+              //ArrSize->printPretty(ArrSizeStream, nullptr, policy);
+              
+              auto VarName = Decl->getDecl()->getNameAsString();
+              auto It = VarNamesInScope.find(VarName);
+              std::string LengthExpr;
+              if (It != VarNamesInScope.end()){
+                //Check if is a field. 
+                auto *Def = It->second;
+                if (!Def){
+                  emitErrorWithLocation("Could not find definition for variable: " + VarName, &Ctx, RD->getLocation());
+                }
+
+                QualType DefTy = getTypeFromDecl(Def);
+                auto ModuleName = getPulseModuleNameForCType(DefTy, Ctx);
+                auto It2 = FieldToUniqueNames.find(Def); 
+                //Length is part of the Struct
+                if (It2 != FieldToUniqueNames.end()){
+                  LengthExpr = ModuleName + ".v " + "s." + VarName;
+                }
+                else {
+                  LengthExpr = ModuleName + ".v " + VarName;
+                }
+              }
+              else {
+                emitErrorWithLocation("Could not find variable in env: " + VarName, &Ctx, RD->getLocation());
+              }
+
+              GenericRelations->Ident += "Pulse.Lib.Array.length s." + Fld->getNameAsString() + " == " + LengthExpr;
+              if (Counter < NumArrayFields - 1){
+                GenericRelations->Ident += " /\\\n";
+              }
             }
+            else {
+              emitErrorWithLocation("Cannot handle complex size expressions for array!", &Ctx, RD->getLocation());
+            }
+
           }
           Counter++;
         }
@@ -1001,7 +1061,103 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     NewGhostFunction->Ident += TempStr + "}) }\n";
 
     NewModul->Decls.push_back(NewGhostFunction);
-    //}
+  }
+  else if (RD->isUnion()){
+
+    //2. A purely functional specification type for the struct
+    //   type ab_spec =
+    // | Case_a of UInt32.t
+    // | Case_b of bool
+
+    auto *UnionSpec = new GenericDecl(); 
+    UnionSpec->CInfo = getSourceInfoFromDecl(RD, Ctx, "");
+    UnionSpec->Ident += "type " + StructName + "_spec = \n";
+    for (auto Fld : RD->fields()){
+      auto FldName = FieldToUniqueNames[Fld];
+      auto FldTy = getPulseTyFromCTy(Fld->getType());
+      UnionSpec->Ident += " | Case_" + FldName + " of " + FldTy->print() + "\n";
+    }
+
+    NewModul->Decls.push_back(UnionSpec);
+
+    // (* Just like a struct, this should the predicate used by the translation
+    // whenever there are fields of type `union ab`. *)
+    // let ab_pred (u : ref ab) (s : ab_spec) : slprop =
+    //   exists* uv. (u |-> uv) **
+    //     begin match s with
+    //       | Case_a v -> uv.a |-> v
+    //       | Case_b v -> uv.b |-> v
+    //     end
+
+    auto *UnionPred = new GenericDecl();
+    UnionPred->CInfo = getSourceInfoFromDecl(RD, Ctx, "");
+    UnionPred->Ident = "let " + StructName + "_pred" + "(u : ref " + StructName + ") " + "(s : " + StructName + "_spec) : slprop =\n";
+    UnionPred->Ident += "exists* uv. (u |-> uv) **\n";
+    UnionPred->Ident += "begin match s with\n";
+    for (auto *Fld : RD->fields()){
+      auto FldName = FieldToUniqueNames[Fld];
+      UnionPred->Ident += " | Case_" + FldName + " v -> " + "uv." + FldName + " |-> v\n";
+    } 
+    UnionPred->Ident += "end\n";
+    NewModul->Decls.push_back(UnionPred);
+
+    // ghost
+    // fn ab_explode (x : ref ab) (#s : ab_spec)
+    // requires ab_pred x s
+    // ensures exists* (v : ab). (x |-> v) **
+    //   begin match s with
+    //     | Case_a w -> v.a |-> w
+    //     | Case_b w -> v.b |-> w
+    //   end
+    // {
+    //   unfold ab_pred;
+    // }
+
+    auto *UnionExplode = new GenericDecl(); 
+    UnionExplode->Ident = "fn " + StructName + "_explode " + "(x : ref " + StructName + ") " + "(#s : " + StructName + "_spec)\n";
+    UnionExplode->Ident += "requires " + StructName + "_pred x s\n";
+    UnionExplode->Ident += "ensures exists* (v : " + StructName + "). (x |-> v) **\n";
+    UnionExplode->Ident += "begin match s with\n";
+    for (auto Fld : RD->fields()){
+      auto FldName = FieldToUniqueNames[Fld];
+      UnionExplode->Ident +=  " | Case_" + FldName + " w -> v." + FldName + " |-> w\n";
+    }
+    UnionExplode->Ident += "end\n";
+    UnionExplode->Ident += "{\n";
+    UnionExplode->Ident += "unfold " + StructName + "_pred;\n";
+    UnionExplode->Ident += "}\n";
+    NewModul->Decls.push_back(UnionExplode);
+
+    // ghost
+    // fn ab_recover (x : ref ab) (#s : ab_spec)
+    // requires exists* (v : ab). (x |-> v) **
+    //     begin match s with
+    //       | Case_a w -> v.a |-> w
+    //       | Case_b w -> v.b |-> w
+    //     end
+    // ensures  ab_pred x s
+    // {
+    //   fold (ab_pred x s);
+    // }
+    auto *GhostRecover = new GenericDecl(); 
+    GhostRecover->CInfo = getSourceInfoFromDecl(RD, Ctx, "");
+    GhostRecover->Ident = "ghost\n";
+    GhostRecover->Ident += "fn " + StructName + "_recover " + "(x : ref " + StructName + ") " + "(#s : " + StructName + "_spec)\n";
+    GhostRecover->Ident += "requires exists* (v : " + StructName + "). " + "(x |-> v) **\n";
+    GhostRecover->Ident += "begin match s with\n";
+    for (auto Fld : RD->fields()){
+      auto FldName = FieldToUniqueNames[Fld];
+      GhostRecover->Ident += " | Case_" + FldName + " w -> v." + FldName + "|-> w\n";    
+    }
+    GhostRecover->Ident += "end\n";
+    GhostRecover->Ident += "ensures " + StructName + "_pred x s\n";
+    GhostRecover->Ident += "{\n";
+    GhostRecover->Ident += "fold (" + StructName + "_pred x s);\n";
+    GhostRecover->Ident += "}\n";
+
+    NewModul->Decls.push_back(GhostRecover);
+  }
+ 
 
     return true;
 }
@@ -1365,6 +1521,10 @@ void PulseVisitor::addArrayTy(std::string Match, const Decl *ArrDecl) {
     ArrTy = VD->getType();
     ArrElementType = ArrTy->getPointeeType();
   }
+  else if (auto *FD = dyn_cast<FunctionDecl>(ArrDecl)){
+    ArrTy = FD->getReturnType();
+    ArrElementType = ArrTy->getPointeeType();
+  }
   else {
     emitErrorWithLocation("Not implemented for declaration type!", &Ctx, ArrDecl->getLocation());
   }
@@ -1644,10 +1804,12 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
               }
               break;
             }
-            case PulseAnnKind::IsArray:
-              llvm::report_fatal_error(
-                  "Unhandled PulseAnnKind::IsArray in switch statement");
+            case PulseAnnKind::IsArray:{
+              //We parse this as: The function returns an array type.
+              //So we could say that the function is of type array type.
+              addArrayTy(Match, FD);
               break;
+            }
             case PulseAnnKind::Invariants:
               llvm::report_fatal_error(
                   "Unhandled PulseAnnKind::Invariants in switch statement");
@@ -1718,28 +1880,30 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
               // llvm::outs() << "End of element type!" << "\n"; exit(1);
               DeclTyMap.insert(std::make_pair(Param, VLAType));
               
-              if (!Match.empty()) {
-                auto *NewRequires = new Requires();
-                NewRequires->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
-                NewRequires->Ann = "pure (length " + Param->getNameAsString() +
-                                   " == SizeT.v " + Match + ")";
-                auto &Arr = FDefn->Annotation;
-                Arr.insert(Arr.begin(), NewRequires);
-              }
+              //Removing these since SizeT.v is assumed but length can be any type in C
+              // if (!Match.empty()) {
+              //   auto *NewRequires = new Requires();
+              //   NewRequires->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
+              //   NewRequires->Ann = "pure (length " + Param->getNameAsString() +
+              //                      " == SizeT.v " + Match + ")";
+              //   auto &Arr = FDefn->Annotation;
+              //   Arr.insert(Arr.begin(), NewRequires);
+              // }
 
             } else {
               clang::QualType ConstArrayTy = Ctx.getConstantArrayType(
                   ElementType, llvm::APInt(32, std::stoi(Match)), nullptr,
                   ArraySizeModifier::Normal, 0);
               DeclTyMap.insert(std::make_pair(Param, ConstArrayTy));
-              if (!Match.empty()) {
-                auto *NewRequires = new Requires();
-                NewRequires->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
-                NewRequires->Ann = "pure (length " + Param->getNameAsString() +
-                                   " == SizeT.v " + Match + "sz)";
-                auto &Arr = FDefn->Annotation;
-                Arr.insert(Arr.begin(), NewRequires);
-              }
+              //Removing these since SizeT.v is assumed but length can be any type in C
+              // if (!Match.empty()) {
+              //   auto *NewRequires = new Requires();
+              //   NewRequires->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
+              //   NewRequires->Ann = "pure (length " + Param->getNameAsString() +
+              //                      " == SizeT.v " + Match + "sz)";
+              //   auto &Arr = FDefn->Annotation;
+              //   Arr.insert(Arr.begin(), NewRequires);
+              // }
             }
           } else if (PulseAnnotKind == PulseAnnKind::HeapAllocated) {
             IsAllocatedOnHeap.insert(Param);
@@ -1963,7 +2127,7 @@ FStarType *PulseVisitor::getPulseTyFromCTy(clang::QualType CType) {
       emitError("PulseVisitor: Did not implement array type in clang");
     }
 
-    if (CType->getPointeeType()->isStructureType()) {
+    if (CType->getPointeeType()->isRecordType()) {
       auto PointeeTy = CType->getPointeeType();
       auto *RecordTy = PointeeTy->getAs<RecordType>();
       auto *RD = RecordTy->getDecl();
@@ -2011,7 +2175,7 @@ FStarType *PulseVisitor::getPulseTyFromCTy(clang::QualType CType) {
   if (CTyKey != SymbolTable::UNKNOWN)
     CTyKeyStr = lookupSymbol(CTyKey);
   else{
-    if (CType->isStructureType()){
+    if (CType->isRecordType()){
 
       auto RT = CType->getAs<RecordType>();
       auto RD = RT->getDecl();
@@ -2097,6 +2261,157 @@ bool PulseVisitor::checkAndAddIsArrayTy(const AttrVec &Attrs, const Decl* D){
   return IsArray;
 }
 
+
+Term *PulseVisitor::getPulseTermForMallocSize(
+  Expr *SizeExpr, 
+  QualType ArrayElemType, 
+  clang::ExprMutationAnalyzer *A, 
+  llvm::SmallVector<PulseStmt *> &ExprsBef, 
+  clang::Stmt *Parent, 
+  clang::QualType ParentType, 
+  PulseModul *Module
+){
+
+  //(sizeof(int) * length)
+  //(sizeof(int) * 100)
+  //Everything else errors out.
+
+  if (auto *BO = dyn_cast<BinaryOperator>(SizeExpr)){
+    auto *Lhs = BO->getLHS();
+    auto *Rhs = BO->getRHS();
+
+    if (auto *SizeOfExpr = dyn_cast<UnaryExprOrTypeTraitExpr>(Lhs)){
+      if (SizeOfExpr->getKind() == UETT_SizeOf){
+        auto Ty = SizeOfExpr->getArgumentType();
+        if (Ty != ArrayElemType){
+          emitErrorWithLocation("Size of malloc not supported!", &Ctx, SizeExpr->getExprLoc());
+        }
+      }
+    }
+
+    //Generate term for Rhs and return it as the length of the array.
+    auto *SizeExpr = getTermFromCExpr(Rhs, A, ExprsBef, Parent, ParentType, Module);
+    return SizeExpr;
+
+  }
+  else if (auto *SizeOfExpr = dyn_cast<UnaryExprOrTypeTraitExpr>(SizeExpr)){
+    if (SizeOfExpr->getKind() == UETT_SizeOf){
+        auto Ty = SizeOfExpr->getArgumentType();
+        if (Ty != ArrayElemType){
+          emitErrorWithLocation("Size of malloc not supported!", &Ctx, SizeExpr->getExprLoc());
+        }
+    }
+    auto *CT = new ConstTerm();
+    CT->CInfo = getSourceInfoFromExpr(SizeExpr, Ctx, "", "");
+    CT->ConstantValue = "1";
+    CT->Symbol = getSymbolKeyForCType(SizeOfExpr->getType(), Ctx);
+    return CT;
+    
+  }
+  emitErrorWithLocation("Shape of malloc not supported!", &Ctx, SizeExpr->getExprLoc());
+}
+
+//Vidush: 
+//Only handles mallocs of specified shape.
+//Valid shape
+// int *a = (int*) malloc(sizeof(int) * length);
+// int *a = (int*) malloc(sizeof(int) * 10);
+// int *a = malloc(sizeof(int) * length);
+//Invalid
+// int *a = (uint64_t*) malloc(sizeof(int)...);
+// int *a = malloc(1000);
+// int *a = malloc(sizeof(float) * 1000);
+// int *a = malloc(length);
+PulseStmt* PulseVisitor::handleMallocs(
+  Expr *E, 
+  const VarDecl* VD,
+  clang::DeclStmt *DS, 
+  clang::Decl *D,
+  clang::ExprMutationAnalyzer *A, 
+  llvm::SmallVector<PulseStmt *> &ExprsBef, 
+  clang::Stmt *Parent, 
+  clang::QualType ParentType, 
+  PulseModul *Module
+){
+  auto handleMallocHelper = [this]
+  ( CallExpr *Call, 
+    clang::ASTContext &Ctx, 
+    const clang::VarDecl *VD,
+    const clang::Decl *D,
+    clang::DeclStmt *DS,
+    clang::ExprMutationAnalyzer *A,
+    llvm::SmallVector<PulseStmt *> &ExprsBef,
+    PulseModul *Module
+  )
+  {
+
+      Expr::EvalResult Result;
+      auto *SizeExpr = Call->getArg(0);
+      auto *PulseTy = pulseTyFromDecl(VD);
+      auto ArrayElemType = VD->getType()->getPointeeType();
+      if (auto *PulseArrTy = dyn_cast<FStarArrType>(PulseTy)){
+          auto *TermForSizeExpr = getPulseTermForMallocSize(SizeExpr, ArrayElemType, A, ExprsBef, DS, VD->getType(), Module);
+          if (SizeExpr->getType().getCanonicalType().getAsString() != "size_t"){
+            auto *CastCall = new AppE(getPulseStringForCType(SizeExpr->getType(), Ctx) + "_to_sizet");
+            CastCall->pushArg(TermForSizeExpr);
+            auto *NewParen = new Paren(CastCall);
+            TermForSizeExpr = NewParen;
+          }
+      
+          auto SizeName = gensym("size_expr");
+          auto *LetBindSize = new LetBinding(SizeName, TermForSizeExpr, MutOrRef::MUT);
+          //Since we added a cast this is fine to hardcode.
+          LetBindSize->VarTy = "SizeT.t";
+      
+          auto *AllocationCall = new AppE("alloc_array");
+          auto *ElemTy = PulseArrTy->ElementType;
+          auto SymbolElemTy = ElemTy->print();
+          auto *Arg1 = new Name("#" + SymbolElemTy);
+          AllocationCall->pushArg(Arg1);
+      
+          //Since this is a LetMut add a !.
+          auto *Arg2 = new Name("!" + SizeName);
+          AllocationCall->pushArg(Arg2);
+          auto *NewLet = new LetBinding(VD->getNameAsString(), AllocationCall, MutOrRef::MUT);
+          NewLet->VarTy = PulseArrTy->print();
+
+          auto *NewSeq = new PulseSequence(); 
+          NewSeq->assignS1(LetBindSize);
+          NewSeq->assignS2(NewLet);
+          return NewSeq;
+      }
+      emitErrorWithLocation("Expected Array type!", &Ctx, Call->getBeginLoc());
+  };
+
+  //int *a = malloc(sizeof(int) * length);
+  if (auto *IC = dyn_cast<ImplicitCastExpr>(E)){
+    if (auto *Call = dyn_cast<CallExpr>(IC->getSubExpr())){
+      if (Call->getDirectCallee()->getNameAsString() == "malloc"){
+         auto *RetStmt = handleMallocHelper(Call, Ctx, VD, D, DS, A, ExprsBef, Module);
+         return RetStmt;
+      }
+    }
+  }
+
+  //int *a = (int*) malloc(sizeof(int) * 10);
+  //int *a = (int*) malloc(sizeof(int) * length);
+  if (auto *C = dyn_cast<CStyleCastExpr>(E)){
+    auto *SubExpr = C->getSubExpr();
+    //LHS and RHS should have the same Type! 
+    if (C->getType() == VD->getType()){
+      if (auto *Call = dyn_cast<CallExpr>(SubExpr)){
+        if (Call->getDirectCallee()->getNameAsString() == "malloc"){
+          auto *RetStmt = handleMallocHelper(Call, Ctx, VD, D, DS, A, ExprsBef, Module);
+          return RetStmt;
+        }
+      }
+    }
+  }
+  
+  E->dump();
+  emitErrorWithLocation("Encountered a Malloc call whose shape is not supported!", &Ctx, E->getExprLoc());
+}
+
 PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
                                        Stmt *Parent, PulseModul *Module,
                                        CompoundStmt *CS) {
@@ -2112,83 +2427,13 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           auto *Init = VD->getInit();
           if (auto *Call = dyn_cast<CallExpr>(Init->IgnoreCasts()->IgnoreParens()->IgnoreCasts())){
             if (Call->getDirectCallee()->getNameAsString() == "malloc"){
-
               //Check if the user wanted this allocation to be an array
               if (VD->hasAttrs() && checkAndAddIsArrayTy(VD->getAttrs(), D)){
-
-                //get the size of the allocation
-                Expr::EvalResult Result;
-                auto *SizeExpr = Call->getArg(0);
-                if (SizeExpr->EvaluateAsInt(Result, Ctx)) {
-                  llvm::APSInt val = Result.Val.getInt();
-                  uint64_t SizeVal = val.getZExtValue();
-                  auto *AllocationCall = new AppE(); 
-                  AllocationCall->makeCallName("alloc_array");
-                  auto *PulseTy = pulseTyFromDecl(VD);
-                  if (auto *PulseArrTy = dyn_cast<FStarArrType>(PulseTy)){
-
-                    auto *ElemTy = PulseArrTy->ElementType;
-                    auto SymbolElemTy = ElemTy->print();
-                    auto *Arg1 = new Name("#" + SymbolElemTy);
-                    AllocationCall->pushArg(Arg1);
-                    auto *Arg2 = new Name(std::to_string(SizeVal) + "sz");
-                    AllocationCall->pushArg(Arg2);
-                    auto *NewLet = new LetBinding(VD->getNameAsString(), AllocationCall, MutOrRef::MUT);
-                    NewLet->VarTy = PulseArrTy->print();
-                    return NewLet;
-                  }
-                  else{
-                    emitError("Expected Array type!");
-                  }
-                }
-                else {
-                  auto *PulseTy = pulseTyFromDecl(VD);
-                  if (auto *PulseArrTy = dyn_cast<FStarArrType>(PulseTy)){
-                      
-                    SmallVector<PulseStmt*> ExprsBef;
-                    auto *TermForSizeExpr = getTermFromCExpr(SizeExpr, 
-                    Analyzer, ExprsBef, DS, VD->getType(), Module);
-
-                    if (SizeExpr->getType().getAsString() != "size_t"){
-                      auto *CastCall = new AppE(getPulseStringForCType(SizeExpr->getType(), Ctx) + "_to_sizet");
-                      CastCall->pushArg(TermForSizeExpr);
-                      auto *NewParen = new Paren(CastCall);
-                      TermForSizeExpr = NewParen;
-                    }
-
-                    auto SizeName = gensym("size_expr");
-                    auto *LetBindSize = new LetBinding(SizeName, TermForSizeExpr, MutOrRef::MUT);
-                    //Since we added a cast this is fine to hardcode.
-                    LetBindSize->VarTy = "SizeT.t";
-
-
-                    auto *AllocationCall = new AppE("alloc_array");
-                   
-                    auto *ElemTy = PulseArrTy->ElementType;
-                    auto SymbolElemTy = ElemTy->print();
-                    auto *Arg1 = new Name("#" + SymbolElemTy);
-                    AllocationCall->pushArg(Arg1);
-                    //Since this is a LetMut.
-                    auto *Arg2 = new Name("!" + SizeName);
-                    AllocationCall->pushArg(Arg2);
-                    auto *NewLet = new LetBinding(VD->getNameAsString(), AllocationCall, MutOrRef::MUT);
-                    NewLet->VarTy = PulseArrTy->print();
-
-                    auto *NewSeq = new PulseSequence(); 
-                    NewSeq->assignS1(LetBindSize);
-                    NewSeq->assignS2(NewLet);
-                    return NewSeq;
-                  }
-                  else{
-                    emitErrorWithLocation("Expected Array type!", &Ctx, Call->getBeginLoc());
-                  }
-                  emitErrorWithLocation("Variable malloc not implemeted!", &Ctx, Call->getBeginLoc());
-                }
+                llvm::SmallVector<PulseStmt *> ExprsBef;
+                return handleMallocs(Init, VD, DS, D,Analyzer, ExprsBef, DS, VD->getType(), Module);
               }
               //translate it as a ref
-              else {
-                goto init_standard;
-              }
+              goto init_standard;
             }
           }
           
@@ -2410,7 +2655,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
               //This should ideally be casted to a sizeTy. 
               //Add a cast here if the expression type is not sizet. 
               //Vidush: TODO check if this is correct.
-              if (SizeExpr->getType().getAsString() != "size_t"){
+              if (SizeExpr->getType().getCanonicalType().getAsString() != "size_t"){
                 auto *Cast = new AppE(getPulseStringForCType(SizeExpr->getType(), Ctx) + "_to_sizet");
                 Cast->pushArg(PulseSizeExpr);
                 PulseSizeExpr = Cast;
@@ -2485,8 +2730,20 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
           // TODO: Make sure to release these expressions
           SmallVector<PulseStmt *> ExprsBef;
 
+          auto *SubExpr = UO->getSubExpr();
+          
+          //TODO: Vidush
+          //check if the dereference is to a ref or an array.
+          //We can do some shape analysis here to determine if 
+          // the dereference is of the following types: 
+          // *x where x is a known array 
+          // *(x + constant) where x is a known array
+          // *(var + constant + x + var + constant)
+          // We should be able to generalize these as 
+          // A base array + some constant or variable offset. 
+
           auto *PulseLhsTerm = getTermFromCExpr(
-              UO->getSubExpr(), Analyzer, ExprsBef, Parent, BO->getType(), Module);
+              SubExpr, Analyzer, ExprsBef, Parent, BO->getType(), Module);
           auto *PulseRhsTerm =
               getTermFromCExpr(Rhs, Analyzer, ExprsBef, Parent,BO->getType(), Module);
           PulseAssignment *Assignment =
@@ -2512,7 +2769,7 @@ PulseStmt *PulseVisitor::pulseFromStmt(Stmt *S, ExprMutationAnalyzer *Analyzer,
         auto *ArrIdxExpr = getTermFromCExpr(
             IdxExpr, Analyzer, ExprsBef, Parent, BO->getType(), Module);
 
-        if (IdxExpr->getType().getAsString() != "size_t"){
+        if (IdxExpr->getType().getCanonicalType().getAsString() != "size_t"){
           auto *CastCall = new AppE(getPulseStringForCType(IdxExpr->getType(), Ctx) + "_to_sizet");
           CastCall->CInfo = getSourceInfoFromExpr(IdxExpr, Ctx, "", "");
           CastCall->pushArg(ArrIdxExpr);
@@ -3986,9 +4243,10 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
         auto *ArgDecl = ArgDeclR->getDecl();
         auto Ty = ArgDecl->getType();
         auto PointeeType = Ty->getPointeeType();
-        if (Ty->isPointerType() && PointeeType->isStructureType()) {
-          auto *RecordTy = PointeeType->getAsStructureType();
-          auto *RecDec = RecordTy->getDecl();
+        if (Ty->isPointerType() && PointeeType->isRecordType()) {
+          //auto *RecordTy = PointeeType->getAsStructureType();
+          //auto *RecDec = RecordTy->getDecl();
+          auto *RecDec = PointeeType->getAsRecordDecl();
           auto It = RecordToRecordName.find(RecDec);
           if (It == RecordToRecordName.end()) {
             emitError("Could not find type name for Record!");
@@ -4020,9 +4278,10 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
       else {
         auto Ty = Arg->getType();
         auto PointeeType = Ty->getPointeeType();
-        if (Ty->isPointerType() && PointeeType->isStructureType()) {
-          auto *RecordTy = PointeeType->getAsStructureType();
-          auto *RecDec = RecordTy->getDecl();
+        if (Ty->isPointerType() && PointeeType->isRecordType()) {
+          //auto *RecordTy = PointeeType->getAsStructureType();
+          //auto *RecDec = RecordTy->getDecl();
+          auto *RecDec = PointeeType->getAsRecordDecl();
           auto It = RecordToRecordName.find(RecDec);
           if (It == RecordToRecordName.end()) {
             emitError("Could not find type name for Record!");
@@ -4197,7 +4456,7 @@ PulseVisitor::getTermFromCExpr(Expr *E, ExprMutationAnalyzer *MutAnalyzer,
                                           Parent, ArrIdx->getType(), Module);
     
     //Add a cast to size_t if it is needed                                    
-    if (ArrIdx->getType().getAsString() != "size_t"){
+    if (ArrIdx->getType().getCanonicalType().getAsString() != "size_t"){
        auto *CastCall = new AppE(getPulseStringForCType(ArrIdx->getType(), Ctx) + "_to_sizet");
 
        CastCall->pushArg(PulseArrIdx);
