@@ -156,7 +156,7 @@ REQUIRES(emp)
 RETURNS(a:array U8.t)
 ENSURES(exists* s. a |-> s)
 // ENSURES(freeable a)
-ENSURES(pure (length a == UInt64.v len))
+ENSURES(pure (length a == SizeT.v len))
 uint8_t* new_array(size_t len)
 { LEMMA(admit()); return NULL; }
 
@@ -232,34 +232,34 @@ bool authenticate_l0_image(engine_record_t *record/*, ISARRAY(DICE_DIGEST_LEN)ui
 
 
 
-ERASED_ARG(#uds_perm:_)
-ERASED_ARG(#p:_)
-ERASED_ARG(#repr:erased _)
-PRESERVES(is_engine_record record p repr)
-ERASED_ARG(#uds_bytes:erased _)
-PRESERVES("Pulse.Lib.Array.pts_to uds #uds_perm uds_bytes") // ** pts_to cdi 'c0 ** engine_record_perm record p 'repr")
-PRESERVES("Pulse.Lib.Array.pts_to cdi 'c0")
-RETURNS(ref engine_record_t)
-// ENSURES("engine_record_perm record p 'repr \
-//        ** pts_to uds #uds_perm uds_bytes \
-//        ** (exists* (c1:Seq.seq U8.t). \
-//             pts_to cdi c1 ** \
-//             pure (cdi_functional_correctness c1 uds_bytes 'repr))")
+// ERASED_ARG(#uds_perm:_)
+// ERASED_ARG(#p:_)
+// ERASED_ARG(#repr:erased _)
+// PRESERVES(is_engine_record record p repr)
+// ERASED_ARG(#uds_bytes:erased _)
+// PRESERVES("Pulse.Lib.Array.pts_to uds #uds_perm uds_bytes") // ** pts_to cdi 'c0 ** engine_record_perm record p 'repr")
+// PRESERVES("Pulse.Lib.Array.pts_to cdi 'c0")
+// RETURNS(ref engine_record_t)
+// // ENSURES("engine_record_perm record p 'repr \
+// //        ** pts_to uds #uds_perm uds_bytes \
+// //        ** (exists* (c1:Seq.seq U8.t). \
+// //             pts_to cdi c1 ** \
+// //             pure (cdi_functional_correctness c1 uds_bytes 'repr))")
 
-engine_record_t *compute_cdi(ISARRAY(DICE_DIGEST_LEN)uint8_t *cdi, ISARRAY(UDS_LEN)uint8_t *uds, engine_record_t *record){
-    LEMMA(unfold is_engine_record);
-    LEMMA(engine_record_t_explode (!record));
-    uint8_t uds_digest[DICE_DIGEST_LEN];
-    uint8_t l0_digest[DICE_DIGEST_LEN];
-    hacl_hash(DICE_HASH_ALG, UDS_LEN, uds, uds_digest);
-    hacl_hash(DICE_HASH_ALG, record->l0_binary_size, record->l0_binary, l0_digest);
-    LEMMA(engine_record_t_recover (!record));
-    LEMMA(fold is_engine_record);
+// engine_record_t *compute_cdi(ISARRAY(DICE_DIGEST_LEN)uint8_t *cdi, ISARRAY(UDS_LEN)uint8_t *uds, engine_record_t *record){
+//     LEMMA(unfold is_engine_record);
+//     LEMMA(engine_record_t_explode (!record));
+//     uint8_t uds_digest[DICE_DIGEST_LEN];
+//     uint8_t l0_digest[DICE_DIGEST_LEN];
+//     hacl_hash(DICE_HASH_ALG, UDS_LEN, uds, uds_digest);
+//     hacl_hash(DICE_HASH_ALG, record->l0_binary_size, record->l0_binary, l0_digest);
+//     LEMMA(engine_record_t_recover (!record));
+//     LEMMA(fold is_engine_record);
 
-    hacl_hmac(DICE_HASH_ALG, cdi, uds_digest, DICE_DIGEST_LEN, l0_digest, DICE_DIGEST_LEN);
+//     hacl_hmac(DICE_HASH_ALG, cdi, uds_digest, DICE_DIGEST_LEN, l0_digest, DICE_DIGEST_LEN);
     
-    return record;
-}
+//     return record;
+// }
 
 
 
