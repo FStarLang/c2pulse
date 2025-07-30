@@ -2446,6 +2446,31 @@ std::pair<PulseStmt *, PulseVisitor::VarTyEnv> PulseVisitor::handleMallocs(
   emitErrorWithLocation("Encountered a Malloc call whose shape is not supported!", &Ctx, E->getExprLoc());
 }
 
+
+
+Term *PulseVisitor::checkAndAddCast(Term *SrcTerm, Term *DstType){
+  
+  auto *SrcType = SrcTerm->getType();
+  if (SrcType == nullptr){
+    return SrcTerm;
+  }
+  if (getPulseTyAsString(SrcType) != getPulseTyAsString(DstType)){
+    
+    SrcType->dumpPretty();
+    llvm::outs() << "\n";
+    DstType->dumpPretty();
+    llvm::outs() << "\n";
+    auto *CastCall = new AppE(getCastNameForPulseType(SrcType) + "_to_" + getCastNameForPulseType(DstType), DstType);
+    CastCall->CInfo = SrcTerm->CInfo;
+    CastCall->pushArg(SrcTerm);
+    
+    auto *ParenAroundCall = new Paren(CastCall, DstType);
+    return ParenAroundCall;
+  }
+
+  return SrcTerm;
+}
+
 std::pair<PulseStmt *, PulseVisitor::VarTyEnv>
 PulseVisitor::pulseFromStmt(Stmt *S, std::map<Term *, FStarType *> VEnv,
                             ExprMutationAnalyzer *Analyzer, Stmt *Parent,
@@ -2527,7 +2552,8 @@ PulseVisitor::pulseFromStmt(Stmt *S, std::map<Term *, FStarType *> VEnv,
             // else {
             // LetBinding *PulseLet = new LetBinding(VarName, new
             // VarTerm(TempVarName), MutOrRef::MUT);
-            LetBinding *PulseLet = new LetBinding(VarName, LetInit, MutOrRef::MUT);
+            auto *CastLetInit = checkAndAddCast(LetInit, VDPulseTy);
+            LetBinding *PulseLet = new LetBinding(VarName, CastLetInit, MutOrRef::MUT);
             PulseLet->CInfo = getSourceInfoFromStmt(S, Ctx, "", "");
             PulseLet->VarTy = VDPulseTy->print();
 
@@ -2670,10 +2696,11 @@ PulseVisitor::pulseFromStmt(Stmt *S, std::map<Term *, FStarType *> VEnv,
                                      StructName.getAsString() + "_spec_default",
                                  nullptr);
             Rhs->CInfo = getSourceInfoFromDecl(VD, Ctx, "");
-
+            
+            auto *PulseTy = getPulseTyFromCTy(VD->getType());
             auto *NewMutLet =
                 new LetBinding(VD->getNameAsString(), Rhs, MutOrRef::MUT);
-            auto *PulseTy = getPulseTyFromCTy(VD->getType());
+           
             NewMutLet->VarTy = PulseTy->print();
             NewMutLet->CInfo = getSourceInfoFromDecl(VD, Ctx, "");
 
@@ -4205,6 +4232,7 @@ std::pair<Term *, PulseVisitor::VarTyEnv> PulseVisitor::getTermFromCExpr(
           // For logical ops make sure type of argument is bool if not cast them
           if (BO->isLogicalOp()) {
             auto *BoolTy = new FStarType(lookupSymbol(SymbolTable::Bool));
+            PulseTyOfBOExpr = BoolTy;
             if (Lhs->getType().getAsString() != "_Bool" &&
                 Lhs->getType().getAsString() != "bool") {
               auto *CastCall = new AppE(
@@ -4397,13 +4425,14 @@ std::pair<Term *, PulseVisitor::VarTyEnv> PulseVisitor::getTermFromCExpr(
       NotCall->pushArg(PulseSubExpr);
 
       if (UO->isKnownToHaveBooleanValue()){
+        auto UOTy = getPulseTyFromCTy(UO->getType());
         auto *CastCall =
             new AppE("bool_to_" + getPulseStringForCType(UO->getType(), Ctx),
-                     PulseBoolTy);
+                     UOTy);
         CastCall->CInfo = getSourceInfoFromExpr(SubExpr, Ctx, "", "");
-        auto *ParenAroundNotCall = new Paren(NotCall, PulseBoolTy);
+        auto *ParenAroundNotCall = new Paren(NotCall, UOTy);
         CastCall->pushArg(ParenAroundNotCall);
-        auto *NewParenRet = new Paren(CastCall, PulseBoolTy);
+        auto *NewParenRet = new Paren(CastCall, UOTy);
         NewParenRet->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
         return std::make_pair(NewParenRet, PulseSubExprRet.second);
       }
@@ -4761,7 +4790,7 @@ std::pair<Term *, PulseVisitor::VarTyEnv> PulseVisitor::getTermFromCExpr(
     auto *SubExpr = IC->getSubExpr();
     QualType sourceType = SubExpr->getType();
     QualType destType = IC->getType();
-    if (sourceType.getAsString() == destType.getAsString()) {
+    if (getPulseStringForCType(sourceType, Ctx) == getPulseStringForCType(destType, Ctx)) {
       SmallVector<PulseStmt *> ExprsBefore;
       auto RetTerm = getTermFromCExpr(SubExpr, VEnv, MutAnalyzer, ExprsBefore,
                                       Parent, ParentType, Module);
@@ -4941,7 +4970,8 @@ std::pair<Term *, PulseVisitor::VarTyEnv> PulseVisitor::getTermFromCExpr(
             // Right now, I am hardcoding nullptr but this should be changed
             auto RecordName = It->second;
             auto *PulseRecordTy = new FStarType(RecordName);
-            auto *NewCall = new AppE(RecordName + "_alloc", PulseRecordTy);
+            auto *PulseRecordRefTy = new FStarPointerType(PulseRecordTy);
+            auto *NewCall = new AppE(RecordName + "_alloc", PulseRecordRefTy);
             NewCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
             return std::make_pair(NewCall, VEnv);
           }

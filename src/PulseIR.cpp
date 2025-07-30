@@ -196,6 +196,48 @@ PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data,
   return PulseAnnKind::Unknown;
 }
 
+
+std::string getCastNameForPulseType(Term *T){
+
+  if (getPulseTyAsString(T) == lookupSymbol(SymbolTable::Int8)){
+    return "int8";
+  }
+  else if (getPulseTyAsString(T) == lookupSymbol(SymbolTable::Int16)){
+    return "int16";
+  }
+  else if (getPulseTyAsString(T) == lookupSymbol(SymbolTable::Int32)){
+    return "int32";
+  }
+  else if (getPulseTyAsString(T) == lookupSymbol(SymbolTable::Int64)){
+    return "int64";
+  }
+  else if (getPulseTyAsString(T) == lookupSymbol(SymbolTable::UInt8)){
+    return "uint8";
+  }
+  else if (getPulseTyAsString(T) == lookupSymbol(SymbolTable::UInt16)){
+    return "uint16";
+  }
+  else if (getPulseTyAsString(T) == lookupSymbol(SymbolTable::UInt32)){
+    return "uint32";
+  }
+  else if (getPulseTyAsString(T) == lookupSymbol(SymbolTable::UInt64)){
+    return "uint64";
+  }
+  else if (getPulseTyAsString(T) == lookupSymbol(SymbolTable::UInt128)){
+    return "uint128";
+  }
+  else if (getPulseTyAsString(T) == lookupSymbol(SymbolTable::Bool)){
+    return "bool";
+  }
+  else if (getPulseTyAsString(T) == lookupSymbol(SymbolTable::SizeT)){
+    return "sizet";
+  }
+  else{
+    T->dumpPretty();
+    emitError("Not Implemented!");
+  }
+}
+
 std::string getPulseStringForCType(clang::QualType Ty, clang::ASTContext &Ctx) {
 
   if (Ty->isSignedIntegerType()) {

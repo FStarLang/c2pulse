@@ -74,6 +74,7 @@ public:
   FStarType *pulseTyFromDecl(const clang::Decl* D);
   bool checkAndAddIsArrayTy(const clang::AttrVec &Attrs, const clang::Decl* D);
   bool isKnownArrayType(const clang::Decl *D);
+  Term *checkAndAddCast(Term *Src, Term *Dst);
   clang::QualType getTypeFromDecl(const clang::Decl *D);
 
   std::pair<Term *, VarTyEnv> getPulseTermForMallocSize(

@@ -923,3 +923,5 @@ PulseDecl *lookupDecl(clang::Decl *D,
                       std::map<clang::Decl *, PulseDecl *> DeclEnv);
 
 void printVEnv(std::map<Term *, FStarType *> Env);
+
+std::string getCastNameForPulseType(Term *T);
