@@ -119,7 +119,7 @@ def stdin_mode(fst, c):
           cr_str = f"{cr[0][0]}.{cr[0][1]}-{cr[1][0]}.{cr[1][1]}"
           print(f"{pre}{c}:{cr_str}{post}")
         else:
-          print(line + " ## COULD NOT BACKTRANSLATE")
+          print(line.rstrip("\n") + " ## COULD NOT BACKTRANSLATE")
 
       else:
         print(line, end="")
