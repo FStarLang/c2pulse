@@ -51,9 +51,9 @@ static TransformModeEnum parseTransformMode(const std::string &modeStr) {
 int main(int argc, const char **argv) {
     
     auto OptionsParser = CommonOptionsParser::create(argc, argv, ToolCategory);
-    if (!OptionsParser) {
+    if (auto error = OptionsParser.takeError()) {
         llvm::errs() << "Error parsing command line options: "
-                     << OptionsParser.takeError() << "\n";
+                     << toString(std::move(error)) << "\n";
         return 1;
     }
     
