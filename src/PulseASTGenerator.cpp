@@ -1077,7 +1077,7 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     for (auto Fld : RD->fields()){
       auto FldName = FieldToUniqueNames[Fld];
       auto FldTy = getPulseTyFromCTy(Fld->getType());
-      UnionSpec->Ident += " | Case_" + FldName + " of " + FldTy->print() + "\n";
+      UnionSpec->Ident += " | Case_" + StructName + "_" + FldName + " of " + FldTy->print() + "\n";
     }
 
     NewModul->Decls.push_back(UnionSpec);
@@ -1098,7 +1098,7 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     UnionPred->Ident += "begin match s with\n";
     for (auto *Fld : RD->fields()){
       auto FldName = FieldToUniqueNames[Fld];
-      UnionPred->Ident += " | Case_" + FldName + " v -> " + "uv." + FldName + " |-> v\n";
+      UnionPred->Ident += " | Case_" + StructName + "_" + FldName + " v -> " + "uv." + FldName + " |-> v\n";
     } 
     UnionPred->Ident += "end\n";
     NewModul->Decls.push_back(UnionPred);
@@ -1122,7 +1122,7 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     UnionExplode->Ident += "begin match s with\n";
     for (auto Fld : RD->fields()){
       auto FldName = FieldToUniqueNames[Fld];
-      UnionExplode->Ident +=  " | Case_" + FldName + " w -> v." + FldName + " |-> w\n";
+      UnionExplode->Ident += " | Case_" + StructName + "_" + FldName + " w -> v." + FldName + " |-> w\n";
     }
     UnionExplode->Ident += "end\n";
     UnionExplode->Ident += "{\n";
@@ -1149,7 +1149,7 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     GhostRecover->Ident += "begin match s with\n";
     for (auto Fld : RD->fields()){
       auto FldName = FieldToUniqueNames[Fld];
-      GhostRecover->Ident += " | Case_" + FldName + " w -> v." + FldName + "|-> w\n";    
+      GhostRecover->Ident += " | Case_" + StructName + "_" + FldName + " w -> v." + FldName + "|-> w\n";
     }
     GhostRecover->Ident += "end\n";
     GhostRecover->Ident += "ensures " + StructName + "_pred x s\n";

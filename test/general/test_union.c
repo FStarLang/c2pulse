@@ -10,15 +10,15 @@ union ab {
 };
 
 ERASED_ARG(s:_)
-REQUIRES(pure (Case_a? s))
+REQUIRES(pure (Case_ab_a? s))
 REQUIRES(ab_pred x s)
-REQUIRES(pure (UInt32.fits (UInt32.v (Case_a?._0 s) + 1)))
+REQUIRES(pure (UInt32.fits (UInt32.v (Case_ab_a?._0 s) + 1)))
 ENSURES(exists* s'. ab_pred x s')
 void incr_a(union ab *x) {
   LEMMA(ab_explode !x);
-  LEMMA(rewrite each s as Case_a (Case_a?._0 s));
+  LEMMA(rewrite each s as Case_ab_a (Case_ab_a?._0 s));
   x->a = x->a + 1;
-  LEMMA(ab_recover !x #(Case_a _));
+  LEMMA(ab_recover !x #(Case_ab_a _));
 }
 
 struct stru {
@@ -31,8 +31,8 @@ INCLUDE(
 stru_pred u s **\
 pure (\
 match s.tag with\
-| 0y -> Case_a? s.payload\
-| 1y -> Case_b? s.payload\
+| 0y -> Case_ab_a? s.payload\
+| 1y -> Case_ab_b? s.payload\
 | _ -> false\
 )"
 )                                          
