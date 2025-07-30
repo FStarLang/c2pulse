@@ -375,10 +375,12 @@ enum class TermTag {Const, Paren, Var, Name, AppE, FStarType, FStarPointerType, 
 class Term {
 public:
   SourceInfo CInfo;
+  Term *Type;
   SourceInfo getCSourceInfo();
   TermTag Tag;
   void setTag(TermTag T);
   void printTag();
+  Term *getType();
   virtual void dumpPretty() = 0;
   virtual ~Term() = default;
 };
@@ -390,12 +392,13 @@ typedef Term Slprop;
 /// This is meant to use for a member acces.
 /// for a stack allocated object or a reference.
 class Project : public Term {
-  public: 
-    Project(); 
-    Term* BaseTerm; 
-    std::string MemberName;
-    virtual void dumpPretty() override; 
-    static bool classof(const Term *T) { return T->Tag == TermTag::Project; }
+public:
+  Project();
+  Project(Term *Ty);
+  Term *BaseTerm;
+  std::string MemberName;
+  virtual void dumpPretty() override;
+  static bool classof(const Term *T) { return T->Tag == TermTag::Project; }
 };
 
 /// Store Pulse Lemmas.
@@ -425,7 +428,7 @@ class LemmaStatement : public Term{
 class Paren : public Term {
 public:
   Paren();
-  Paren(Term *InnerExpr);
+  Paren(Term *InnerExpr, Term *Ty);
   Term *InnerExpr;
   void setInnerExpr(Term *Inner);
   virtual void dumpPretty() override;
@@ -473,7 +476,7 @@ class Returns : public Term {
 /// An IR node for representing a pulse constant term.
 class ConstTerm : public Term {
 public:
-  ConstTerm();
+  ConstTerm(std::string ConstVal, Term *Ty);
   std::string ConstantValue;
   SymbolTable Symbol;
   virtual ~ConstTerm() = default;
@@ -486,7 +489,7 @@ class VarTerm : public Term {
 public:
   std::string VarName;
   VarTerm();
-  VarTerm(std::string Name);
+  VarTerm(std::string Name, Term *Ty);
   void setVarName(std::string Name);
   virtual ~VarTerm() = default;
   virtual void dumpPretty() override;
@@ -499,8 +502,8 @@ public:
 /// These can be accumulated in the NamedValue.
 class Name : public Term {
 public:
-  Name(); 
-  Name(std::string Name);
+  Name();
+  Name(std::string Name, Term *Ty);
   std::string NamedValue;
   virtual void setName(std::string Name);
   virtual std::string print();
@@ -542,6 +545,7 @@ class FStarArrType : public FStarType {
 class FStarPointerType : public FStarType {
 public:
   FStarPointerType();
+  FStarPointerType(FStarType *RefTo);
   //Boxed == Heap Allocated. 
   //Otherwise Stack Allocated.
   //If not box, it is ref.
@@ -563,7 +567,7 @@ public:
   VarTerm *CallName;
   std::vector<Term *> Args;
   AppE();
-  AppE(std::string CallName);
+  AppE(std::string CallName, Term *Ty);
   virtual ~AppE() = default;
   virtual void dumpPretty() override;
   void makeCallName(std::string CallName);
@@ -579,7 +583,7 @@ class IfExpr : public Term {
     Term *Cond; 
     Term *TrueExpr;
     Term *FalseExpr;
-    IfExpr(Term *Cond, Term*True, Term *False);
+    IfExpr(Term *Cond, Term *True, Term *False, Term *Ty);
     virtual void dumpPretty() override;
     static bool classof(const Term *T) { return T->Tag == TermTag::IfExpr; }
 };
@@ -802,6 +806,9 @@ public:
   SourceInfo getCSourceInfo();
   PulseDeclKind Kind;
   PulseDeclKind getKind();
+  FStarType *DeclType;
+  FStarType *getDeclType();
+  void setDeclType(FStarType *Ty);
 };
 
 /// An IR node to represent a generic pulse declaration. 
@@ -900,4 +907,19 @@ PulseAnnKind getPulseAnnKindFromString(llvm::StringRef Data, std::string &match)
 std::string getPulseStringForCType(clang::QualType Ty, clang::ASTContext &Ctx);
 
 /// A function to get the pulse module name from the Ctype.
-std::string getPulseModuleNameForCType(clang::QualType Ty, clang::ASTContext &Ctx);
+std::string getPulseModuleNameForCType(clang::QualType Ty,
+                                       clang::ASTContext &Ctx);
+
+std::string getPulseTyAsString(Term *Type);
+
+Term *CopyPulseTy(Term *ToCopy);
+
+FStarType *findVarTyPulseTyEnv(std::string VarName,
+                               std::map<Term *, FStarType *> Env);
+void insertPulseTyEnv(Term *T, FStarType *Ty,
+                      std::map<Term *, FStarType *> &Env);
+FStarType *lookupPulseTyEnv(Term *T, std::map<Term *, FStarType *> Env);
+PulseDecl *lookupDecl(clang::Decl *D,
+                      std::map<clang::Decl *, PulseDecl *> DeclEnv);
+
+void printVEnv(std::map<Term *, FStarType *> Env);

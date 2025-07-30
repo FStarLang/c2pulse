@@ -156,7 +156,7 @@ REQUIRES(emp)
 RETURNS(a:array U8.t)
 ENSURES(exists* s. a |-> s)
 // ENSURES(freeable a)
-ENSURES(pure (length a == SizeT.as_int len))
+ENSURES(pure (length a == UInt64.v len))
 uint8_t* new_array(size_t len)
 { LEMMA(admit()); return NULL; }
 
@@ -257,7 +257,7 @@ engine_record_t *compute_cdi(ISARRAY(DICE_DIGEST_LEN)uint8_t *cdi, ISARRAY(UDS_L
     LEMMA(fold is_engine_record);
 
     hacl_hmac(DICE_HASH_ALG, cdi, uds_digest, DICE_DIGEST_LEN, l0_digest, DICE_DIGEST_LEN);
-
+    
     return record;
 }
 

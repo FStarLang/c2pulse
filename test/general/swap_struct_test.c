@@ -22,6 +22,7 @@ u32_pair_struct* new_u32_pair_struct ()
   return x;
 }
 
+
 ERASED_ARG(#s : u32_pair_struct_spec)
 REQUIRES(u32_pair_struct_pred x s)
 ENSURES("exists* (s':u32_pair_struct_spec). u32_pair_struct_pred x s' ** pure (s' == ({first = s.second; second = s.first}))")

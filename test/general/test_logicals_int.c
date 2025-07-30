@@ -44,7 +44,6 @@ int f5(){
  return z;
 }
 
-EXPECT_FAILURE()
 RETURNS(Int32.t)
 int f6(){
  uint32_t x = 100; 

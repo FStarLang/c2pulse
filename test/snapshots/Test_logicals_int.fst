@@ -51,12 +51,11 @@ let mut z : Int32.t = (bool_to_int32 (op_AmpAmp (int32_to_bool (! x)) (int32_to_
 (! z);
 }
 
-[@@expect_failure]
 fn f6 ()
 returns Int32.t
 {
 let mut x : UInt32.t = (int32_to_uint32 100l);
-let mut y : Int32.t = (uint32_to_int32 (UInt32.sub 0ul (! x)));
+let mut y : Int32.t = (uint32_to_int32 (UInt32.minus (! x)));
 let mut z : Int32.t = (bool_to_int32 (op_AmpAmp (uint32_to_bool (! x)) (int32_to_bool (! y))));
 (! z);
 }

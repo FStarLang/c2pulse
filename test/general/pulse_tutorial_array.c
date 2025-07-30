@@ -10,32 +10,32 @@ INCLUDE (
  )
 
 ERASED_ARG(#s:erased (Seq.seq int32))
-ERASED_ARG(#p:perm  { U64.v i < Seq.length s })
+ERASED_ARG(#p:perm  { SizeT.v i < Seq.length s })
 REQUIRES(arr |-> Frac p s)
 RETURNS(v:int32)
 ENSURES(arr |-> Frac p s)
-ENSURES(pure (v == Seq.index s (U64.v i) ))
+ENSURES(pure (v == Seq.index s (SizeT.v i) ))
 int read_i(ISARRAY() int *arr, size_t i)
 {
     return arr[i];
 }
 
-ERASED_ARG(#s:erased (Seq.seq int32) { U64.v i < Seq.length s })
+ERASED_ARG(#s:erased (Seq.seq int32) { SizeT.v i < Seq.length s })
 REQUIRES(arr |-> s)
-ENSURES(exists* s1. (arr |-> s1) ** pure (s1 == Seq.upd s (U64.v i) v))
+ENSURES(exists* s1. (arr |-> s1) ** pure (s1 == Seq.upd s (SizeT.v i) v))
 void write_i(ISARRAY() int *arr, size_t i, int v)
 {
     arr[i] = v;
 }
 
 ERASED_ARG(#s1 #s2 : erased (Seq.seq int32))
-ERASED_ARG(#p:perm { Seq.length s1 = Seq.length s2 && Seq.length s2 = U64.v l })
+ERASED_ARG(#p:perm { Seq.length s1 = Seq.length s2 && Seq.length s2 = SizeT.v l })
 REQUIRES(a1 |-> Frac p s1)
 REQUIRES(a2 |-> Frac p s2)
 RETURNS(res:int32)
 ENSURES(a1 |-> Frac p s1)
 ENSURES(a2 |-> Frac p s2)
-ENSURES(pure (res==1l <==> (U64.v i < U64.v l && Seq.index s1 (U64.v i) = Seq.index s2 (U64.v i))))
+ENSURES(pure (res==1l <==> (SizeT.v i < SizeT.v l && Seq.index s1 (SizeT.v i) = Seq.index s2 (SizeT.v i))))
 int compare_elements(ISARRAY() int *a1, ISARRAY() int *a2, size_t l, size_t i)
 {
     if (i < l)
@@ -60,7 +60,7 @@ INCLUDE (
 )
 
 ERASED_ARG(#s1 #s2 : erased (Seq.seq int32))
-ERASED_ARG(#p:perm { Seq.length s1 = Seq.length s2 && Seq.length s2 = U64.v l })
+ERASED_ARG(#p:perm { Seq.length s1 = Seq.length s2 && Seq.length s2 = SizeT.v l })
 REQUIRES(a1 |-> Frac p s1)
 REQUIRES(a2 |-> Frac p s2)
 RETURNS(res:bool)
@@ -80,11 +80,11 @@ exists* vi vl. \
 (i |-> vi) ** (va1 |-> Frac p s1) ** (va2 |-> Frac p s2) **\
 (l |-> vl) **\
 pure (\
-Seq.length s1 = U64.v vl /\\
-Seq.length s2 = U64.v vl /\\
-U64.v vi <= U64.v vl /\\
-(b == (U64.v vi < U64.v vl && Seq.index s1 (U64.v vi) = Seq.index s2 (U64.v vi))) /\\
-(forall (i:nat). i < U64.v vi ==> Seq.index s1 i == Seq.index s2 i))"
+Seq.length s1 = SizeT.v vl /\\
+Seq.length s2 = SizeT.v vl /\\
+SizeT.v vi <= SizeT.v vl /\\
+(b == (SizeT.v vi < SizeT.v vl && Seq.index s1 (SizeT.v vi) = Seq.index s2 (SizeT.v vi))) /\\
+(forall (i:nat). i < SizeT.v vi ==> Seq.index s1 i == Seq.index s2 i))"
 )
     {
         i = i + 1;

@@ -33,13 +33,25 @@ public:
   bool VisitRecordDecl(const clang::RecordDecl *RecordDecl);
   bool VisitVarDecl(clang::VarDecl *VD);
 
-  PulseStmt *pulseFromCompoundStmt(clang::Stmt *S, clang::ExprMutationAnalyzer *A, PulseModul *Module);
-  PulseStmt *pulseFromStmt(clang::Stmt *S, clang::ExprMutationAnalyzer *A,
-                           clang::Stmt *Parent, PulseModul *Module,
-                           clang::CompoundStmt *CS);
+  using VarTyEnv = std::map<Term *, FStarType *>;
+
+  PulseStmt *pulseFromCompoundStmt(clang::Stmt *S, VarTyEnv VEnv,
+                                   clang::ExprMutationAnalyzer *A,
+                                   PulseModul *Module);
+
+  std::pair<PulseStmt *, VarTyEnv> pulseFromStmt(clang::Stmt *S, VarTyEnv VEnv,
+                                                 clang::ExprMutationAnalyzer *A,
+                                                 clang::Stmt *Parent,
+                                                 PulseModul *Module,
+                                                 clang::CompoundStmt *CS);
+
   FStarType *getPulseTyFromCTy(clang::QualType CType);
-  Term *getTermFromCExpr(clang::Expr *E, clang::ExprMutationAnalyzer *A, llvm::SmallVector<PulseStmt*> &ExprsBef,
-                           clang::Stmt *Parent, clang::QualType ParentType, PulseModul *Module, bool isWrite = false);
+
+  std::pair<Term *, VarTyEnv> getTermFromCExpr(
+      clang::Expr *E, VarTyEnv VEnv, clang::ExprMutationAnalyzer *A,
+      llvm::SmallVector<PulseStmt *> &ExprsBef, clang::Stmt *Parent,
+      clang::QualType ParentType, PulseModul *Module, bool isWrite = false);
+
   std::vector<PulseDecl *> &getFunctionDeclarations();
   std::map<std::string, PulseModul *> &getPulseModules();
   void extractPulseAnnotations(const clang::FunctionDecl *FD,
@@ -63,28 +75,18 @@ public:
   bool checkAndAddIsArrayTy(const clang::AttrVec &Attrs, const clang::Decl* D);
   bool isKnownArrayType(const clang::Decl *D);
   clang::QualType getTypeFromDecl(const clang::Decl *D);
-  
-  Term *getPulseTermForMallocSize(
-    clang::Expr *SizeExpr, 
-    clang::QualType ArrayElemType, 
-    clang::ExprMutationAnalyzer *A, 
-    llvm::SmallVector<PulseStmt *> &ExprsBef, 
-    clang::Stmt *Parent, 
-    clang::QualType ParentType, 
-    PulseModul *Module
-  );
 
-  PulseStmt* handleMallocs(
-    clang::Expr *E, 
-    const clang::VarDecl* VD,
-    clang::DeclStmt *DS, 
-    clang::Decl *D,
-    clang::ExprMutationAnalyzer *A, 
-    llvm::SmallVector<PulseStmt *> &ExprsBef, 
-    clang::Stmt *Parent, 
-    clang::QualType ParentType, 
-    PulseModul *Module
-  );
+  std::pair<Term *, VarTyEnv> getPulseTermForMallocSize(
+      clang::Expr *SizeExpr, VarTyEnv VEnv, clang::QualType ArrayElemType,
+      clang::ExprMutationAnalyzer *A, llvm::SmallVector<PulseStmt *> &ExprsBef,
+      clang::Stmt *Parent, clang::QualType ParentType, PulseModul *Module);
+
+  std::pair<PulseStmt *, VarTyEnv>
+  handleMallocs(clang::Expr *E, VarTyEnv VEnv, const clang::VarDecl *VD,
+                clang::DeclStmt *DS, clang::Decl *D,
+                clang::ExprMutationAnalyzer *A,
+                llvm::SmallVector<PulseStmt *> &ExprsBef, clang::Stmt *Parent,
+                clang::QualType ParentType, PulseModul *Module);
 
 private:
   std::map<std::string, PulseModul *> Modules;
@@ -94,7 +96,7 @@ private:
   std::map<const clang::Decl*, clang::QualType> DeclTyMap;
   std::map<const clang::Stmt*, std::vector<Slprop*>> StmtToLemmas;
   std::set<const clang::Decl*> IsAllocatedOnHeap;
-  std::map<clang::FunctionDecl*, PulseDecl*> DeclarationsMap;
+  std::map<clang::Decl *, PulseDecl *> DeclEnv;
   std::set<const clang::Decl*> TrackScopeOfStackAllocatedStructs;
   std::map<const clang::Decl*, std::pair<bool, bool>> TrackStructExplodeAndRecover;
   std::map<const clang::Decl *, std::string> RecordToRecordName;

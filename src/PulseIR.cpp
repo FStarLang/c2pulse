@@ -215,10 +215,10 @@ std::string getPulseStringForCType(clang::QualType Ty, clang::ASTContext &Ctx) {
   } else if (Ty->isUnsignedIntegerType()) {
 
     // check explicitly if it is size_t
-    //Vidush: Don't make size_t its own type, rather use its canonical representation.
-    //if (Ty.getAsString() == "size_t") {
-    //  return "sizet";
-    //}
+    // Vidush: 7/25/2025: We decided to treat size_t as its own type.
+    if (Ty.getAsString() == "size_t") {
+      return "sizet";
+    }
 
     if (Ty.getAsString() == "_Bool") {
       return "bool";
@@ -238,11 +238,9 @@ std::string getPulseStringForCType(clang::QualType Ty, clang::ASTContext &Ctx) {
       emitError("(getPulseStringForCType): did not expect C type!\n");
     }
 
-  } 
-  //else if (Ty.getAsString() == "size_t") {
-  //  return "sizet";
-  //} 
-  else if (Ty.getAsString() == "_Bool") {
+  } else if (Ty.getAsString() == "size_t") {
+    return "sizet";
+  } else if (Ty.getAsString() == "_Bool") {
     return "bool";
   } else if (Ty->isArrayType()) {
     return "array";
@@ -266,7 +264,7 @@ std::string getPulseStringForCType(clang::QualType Ty, clang::ASTContext &Ctx) {
 std::string getPulseModuleNameForCType(clang::QualType Ty, clang::ASTContext &Ctx) {
 
   if (Ty->isSignedIntegerType()) {
-    
+
     if (Ctx.getTypeSize(Ty) == 8) {
       return "Int8";
     } else if (Ctx.getTypeSize(Ty) == 16) {
@@ -281,12 +279,10 @@ std::string getPulseModuleNameForCType(clang::QualType Ty, clang::ASTContext &Ct
 
   } else if (Ty->isUnsignedIntegerType()) {
 
-    // check explicitly if it is size_t
-    //Vidush: Don't make size_t its own type, rather use its canonical representation.
-    //if (Ty.getAsString() == "size_t") {
-    //  return "SizeT";
-    //}
-    
+    if (Ty.getAsString() == "size_t") {
+      return "SizeT";
+    }
+
     //TODO: Vidush check what bool modules are called in pulse?
     if (Ty.getAsString() == "_Bool") {
       return "bool";
@@ -306,11 +302,9 @@ std::string getPulseModuleNameForCType(clang::QualType Ty, clang::ASTContext &Ct
       emitError("(getPulseModuleNameForCType): Module name unknown!\n");
     }
 
-  } 
-  //else if (Ty.getAsString() == "size_t") {
-  //  return "sizet";
-  //} 
-  else if (Ty.getAsString() == "_Bool") {
+  } else if (Ty.getAsString() == "size_t") {
+    return "sizet";
+  } else if (Ty.getAsString() == "_Bool") {
     return "bool";
   }
 
@@ -337,9 +331,9 @@ SymbolTable getSymbolKeyForCType(clang::QualType Ty, clang::ASTContext &Ctx) {
   } else if (Ty->isUnsignedIntegerType()) {
 
     // check explicitly if it is size_t
-    //if (Ty.getAsString() == "size_t") {
-    //  return SymbolTable::SizeT;
-    //}
+    if (Ty.getAsString() == "size_t") {
+      return SymbolTable::SizeT;
+    }
 
     if (Ty.getAsString() == "_Bool") {
       return SymbolTable::Bool;
@@ -359,11 +353,9 @@ SymbolTable getSymbolKeyForCType(clang::QualType Ty, clang::ASTContext &Ctx) {
       emitError("(getSymbolKeyForType): did not expect C type!\n");
     }
 
-  } 
-  //else if (Ty.getAsString() == "size_t") {
-  //  return SymbolTable::SizeT;
-  //} 
-  else if (Ty.getAsString() == "_Bool") {
+  } else if (Ty.getAsString() == "size_t") {
+    return SymbolTable::SizeT;
+  } else if (Ty.getAsString() == "_Bool") {
     return SymbolTable::Bool;
   } else if (Ty->isArrayType()) {
     return SymbolTable::Array;
@@ -815,6 +807,8 @@ void Term::setTag(TermTag T) { Tag = T; }
 
 void Term::printTag() { llvm::outs() << Tag << "\n"; }
 
+Term *Term::getType() { return Type; }
+
 void Term::dumpPretty() { printTag(); }
 
 SourceInfo Term::getCSourceInfo(){
@@ -829,6 +823,11 @@ SourceInfo Term::getCSourceInfo(){
 
 Project::Project(){
   Tag = TermTag::Project;
+}
+
+Project::Project(Term *Ty) {
+  Tag = TermTag::Project;
+  Type = Ty;
 }
 
 void Project::dumpPretty() {
@@ -857,8 +856,9 @@ Paren::Paren() {
   Tag = TermTag::Paren;
 }
 
-Paren::Paren(Term *Expr) {
+Paren::Paren(Term *Expr, Term *Ty) {
   Tag = TermTag::Paren;
+  Type = Ty;
   InnerExpr = Expr;
 }
 
@@ -870,7 +870,11 @@ void Paren::dumpPretty() {
   llvm::outs() << ")";
 }
 
-ConstTerm::ConstTerm() { Tag = TermTag::Const; }
+ConstTerm::ConstTerm(std::string C, Term *Ty) {
+  Tag = TermTag::Const;
+  ConstantValue = C;
+  Type = Ty;
+}
 
 Ensures::Ensures() { Tag = TermTag::Ensures; }
 
@@ -911,15 +915,17 @@ void ConstTerm::dumpPretty() { llvm::outs() << ConstantValue; }
 
 VarTerm::VarTerm() { Tag = TermTag::Var; }
 
-VarTerm::VarTerm(std::string Name) {
+VarTerm::VarTerm(std::string Name, Term *Ty) {
   Tag = TermTag::Var;
+  Type = Ty;
   VarName = Name;
 }
 
 Name::Name() { Tag = TermTag::Name; }
 
-Name::Name(std::string Name) {
+Name::Name(std::string Name, Term *Ty) {
   Tag = TermTag::Name;
+  Type = Ty;
   NamedValue = Name;
 }
 
@@ -992,8 +998,14 @@ AppE::AppE() {
   Args.clear();
 }
 
-AppE::AppE(std::string CallName) {
+FStarPointerType::FStarPointerType(FStarType *RefTo) {
+  Tag = TermTag::FStarPointerType;
+  PointerTo = RefTo;
+}
+
+AppE::AppE(std::string CallName, Term *Ty) {
   Tag = TermTag::AppE;
+  Type = Ty;
   makeCallName(CallName);
 }
 
@@ -1021,8 +1033,9 @@ void AppE::makeCallName(std::string CallName) {
 
 void AppE::pushArg(Term *Arg) { Args.push_back(Arg); }
 
-IfExpr::IfExpr(Term *C, Term *T, Term *F){
+IfExpr::IfExpr(Term *C, Term *T, Term *F, Term *Ty) {
   Tag = TermTag::IfExpr;
+  Type = Ty;
   Cond = C;
   TrueExpr = T;
   FalseExpr = F;
@@ -1150,7 +1163,9 @@ PulseWhileStmt::PulseWhileStmt() { Tag = PulseStmtTag::WhileStmt; }
 
 PulseDeclKind PulseDecl::getKind() { return Kind; }
 
+FStarType *PulseDecl::getDeclType() { return DeclType; }
 
+void PulseDecl::setDeclType(FStarType *Ty) { DeclType = Ty; }
 
 SourceInfo PulseDecl::getCSourceInfo(){
   return CInfo;
@@ -1213,6 +1228,145 @@ void PulseModul::insertModule(std::string IncModule){
   //Module does not exists
   if (std::find(IncludedModules.begin(), IncludedModules.end(), IncModule) == IncludedModules.end()){
     IncludedModules.push_back(IncModule);
+  }
+}
+
+std::string getPulseTyAsString(Term *Type) {
+
+  if (Type == nullptr) {
+    emitError("Encountered a nullptr!");
+  }
+
+  if (auto *Ty = clang::dyn_cast<FStarType>(Type)) {
+    llvm::outs() << "Found FStarType!\n";
+    return Ty->print();
+  } else if (auto *Ty = clang::dyn_cast<FStarArrType>(Type)) {
+    llvm::outs() << "Found FStarArrType!\n";
+    return Ty->print();
+  } else if (auto *Ty = clang::dyn_cast<FStarPointerType>(Type)) {
+    llvm::outs() << "Found FStarPointerType!\n";
+    return Ty->print();
+  } else {
+    emitError("Did not expect type!");
+  }
+}
+
+Term *CopyPulseTy(Term *ToCopy) {
+
+  if (ToCopy == nullptr) {
+    emitError("Encountered a nullptr!");
+  }
+
+  if (auto *Ty = clang::dyn_cast<FStarType>(ToCopy)) {
+
+    auto *NewTy = new FStarType(Ty->NamedValue);
+    NewTy->CInfo = Ty->CInfo;
+    // What about the type of the PulseType?
+    // Vidush: TODO: find out the type of the pulse type.
+    return NewTy;
+  } else if (auto *Ty = clang::dyn_cast<FStarArrType>(ToCopy)) {
+    auto *NewTy = new FStarArrType();
+    auto *TermElemTy = CopyPulseTy(Ty->ElementType);
+    if (auto *ETy = clang::dyn_cast<FStarType>(TermElemTy)) {
+      NewTy->ElementType = ETy;
+    } else {
+      emitError("Could not cast element type!");
+    }
+    NewTy->CInfo = Ty->CInfo;
+    return NewTy;
+  } else if (auto *Ty = clang::dyn_cast<FStarPointerType>(ToCopy)) {
+    auto *NewTy = new FStarPointerType();
+    NewTy->setName(Ty->NamedValue);
+    auto *TermPointerTo = CopyPulseTy(Ty->PointerTo);
+
+    if (auto *NewPointerTo = clang::dyn_cast<FStarType>(TermPointerTo)) {
+      NewTy->PointerTo = NewPointerTo;
+    } else {
+      emitError("Could not cast pointer to type!");
+    }
+    NewTy->isBoxed = Ty->isBoxed;
+    NewTy->CInfo = Ty->CInfo;
+    NewTy->Type = Ty->Type;
+    return NewTy;
+  } else {
+    emitError("Did not expect type!");
+  }
+}
+
+FStarType *lookupPulseTyEnv(Term *T, std::map<Term *, FStarType *> Env) {
+
+  auto It = Env.find(T);
+
+  if (It == Env.end()) {
+    emitError(
+        "Trying to access key that does not exist is the type environment!\n");
+  }
+
+  return It->second;
+}
+
+void insertPulseTyEnv(Term *T, FStarType *Ty,
+                      std::map<Term *, FStarType *> &Env) {
+
+  auto It = Env.find(T);
+  if (It == Env.end()) {
+    Env.insert(std::make_pair(T, Ty));
+    return;
+  }
+
+  Env[T] = Ty;
+  llvm::outs() << "Warning updating type of pulse term in type environment!\n";
+  return;
+}
+
+FStarType *findVarTyPulseTyEnv(std::string VarName,
+                               std::map<Term *, FStarType *> Env) {
+
+  llvm::outs() << "Trying to access variable: " << VarName << "\n";
+  llvm::outs() << "Printing contents of the Env!" << "\n";
+  printVEnv(Env);
+  for (auto It = Env.begin(); It != Env.end(); It++) {
+    auto *T = It->first;
+    if (auto *VT = clang::dyn_cast<VarTerm>(T)) {
+      if (VT->VarName == VarName) {
+        return It->second;
+      }
+    }
+  }
+
+  printVEnv(Env);
+  emitError("Variable Name not found in pulse ty environment: " + VarName);
+}
+
+PulseDecl *lookupDecl(clang::Decl *D,
+                      std::map<clang::Decl *, PulseDecl *> DeclEnv) {
+
+  auto It = DeclEnv.find(D);
+  if (It != DeclEnv.end()) {
+    return It->second;
+  }
+
+  D->dump();
+  emitError("Could not find pulse function for requested C declaration!\n");
+}
+
+void printVEnv(std::map<Term *, FStarType *> Env) {
+
+  if (Env.empty()) {
+    llvm::outs() << "Variable Env is empty!\n";
+  }
+
+  llvm::outs() << "Printing the variable Env!\n";
+  for (auto It = Env.begin(); It != Env.end(); It++) {
+    auto *T = It->first;
+    auto *Ty = It->second;
+
+    llvm::outs() << "\n";
+    llvm::outs() << "Entry: " << "\n";
+    T->dumpPretty();
+    llvm::outs() << " : ";
+    Ty->dumpPretty();
+    llvm::outs() << "\n\n";
   }
 }
 

@@ -10,8 +10,8 @@ int add(){
     return !!x + !!y;
 }
 
-REQUIRES(pure (length a1 == UInt64.v len))
-REQUIRES(pure (length a2 == UInt64.v len))
+REQUIRES(pure (length a1 == SizeT.v len))
+REQUIRES(pure (length a2 == SizeT.v len))
 REQUIRES(exists* v. (a1 |-> v))
 REQUIRES(exists* v. (a2 |-> v))
 RETURNS(Int32.t)

@@ -8,13 +8,13 @@ open Pulse.Lib.C
 
 
 fn foo
-(i : UInt64.t)
-(j : UInt64.t)
+(i : SizeT.t)
+(j : SizeT.t)
 returns _Bool
 {
-let mut i : UInt64.t = i;
-let mut j : UInt64.t = j;
-if((int32_to_bool (bool_to_int32 (UInt64.lt (! i) (! j)))))
+let mut i : SizeT.t = i;
+let mut j : SizeT.t = j;
+if((int32_to_bool (bool_to_int32 (SizeT.lt (! i) (! j)))))
 {
 (int32_to_bool 1l);
 }

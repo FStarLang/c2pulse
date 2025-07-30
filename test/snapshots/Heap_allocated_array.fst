@@ -75,21 +75,15 @@ b = a1})
 b = a1}) }
 
 fn foo
-(length : UInt64.t)
-requires pure (UInt64.v length < 100)
+(length : SizeT.t)
+requires pure (SizeT.v length < 100)
 returns Int32.t
 {
-let mut length : UInt64.t = length;
-let mut size_expr0 : SizeT.t = (uint64_to_sizet (int32_to_uint64 10l));
-let mut a : (array Int32.t) = alloc_array #Int32.t !size_expr0;
+let mut length : SizeT.t = length;
 let mut b0 : (ref Int32.t) = alloc_ref #Int32.t ();
-let mut size_expr1 : SizeT.t = (uint64_to_sizet ((UInt64.mul (! length) (int32_to_uint64 100l))));
-let mut b2 : (array Int32.t) = alloc_array #Int32.t !size_expr1;
-let mut size_expr2 : SizeT.t = (uint64_to_sizet (! length));
-let mut b : (array Int32.t) = alloc_array #Int32.t !size_expr2;
-(free_array #Int32.t (! a));
+let mut size_expr0 : SizeT.t = (! length);
+let mut b : (array Int32.t) = alloc_array #Int32.t !size_expr0;
 (free_ref (! b0));
-(free_array #Int32.t (! b2));
 (free_array #Int32.t (! b));
-(uint64_to_int32 (! length));
+(sizet_to_int32 (! length));
 }
