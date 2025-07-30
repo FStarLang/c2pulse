@@ -193,73 +193,43 @@ bool authenticate_l0_image(engine_record_t *record/*, ISARRAY(DICE_DIGEST_LEN)ui
     }
 }
 
+ERASED_ARG(#uds_perm:_)
+ERASED_ARG(#p:_)
+ERASED_ARG(#repr:erased _)
+PRESERVES(is_engine_record record p repr)
+ERASED_ARG(#uds_bytes:erased _)
+PRESERVES("Pulse.Lib.Array.pts_to uds #uds_perm uds_bytes")
+REQUIRES("Pulse.Lib.Array.pts_to cdi 'c0")
+ENSURES(exists* c1. cdi |-> c1)
+void compute_cdi(ISARRAY(DICE_DIGEST_LEN)uint8_t *cdi, ISARRAY(UDS_LEN)uint8_t *uds, engine_record_t *record){
+    LEMMA(unfold is_engine_record);
+    LEMMA(engine_record_t_explode (!record));
+    uint8_t uds_digest[DICE_DIGEST_LEN];
+    uint8_t l0_digest[DICE_DIGEST_LEN];
+    hacl_hash(DICE_HASH_ALG, UDS_LEN, uds, uds_digest);
+    hacl_hash(DICE_HASH_ALG, record->l0_binary_size, record->l0_binary, l0_digest);
+    LEMMA(engine_record_t_recover (!record));
+    LEMMA(fold is_engine_record);
+    hacl_hmac(DICE_HASH_ALG, cdi, uds_digest, DICE_DIGEST_LEN, l0_digest, DICE_DIGEST_LEN);
+}
 
-// fn compute_cdi
-//   (cdi:A.larray U8.t (SZ.v (digest_len dice_hash_alg)))
-//   (uds:A.larray U8.t (US.v uds_len))
-//   ([@@@ Rust_mut_binder] record:engine_record_t)
-//   (#uds_perm #p:perm)
-//   (#uds_bytes:Ghost.erased (Seq.seq U8.t))
-//   requires pts_to uds #uds_perm uds_bytes
-//         ** pts_to cdi 'c0
-//         ** engine_record_perm record p 'repr
-//   returns record:engine_record_t
-//   ensures engine_record_perm record p 'repr
-//        ** pts_to uds #uds_perm uds_bytes
-//        ** (exists* (c1:Seq.seq U8.t). 
-//             pts_to cdi c1 **
-//             pure (cdi_functional_correctness c1 uds_bytes 'repr))
-// {
-//   A.pts_to_len uds;
-//   let mut uds_digest = [| 0uy; dice_digest_len |];
-//   let mut l0_digest = [| 0uy; dice_digest_len |];
-//   hacl_hash dice_hash_alg uds_len uds uds_digest;
+ERASED_ARG(#repr:erased _)
+ERASED_ARG(#uds_perm:_)
+ERASED_ARG(#p:_)
+ERASED_ARG(#uds_bytes:erased _)
+PRESERVES(is_engine_record record p repr)
+PRESERVES("Pulse.Lib.Array.pts_to uds #uds_perm uds_bytes")
+REQUIRES("Pulse.Lib.Array.pts_to cdi 'c0")
+RETURNS(b:bool)
+ENSURES(exists* c1. cdi |-> c1)
+bool engine_main(ISARRAY(DICE_DIGEST_LEN) uint8_t *cdi, ISARRAY(UDS_LEN) uint8_t *uds, engine_record_t *record){
 
-//   unfold engine_record_perm record p 'repr;
-
-//   V.to_array_pts_to record.l0_binary;
-//   hacl_hash dice_hash_alg record.l0_binary_size (V.vec_to_array record.l0_binary) l0_digest;
-//   V.to_vec_pts_to record.l0_binary;
-
-//   fold engine_record_perm record p 'repr;
-
-//   hacl_hmac dice_hash_alg cdi 
-//     uds_digest dice_digest_len
-//     l0_digest dice_digest_len;
-  
-//   record
-// }
-
-
-
-// ERASED_ARG(#uds_perm:_)
-// ERASED_ARG(#p:_)
-// ERASED_ARG(#repr:erased _)
-// PRESERVES(is_engine_record record p repr)
-// ERASED_ARG(#uds_bytes:erased _)
-// PRESERVES("Pulse.Lib.Array.pts_to uds #uds_perm uds_bytes") // ** pts_to cdi 'c0 ** engine_record_perm record p 'repr")
-// PRESERVES("Pulse.Lib.Array.pts_to cdi 'c0")
-// RETURNS(ref engine_record_t)
-// // ENSURES("engine_record_perm record p 'repr \
-// //        ** pts_to uds #uds_perm uds_bytes \
-// //        ** (exists* (c1:Seq.seq U8.t). \
-// //             pts_to cdi c1 ** \
-// //             pure (cdi_functional_correctness c1 uds_bytes 'repr))")
-
-// engine_record_t *compute_cdi(ISARRAY(DICE_DIGEST_LEN)uint8_t *cdi, ISARRAY(UDS_LEN)uint8_t *uds, engine_record_t *record){
-//     LEMMA(unfold is_engine_record);
-//     LEMMA(engine_record_t_explode (!record));
-//     uint8_t uds_digest[DICE_DIGEST_LEN];
-//     uint8_t l0_digest[DICE_DIGEST_LEN];
-//     hacl_hash(DICE_HASH_ALG, UDS_LEN, uds, uds_digest);
-//     hacl_hash(DICE_HASH_ALG, record->l0_binary_size, record->l0_binary, l0_digest);
-//     LEMMA(engine_record_t_recover (!record));
-//     LEMMA(fold is_engine_record);
-
-//     hacl_hmac(DICE_HASH_ALG, cdi, uds_digest, DICE_DIGEST_LEN, l0_digest, DICE_DIGEST_LEN);
-    
-//     return record;
-// }
-
-
-
+    bool b = authenticate_l0_image(record);
+    if (b){
+        compute_cdi(cdi, uds, record);
+        return true;
+    }
+    else{
+        return false;
+    }
+}

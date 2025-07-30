@@ -26,9 +26,7 @@ unsigned long long test(size_t l, size_t k, unsigned long long j){
     k = l;
     k = k + 1;
     k = k - 1;
-
     j = foo(k);
-    
     LEMMA(assume (pure (UInt64.v !j < 1000)));
     k = k + j;
     
