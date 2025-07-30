@@ -1,4 +1,4 @@
-module Test_union
+module Nested_unions
 
 #lang-pulse
 
@@ -9,13 +9,13 @@ open Pulse.Lib.C
 
 noeq
 type ab = {
-a: ref UInt32.t;
+a: ref Int32.t;
 b: ref bool;
 }
 
 noeq
 type ab_spec = 
- | Case_ab_a of UInt32.t
+ | Case_ab_a of Int32.t
  | Case_ab_b of bool
 
 let ab_pred(u : ref ab) (s : ab_spec) : slprop =
@@ -46,21 +46,6 @@ end
 ensures ab_pred x s
 {
 fold (ab_pred x s);
-}
-
-fn incr_a
-(x : ref ab)
-(s:_)
-requires pure (Case_ab_a? s)
-requires ab_pred x s
-requires pure (UInt32.fits (UInt32.v (Case_ab_a?._0 s) + 1))
-ensures exists* s'. ab_pred x s'
-{
-let mut x : (ref ab) = x;
-ab_explode !x;
-rewrite each s as Case_ab_a (Case_ab_a?._0 s);
-Mkab?.a (! (! x)) := (UInt32.add (! (! (! x)).a) (int32_to_uint32 1l));
-ab_recover !x #(Case_ab_a _);
 }
 
 noeq
@@ -130,4 +115,89 @@ payload = a1})
 {fold stru_pred x ({tag = a0;
 payload = a1}) }
 
-let stru_ok (u : ref stru) (s : stru_spec) : slprop =stru_pred u s **pure (match s.tag with| 0y -> Case_ab_a? s.payload| 1y -> Case_ab_b? s.payload| _ -> false)
+noeq
+type nested = {
+x: ref ab;
+z: ref Int8.t;
+}
+
+noeq
+type nested_spec = 
+ | Case_nested_x of ab
+ | Case_nested_z of Int8.t
+
+let nested_pred(u : ref nested) (s : nested_spec) : slprop =
+exists* uv. (u |-> uv) **
+begin match s with
+ | Case_nested_x v -> uv.x |-> v
+ | Case_nested_z v -> uv.z |-> v
+end
+
+fn nested_explode (x : ref nested) (#s : nested_spec)
+requires nested_pred x s
+ensures exists* (v : nested). (x |-> v) **
+begin match s with
+ | Case_nested_x w -> v.x |-> w
+ | Case_nested_z w -> v.z |-> w
+end
+{
+unfold nested_pred;
+}
+
+ghost
+fn nested_recover (x : ref nested) (#s : nested_spec)
+requires exists* (v : nested). (x |-> v) **
+begin match s with
+ | Case_nested_x w -> v.x|-> w
+ | Case_nested_z w -> v.z|-> w
+end
+ensures nested_pred x s
+{
+fold (nested_pred x s);
+}
+
+noeq
+type nested2 = {
+x: ref ab;
+z: ref Int8.t;
+strufield: ref stru;
+}
+
+noeq
+type nested2_spec = 
+ | Case_nested2_x of ab
+ | Case_nested2_z of Int8.t
+ | Case_nested2_strufield of stru
+
+let nested2_pred(u : ref nested2) (s : nested2_spec) : slprop =
+exists* uv. (u |-> uv) **
+begin match s with
+ | Case_nested2_x v -> uv.x |-> v
+ | Case_nested2_z v -> uv.z |-> v
+ | Case_nested2_strufield v -> uv.strufield |-> v
+end
+
+fn nested2_explode (x : ref nested2) (#s : nested2_spec)
+requires nested2_pred x s
+ensures exists* (v : nested2). (x |-> v) **
+begin match s with
+ | Case_nested2_x w -> v.x |-> w
+ | Case_nested2_z w -> v.z |-> w
+ | Case_nested2_strufield w -> v.strufield |-> w
+end
+{
+unfold nested2_pred;
+}
+
+ghost
+fn nested2_recover (x : ref nested2) (#s : nested2_spec)
+requires exists* (v : nested2). (x |-> v) **
+begin match s with
+ | Case_nested2_x w -> v.x|-> w
+ | Case_nested2_z w -> v.z|-> w
+ | Case_nested2_strufield w -> v.strufield|-> w
+end
+ensures nested2_pred x s
+{
+fold (nested2_pred x s);
+}

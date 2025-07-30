@@ -1,6 +1,6 @@
 #include <stdbool.h>
 #include <stdint.h>
-#include "test/include/PulseMacros.h"
+#include "../include/PulseMacros.h"
 
 union ab {
 	int a;
