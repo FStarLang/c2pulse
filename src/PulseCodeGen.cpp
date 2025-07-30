@@ -457,7 +457,31 @@ void PulseCodeGen::generateCodeFromPulseAST(llvm::raw_string_ostream &OS,
         *ColCounter = 1;
       }
     }
+    
+    //Vidush: For now always admit these kinds of function declarations
+    OS << PulseSyntax::OpeningCurlyBrace;
+    *ColCounter += strlen(PulseSyntax::OpeningCurlyBrace); 
+    OS << PulseSyntax::NewLine;
+    *RowCounter += 1; 
+    *ColCounter = 1;
+    OS << "admit";
+    *ColCounter += strlen("admit");
+    OS << PulseSyntax::OpeningParenthesis; 
+    *ColCounter += strlen(PulseSyntax::OpeningParenthesis);
+    OS << PulseSyntax::ClosingParenthesis; 
+    *ColCounter += strlen(PulseSyntax::ClosingParenthesis);
+    OS << PulseSyntax::Semicolon;
+    *ColCounter += strlen(PulseSyntax::Semicolon);
+    OS << PulseSyntax::NewLine;
+    *RowCounter += 1; 
+    *ColCounter = 1;
+    OS << PulseSyntax::ClosingCurlyBrace;
+    *ColCounter += strlen(PulseSyntax::ClosingCurlyBrace);
 
+    OS << PulseSyntax::NewLine; 
+    *RowCounter += 1; 
+    *ColCounter = 1;
+    
     PulseSourceLocation End(*RowCounter, *ColCounter);
     PulseSourceRange Range(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, PulseFunDecl->getCSourceInfo()));

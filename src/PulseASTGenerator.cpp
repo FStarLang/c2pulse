@@ -1609,15 +1609,18 @@ FStarType *PulseVisitor::pulseTyFromDecl(const Decl* D){
 
 bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   
-  //If this is a declaration and it does have a function body, we ignore it.
-  //When we visit the actual declaration, we will generate code for it.
-  if (!FD->isThisDeclarationADefinition()){
-    if (const FunctionDecl *Def = FD->getDefinition()){
-      return true;
-    }
-  }
-
-  if (!FD->hasBody() || SM.isInSystemHeader(FD->getLocation()) ||
+  //We may want to store the type of the function declarations regardless.
+  //TODO: Limited to just one TU. Function declarations may be spread across TUs.
+  // //If this is a declaration and it does have a function body, we ignore it.
+  // //When we visit the actual declaration, we will generate code for it.
+  // if (!FD->isThisDeclarationADefinition()){
+  //   if (const FunctionDecl *Def = FD->getDefinition()){
+  //     return true;
+  //   }
+  // }
+  
+  //Vidush, removing !FD->hasBody() || check since we may want to handle such declarations
+  if (SM.isInSystemHeader(FD->getLocation()) ||
       FD->isImplicit() ||
       (FD->getLocation().isMacroID() &&
        !SM.isWrittenInMainFile(SM.getExpansionLoc(FD->getLocation()))))
@@ -2012,7 +2015,15 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
       PulseDecl->setDeclType(pulseTyFromDecl(FD));
 
     PulseDecl->Kind = PulseDeclKind::FnDecl;
-    Module->Decls.push_back(PulseDecl);
+    
+    //We don't want to add declarations that have a body due to duplocation
+    const FunctionDecl *Def = FD->getDefinition();
+    if (!Def){
+      llvm::outs() << "Inside Not Def!" << FuncName << "\n";
+      Module->Decls.push_back(PulseDecl);
+    }
+    llvm::outs() << "Outside Def! " << FuncName << "\n";
+    
     DeclEnv.insert(std::make_pair(FD, PulseDecl));
     return true;
   }
