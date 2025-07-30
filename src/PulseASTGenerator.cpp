@@ -1072,6 +1072,7 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
 
     auto *UnionSpec = new GenericDecl(); 
     UnionSpec->CInfo = getSourceInfoFromDecl(RD, Ctx, "");
+    UnionSpec->Ident += "noeq\n";
     UnionSpec->Ident += "type " + StructName + "_spec = \n";
     for (auto Fld : RD->fields()){
       auto FldName = FieldToUniqueNames[Fld];
