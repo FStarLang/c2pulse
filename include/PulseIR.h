@@ -375,7 +375,7 @@ enum class TermTag {Const, Paren, Var, Name, AppE, FStarType, FStarPointerType, 
 class Term {
 public:
   SourceInfo CInfo;
-  Term *Type;
+  Term *Type = nullptr;
   SourceInfo getCSourceInfo();
   TermTag Tag;
   void setTag(TermTag T);
@@ -739,10 +739,10 @@ public:
 };
 
 /// An IR node for representing a pulse function declaration.
-struct _PulseFnDecl {
-  std::string Name;
-  std::vector<Binder *> Args;
-};
+// struct _PulseFnDecl {
+//   std::string Name;
+//   std::vector<Binder *> Args;
+// };
 
 /// Attributes a function may have.
 typedef std::vector<Term*> Attributes;
@@ -756,6 +756,7 @@ struct _PulseFnDefn {
   bool isRecursive;
   PulseStmt *Body;
   bool useFallback = false;
+  bool isDeclaration = false;
   std::string FallBackBody;
 };
 
@@ -875,7 +876,8 @@ public:
 /// An IR node to represent a pulse function declaration.
 class PulseFnDecl : public PulseDecl {
 public:
-  _PulseFnDecl *Defn;
+  PulseFnDecl(_PulseFnDefn *Defn);
+  _PulseFnDefn *Defn;
   static bool classof(const PulseDecl *D) {
     return D->Kind == PulseDeclKind::FnDecl;
   }
@@ -921,6 +923,8 @@ void insertPulseTyEnv(Term *T, FStarType *Ty,
 FStarType *lookupPulseTyEnv(Term *T, std::map<Term *, FStarType *> Env);
 PulseDecl *lookupDecl(clang::Decl *D,
                       std::map<clang::Decl *, PulseDecl *> DeclEnv);
+
+std::string getDeclName(PulseDecl *D);
 
 void printVEnv(std::map<Term *, FStarType *> Env);
 

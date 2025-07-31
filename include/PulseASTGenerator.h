@@ -29,6 +29,7 @@ public:
       : TheRewriter(R), Ctx(Ctx), SM(Ctx.getSourceManager()) {}
 
   bool VisitFunctionDecl(clang::FunctionDecl *FD);
+  bool VisitFunctionDeclMain(clang::FunctionDecl *FD, bool OverrideGen);
   // bool VisitTypedefDecl(clang::TypedefDecl *TypeDefDec);
   bool VisitRecordDecl(const clang::RecordDecl *RecordDecl);
   bool VisitVarDecl(clang::VarDecl *VD);
@@ -77,6 +78,18 @@ public:
   Term *checkAndAddCast(Term *Src, Term *Dst);
   clang::QualType getTypeFromDecl(const clang::Decl *D);
 
+  void handleFunctionAttributes(clang::FunctionDecl *FD,
+                                _PulseFnDefn *FDefn,
+                                std::string FuncName,
+                                PulseModul *Modul,
+                                bool *Terminate,
+                                bool HasAssociatedDefinition,
+                                std::vector<Binder *> &PulseArgs, 
+                                std::vector<Binder *> &ErasedArgs);
+
+  PulseSequence * handleFunctionParameters(clang::FunctionDecl *FD, std::vector<Binder*> &PulseArgs, 
+                                std::map<Term *, FStarType *> &TermToPulseTy);
+
   std::pair<Term *, VarTyEnv> getPulseTermForMallocSize(
       clang::Expr *SizeExpr, VarTyEnv VEnv, clang::QualType ArrayElemType,
       clang::ExprMutationAnalyzer *A, llvm::SmallVector<PulseStmt *> &ExprsBef,
@@ -94,6 +107,7 @@ private:
   clang::Rewriter &TheRewriter;
   clang::ASTContext &Ctx;
   clang::SourceManager &SM;
+  bool ForceVisitFunction = false;
   std::map<const clang::Decl*, clang::QualType> DeclTyMap;
   std::map<const clang::Stmt*, std::vector<Slprop*>> StmtToLemmas;
   std::set<const clang::Decl*> IsAllocatedOnHeap;

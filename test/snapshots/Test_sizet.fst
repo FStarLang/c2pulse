@@ -7,7 +7,7 @@ open Pulse.Lib.C
 
 
 
-fn test2
+fn test2_decl
 (l : SizeT.t)
 (k : SizeT.t)
 (j : UInt64.t)
@@ -15,7 +15,15 @@ fn test2
 admit();
 }
 
-fn foo
+fn foo_decl
+(l : SizeT.t)
+requires pure (SizeT.v l < 100)
+returns UInt64.t
+{
+admit();
+}
+
+fn foo_impl
 (l : SizeT.t)
 requires pure (SizeT.v l < 100)
 returns UInt64.t
@@ -43,7 +51,7 @@ let mut j : UInt64.t = j;
 k := (! l);
 k := (SizeT.add (! k) (int32_to_sizet 1l));
 k := (SizeT.sub (! k) (int32_to_sizet 1l));
-j := (foo (! k));
+j := (foo_decl (! k));
 assume (pure (UInt64.v !j < 1000));
 k := (uint64_to_sizet (UInt64.add (sizet_to_uint64 (! k)) (! j)));
 (sizet_to_uint64 (! k));

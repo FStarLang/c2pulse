@@ -7,7 +7,12 @@ open Pulse.Lib.C
 
 
 
-fn bar ()
+fn bar_decl ()
+{
+admit();
+}
+
+fn bar_impl ()
 {
 let mut x : Int32.t = 1l;
 ();

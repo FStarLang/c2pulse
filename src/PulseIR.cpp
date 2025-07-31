@@ -1217,6 +1217,10 @@ PulseFnDefn::PulseFnDefn(_PulseFnDefn *Defn) : Defn(Defn) {
   Kind = PulseDeclKind::FnDefn;
 }
 
+PulseFnDecl::PulseFnDecl(_PulseFnDefn *Defn) : Defn(Defn) {
+  Kind = PulseDeclKind::FnDecl;
+}
+
 void PulseFnDefn::dumpPretty() {
 
   llvm::outs() << "The pulse function Name is: ";
@@ -1281,6 +1285,7 @@ std::string getPulseTyAsString(Term *Type) {
 
   if (auto *Ty = clang::dyn_cast<FStarType>(Type)) {
     llvm::outs() << "Found FStarType!\n";
+    llvm::outs() << Ty->print() << "\n";
     return Ty->print();
   } else if (auto *Ty = clang::dyn_cast<FStarArrType>(Type)) {
     llvm::outs() << "Found FStarArrType!\n";
@@ -1390,6 +1395,19 @@ PulseDecl *lookupDecl(clang::Decl *D,
 
   D->dump();
   emitError("Could not find pulse function for requested C declaration!\n");
+}
+
+std::string getDeclName(PulseDecl *D){
+
+  if (auto *FuncDef = clang::dyn_cast<PulseFnDefn>(D)){
+    return FuncDef->Defn->Name;
+  }
+  else if (auto *FuncDef = clang::dyn_cast<PulseFnDecl>(D)){
+    return FuncDef->Defn->Name;
+  }
+  else {
+    emitError("Did not expect declaration!\n");
+  }
 }
 
 void printVEnv(std::map<Term *, FStarType *> Env) {

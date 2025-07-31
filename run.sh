@@ -46,8 +46,9 @@ set -- "${POSITIONAL_ARGS[@]}"
 # Prepare the command invocation as a variable for reuse
 CMD=( $C2PULSE "$@" \
   #--extra-arg-before=-include \
-  #--extra-arg-before=$HERE/test/include/PulseMacros.h \	
-  --extra-arg-before=-DC2PULSE #\
+  #--extra-arg-before=$HERE/test/include/PulseMacros.h \
+  --extra-arg-before=-fno-builtin \
+  --extra-arg-before=-DC2PULSE
 )
 
 # Run command, capture output and optionally save to log

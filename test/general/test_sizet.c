@@ -4,10 +4,11 @@
 
 
 unsigned long long test2(size_t l, size_t k, unsigned long long j);
-unsigned long foo(size_t l);
 
 REQUIRES(pure (SizeT.v l < 100))
 RETURNS(UInt64.t)
+unsigned long foo(size_t l);
+
 unsigned long foo(size_t l){
 
     unsigned long y = l;

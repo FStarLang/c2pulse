@@ -400,6 +400,14 @@ void PulseCodeGen::generateCodeFromPulseAST(llvm::raw_string_ostream &OS,
     auto *FuncDef = PulseFunDecl->Defn;
     auto Args = FuncDef->Args;
     auto FuncName = FuncDef->Name;
+
+    //Write out the annotations attached to the function
+    for (auto *Att : FuncDef->Attr) {
+      OS << generateCodeFromTerm(OS, Att, RowCounter, ColCounter);
+      OS << PulseSyntax::NewLine;
+      *RowCounter += 1;
+      *ColCounter = 1;
+    }
     
     //TODO: maybe for recursive functions these need to be extended 
     // with a isRec field.
@@ -456,6 +464,11 @@ void PulseCodeGen::generateCodeFromPulseAST(llvm::raw_string_ostream &OS,
         *RowCounter += 1; 
         *ColCounter = 1;
       }
+    }
+
+    //Codegen the specs;
+    for (auto *A : FuncDef->Annotation) {
+      generateCodeFromTerm(OS, A, RowCounter, ColCounter);
     }
     
     //Vidush: For now always admit these kinds of function declarations

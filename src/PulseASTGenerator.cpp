@@ -1607,74 +1607,61 @@ FStarType *PulseVisitor::pulseTyFromDecl(const Decl* D){
     return PulseTy;
 }
 
-bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
-  
-  //We may want to store the type of the function declarations regardless.
-  //TODO: Limited to just one TU. Function declarations may be spread across TUs.
-  // //If this is a declaration and it does have a function body, we ignore it.
-  // //When we visit the actual declaration, we will generate code for it.
-  // if (!FD->isThisDeclarationADefinition()){
-  //   if (const FunctionDecl *Def = FD->getDefinition()){
-  //     return true;
-  //   }
-  // }
-  
-  //Vidush, removing !FD->hasBody() || check since we may want to handle such declarations
-  if (SM.isInSystemHeader(FD->getLocation()) ||
-      FD->isImplicit() ||
-      (FD->getLocation().isMacroID() &&
-       !SM.isWrittenInMainFile(SM.getExpansionLoc(FD->getLocation()))))
-    return true;  
+void PulseVisitor::handleFunctionAttributes(FunctionDecl *FD,
+                                            _PulseFnDefn *FDefn,
+                                            std::string FuncName,
+                                            PulseModul *Module,
+                                            bool *Terminate,
+                                            bool HasAssociatedDefinition,
+                                            std::vector<Binder *> &PulseArgs, 
+                                            std::vector<Binder *> &ErasedArgs){
 
-  auto FuncName = FD->getNameAsString();
+  llvm::outs() << "HandleFunctionAttributes " << FuncName << "\n";
+  llvm::outs() <<  "Has Attrs: " << FD->hasAttrs() << "\n";
+  llvm::outs() << "HasAssociatedDef " << HasAssociatedDefinition << "\n";                                   
 
-  auto *FileEnt = SM.getFileEntryForID(SM.getMainFileID());
-  if (!FileEnt) {
-    llvm::errs() << "Error: Main file entry not found in source manager.\n";
-    exit(1);
+  if (HasAssociatedDefinition){
+    if (FD->hasAttrs()){
+      auto AnnotationsAttachedToFD = FD->getAttrs();
+      for (auto *Attr : AnnotationsAttachedToFD) {
+        if (auto *AnnAttr = dyn_cast<AnnotateAttr>(Attr)) {
+          if (!AnnAttr->isInherited() && AnnAttr->getAttrName()->getName() == "pulse"){
+            emitErrorWithLocation("This function has an associated declaration, please annotate pulse specs on the declaration instead of the definition!", &Ctx, FD->getLocation());
+          }
+        }
+      }
+      //Vidush: If for all the attributes, none of them are pulse attributes, 
+      //don't error out, copy attribues from function declaration
+      //goto copy_attrs_from_definition;
+      goto add_annotations;
+    }
+    
+    //copy_attrs_from_definition:
+    // if (auto *FuncDecl = FD->getCanonicalDecl()){
+    //   auto It = DeclEnv.find(FuncDecl);
+    //   //Error out since we should have generated the corresponding definition
+    //   if (It == DeclEnv.end()){
+    //      emitErrorWithLocation("Expected pulse declaration to be generated!", &Ctx, FuncDecl->getLocation());
+    //   }
+
+    //   auto *PulseDecl = It->second;
+    //   //Copy over attributes from declaration to definition
+    //   if (auto *PFnDecl = dyn_cast<PulseFnDecl>(PulseDecl)){
+    //     for (auto *T : PFnDecl->Defn->Attr){
+    //       FDefn->Attr.push_back(T);
+    //     }
+    //   }
+    //   else {
+    //     emitErrorWithLocation("Could not dyn cast to a function declaration!", &Ctx, FuncDecl->getLocation());
+    //   }
+    // }
+    // else {
+    //   emitErrorWithLocation("Expected a function declaration!", &Ctx, FD->getLocation());
+    // }
+
   }
-
-  auto FilePath = FileEnt->tryGetRealPathName();
-  std::filesystem::path FilePathSys = FilePath.str();
-  auto Extension = FilePathSys.extension().string();
-  auto TempFilePathWithoutExtension = FilePathSys.replace_extension("");
-  auto FileName = TempFilePathWithoutExtension.filename();
-  auto FileNameStr = FileName.string();
-  if (!FileNameStr.empty()) {
-    FileNameStr[0] = std::toupper(FileNameStr[0]);
-  }
-
-  // change dots to _ since . is reserved for nested modules.
-  std::replace(FileNameStr.begin(), FileNameStr.end(), '.', '_');
-
-  std::string ClangModuleName = FileNameStr;
-  //Don't infer array types automatically but get that from ISARRAY
-  //inferArrayTypes(FD);
-
-  auto *FDefn = new _PulseFnDefn();
-  FDefn->Name = FuncName;
-  FDefn->isRecursive = true;
-
-  if (!checkIsRecursiveFunction(FD)) {
-    FDefn->isRecursive = false;
-  }
-
-  auto It = Modules.find(ClangModuleName);
-  PulseModul *Module = nullptr;
-  if (It != Modules.end()) {
-    Module = It->second;
-  }
-  // Create new function defintions.
-  else {
-    Module = new PulseModul();
-    Module->includePulsePrelude = true;
-    Module->ModuleName = ClangModuleName;
-  }
-  Modules.insert(std::make_pair(ClangModuleName, Module));
-
-  std::vector<Binder *> PulseArgs;
-  std::vector<Binder *> ErasedArgs;
-  if (FD->hasAttrs()) {
+  else if (FD->hasAttrs()) {
+    add_annotations:
     auto AnnotationsAttachedToFD = FD->getAttrs();
     for (auto *Attr : AnnotationsAttachedToFD) {
 
@@ -1710,7 +1697,9 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
           // }
            
           auto Ref = AnnAttr->getAnnotation();
+          llvm::outs() << "Print Ann in handleAnnotations " << Ref << "\n";
           if (!Ref.empty()) {
+            llvm::outs() << "Print Ann in handleAnnotations in if check " << Ref << "\n";
             std::string Match = "";
             PulseAnnKind AnnKind = getPulseAnnKindFromString(
                 AnnAttr->getAnnotation().data(), Match);
@@ -1806,7 +1795,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
               //If function name is the anchor dummy function. 
               //Skip generating code for it entirely.
               if ((FuncName.find("__pulse_include_anchor") != std::string::npos)){
-                return true;
+                *Terminate = true;
               }
               break;
             }
@@ -1829,15 +1818,34 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
         }
       }
     }
+    llvm::outs() << "Print Size handle Annotation: " << FDefn->Attr.size() << "\n";
   }
-  
-  ///Vidush: Also construct let mut for all function parameters
+}
+
+PulseSequence *PulseVisitor::handleFunctionParameters(FunctionDecl *FD, std::vector<Binder*> &PulseArgs,
+                                            std::map<Term *, FStarType *> &TermToPulseTy){
+
+    ///Vidush: Also construct let mut for all function parameters
   PulseSequence *ParamLetMutSequence = nullptr;
   PulseSequence *ParamLetMutSequenceHead = nullptr;
-  std::map<Term *, FStarType *> TermToPulseTy;
+  
+  auto *FuncDecl = FD->getCanonicalDecl();
+
   for (unsigned i = 0; i < FD->getNumParams(); i++) {
     auto *Param = FD->getParamDecl(i);
     auto ParamName = Param->getNameAsString();
+    
+    //Vidush: 
+    //If this is function definition which has an 
+    //existing definition, we should make sure 
+    //that parameter names are the same.
+    if (FuncDecl && FD->isThisDeclarationADefinition()){
+      if (ParamName != FuncDecl->getParamDecl(i)->getNameAsString()){
+        FuncDecl->dump(); 
+        FD->dump();
+        emitErrorWithLocation("Function parameter names differ from declaration, please use same parameter names!\n", &Ctx, FD->getLocation());
+      }
+    }
 
     /// See if this array parameter has any annotations arrached to it.
     auto Attrs = Param->attrs();
@@ -1993,61 +2001,236 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
     }
     PulseArgs.push_back(Binder);
   }
-  std::copy(ErasedArgs.begin(), ErasedArgs.end(),
-            std::back_inserter(PulseArgs));
+
+  return ParamLetMutSequenceHead;
+
+}
+
+
+bool PulseVisitor::VisitFunctionDeclMain(FunctionDecl *FD, bool OverrideGen){
+
+  if (OverrideGen){
+    ForceVisitFunction = true;
+    bool res = VisitFunctionDecl(FD);
+    ForceVisitFunction = false;
+    return res;
+  }
+
+  ForceVisitFunction = false;
+  bool res = VisitFunctionDecl(FD);
+  ForceVisitFunction = false;
+  return res;
+}
+
+
+bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   
-  FDefn->Args = PulseArgs;
+  //We may want to store the type of the function declarations regardless.
+  //TODO: Limited to just one TU. Function declarations may be spread across TUs.
+  // //If this is a declaration and it does have a function body, we ignore it.
+  // //When we visit the actual declaration, we will generate code for it.
+  // if (!FD->isThisDeclarationADefinition()){
+  //   if (const FunctionDecl *Def = FD->getDefinition()){
+  //     return true;
+  //   }
+  // }
+
+  if (ForceVisitFunction)
+    goto override;
+
+  if (SM.isInSystemHeader(FD->getLocation()) ||
+      FD->isImplicit() ||
+      (FD->getLocation().isMacroID() &&
+       !SM.isWrittenInMainFile(SM.getExpansionLoc(FD->getLocation()))))
+    return true;
 
 
-  //TODO: Vidush: Move this check up and clean the code
+  override:
+
+  auto *FileEnt = SM.getFileEntryForID(SM.getMainFileID());
+  if (!FileEnt) {
+    emitErrorWithLocation("Error: Main file entry not found in source manager.", &Ctx, FD->getLocation());
+  }
+
+  auto FilePath = FileEnt->tryGetRealPathName();
+  std::filesystem::path FilePathSys = FilePath.str();
+  auto Extension = FilePathSys.extension().string();
+  auto TempFilePathWithoutExtension = FilePathSys.replace_extension("");
+  auto FileName = TempFilePathWithoutExtension.filename();
+  auto FileNameStr = FileName.string();
+  if (!FileNameStr.empty()) {
+    FileNameStr[0] = std::toupper(FileNameStr[0]);
+  }
+
+  // change dots to _ since . is reserved for nested modules.
+  std::replace(FileNameStr.begin(), FileNameStr.end(), '.', '_');
+  
+  std::string ClangModuleName = FileNameStr;
+  auto It = Modules.find(ClangModuleName);
+  PulseModul *Module = nullptr;
+  if (It != Modules.end()) {
+    Module = It->second;
+  }
+  // Create new pulse module.
+  else {
+    Module = new PulseModul();
+    Module->includePulsePrelude = true;
+    Module->ModuleName = ClangModuleName;
+  }
+  Modules.insert(std::make_pair(ClangModuleName, Module));
+
+  std::string FuncName;
+  auto *FDefn = new _PulseFnDefn();
   if (!FD->isThisDeclarationADefinition()){
+    FuncName = FD->getNameAsString() + "_decl";
+    FDefn->Name = FuncName;
+    FDefn->isDeclaration = true;
 
-    auto *NewFunDecl = new _PulseFnDecl;
-    NewFunDecl->Name = FDefn->Name;
-    NewFunDecl->Args = FDefn->Args;
+    std::vector<Binder*> PulseArgs;
+    std::vector<Binder*> ErasedArgs;
+    bool Terminate = false;
+    handleFunctionAttributes(FD, FDefn, FuncName, Module, &Terminate,
+                                            false,
+                                            PulseArgs, 
+                                            ErasedArgs);
 
-    auto *PulseDecl = new PulseFnDecl();
+    if (Terminate == true){
+      return true;
+    }
+
+    std::map<Term *, FStarType *> VEnv;
+
+    //TODO: The let mut for function parameters is just unnecessary here. 
+    //We should pass a flag to this function to not generate it in case of function declaration!
+    //TODO: Vidush simplify the code.
+    PulseSequence *ParamSequence = handleFunctionParameters(FD, PulseArgs, VEnv);
+    
+    std::copy(ErasedArgs.begin(), ErasedArgs.end(),
+            std::back_inserter(PulseArgs));
+    
+            
+    FDefn->Args = PulseArgs;
+
+    auto *PulseDecl = new PulseFnDecl(FDefn);
     PulseDecl->CInfo = getSourceInfoFromDecl(FD, Ctx, "");
-    PulseDecl->Defn = NewFunDecl;
+
     // We don't handle functions that return a void type or a void pointer type!
     if (!FD->getReturnType()->isVoidType() &&
         !FD->getReturnType()->isVoidPointerType())
       PulseDecl->setDeclType(pulseTyFromDecl(FD));
 
-    PulseDecl->Kind = PulseDeclKind::FnDecl;
-    
-    //We don't want to add declarations that have a body due to duplocation
-    const FunctionDecl *Def = FD->getDefinition();
-    if (!Def){
-      llvm::outs() << "Inside Not Def!" << FuncName << "\n";
-      Module->Decls.push_back(PulseDecl);
-    }
-    llvm::outs() << "Outside Def! " << FuncName << "\n";
-    
+    Module->Decls.push_back(PulseDecl);
     DeclEnv.insert(std::make_pair(FD, PulseDecl));
     return true;
+
   }
 
-  PulseFnDefn *PulseFn = new PulseFnDefn(FDefn);
-  PulseFn->CInfo = getSourceInfoFromDecl(FD, Ctx, "");
-  DeclEnv.insert(std::make_pair(FD, PulseFn));
-
-  if (Stmt *Body = FD->getBody()) {
-    if (auto *CS = dyn_cast<CompoundStmt>(Body)) {
-      ExprMutationAnalyzer Analyzer(*CS, Ctx);
-
-      // Track struct variables per function.
-      //TrackStructExplodeAndRecover.clear();
-      auto *PulseBody =
-          pulseFromCompoundStmt(CS, TermToPulseTy, &Analyzer, Module);
-
-      //Make a void return type ()
-      if (PulseBody == nullptr){
-        auto *ReturnExpr = new PulseExpr();
-        auto *VoidRetTerm = new Name("()", nullptr);
-        ReturnExpr->E = VoidRetTerm;
-        PulseBody = ReturnExpr;
+    bool HasAssociatedDefinition = false;
+    auto *FunDecl = FD->getCanonicalDecl();
+    //If a declaration does not exist for this function
+    //We use its actual name not the declaration name!
+    if (!FunDecl){
+      FuncName = FD->getNameAsString(); 
+    }
+    else if (FunDecl != FD){
+      //Assert that we already generated the function declaration!
+      auto It = DeclEnv.find(FunDecl);
+      // FunDecl->dump();
+      // exit(0);
+      if (It == DeclEnv.end()){
+        //If not, please generate the declaration first.
+        VisitFunctionDeclMain(FunDecl, true);
       }
+      FuncName = FD->getNameAsString() + "_impl";
+      HasAssociatedDefinition = true;
+    }
+    else {
+      FuncName = FD->getNameAsString();
+    }
+    
+    std::vector<Binder*> PulseArgs;
+    std::vector<Binder*> ErasedArgs;
+    bool Terminate = false;
+    handleFunctionAttributes(FD, FDefn, FuncName, Module, &Terminate,
+                                            HasAssociatedDefinition,
+                                            PulseArgs, 
+                                            ErasedArgs);
+
+    if (Terminate == true){
+      return true;
+    }
+
+    //Vidush: TODO: We should check if the function name
+    //is not shadowed. It is it is shadowed, we should change it.
+    FDefn->Name = FuncName;
+    FDefn->isDeclaration = false;
+
+    FDefn->isRecursive = true;
+    if (!checkIsRecursiveFunction(FD)) {
+      FDefn->isRecursive = false;
+    }
+    
+    std::map<Term *, FStarType *> VEnv;
+    PulseSequence *ParamSequence = handleFunctionParameters(FD, PulseArgs, VEnv);
+    
+    std::copy(ErasedArgs.begin(), ErasedArgs.end(),
+            std::back_inserter(PulseArgs));
+            
+    FDefn->Args = PulseArgs;
+
+    PulseFnDefn *PulseFn = new PulseFnDefn(FDefn);
+    PulseFn->CInfo = getSourceInfoFromDecl(FD, Ctx, "");
+    DeclEnv.insert(std::make_pair(FD, PulseFn));
+
+    if (Stmt *Body = FD->getBody()) {
+      if (auto *CS = dyn_cast<CompoundStmt>(Body)) {
+        ExprMutationAnalyzer Analyzer(*CS, Ctx);
+
+        // Track struct variables per function.
+        //TrackStructExplodeAndRecover.clear();
+        auto *PulseBody = pulseFromCompoundStmt(CS, VEnv, &Analyzer, Module);
+
+        //Make a void return type ()
+        if (PulseBody == nullptr){
+          auto *ReturnExpr = new PulseExpr();
+          auto *VoidRetTerm = new Name("()", nullptr);
+          ReturnExpr->E = VoidRetTerm;
+          PulseBody = ReturnExpr;
+        }
+        
+        if (ParamSequence != nullptr){
+          auto *NewBodySeq = new PulseSequence(); 
+          NewBodySeq->assignS1(ParamSequence);
+          NewBodySeq->assignS2(PulseBody);
+          FDefn->Body = NewBodySeq;
+        }
+        else {
+          FDefn->Body = PulseBody;
+        }
+      }
+    }
+    
+    // We don't handle functions that return a void type or a void pointer type!
+    if (!FD->getReturnType()->isVoidType() && !FD->getReturnType()->isVoidPointerType())
+        PulseFn->setDeclType(pulseTyFromDecl(FD));
+
+    DEBUG_WITH_TYPE(DEBUG_TYPE, {
+      llvm::outs() << "=================================================";
+      llvm::outs() << "\nPrint the Pulse function Definition:\n\n";
+      PulseFn->dumpPretty();
+      llvm::outs() << "\nEnd printing the function Definition\n\n";
+      llvm::outs() << "=================================================\n";
+    });
+
+    PulseFn->Kind = PulseDeclKind::FnDefn;
+    Module->Decls.push_back(PulseFn);
+    return true;
+
+  //Don't infer array types automatically but get that from ISARRAY
+  //inferArrayTypes(FD);
+
+
+  
 
 
       // Release declarations that are function parameters.
@@ -2104,36 +2287,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
       //  DEBUG_WITH_TYPE(DEBUG_TYPE, {
       //  PulseBody->dumpPretty();
       //  });
-      if (ParamLetMutSequenceHead != nullptr){
-
-        auto *NewBodySeq = new PulseSequence(); 
-        NewBodySeq->assignS1(ParamLetMutSequenceHead);
-        NewBodySeq->assignS2(PulseBody);
-        FDefn->Body = NewBodySeq;
-      }
-      else {
-        FDefn->Body = PulseBody;
-      }
       //}
-    }
-  }
-
-  // We don't handle functions that return a void type or a void pointer type!
-  if (!FD->getReturnType()->isVoidType() &&
-      !FD->getReturnType()->isVoidPointerType())
-    PulseFn->setDeclType(pulseTyFromDecl(FD));
-
-  DEBUG_WITH_TYPE(DEBUG_TYPE, {
-    llvm::outs() << "=================================================";
-    llvm::outs() << "\nPrint the Pulse function Definition:\n\n";
-    PulseFn->dumpPretty();
-    llvm::outs() << "\nEnd printing the function Definition\n\n";
-    llvm::outs() << "=================================================\n";
-  });
-
-  PulseFn->Kind = PulseDeclKind::FnDefn;
-  Module->Decls.push_back(PulseFn);
-  return true;
 }
 
 bool PulseVisitor::isKnownArrayType(const Decl *D){
@@ -2465,12 +2619,15 @@ Term *PulseVisitor::checkAndAddCast(Term *SrcTerm, Term *DstType){
   if (SrcType == nullptr){
     return SrcTerm;
   }
+  
+  llvm::outs() << "Print the source type!\n";
+  SrcType->dumpPretty();
+  llvm::outs() << "Print the destination type!\n";
+  DstType->dumpPretty();
+  llvm::outs() << "\n";
+
   if (getPulseTyAsString(SrcType) != getPulseTyAsString(DstType)){
     
-    SrcType->dumpPretty();
-    llvm::outs() << "\n";
-    DstType->dumpPretty();
-    llvm::outs() << "\n";
     auto *CastCall = new AppE(getCastNameForPulseType(SrcType) + "_to_" + getCastNameForPulseType(DstType), DstType);
     CastCall->CInfo = SrcTerm->CInfo;
     CastCall->pushArg(SrcTerm);
@@ -2563,6 +2720,7 @@ PulseVisitor::pulseFromStmt(Stmt *S, std::map<Term *, FStarType *> VEnv,
             // else {
             // LetBinding *PulseLet = new LetBinding(VarName, new
             // VarTerm(TempVarName), MutOrRef::MUT);
+            //LetInit->dumpPretty();
             auto *CastLetInit = checkAndAddCast(LetInit, VDPulseTy);
             LetBinding *PulseLet = new LetBinding(VarName, CastLetInit, MutOrRef::MUT);
             PulseLet->CInfo = getSourceInfoFromStmt(S, Ctx, "", "");
@@ -4564,37 +4722,68 @@ std::pair<Term *, PulseVisitor::VarTyEnv> PulseVisitor::getTermFromCExpr(
     //       &SM, CE->getBeginLoc());
     // }
 
-    auto CallName = CE->getDirectCallee()->getNameAsString();
+    //auto CallName = CE->getDirectCallee()->getNameAsString();
+    std::string CallName;
     auto *Callee = CE->getDirectCallee();
     PulseDecl *PulseDecl = nullptr;
 
     auto *CallAppE = new AppE();
     CallAppE->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
-
-    // Vidush: Note: void and void pointer types are not handled!
-    if (!Callee->hasBody() || SM.isInSystemHeader(Callee->getLocation()) ||
-        Callee->isImplicit() ||
-        (Callee->getLocation().isMacroID() &&
-         !SM.isWrittenInMainFile(SM.getExpansionLoc(Callee->getLocation())))) {
+    
+    //We handle calls to free as a special case.
+    if (Callee->getNameAsString() == "free"){
+      CallName = "free";
       goto bypass_function_type_inference;
     }
 
-    PulseDecl = lookupDecl(Callee, DeclEnv);
-    if (Callee->isThisDeclarationADefinition()) {
-      auto *PulseFunc = dyn_cast<PulseFnDefn>(PulseDecl);
-      if (PulseFunc) {
-        CallAppE->Type = PulseFunc->DeclType;
-      } else {
-        emitError("Could not find corresponding Function definition!\n");
+    //Check if a declaration exists. 
+    if (auto *CalleeDecl = Callee->getCanonicalDecl()){
+      
+      auto PulseDefIt = DeclEnv.find(Callee);
+      auto PulseDeclIt = DeclEnv.find(CalleeDecl);
+      
+      //We need to generate a declaration or error out!
+      if (PulseDeclIt == DeclEnv.end() && PulseDefIt == DeclEnv.end()){
+        auto *ClangDecl = Callee->getCanonicalDecl();
+        VisitFunctionDeclMain(ClangDecl, true);
+        PulseDeclIt = DeclEnv.find(ClangDecl);
+        if (PulseDeclIt == DeclEnv.end()){
+          emitErrorWithLocation("Could not find pulse function!", &Ctx, Callee->getLocation());
+        }
+        PulseDecl = PulseDeclIt->second;
+        CallName = getDeclName(PulseDecl);        
       }
-    } else {
-      auto *PulseFuncDecl = dyn_cast<PulseFnDecl>(PulseDecl);
-      if (PulseFuncDecl) {
-        CallAppE->Type = PulseFuncDecl->DeclType;
-      } else {
-        emitError("Could not find corresponding function declaration!\n");
+      //use the declaration name
+      else if (PulseDeclIt != DeclEnv.end()){
+        PulseDecl = PulseDeclIt->second;
+        CallName = getDeclName(PulseDecl);
+      }
+      //use the definition name
+      else if (PulseDefIt != DeclEnv.end()) {
+        PulseDecl = PulseDefIt->second;
+        CallName = getDeclName(PulseDecl);
+      }
+      //either error out or generate the definition!
+      else {
+        emitErrorWithLocation("Could not find pulse function!", &Ctx, Callee->getLocation());
       }
     }
+    else {
+      auto PulseDefIt = DeclEnv.find(Callee);
+      //generate definition or error out
+      if (PulseDefIt == DeclEnv.end()){
+        emitErrorWithLocation("Could not find pulse function!", &Ctx, Callee->getLocation());
+      }
+      PulseDecl = PulseDefIt->second;
+      CallName = getDeclName(PulseDecl);
+    }
+
+
+    if (Callee->getType()->isVoidPointerType() || Callee->getType()->isVoidType()){
+        goto bypass_function_type_inference;
+    }
+
+    CallAppE->Type = PulseDecl->DeclType;
   bypass_function_type_inference:
 
     if (CallName != "free") {
