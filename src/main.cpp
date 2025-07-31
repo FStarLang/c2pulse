@@ -7,6 +7,7 @@
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/Support/FileSystem.h"
 #include <functional>
 
 #include <unistd.h>
@@ -36,6 +37,11 @@ llvm::cl::opt<std::string>
       llvm::cl::init("both"),
       llvm::cl::cat(ToolCategory));
 
+llvm::cl::opt<std::string>
+    TmpDirectory("tmpdir",
+        llvm::cl::desc("Temporary directory for input and output files (used by VS Code extension)"),
+        llvm::cl::init(""));
+
 enum class TransformModeEnum {
     LocOnly,
     PulseOnly,
@@ -46,6 +52,14 @@ static TransformModeEnum parseTransformMode(const std::string &modeStr) {
     if (modeStr.compare("loc") == 0) return TransformModeEnum::LocOnly;
     if (modeStr.compare("pulse") == 0) return TransformModeEnum::PulseOnly;
     return TransformModeEnum::Both;
+}
+
+llvm::Expected<std::string> readFileToEOF(std::string const & FN) {
+    auto FD = llvm::sys::fs::openNativeFileForRead(FN);
+    if (!FD) { return std::move(FD.takeError()); }
+    llvm::SmallString<llvm::sys::fs::DefaultReadChunkSize> Buffer;
+    if (auto E = llvm::sys::fs::readNativeFileToEOF(*FD, Buffer)) { return std::move(E); }
+    return std::string(Buffer.data(), Buffer.size());
 }
 
 int main(int argc, const char **argv) {
@@ -62,6 +76,26 @@ int main(int argc, const char **argv) {
     auto Tool = std::make_unique<ClangTool>(
         OptionsParser->getCompilations(), SourceFiles
     );
+
+    std::optional<std::string> TmpDir;
+    if (TmpDirectory.getValue() != "") {
+        TmpDir = TmpDirectory.getValue();
+    }
+
+    std::vector<std::string> SFBufs(SourceFiles.size()); // VFS takes references to file contents, we need to hold on to the memory...
+    if (TmpDir) {
+        for (auto & SF : SourceFiles) {
+            auto TmpSF = *TmpDir + "/" + std::filesystem::path(SF).filename().string();
+            auto S = readFileToEOF(TmpSF);
+            if (!S) {
+                llvm::errs() << "cannot read input file " << SF << " from temporary location " << TmpSF << ":\n"
+                    << toString(std::move(S.takeError())) << "\n";
+                return 1;
+            }
+            SFBufs.emplace_back(*S);
+            Tool->mapVirtualFile(SF, StringRef(SFBufs.back()));
+        }
+    }
 
     // std::vector<MacroEventInfo> macroEventsVec;
     // auto Factory = std::make_unique<MacroFrontendActionFactory>(macroEventsVec);
@@ -153,7 +187,7 @@ int main(int argc, const char **argv) {
         if (mode == TransformModeEnum::PulseOnly || mode == TransformModeEnum::Both) {
             PulseTransformer Transformer(Ctx);
             Transformer.transform();
-            Transformer.writeToFile();
+            Transformer.writeToFile(TmpDir);
         }
     }
 

@@ -123,7 +123,7 @@ class PulseTransformer {
 public:
   PulseTransformer(clang::ASTContext &Ctx);
   void transform();
-  std::string writeToFile();
+  std::string writeToFile(std::optional<std::string> const& TmpDir);
 
 private:
   clang::ASTContext &AstCtx;

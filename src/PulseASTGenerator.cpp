@@ -5260,7 +5260,7 @@ PulseTransformer::PulseTransformer(ASTContext &Ctx) : AstCtx(Ctx), CodeGen(Ctx) 
 
 // TODO: Make this return a bool instead of a string.
 // Bool says if the function passed or failed. instead of exiting.
-std::string PulseTransformer::writeToFile() {
+std::string PulseTransformer::writeToFile(std::optional<std::string> const& TmpDir) {
   
   
   clang::SourceManager &SM = RewriterForPlugin.getSourceMgr();
@@ -5284,6 +5284,7 @@ std::string PulseTransformer::writeToFile() {
   std::replace(FileNameStr.begin(), FileNameStr.end(), '.', '_');
 
   auto NewPath = TempFilePathWithoutExtension.parent_path();
+  if (TmpDir) NewPath = *TmpDir;
   NewPath += "/";
 
   auto &ModulesToBeOutputted = CodeGen.getEmittedModules();
