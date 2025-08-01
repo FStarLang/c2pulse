@@ -15,9 +15,43 @@
 #include <string>
 #include <tuple>
 
+class osstream_with_pos {
+private:
+  std::ostringstream m_out;
+  size_t m_line, m_col;
+
+public:
+  osstream_with_pos() : m_line(1), m_col(1) {}
+
+  size_t line() const { return m_line; }
+  size_t col() const { return m_col; }
+  std::string str() const { return m_out.str(); }
+
+  osstream_with_pos& operator<<(char const *str) {
+    m_out << str;
+
+    // update position information
+    char const *nl;
+    while (nl = strchr(str, '\n')) {
+      m_line++;
+      m_col = 1;
+      str = nl + 1;
+    }
+    m_col += strlen(str);
+
+    return *this;
+  }
+
+  osstream_with_pos& operator<<(std::string const& str) {
+    return *this << str.c_str();
+  }
+};
+
 using CodegenStrTy = const char*;
-using CodegenPyTy = std::unique_ptr<llvm::raw_string_ostream>;
+using CodegenPyTy = std::unique_ptr<osstream_with_pos>;
 using json = nlohmann::json;
+
+
 class PulseCodeGen {
 
 public:
@@ -38,12 +72,11 @@ public:
   std::map<std::string, CodegenPyTy> &getEmittedModules();
   std::string getGeneratedCodeForModule(std::string ModuleName);
   void generateCodeFromModule(const std::string ModuleName, PulseModul *Modul);
-  void generateCodeFromPulseAST(llvm::raw_string_ostream &S, PulseDecl *FD, unsigned *RowCounter, unsigned *ColCounter);
-  std::string generateCodeFromTerm(llvm::raw_string_ostream &OS, Term *T, unsigned *RowCounter, unsigned *ColCounter);
-  void generateCodeFromPulseStmt(llvm::raw_string_ostream &S, PulseStmt *T, unsigned *RowCounter, unsigned *ColCounter);
+  void generateCodeFromPulseAST(osstream_with_pos &S, PulseDecl *FD);
+  std::string generateCodeFromTerm(osstream_with_pos &OS, Term *T);
+  void generateCodeFromPulseStmt(osstream_with_pos &S, PulseStmt *T);
   std::string formatAsComments(PulseDecl *Decl);
-  void writeHeaders(PulseModul *pulseModule, llvm::raw_string_ostream &Stream, 
-    unsigned *RowIdx);
+  void writeHeaders(PulseModul *pulseModule, osstream_with_pos &Stream);
   void printSourceLocations();
   void JsonifySourceRangeMap(std::string JsonOutputFile);
   void PulseSourceRangeToJson(json &J, const PulseSourceRange &Range);
@@ -56,7 +89,6 @@ private:
   std::vector<std::pair<PulseSourceRange, SourceInfo>> PulseLocsToCLocs;
   clang::ASTContext &ClangCtx;
 };
-
 // class NoPointerTextDumper : public clang::TextNodeDumper {
 // public:
 //   NoPointerTextDumper(llvm::raw_ostream &OS,

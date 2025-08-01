@@ -16,8 +16,7 @@ using namespace llvm;
 
 PulseCodeGen::PulseCodeGen(clang::ASTContext &Ctx) : ClangCtx(Ctx){}
 
-void PulseCodeGen::writeHeaders(PulseModul *M, llvm::raw_string_ostream &OS, 
-  unsigned *RowIdx) {
+void PulseCodeGen::writeHeaders(PulseModul *M, osstream_with_pos &OS) {
   // If the module is already emitted, skip it.
   if (!M || alreadyEmittedModules.count(M->ModuleName))
     return;
@@ -26,7 +25,7 @@ void PulseCodeGen::writeHeaders(PulseModul *M, llvm::raw_string_ostream &OS,
   for (auto &depName : M->IncludedModules) {
     auto it = allModulesByName.find(depName);
     if (it != allModulesByName.end()) {
-      writeHeaders(it->second, OS, RowIdx);
+      writeHeaders(it->second, OS);
     } else {
       llvm::errs()
         << "Warning: Included module '" << depName
@@ -39,35 +38,25 @@ void PulseCodeGen::writeHeaders(PulseModul *M, llvm::raw_string_ostream &OS,
   OS << PulseSyntax::Space;
   OS << M->ModuleName;
   OS << PulseSyntax::NewLine;
-  *RowIdx += 1;
   OS << PulseSyntax::NewLine;
-  *RowIdx += 1;
   OS << PulseSyntax::LangPulse;
   OS << PulseSyntax::NewLine;
-  *RowIdx += 1;
   OS << PulseSyntax::NewLine;
-  *RowIdx += 1;
 
   // Now add the Pulse Prelude if specified.
   // Prelude is a common header that includes basic definitions and utilities.
-  *RowIdx += 1;
   if (M->includePulsePrelude) {
     OS << PulseSyntax::PulseInclude; 
     OS << PulseSyntax::NewLine;
-    *RowIdx += 1;
     OS << PulseSyntax::NewLine;
-    *RowIdx += 1;
   }
 
   // And finally, emit the textual “include” lines for its direct deps.
   for (auto &depName : M->IncludedModules) {
-    *RowIdx += 1;
     OS << depName; 
     OS << PulseSyntax::NewLine;
-    *RowIdx += 1;
   }
   OS << PulseSyntax::NewLine;
-  *RowIdx += 1;
 
   alreadyEmittedModules.insert(M->ModuleName);
 }
@@ -91,8 +80,8 @@ std::string PulseCodeGen::getGeneratedCodeForModule(std::string ModuleName) {
 void PulseCodeGen::generateCodeFromModule(const std::string ModuleName,
                                           PulseModul *pulseModule) {
   
-  unsigned RowCounter = 1;
-  unsigned ColCounter = 1;                                          
+  //unsigned RowCounter = 1;
+  //unsigned ColCounter = 1;                                          
   // check if a stream exists for the module already.
   auto It = emittedModules.find(ModuleName);
   // Found a stream for module
@@ -100,16 +89,16 @@ void PulseCodeGen::generateCodeFromModule(const std::string ModuleName,
 
     auto &OutputStream = It->second;
 
-    writeHeaders(pulseModule, *OutputStream, &RowCounter);
+    writeHeaders(pulseModule, *OutputStream);
     for (auto *F : pulseModule->Decls) {
-      generateCodeFromPulseAST(*OutputStream, F, &RowCounter, &ColCounter);
+      generateCodeFromPulseAST(*OutputStream, F);
     }
 
   } else {
 
-    std::string *Str = new std::string();
-    auto OS = std::make_unique<llvm::raw_string_ostream>(*Str);
-    writeHeaders(pulseModule, *OS, &RowCounter);
+    //std::string *Str = new std::string();
+    auto OS = std::make_unique<osstream_with_pos>(); //*Str
+    writeHeaders(pulseModule, *OS);
     for (auto *F : pulseModule->Decls) {
     DEBUG_WITH_TYPE(DEBUG_TYPE, {
       if (PulseFnDefn *PF = dyn_cast<PulseFnDefn>(F)) {
@@ -118,63 +107,47 @@ void PulseCodeGen::generateCodeFromModule(const std::string ModuleName,
     });
 
 
-      generateCodeFromPulseAST(*OS, F, &RowCounter, &ColCounter);
+      generateCodeFromPulseAST(*OS, F);
     }
     emittedModules.emplace(ModuleName, std::move(OS));
   }
 }
 
-void PulseCodeGen::generateCodeFromPulseAST(llvm::raw_string_ostream &OS,
-                                            PulseDecl *FD, 
-                                            unsigned *RowCounter, 
-                                            unsigned *ColCounter) {
+void PulseCodeGen::generateCodeFromPulseAST(osstream_with_pos &OS,
+                                            PulseDecl *FD) {
 
   OS << PulseSyntax::NewLine;
-  *RowCounter += 1;
-  *ColCounter = 1;
 
   if (PulseFnDefn *F = dyn_cast<PulseFnDefn>(FD)) {
 
-    PulseSourceLocation Start = PulseSourceLocation(*RowCounter, *ColCounter);
+    PulseSourceLocation Start = PulseSourceLocation(OS.line(), OS.col());
     auto *FuncDef = F->Defn;
     auto Args = FuncDef->Args;
     auto FuncName = FuncDef->Name;
     auto *FuncBody = FuncDef->Body;
 
     for (auto *Att : FuncDef->Attr) {
-      OS << generateCodeFromTerm(OS, Att, RowCounter, ColCounter);
+      OS << generateCodeFromTerm(OS, Att);
       OS << PulseSyntax::NewLine;
-      *RowCounter += 1;
-      *ColCounter = 1;
     }
 
     if (FuncDef->isRecursive) {
       OS << PulseSyntax::PulseRecursiveFunctionDeclaration;
-      *ColCounter += strlen(PulseSyntax::PulseRecursiveFunctionDeclaration);
       OS << PulseSyntax::Space;
-      *ColCounter += strlen(PulseSyntax::PulseRecursiveFunctionDeclaration);
     } else {
       OS << PulseSyntax::PulseFunctionDeclaration;
-      *ColCounter += strlen(PulseSyntax::PulseFunctionDeclaration);
       OS << PulseSyntax::Space;
-      *ColCounter += strlen(PulseSyntax::Space);
     }
     OS << FuncName;
-    *ColCounter += FuncName.length();
 
     // If there were no args, we still want to write () in the function
     if (Args.empty()) {
       OS << PulseSyntax::Space;
-      *ColCounter += strlen(PulseSyntax::Space);
       OS << PulseSyntax::OpeningParenthesis;
-      *ColCounter += strlen(PulseSyntax::OpeningParenthesis);
       OS << PulseSyntax::ClosingParenthesis;
-      *ColCounter += strlen(PulseSyntax::ClosingParenthesis);
     }
 
     OS << PulseSyntax::NewLine;
-    *RowCounter += 1; 
-    *ColCounter = 1;
 
     for (auto *Arg : Args) {
       auto *Ty = Arg->Type;
@@ -182,80 +155,50 @@ void PulseCodeGen::generateCodeFromPulseAST(llvm::raw_string_ostream &OS,
 
       if (!Arg->useFallBack) {
         OS << PulseSyntax::OpeningParenthesis; 
-        *ColCounter += strlen(PulseSyntax::OpeningParenthesis);
         OS << Val; 
-        *ColCounter += Val.length();
         OS << PulseSyntax::Space;
-        *ColCounter += strlen(PulseSyntax::Space);
         OS << PulseSyntax::Colon;
-        *ColCounter += strlen(PulseSyntax::Colon);
         OS << PulseSyntax::Space;
-        *ColCounter += strlen(PulseSyntax::Space);
-        OS << generateCodeFromTerm(OS, Ty, RowCounter, ColCounter);
+        OS << generateCodeFromTerm(OS, Ty);
         OS << PulseSyntax::ClosingParenthesis;
-        *ColCounter += strlen(PulseSyntax::ClosingParenthesis);
         OS << PulseSyntax::NewLine;
-        *RowCounter += 1; 
-        *ColCounter = 1;
       } else {
         OS << PulseSyntax::OpeningParenthesis;
-        *ColCounter += strlen(PulseSyntax::OpeningParenthesis);
         OS << Val;
-        *ColCounter += Val.length();
         OS << PulseSyntax::ClosingParenthesis;
-        *ColCounter += strlen(PulseSyntax::ClosingParenthesis);
         OS << PulseSyntax::NewLine;
-        *RowCounter += 1; 
-        *ColCounter = 1;
       }
     }
 
     // Print out the Ensures
     for (auto *A : FuncDef->Annotation) {
-      generateCodeFromTerm(OS, A, RowCounter, ColCounter);
+      generateCodeFromTerm(OS, A);
     }
     
     PulseSourceLocation *End;
     // Codegen Function Body.
     if (FuncBody != nullptr) {
       OS << PulseSyntax::OpeningCurlyBrace; 
-      *ColCounter += strlen(PulseSyntax::OpeningCurlyBrace);
       OS << PulseSyntax::NewLine;
-      *RowCounter += 1; 
-      *ColCounter = 1;
-      generateCodeFromPulseStmt(OS, FuncBody, RowCounter, ColCounter);
+      generateCodeFromPulseStmt(OS, FuncBody);
       OS << PulseSyntax::ClosingCurlyBrace;
-      *ColCounter += strlen(PulseSyntax::ClosingCurlyBrace);
 
-      End = new PulseSourceLocation(*RowCounter, *ColCounter);
+      End = new PulseSourceLocation(OS.line(), OS.col());
 
       OS << PulseSyntax::NewLine;
-      *RowCounter += 1; 
-      *ColCounter = 1;
     }
     else {
       OS << PulseSyntax::OpeningCurlyBrace;
-      *ColCounter += strlen(PulseSyntax::OpeningCurlyBrace);
       OS << PulseSyntax::NewLine;
-      *RowCounter += 1; 
-      *ColCounter = 1;
       OS << PulseSyntax::OpeningParenthesis;
-      *ColCounter += strlen(PulseSyntax::OpeningParenthesis);
       OS << PulseSyntax::ClosingParenthesis;
-      *ColCounter += strlen(PulseSyntax::ClosingParenthesis);
       OS << PulseSyntax::Semicolon;
-      *ColCounter += strlen(PulseSyntax::Semicolon);
       OS << PulseSyntax::NewLine;
-      *RowCounter += 1; 
-      *ColCounter = 1;
       OS << PulseSyntax::ClosingCurlyBrace;
-      *ColCounter += strlen(PulseSyntax::ClosingCurlyBrace);
 
-      End = new PulseSourceLocation(*RowCounter, *ColCounter);
+      End = new PulseSourceLocation(OS.line(), OS.col());
 
       OS << PulseSyntax::NewLine;
-      *RowCounter += 1;
-      *ColCounter = 1;
     }
     
     PulseSourceRange FuncRange = PulseSourceRange(Start, *End);
@@ -263,33 +206,25 @@ void PulseCodeGen::generateCodeFromPulseAST(llvm::raw_string_ostream &OS,
 
   } else if (auto *ValD = dyn_cast<ValDecl>(FD)) {
 
-    PulseSourceLocation Start = PulseSourceLocation(*RowCounter, *ColCounter);
+    PulseSourceLocation Start = PulseSourceLocation(OS.line(), OS.col());
 
     OS << PulseSyntax::Val;
-    *ColCounter += strlen(PulseSyntax::Val);
-    OS << PulseSyntax::Space;
-    *ColCounter += strlen(PulseSyntax::Space); 
+    OS << PulseSyntax::Space; 
     OS << ValD->Ident;
-    *ColCounter += ValD->Ident.length();
     OS << PulseSyntax::Space;
-    *ColCounter += strlen(PulseSyntax::Space);
     OS << PulseSyntax::Colon;
-    *ColCounter += strlen(PulseSyntax::Colon);
     OS << PulseSyntax::Space;
-    *ColCounter += strlen(PulseSyntax::Space);
-    OS << generateCodeFromTerm(OS, ValD->ValTerm, RowCounter, ColCounter);
-    PulseSourceLocation End = PulseSourceLocation(*RowCounter, *ColCounter);
+    OS << generateCodeFromTerm(OS, ValD->ValTerm);
+    PulseSourceLocation End = PulseSourceLocation(OS.line(), OS.col());
     PulseSourceRange Range = PulseSourceRange(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, ValD->getCSourceInfo()));
 
     OS << PulseSyntax::NewLine;
-    *RowCounter += 1; 
-    *ColCounter = 1;
 
   } else if (auto *TyCDecl = dyn_cast<TyConDecl>(FD)) {
 
 
-    PulseSourceLocation Start = PulseSourceLocation(*RowCounter, *ColCounter);
+    PulseSourceLocation Start = PulseSourceLocation(OS.line(), OS.col());
 
     auto TCons = TyCDecl->TyCons;
     for (auto *TCon : TCons) {
@@ -298,29 +233,18 @@ void PulseCodeGen::generateCodeFromPulseAST(llvm::raw_string_ostream &OS,
         auto Attrs = TCRecord->Attrs;
         auto Fields = TCRecord->RecordFields;
         for (auto *Attr : Attrs) {
-          OS << generateCodeFromTerm(OS, Attr, RowCounter, ColCounter);
+          OS << generateCodeFromTerm(OS, Attr);
           OS << PulseSyntax::NewLine;
-          *RowCounter += 1; 
-          *ColCounter = 1;
         }
 
         OS << PulseSyntax::Typ;
-        *ColCounter += strlen(PulseSyntax::Typ);
         OS << PulseSyntax::Space;
-        *ColCounter += strlen(PulseSyntax::Space);
         OS << TCRecord->Ident;
-        *ColCounter += TCRecord->Ident.length();
         OS << PulseSyntax::Space;
-        *ColCounter += strlen(PulseSyntax::Space);
         OS << PulseSyntax::PulseLetAssignmentOpRef;
-        *ColCounter += strlen(PulseSyntax::PulseLetAssignmentOpRef);
         OS << PulseSyntax::Space;
-        *ColCounter += strlen(PulseSyntax::Space);
         OS << PulseSyntax::OpeningCurlyBrace;
-        *ColCounter += strlen(PulseSyntax::OpeningCurlyBrace);
         OS << PulseSyntax::NewLine;
-        *RowCounter += 1; 
-        *ColCounter = 1;
 
         auto Flds = TCRecord->RecordFields;
         auto FldsSize = Flds.size();
@@ -328,74 +252,53 @@ void PulseCodeGen::generateCodeFromPulseAST(llvm::raw_string_ostream &OS,
         for (auto *Elem : Flds) {
           auto *ElemTerm = Elem->ElementTerm;
           OS << Elem->Ident;
-          *ColCounter += Elem->Ident.length();
           OS << PulseSyntax::Space;
-          *ColCounter += strlen(PulseSyntax::Space);
           OS << PulseSyntax::Colon;
-          *ColCounter += strlen(PulseSyntax::Colon);
           OS << PulseSyntax::Space;
-          *ColCounter += strlen(PulseSyntax::Space);
-          OS << generateCodeFromTerm(OS, ElemTerm, RowCounter, ColCounter);
+          OS << generateCodeFromTerm(OS, ElemTerm);
           if (I < FldsSize - 1) {
             OS << PulseSyntax::Semicolon;
-            *ColCounter += strlen(PulseSyntax::Semicolon);
           }
           I++;
           OS << PulseSyntax::NewLine;
-          *RowCounter += 1;
-          *ColCounter = 1;
         }
 
         OS << PulseSyntax::NewLine;
-        *RowCounter += 1; 
-        *ColCounter = 1;
         OS << PulseSyntax::ClosingCurlyBrace;
-        *ColCounter += strlen(PulseSyntax::ClosingCurlyBrace);
-        PulseSourceLocation End = PulseSourceLocation(*RowCounter, *ColCounter);
+        PulseSourceLocation End = PulseSourceLocation(OS.line(), OS.col());
         PulseSourceRange Range = PulseSourceRange(Start, End);
         PulseLocsToCLocs.push_back(std::make_pair(Range, TyCDecl->getCSourceInfo()));
 
         OS << PulseSyntax::NewLine;
-        *RowCounter += 1; 
-        *ColCounter = 1;
       }
     }
   } else if (auto *PulseTopLevelLet = dyn_cast<TopLevelLet>(FD)) {
     
-    PulseSourceLocation Start(*RowCounter, *ColCounter);
+    PulseSourceLocation Start(OS.line(), OS.col());
     
     OS << PulseSyntax::LetBind;
-    *ColCounter += strlen(PulseSyntax::LetBind);
     OS << PulseSyntax::Space;
-    *ColCounter += strlen(PulseSyntax::Space);
     OS << PulseTopLevelLet->Ident;
-    *ColCounter += PulseTopLevelLet->Ident.length();
     OS << PulseSyntax::Space;
-    *ColCounter += strlen(PulseSyntax::Space);
     OS << PulseSyntax::PulseLetAssignmentOpRef;
-    *ColCounter += strlen(PulseSyntax::PulseLetAssignmentOpRef);
     OS << PulseSyntax::Space;
-    *ColCounter += strlen(PulseSyntax::Space);
     OS << PulseTopLevelLet->Lhs;
-    *ColCounter += PulseTopLevelLet->Lhs.length();
 
-    PulseSourceLocation End = PulseSourceLocation(*RowCounter, *ColCounter);
+    PulseSourceLocation End = PulseSourceLocation(OS.line(), OS.col());
     PulseSourceRange Range = PulseSourceRange(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, PulseTopLevelLet->getCSourceInfo())); 
 
     OS << PulseSyntax::NewLine;
-    *RowCounter += 1;
-    *ColCounter += 0;
   } else if (auto *FallBackDeclaration = dyn_cast<GenericDecl>(FD)){
-    PulseSourceLocation Location(*RowCounter, *ColCounter);    
+    PulseSourceLocation Location(OS.line(), OS.col());    
     OS << FallBackDeclaration->Ident;
-    *ColCounter += FallBackDeclaration->Ident.length();
+
     PulseSourceRange Range(Location);
     PulseLocsToCLocs.push_back(std::make_pair(Range, FallBackDeclaration->getCSourceInfo()));
   } 
   else if (auto *PulseFunDecl = dyn_cast<PulseFnDecl>(FD)) {
 
-    PulseSourceLocation Start(*RowCounter, *ColCounter);
+    PulseSourceLocation Start(OS.line(), OS.col());
      
     auto *FuncDef = PulseFunDecl->Defn;
     auto Args = FuncDef->Args;
@@ -403,99 +306,64 @@ void PulseCodeGen::generateCodeFromPulseAST(llvm::raw_string_ostream &OS,
 
     //Write out the annotations attached to the function
     for (auto *Att : FuncDef->Attr) {
-      OS << generateCodeFromTerm(OS, Att, RowCounter, ColCounter);
+      OS << generateCodeFromTerm(OS, Att);
       OS << PulseSyntax::NewLine;
-      *RowCounter += 1;
-      *ColCounter = 1;
     }
     
     //TODO: maybe for recursive functions these need to be extended 
     // with a isRec field.
-    OS << PulseSyntax::PulseFunctionDeclaration;
-    *ColCounter += strlen(PulseSyntax::PulseFunctionDeclaration); 
+    OS << PulseSyntax::PulseFunctionDeclaration; 
     OS << PulseSyntax::Space;
-    *ColCounter += strlen(PulseSyntax::Space);
     OS << FuncName;
-    *ColCounter += FuncName.length();
 
     // If there were no args, we still want to write () in the function
     if (Args.empty()) {
       OS << PulseSyntax::Space;
-      *ColCounter += strlen(PulseSyntax::Space);
       OS << PulseSyntax::OpeningParenthesis;
-      *ColCounter += strlen(PulseSyntax::OpeningParenthesis);
       OS << PulseSyntax::ClosingParenthesis;
-      *ColCounter += strlen(PulseSyntax::ClosingParenthesis);
     }
 
     OS << PulseSyntax::NewLine;
-    *RowCounter += 1; 
-    *ColCounter = 1;
 
     for (auto *Arg : Args) {
       auto *Ty = Arg->Type;
       auto Val = Arg->Ident;
 
       if (!Arg->useFallBack) {
-        OS << PulseSyntax::OpeningParenthesis; 
-        *ColCounter += strlen(PulseSyntax::OpeningParenthesis);
+        OS << PulseSyntax::OpeningParenthesis;
         OS << Val;
-        *ColCounter += Val.length();
         OS << PulseSyntax::Space;
-        *ColCounter += strlen(PulseSyntax::Space);
-        OS << PulseSyntax::Colon; 
-        *ColCounter += strlen(PulseSyntax::Colon);
+        OS << PulseSyntax::Colon;
         OS << PulseSyntax::Space;
-        *ColCounter += strlen(PulseSyntax::Space);
-        OS << generateCodeFromTerm(OS, Ty, RowCounter, ColCounter);
+        OS << generateCodeFromTerm(OS, Ty);
         OS << PulseSyntax::ClosingParenthesis;
-        *ColCounter += strlen(PulseSyntax::ClosingParenthesis);
         OS << PulseSyntax::NewLine;
-        *RowCounter += 1; 
-        *ColCounter = 1;
       } else {
         OS << PulseSyntax::OpeningParenthesis;
-        *ColCounter += strlen(PulseSyntax::OpeningParenthesis);
         OS << Val;
-        *ColCounter += Val.length();
         OS << PulseSyntax::ClosingParenthesis;
-        *ColCounter += strlen(PulseSyntax::ClosingParenthesis);
         OS << PulseSyntax::NewLine;
-        *RowCounter += 1; 
-        *ColCounter = 1;
       }
     }
 
     //Codegen the specs;
     for (auto *A : FuncDef->Annotation) {
-      generateCodeFromTerm(OS, A, RowCounter, ColCounter);
+      generateCodeFromTerm(OS, A);
     }
     
     //Vidush: For now always admit these kinds of function declarations
-    OS << PulseSyntax::OpeningCurlyBrace;
-    *ColCounter += strlen(PulseSyntax::OpeningCurlyBrace); 
+    OS << PulseSyntax::OpeningCurlyBrace; 
     OS << PulseSyntax::NewLine;
-    *RowCounter += 1; 
-    *ColCounter = 1;
     OS << "admit";
-    *ColCounter += strlen("admit");
-    OS << PulseSyntax::OpeningParenthesis; 
-    *ColCounter += strlen(PulseSyntax::OpeningParenthesis);
-    OS << PulseSyntax::ClosingParenthesis; 
-    *ColCounter += strlen(PulseSyntax::ClosingParenthesis);
+    OS << PulseSyntax::OpeningParenthesis;
+    OS << PulseSyntax::ClosingParenthesis;
     OS << PulseSyntax::Semicolon;
-    *ColCounter += strlen(PulseSyntax::Semicolon);
     OS << PulseSyntax::NewLine;
-    *RowCounter += 1; 
-    *ColCounter = 1;
     OS << PulseSyntax::ClosingCurlyBrace;
-    *ColCounter += strlen(PulseSyntax::ClosingCurlyBrace);
 
-    OS << PulseSyntax::NewLine; 
-    *RowCounter += 1; 
-    *ColCounter = 1;
+    OS << PulseSyntax::NewLine;
     
-    PulseSourceLocation End(*RowCounter, *ColCounter);
+    PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, PulseFunDecl->getCSourceInfo()));
 
@@ -505,10 +373,8 @@ void PulseCodeGen::generateCodeFromPulseAST(llvm::raw_string_ostream &OS,
   }
 }
 
-std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
-                                               Term *T, 
-                                               unsigned *RowCounter, 
-                                               unsigned *ColCounter) {
+std::string PulseCodeGen::generateCodeFromTerm(osstream_with_pos &OS,
+                                               Term *T) {
 
   std::string TermString = "";
 
@@ -518,35 +384,30 @@ std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
 
   if (Paren *P = dyn_cast<Paren>(T)) {
 
-    PulseSourceLocation Start(*RowCounter, *ColCounter);
+    PulseSourceLocation Start(OS.line(), OS.col());
 
     TermString += PulseSyntax::OpeningParenthesis;
-    *ColCounter += strlen(PulseSyntax::OpeningParenthesis);
-    TermString += generateCodeFromTerm(OS, P->InnerExpr, RowCounter, ColCounter);
+    TermString += generateCodeFromTerm(OS, P->InnerExpr);
     TermString += PulseSyntax::ClosingParenthesis;
-    *ColCounter += strlen(PulseSyntax::ClosingParenthesis);
 
-    PulseSourceLocation End(*RowCounter, *ColCounter);
+    PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, P->getCSourceInfo()));
 
   } else if (ConstTerm *CT = dyn_cast<ConstTerm>(T)) {
 
-    PulseSourceLocation Start(*RowCounter, *ColCounter);
+    PulseSourceLocation Start(OS.line(), OS.col());
     switch (CT->Symbol) {
     case SymbolTable::Int32: {
       TermString += CT->ConstantValue + "l";
-      *ColCounter += CT->ConstantValue.length() + strlen("l");
       break;
     }
     case SymbolTable::Int64: {
       TermString += CT->ConstantValue + "L";
-      *ColCounter += CT->ConstantValue.length() + strlen("L");
       break;
     }
     case SymbolTable::Int8: {
       TermString += CT->ConstantValue + "y";
-      *ColCounter += CT->ConstantValue.length() + strlen("y");
       break;
     }
     case SymbolTable::Int16: {
@@ -560,12 +421,10 @@ std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
     }
     case SymbolTable::UInt32: {
       TermString += CT->ConstantValue + "ul";
-      *ColCounter += CT->ConstantValue.length() + strlen("ul");
       break;
     }
     case SymbolTable::UInt64: {
       TermString += CT->ConstantValue + "UL";
-      *ColCounter += CT->ConstantValue.length() + strlen("UL");
       break;
     }
     case SymbolTable::UInt128: {
@@ -573,16 +432,13 @@ std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
     }
     case SymbolTable::SizeT: {
       TermString += CT->ConstantValue + "sz";
-      *ColCounter += CT->ConstantValue.length() + strlen("sz");
       break;
     }
     case SymbolTable::Bool: {
       if (CT->ConstantValue == "0") {
         TermString += "false";
-        *ColCounter += strlen("false");
       } else {
         TermString += "true";
-        *ColCounter += strlen("true");
       }
       break;
     }
@@ -593,243 +449,208 @@ std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
     }
     }
 
-    PulseSourceLocation End(*RowCounter, *ColCounter);
+    PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, CT->getCSourceInfo()));
 
   } else if (VarTerm *VT = dyn_cast<VarTerm>(T)) {
-    PulseSourceLocation Start(*RowCounter, *ColCounter);
+    PulseSourceLocation Start(OS.line(), OS.col());
     TermString += VT->VarName;
-    *ColCounter += VT->VarName.length();
-    PulseSourceLocation End(*RowCounter, *ColCounter);
+
+    PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, VT->getCSourceInfo()));
   } else if (Name *N = dyn_cast<Name>(T)) {
-    PulseSourceLocation Start(*RowCounter, *ColCounter);
+    PulseSourceLocation Start(OS.line(), OS.col());
     TermString += N->NamedValue;
-    *ColCounter +=  N->NamedValue.length();
-    PulseSourceLocation End(*RowCounter, *ColCounter);
+
+    PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, T->getCSourceInfo()));
   } else if (FStarType *FT = dyn_cast<FStarType>(T)) {
-    PulseSourceLocation Start(*RowCounter, *ColCounter);
+    PulseSourceLocation Start(OS.line(), OS.col());
     TermString += FT->NamedValue;
-    *ColCounter += FT->NamedValue.length();
-    PulseSourceLocation End(*RowCounter, *ColCounter);
+
+    PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, T->getCSourceInfo()));
   } else if (FStarPointerType *FPT = dyn_cast<FStarPointerType>(T)) {
-    PulseSourceLocation Start(*RowCounter, *ColCounter);
-    auto StrBase = generateCodeFromTerm(OS, FPT->PointerTo, RowCounter, ColCounter);
+    PulseSourceLocation Start(OS.line(), OS.col());
+    auto StrBase = generateCodeFromTerm(OS, FPT->PointerTo);
     TermString += PulseSyntax::Reference;
-    *ColCounter += strlen(PulseSyntax::Reference);
+
     // TODO: Angelica to be revisited: this is a hack to add space after the reference
     std::string refWithSpace = std::string(PulseSyntax::Reference);
-    *ColCounter += strlen(PulseSyntax::Reference); 
+
     refWithSpace += PulseSyntax::Space;
-    *ColCounter += strlen(PulseSyntax::Space);
 
     if (StrBase.compare(0, refWithSpace.size(), refWithSpace) == 0) {
       TermString += PulseSyntax::Space;
-      *ColCounter += strlen(PulseSyntax::Space); 
+
       TermString += PulseSyntax::OpeningParenthesis;
-       *ColCounter += strlen(PulseSyntax::OpeningParenthesis);  
+
       TermString += StrBase; 
-       *ColCounter += StrBase.length(); 
+
       TermString += PulseSyntax::ClosingParenthesis;
-       *ColCounter += strlen(PulseSyntax::ClosingParenthesis); 
+
     } else {
       TermString += PulseSyntax::Space;
-       *ColCounter += strlen(PulseSyntax::Space);  
-      TermString += StrBase;
-       *ColCounter += StrBase.length(); 
+
+      TermString += StrBase; 
     }
 
-    PulseSourceLocation End(*RowCounter, *ColCounter); 
+    PulseSourceLocation End(OS.line(), OS.col()); 
     PulseSourceRange Range(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, T->getCSourceInfo()));
 
   } else if (FStarArrType *FAT = dyn_cast<FStarArrType>(T)) {
-    PulseSourceLocation Start(*RowCounter, *ColCounter);
-    auto StrBase = generateCodeFromTerm(OS, FAT->ElementType, RowCounter, ColCounter);
+    PulseSourceLocation Start(OS.line(), OS.col());
+    auto StrBase = generateCodeFromTerm(OS, FAT->ElementType);
     TermString += PulseSyntax::Array;
-    *ColCounter += strlen(PulseSyntax::Array);
+
     TermString += PulseSyntax::Space;
-    *ColCounter += strlen(PulseSyntax::Space);
+
     TermString += StrBase;
-    *ColCounter += StrBase.length();
-    PulseSourceLocation End(*RowCounter, *ColCounter);
+
+    PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, T->getCSourceInfo()));
   } else if (AppE *App = dyn_cast<AppE>(T)) {
     
-    PulseSourceLocation Start(*RowCounter, *ColCounter);
-    TermString += generateCodeFromTerm(OS, App->CallName, RowCounter, ColCounter);
+    PulseSourceLocation Start(OS.line(), OS.col());
+    TermString += generateCodeFromTerm(OS, App->CallName);
     TermString += PulseSyntax::Space;
-    *ColCounter += strlen(PulseSyntax::Space);
+
     for (size_t i = 0; i < App->Args.size(); ++i) {
-      TermString += generateCodeFromTerm(OS, App->Args[i], RowCounter, ColCounter);
+      TermString += generateCodeFromTerm(OS, App->Args[i]);
       if (i < (App->Args).size() - 1) {
         TermString += PulseSyntax::Space;
-        *ColCounter += strlen(PulseSyntax::Space);
       }
     }
 
     if (App->Args.empty()) {
       TermString += PulseSyntax::OpeningParenthesis;
-      *ColCounter += strlen(PulseSyntax::OpeningParenthesis);
       TermString += PulseSyntax::ClosingParenthesis;
-      *ColCounter += strlen(PulseSyntax::ClosingParenthesis);
     }
 
-    PulseSourceLocation End(*RowCounter, *ColCounter);
+    PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, T->getCSourceInfo()));
 
   } else if (Ensures *Ensure = dyn_cast<Ensures>(T)) {
 
-    PulseSourceLocation Start(*RowCounter, *ColCounter);
+    PulseSourceLocation Start(OS.line(), OS.col());
 
     OS << PulseSyntax::Ensures;
-    *ColCounter += strlen(PulseSyntax::Ensures);
     OS << PulseSyntax::Space;
-    *ColCounter += strlen(PulseSyntax::Space);
     OS << Ensure->Ann;
-    *ColCounter += Ensure->Ann.length();
+
     //End
-    PulseSourceLocation End(*RowCounter, *ColCounter);
+    PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, T->getCSourceInfo()));
 
     OS << PulseSyntax::NewLine;
-    *RowCounter += 1; 
-    *ColCounter = 1;
 
   } else if (Requires *Require = dyn_cast<Requires>(T)) {
     
-    PulseSourceLocation Start(*RowCounter, *ColCounter);
+    PulseSourceLocation Start(OS.line(), OS.col());
 
     OS << PulseSyntax::Requires;
-    *ColCounter += strlen(PulseSyntax::Requires);
     OS << PulseSyntax::Space;
-    *ColCounter += strlen(PulseSyntax::Space);
     OS << Require->Ann;
-    *ColCounter += Require->Ann.length();
+
     //End
-    PulseSourceLocation End(*RowCounter, *ColCounter);
+    PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, T->getCSourceInfo()));
 
     OS << PulseSyntax::NewLine;
-    *RowCounter += 1; 
-    *ColCounter = 1;
 
   } else if (Preserves *Preserve = dyn_cast<Preserves>(T)) {
     
-    PulseSourceLocation Start(*RowCounter, *ColCounter);
+    PulseSourceLocation Start(OS.line(), OS.col());
 
     OS << PulseSyntax::Preserves;
-    *ColCounter += strlen(PulseSyntax::Preserves);
+
     OS << PulseSyntax::Space;
-    *ColCounter += strlen(PulseSyntax::Space);
     OS << Preserve->Ann;
-    *ColCounter += Preserve->Ann.length();
+
     //End
-    PulseSourceLocation End(*RowCounter, *ColCounter);
+    PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, T->getCSourceInfo()));
 
     OS << PulseSyntax::NewLine;
-    *RowCounter += 1; 
-    *ColCounter = 1;
-
   }
   else if (Returns *Return = dyn_cast<Returns>(T)) {
 
-    PulseSourceLocation Start(*RowCounter, *ColCounter);
+    PulseSourceLocation Start(OS.line(), OS.col());
 
     OS << PulseSyntax::Returns;
-    *ColCounter += strlen(PulseSyntax::Returns);
     OS << PulseSyntax::Space;
-    *ColCounter += strlen(PulseSyntax::Space);
     OS << Return->Ann;
-    *ColCounter += Return->Ann.length();
     //End
 
-    PulseSourceLocation End(*RowCounter, *ColCounter);
+    PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, T->getCSourceInfo()));
 
     OS << PulseSyntax::NewLine;
-    *RowCounter += 1; 
-    *ColCounter = 1;
+
   } else if (Lemma *UserTerm = dyn_cast<Lemma>(T)) {
     
-    PulseSourceLocation Start(*RowCounter, *ColCounter);
+    PulseSourceLocation Start(OS.line(), OS.col());
     for (auto Lemma : UserTerm->lemmas){
       OS << Lemma;
-      *ColCounter += Lemma.length();
     }
-    PulseSourceLocation End(*RowCounter, *ColCounter);
+    PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
 
     PulseLocsToCLocs.push_back(std::make_pair(Range, T->getCSourceInfo()));
 
   } else if (LemmaStatement *S = dyn_cast<LemmaStatement>(T)) {
-    PulseSourceLocation Start(*RowCounter, *ColCounter);
+    PulseSourceLocation Start(OS.line(), OS.col());
 
     OS << S->Lemma;
-    *ColCounter += S->Lemma.length();
     
-    PulseSourceLocation End(*RowCounter, *ColCounter);
+    PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, T->getCSourceInfo()));
 
   } else if (Project *P = dyn_cast<Project>(T)) {
-    PulseSourceLocation Start(*RowCounter, *ColCounter);
+    PulseSourceLocation Start(OS.line(), OS.col());
 
-    TermString += generateCodeFromTerm(OS, P->BaseTerm, RowCounter, ColCounter);
+    TermString += generateCodeFromTerm(OS, P->BaseTerm);
     TermString += PulseSyntax::Dot;
-    *ColCounter += strlen(PulseSyntax::Dot);
     TermString += P->MemberName;
-    *ColCounter += P->MemberName.length();
 
-    PulseSourceLocation End(*RowCounter, *ColCounter);
+    PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, T->getCSourceInfo()));
 
   }
   else if (IfExpr *If = dyn_cast<IfExpr>(T)){
 
-    PulseSourceLocation Start(*RowCounter, *ColCounter);
+    PulseSourceLocation Start(OS.line(), OS.col());
 
     TermString += PulseSyntax::PulseIf;
-    *ColCounter += strlen(PulseSyntax::PulseIf);
     TermString += PulseSyntax::Space;
-    *ColCounter += strlen(PulseSyntax::Space);
-    TermString += generateCodeFromTerm(OS, If->Cond, RowCounter, ColCounter);
+    TermString += generateCodeFromTerm(OS, If->Cond);
     
     TermString += PulseSyntax::NewLine;
-    *RowCounter += 1; 
-    *ColCounter = 1;
 
     TermString += PulseSyntax::IfExprThen; 
-    *ColCounter += strlen(PulseSyntax::IfExprThen);
     TermString += PulseSyntax::Space;
-    *ColCounter += strlen(PulseSyntax::Space);
-    TermString += generateCodeFromTerm(OS, If->TrueExpr, RowCounter, ColCounter);
+    TermString += generateCodeFromTerm(OS, If->TrueExpr);
 
     TermString += PulseSyntax::NewLine;
-    *RowCounter += 1; 
-    *ColCounter = 1;
 
     TermString += PulseSyntax::IfExprElse;
-    *ColCounter += strlen(PulseSyntax::IfExprElse);
     TermString += PulseSyntax::Space;
-    *ColCounter += strlen(PulseSyntax::Space);
-    TermString += generateCodeFromTerm(OS, If->FalseExpr, RowCounter, ColCounter);
+    TermString += generateCodeFromTerm(OS, If->FalseExpr);
 
-    PulseSourceLocation End(*RowCounter, *ColCounter);
+    PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, T->getCSourceInfo()));
 
@@ -842,243 +663,181 @@ std::string PulseCodeGen::generateCodeFromTerm(llvm::raw_string_ostream &OS,
   return TermString;
 }
 
-void PulseCodeGen::generateCodeFromPulseStmt(llvm::raw_string_ostream &OS,
-                                             PulseStmt *T, 
-                                            unsigned *RowCounter,
-                                            unsigned *ColCounter) {
+void PulseCodeGen::generateCodeFromPulseStmt(osstream_with_pos &OS,
+                                             PulseStmt *T) {
 
   if (!T)
     return;
 
   if (PulseExpr *S = dyn_cast<PulseExpr>(T)) {
 
-    PulseSourceLocation Start(*RowCounter, *ColCounter);
+    PulseSourceLocation Start(OS.line(), OS.col());
 
-    OS << generateCodeFromTerm(OS, S->E, RowCounter, ColCounter);
+    OS << generateCodeFromTerm(OS, S->E);
 
     OS << PulseSyntax::Semicolon;
-    *ColCounter += strlen(PulseSyntax::Semicolon);
     //End
 
-    PulseSourceLocation End(*RowCounter, *ColCounter);
+    PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, T->getCSourceInfo()));
 
     OS << PulseSyntax::NewLine;
-    *RowCounter += 1; 
-    *ColCounter = 1;
   } else if (PulseAssignment *A = dyn_cast<PulseAssignment>(T)) {
 
-    PulseSourceLocation Start(*RowCounter, *ColCounter);
+    PulseSourceLocation Start(OS.line(), OS.col());
 
-    OS << generateCodeFromTerm(OS, A->Lhs, RowCounter, ColCounter);
+    OS << generateCodeFromTerm(OS, A->Lhs);
     OS << PulseSyntax::Space;
-    *ColCounter += strlen(PulseSyntax::Space);
     OS << PulseSyntax::PulseAssignmentOpRef;
-    *ColCounter += strlen(PulseSyntax::PulseAssignmentOpRef);
     OS << PulseSyntax::Space;
-    *ColCounter += strlen(PulseSyntax::Space);
-    OS << generateCodeFromTerm(OS, A->Value, RowCounter, ColCounter);
+    OS << generateCodeFromTerm(OS, A->Value);
 
     OS << PulseSyntax::Semicolon;
-    *ColCounter += strlen(PulseSyntax::Semicolon);
     //End 
-    PulseSourceLocation End(*RowCounter, *ColCounter);
+    PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, T->getCSourceInfo()));
 
 
     OS << PulseSyntax::NewLine;
-    *RowCounter += 1; 
-    *ColCounter = 1;
   } else if (PulseArrayAssignment *AS = dyn_cast<PulseArrayAssignment>(T)) {
 
-    PulseSourceLocation Start(*RowCounter, *ColCounter);
+    PulseSourceLocation Start(OS.line(), OS.col());
 
     auto *Base = AS->Arr;
     auto *Idx = AS->Index;
     auto *LVal = AS->Value;
 
-    OS << generateCodeFromTerm(OS, Base, RowCounter, ColCounter);
+    OS << generateCodeFromTerm(OS, Base);
     
     OS << PulseSyntax::Dot;
-    *ColCounter += strlen(PulseSyntax::Dot);
     
     OS << PulseSyntax::OpeningParenthesis;
-    *ColCounter += strlen(PulseSyntax::OpeningParenthesis);
 
-    OS << generateCodeFromTerm(OS, Idx, RowCounter, ColCounter);
+    OS << generateCodeFromTerm(OS, Idx);
     
     OS << PulseSyntax::ClosingParenthesis;
-    *ColCounter += strlen(PulseSyntax::ClosingParenthesis);
 
     OS << PulseSyntax::Space;
-    *ColCounter += strlen(PulseSyntax::Space);
 
     OS << PulseSyntax::ArrAssignment;
-    *ColCounter += strlen(PulseSyntax::ArrAssignment);
 
     OS << PulseSyntax::Space;
-    *ColCounter += strlen(PulseSyntax::Space);
 
-    OS << generateCodeFromTerm(OS, LVal, RowCounter, ColCounter);
+    OS << generateCodeFromTerm(OS, LVal);
 
     OS << PulseSyntax::Semicolon;
-    *ColCounter += strlen(PulseSyntax::Semicolon);
+
     //End 
-    PulseSourceLocation End(*RowCounter, *ColCounter);
+    PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, T->getCSourceInfo()));
 
     OS << PulseSyntax::NewLine;
-    *RowCounter += 1;
-    *ColCounter = 1;
 
   } else if (LetBinding *Let = dyn_cast<LetBinding>(T)) {
 
-    PulseSourceLocation Start(*RowCounter, *ColCounter);
+    PulseSourceLocation Start(OS.line(), OS.col());
 
     if (Let->Qualifier == MutOrRef::MUT) {
       OS << PulseSyntax::LetMut;
-      *ColCounter = *ColCounter + strlen(PulseSyntax::LetMut);
     } else {
       OS << PulseSyntax::LetBind;
-      *ColCounter = *ColCounter + strlen(PulseSyntax::LetBind);
     }
 
     OS << PulseSyntax::Space;
-    *ColCounter = *ColCounter + strlen(PulseSyntax::Space);
     OS << Let->VarName;
-    *ColCounter = *ColCounter + (Let->VarName).length();
 
     OS << PulseSyntax::Space;
-    *ColCounter = *ColCounter + strlen(PulseSyntax::Space);
 
     //Add type annotation for variable in let binding
     OS << PulseSyntax::Colon; 
-    *ColCounter += strlen(PulseSyntax::Colon);
     OS << PulseSyntax::Space; 
-    *ColCounter += strlen(PulseSyntax::Space);
     OS << Let->VarTy; 
-    *ColCounter += Let->VarTy.length();
     OS << PulseSyntax::Space;
-    *ColCounter += strlen(PulseSyntax::Space);
 
     OS << PulseSyntax::PulseLetAssignmentOpRef;
-    *ColCounter = *ColCounter + strlen(PulseSyntax::PulseLetAssignmentOpRef);
     OS << PulseSyntax::Space;
-    *ColCounter = *ColCounter + strlen(PulseSyntax::Space);
-    OS << generateCodeFromTerm(OS, Let->LetInit, RowCounter, ColCounter);
+    OS << generateCodeFromTerm(OS, Let->LetInit);
     
     OS << PulseSyntax::Semicolon;
-    *ColCounter += strlen(PulseSyntax::Semicolon);
     //End
 
-    PulseSourceLocation End(*RowCounter, *ColCounter);
+    PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, T->getCSourceInfo()));
 
 
     OS << PulseSyntax::NewLine;
-    *RowCounter += 1;
-    *ColCounter = 1;
 
   } else if (PulseIf *If = dyn_cast<PulseIf>(T)) {
 
-    PulseSourceLocation Start(*RowCounter, *ColCounter);
+    PulseSourceLocation Start(OS.line(), OS.col());
 
     OS << PulseSyntax::PulseIf;
-    *ColCounter += strlen(PulseSyntax::PulseIf);
 
     auto *PulseIfCond = If->Head;
     auto *PulseThen = If->Then;
     auto *PulseElse = If->Else;
 
     OS << PulseSyntax::OpeningParenthesis;
-    *ColCounter += strlen(PulseSyntax::OpeningParenthesis);
-    OS << generateCodeFromTerm(OS, PulseIfCond, RowCounter, ColCounter);
+    OS << generateCodeFromTerm(OS, PulseIfCond);
     OS << PulseSyntax::ClosingParenthesis;
-    *ColCounter += strlen(PulseSyntax::ClosingParenthesis);
     
     //Reset Col Counter at every new line
     OS << PulseSyntax::NewLine;
-    *RowCounter += 1;
-    *ColCounter = 1;
 
     // Add all the if lemmas here
     for (auto &Lemma : If->IfLemmas) {
-      OS << generateCodeFromTerm(OS, Lemma, RowCounter, ColCounter);
+      OS << generateCodeFromTerm(OS, Lemma);
     }
 
     OS << PulseSyntax::OpeningCurlyBrace;
-    *ColCounter += strlen(PulseSyntax::OpeningCurlyBrace);
 
     OS << PulseSyntax::NewLine;
-    *RowCounter += 1;
-    *ColCounter = 1;
 
     if (PulseThen == nullptr){
       OS << PulseSyntax::OpeningParenthesis;
-      *ColCounter += strlen(PulseSyntax::OpeningParenthesis);
       OS << PulseSyntax::ClosingParenthesis;
-      *ColCounter += strlen(PulseSyntax::ClosingParenthesis);
 
       OS << PulseSyntax::NewLine;
-      *RowCounter += 1;
-      *ColCounter = 1;
     }
-    generateCodeFromPulseStmt(OS, PulseThen, RowCounter, ColCounter);
+    generateCodeFromPulseStmt(OS, PulseThen);
     OS << PulseSyntax::ClosingCurlyBrace;
-    *ColCounter += strlen(PulseSyntax::ClosingCurlyBrace);
 
     OS << PulseSyntax::NewLine;
-    *RowCounter += 1;
-    *ColCounter = 1;
 
     OS << PulseSyntax::PulseElse;
-    *ColCounter += strlen(PulseSyntax::PulseElse);
 
     OS << PulseSyntax::NewLine;
-    *RowCounter += 1;
-    *ColCounter = 1;
 
     OS << PulseSyntax::OpeningCurlyBrace;
-    *ColCounter += strlen(PulseSyntax::OpeningCurlyBrace);
 
     OS << PulseSyntax::NewLine;
-    *RowCounter += 1;
-    *ColCounter = 1;
 
     if (PulseElse == nullptr){
       OS << PulseSyntax::OpeningParenthesis;
-      *ColCounter += strlen(PulseSyntax::OpeningParenthesis);
       OS << PulseSyntax::ClosingParenthesis;
-      *ColCounter += strlen(PulseSyntax::ClosingParenthesis);
       OS << PulseSyntax::NewLine;
-      *RowCounter += 1;
-      *ColCounter = 1;
     }
-    generateCodeFromPulseStmt(OS, PulseElse, RowCounter, ColCounter);
+    generateCodeFromPulseStmt(OS, PulseElse);
     OS << PulseSyntax::ClosingCurlyBrace;
-    *ColCounter += strlen(PulseSyntax::ClosingCurlyBrace);
     // Seems like Pulse If statements need an semicolon at the end
     //TODO: Vidush ensure this is correct?
     //Maybe only needed when the if has some accompanying lemmas?
     OS << PulseSyntax::Semicolon;
-    *ColCounter += strlen(PulseSyntax::Semicolon);
 
     //End
-    PulseSourceLocation End(*RowCounter, *ColCounter);
+    PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, T->getCSourceInfo()));
 
     OS << PulseSyntax::NewLine;
-    *RowCounter += 1;
-    *ColCounter = 1;
 
   } else if (PulseWhileStmt *While = dyn_cast<PulseWhileStmt>(T)) {
 
-    PulseSourceLocation Start(*RowCounter, *ColCounter);
+    PulseSourceLocation Start(OS.line(), OS.col());
 
     auto *WCond = While->Guard;
     auto *WBod = While->Body;
@@ -1086,82 +845,63 @@ void PulseCodeGen::generateCodeFromPulseStmt(llvm::raw_string_ostream &OS,
     auto Lemmas = While->Invariant;
 
     OS << PulseSyntax::PulseWhile;
-    *ColCounter += strlen(PulseSyntax::PulseWhile);
     OS << PulseSyntax::OpeningParenthesis;
-    *ColCounter += strlen(PulseSyntax::OpeningParenthesis);
 
-    generateCodeFromPulseStmt(OS, WCond, RowCounter, ColCounter);
+    generateCodeFromPulseStmt(OS, WCond);
     OS << PulseSyntax::ClosingParenthesis;
-    *ColCounter += strlen(PulseSyntax::ClosingParenthesis);
 
     OS << PulseSyntax::NewLine;
-    *RowCounter += 1; 
-    *ColCounter = 1;
 
     size_t Idx = 1;
     for (auto *Lemma : Lemmas) {
-      OS << generateCodeFromTerm(OS, Lemma, RowCounter, ColCounter);
+      OS << generateCodeFromTerm(OS, Lemma);
       if (Idx < Lemmas.size()){
         OS << PulseSyntax::NewLine;
-        *RowCounter += 1; 
-        *ColCounter = 1;
       }
       Idx++;
     }
 
     OS << PulseSyntax::NewLine;
-    *RowCounter += 1; 
-    *ColCounter = 1;
 
     OS << PulseSyntax::OpeningCurlyBrace;
-    *ColCounter += strlen(PulseSyntax::OpeningCurlyBrace);
 
     OS << PulseSyntax::NewLine;
-    *RowCounter += 1; 
-    *ColCounter = 1;
 
-    generateCodeFromPulseStmt(OS, WBod, RowCounter, ColCounter);
+    generateCodeFromPulseStmt(OS, WBod);
     OS << PulseSyntax::ClosingCurlyBrace;
-    *ColCounter += strlen(PulseSyntax::ClosingCurlyBrace);
     OS << PulseSyntax::Semicolon;
-    *ColCounter += strlen(PulseSyntax::Semicolon);
     OS << PulseSyntax::NewLine;
-    *RowCounter += 1; 
-    *ColCounter = 1;
 
     //End
-    PulseSourceLocation End(*RowCounter, *ColCounter);
+    PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, T->getCSourceInfo()));
 
 
   } else if (PulseSequence *Seq = dyn_cast<PulseSequence>(T)) {
 
-    PulseSourceLocation Start(*RowCounter, *ColCounter);
+    PulseSourceLocation Start(OS.line(), OS.col());
 
     auto *S1 = Seq->S1;
     auto *S2 = Seq->S2;
-    generateCodeFromPulseStmt(OS, S1, RowCounter, ColCounter);
-    generateCodeFromPulseStmt(OS, S2, RowCounter, ColCounter);
+    generateCodeFromPulseStmt(OS, S1);
+    generateCodeFromPulseStmt(OS, S2);
 
     //End
-    PulseSourceLocation End(*RowCounter, *ColCounter);
+    PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, T->getCSourceInfo()));
 
   } 
   else if (auto *FallBack = dyn_cast<GenericStmt>(T)){
-    PulseSourceLocation Start(*RowCounter, *ColCounter);
+    PulseSourceLocation Start(OS.line(), OS.col());
 
     OS << FallBack->body;
-    *ColCounter += FallBack->body.length();
 
     OS << PulseSyntax::NewLine;
-    *RowCounter += 1; 
-    *ColCounter = 1;
 
     //End
-    PulseSourceLocation End(*RowCounter, *ColCounter);
+    PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, T->getCSourceInfo()));
 
