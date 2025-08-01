@@ -496,17 +496,17 @@ SourceInfo getSourceInfoFromAttr(const clang::Attr *AttrNode,
                                  std::string CtxString) {
 
   auto &SM = Context.getSourceManager();
-  SourceLocation BeginLoc = SM.getSpellingLoc(AttrNode->getLocation());
-  SourceLocation EndLoc = SM.getSpellingLoc(AttrNode->getLocation());
+  SourceLocation BeginLoc = SM.getExpansionLoc(AttrNode->getLocation());
+  SourceLocation EndLoc = SM.getExpansionLoc(AttrNode->getLocation());
 
-  unsigned BeginLine = SM.getSpellingLineNumber(BeginLoc);
-  unsigned BeginCol = SM.getSpellingColumnNumber(BeginLoc);
+  unsigned BeginLine = SM.getExpansionLineNumber(BeginLoc);
+  unsigned BeginCol = SM.getExpansionColumnNumber(BeginLoc);
   
-  unsigned EndLine = SM.getSpellingLineNumber(EndLoc);
-  unsigned EndCol = SM.getSpellingColumnNumber(EndLoc);
+  unsigned EndLine = SM.getExpansionLineNumber(EndLoc);
+  unsigned EndCol = SM.getExpansionColumnNumber(EndLoc);
 
-  unsigned line = SM.getSpellingLineNumber(BeginLoc);
-  unsigned column = SM.getSpellingColumnNumber(BeginLoc);
+  unsigned line = SM.getExpansionLineNumber(BeginLoc);
+  unsigned column = SM.getExpansionColumnNumber(BeginLoc);
 
   auto PresumedLoc = SM.getPresumedLoc(BeginLoc);
 
