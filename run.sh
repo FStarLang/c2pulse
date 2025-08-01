@@ -42,6 +42,7 @@ done
 # Restore positional arguments (source files etc.)
 set -- "${POSITIONAL_ARGS[@]}"
 
+CMD=( $C2PULSE "$@" )
 
 # Run command, capture output and optionally save to log
 if [[ -n "$LOG_FILE" ]]; then

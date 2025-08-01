@@ -106,10 +106,7 @@ for file in "${C_FILES[@]}"; do
 done
 
 # Prepare C2Pulse command as a variable for reuse
-CMD=(
-  $C2PULSE "${C_FILES[@]}" \
-  --extra-arg-before=-DC2PULSE
-)
+CMD=( $C2PULSE "${C_FILES[@]}")
 
 # Run command, capture output and optionally save to log
 if [[ -n "$LOG_FILE" ]]; then
