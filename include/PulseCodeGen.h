@@ -17,33 +17,33 @@
 
 class osstream_with_pos {
 private:
-  std::ostringstream m_out;
-  size_t m_line, m_col;
+  std::ostringstream Str;
+  size_t Line, Col;
 
 public:
-  osstream_with_pos() : m_line(1), m_col(1) {}
+  osstream_with_pos() : Line(1), Col(1) {}
 
-  size_t line() const { return m_line; }
-  size_t col() const { return m_col; }
-  std::string str() const { return m_out.str(); }
+  size_t line() const { return Line; }
+  size_t col() const { return Col; }
+  std::string str() const { return Str.str(); }
 
-  osstream_with_pos& operator<<(char const *str) {
-    m_out << str;
+  osstream_with_pos& operator<<(char const *InStr) {
+    Str << InStr;
 
     // update position information
-    char const *nl;
-    while (nl = strchr(str, '\n')) {
-      m_line++;
-      m_col = 1;
-      str = nl + 1;
+    char const *Nl;
+    while (Nl = strchr(InStr, '\n')) {
+      Line++;
+      Col = 1;
+      InStr = Nl + 1;
     }
-    m_col += strlen(str);
+    Col += strlen(InStr);
 
     return *this;
   }
 
-  osstream_with_pos& operator<<(std::string const& str) {
-    return *this << str.c_str();
+  osstream_with_pos& operator<<(std::string const& InStr) {
+    return *this << InStr.c_str();
   }
 };
 

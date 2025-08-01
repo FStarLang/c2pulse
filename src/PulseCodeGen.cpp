@@ -838,10 +838,8 @@ void PulseCodeGen::generateCodeFromPulseStmt(osstream_with_pos &OS,
   } else if (PulseWhileStmt *While = dyn_cast<PulseWhileStmt>(T)) {
 
     PulseSourceLocation Start(OS.line(), OS.col());
-
     auto *WCond = While->Guard;
     auto *WBod = While->Body;
-
     auto Lemmas = While->Invariant;
 
     OS << PulseSyntax::PulseWhile;
