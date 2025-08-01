@@ -1,4 +1,4 @@
 {
   "c2pulse_exe": "../../external/llvm-project/build/bin/c2pulse",
-  "options": [ "--extra-arg-before=-DC2PULSE" ]
+  "options": []
 }

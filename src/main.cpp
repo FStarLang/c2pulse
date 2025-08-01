@@ -77,6 +77,10 @@ int main(int argc, const char **argv) {
         OptionsParser->getCompilations(), SourceFiles
     );
 
+    Tool->appendArgumentsAdjuster(getInsertArgumentAdjuster(
+        { "-DC2PULSE", "-fno-builtin" },
+        ArgumentInsertPosition::BEGIN));
+
     std::optional<std::string> TmpDir;
     if (TmpDirectory.getValue() != "") {
         TmpDir = TmpDirectory.getValue();
