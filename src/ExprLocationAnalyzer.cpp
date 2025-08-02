@@ -7,6 +7,7 @@
 #include "clang/AST/ParentMapContext.h"
 #include "clang/AST/PrettyPrinter.h"
 #include "clang/AST/Stmt.h"
+#include "clang/Basic/SourceLocation.h"
 #include "clang/Basic/SourceManager.h"
 #include "clang/Interpreter/Value.h"
 #include "llvm/Support/Debug.h"
@@ -445,10 +446,12 @@ static std::optional<std::string> getSourceLine(SourceLocation loc, SourceManage
 
 SourceInfo getSourceInfoFromExpr(clang::Expr *ExprNode, clang::ASTContext &Context, 
     std::string CtxString, std::string Op){
-
+  
   auto &SM = Context.getSourceManager();
-  SourceLocation BeginLoc = SM.getExpansionLoc(ExprNode->getBeginLoc());
-  SourceLocation EndLoc = SM.getExpansionLoc(ExprNode->getEndLoc());
+  
+  auto SourceRange = ExprNode->getSourceRange();
+  SourceLocation BeginLoc = SM.getExpansionLoc(SourceRange.getBegin());
+  SourceLocation EndLoc = SM.getExpansionLoc(SourceRange.getEnd());
 
   unsigned BeginLine = SM.getExpansionLineNumber(BeginLoc);
   unsigned BeginCol = SM.getExpansionColumnNumber(BeginLoc);
@@ -496,8 +499,9 @@ SourceInfo getSourceInfoFromAttr(const clang::Attr *AttrNode,
                                  std::string CtxString) {
 
   auto &SM = Context.getSourceManager();
-  SourceLocation BeginLoc = SM.getExpansionLoc(AttrNode->getLocation());
-  SourceLocation EndLoc = SM.getExpansionLoc(AttrNode->getLocation());
+  SourceRange Range = AttrNode->getRange();
+  SourceLocation BeginLoc = SM.getExpansionLoc(Range.getBegin());
+  SourceLocation EndLoc = SM.getExpansionLoc(Range.getEnd());
 
   unsigned BeginLine = SM.getExpansionLineNumber(BeginLoc);
   unsigned BeginCol = SM.getExpansionColumnNumber(BeginLoc);
@@ -545,8 +549,9 @@ SourceInfo getSourceInfoFromStmt(clang::Stmt *StmtNode, clang::ASTContext &Conte
     std::string CtxString, std::string Op){
 
   auto &SM = Context.getSourceManager();
-  SourceLocation BeginLoc = SM.getExpansionLoc(StmtNode->getBeginLoc());
-  SourceLocation EndLoc = SM.getExpansionLoc(StmtNode->getEndLoc());
+  SourceRange Range = StmtNode->getSourceRange();
+  SourceLocation BeginLoc = SM.getExpansionLoc(Range.getBegin());
+  SourceLocation EndLoc = SM.getExpansionLoc(Range.getEnd());
 
   unsigned BeginLine = SM.getExpansionLineNumber(BeginLoc);
   unsigned BeginCol = SM.getExpansionColumnNumber(BeginLoc);
@@ -602,8 +607,9 @@ SourceInfo getSourceInfoFromDecl(const clang::Decl *Decl,
     return SourceInfo();
 
   auto &SM = Context.getSourceManager();
-  SourceLocation BeginLoc = SM.getSpellingLoc(Decl->getBeginLoc());
-  SourceLocation EndLoc = SM.getSpellingLoc(Decl->getEndLoc());
+  SourceRange Range = Decl->getSourceRange();
+  SourceLocation BeginLoc = SM.getSpellingLoc(Range.getBegin());
+  SourceLocation EndLoc = SM.getSpellingLoc(Range.getEnd());
 
   unsigned BeginLine = SM.getSpellingLineNumber(BeginLoc);
   unsigned BeginCol = SM.getSpellingColumnNumber(BeginLoc);
