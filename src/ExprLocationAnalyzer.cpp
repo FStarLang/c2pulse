@@ -447,17 +447,17 @@ SourceInfo getSourceInfoFromExpr(clang::Expr *ExprNode, clang::ASTContext &Conte
     std::string CtxString, std::string Op){
 
   auto &SM = Context.getSourceManager();
-  SourceLocation BeginLoc = SM.getSpellingLoc(ExprNode->getBeginLoc());
-  SourceLocation EndLoc = SM.getSpellingLoc(ExprNode->getEndLoc());
+  SourceLocation BeginLoc = SM.getExpansionLoc(ExprNode->getBeginLoc());
+  SourceLocation EndLoc = SM.getExpansionLoc(ExprNode->getEndLoc());
 
-  unsigned BeginLine = SM.getSpellingLineNumber(BeginLoc);
-  unsigned BeginCol = SM.getSpellingColumnNumber(BeginLoc);
+  unsigned BeginLine = SM.getExpansionLineNumber(BeginLoc);
+  unsigned BeginCol = SM.getExpansionColumnNumber(BeginLoc);
   
-  unsigned EndLine = SM.getSpellingLineNumber(EndLoc);
-  unsigned EndCol = SM.getSpellingColumnNumber(EndLoc);
+  unsigned EndLine = SM.getExpansionLineNumber(EndLoc);
+  unsigned EndCol = SM.getExpansionColumnNumber(EndLoc);
 
-  unsigned line = SM.getSpellingLineNumber(BeginLoc);
-  unsigned column = SM.getSpellingColumnNumber(BeginLoc);
+  unsigned line = SM.getExpansionLineNumber(BeginLoc);
+  unsigned column = SM.getExpansionColumnNumber(BeginLoc);
 
   QualType QT = ExprNode->getType();
 
@@ -545,17 +545,17 @@ SourceInfo getSourceInfoFromStmt(clang::Stmt *StmtNode, clang::ASTContext &Conte
     std::string CtxString, std::string Op){
 
   auto &SM = Context.getSourceManager();
-  SourceLocation BeginLoc = SM.getSpellingLoc(StmtNode->getBeginLoc());
-  SourceLocation EndLoc = SM.getSpellingLoc(StmtNode->getEndLoc());
+  SourceLocation BeginLoc = SM.getExpansionLoc(StmtNode->getBeginLoc());
+  SourceLocation EndLoc = SM.getExpansionLoc(StmtNode->getEndLoc());
 
-  unsigned BeginLine = SM.getSpellingLineNumber(BeginLoc);
-  unsigned BeginCol = SM.getSpellingColumnNumber(BeginLoc);
+  unsigned BeginLine = SM.getExpansionLineNumber(BeginLoc);
+  unsigned BeginCol = SM.getExpansionColumnNumber(BeginLoc);
   
-  unsigned EndLine = SM.getSpellingLineNumber(EndLoc);
-  unsigned EndCol = SM.getSpellingColumnNumber(EndLoc);
+  unsigned EndLine = SM.getExpansionLineNumber(EndLoc);
+  unsigned EndCol = SM.getExpansionColumnNumber(EndLoc);
 
-  unsigned line = SM.getSpellingLineNumber(BeginLoc);
-  unsigned column = SM.getSpellingColumnNumber(BeginLoc);
+  unsigned line = SM.getExpansionLineNumber(BeginLoc);
+  unsigned column = SM.getExpansionColumnNumber(BeginLoc);
 
   auto PresumedLoc = SM.getPresumedLoc(BeginLoc);
   
