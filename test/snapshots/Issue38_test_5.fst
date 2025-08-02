@@ -17,7 +17,7 @@ foo0: ref (ref foo);
 noeq
 type foo_spec = {
 v : Int32.t;
-foo0 : ref foo
+foo0 : ( ref foo) 
 
 }
 

@@ -84,7 +84,7 @@ second: ref (ref u32_pair_struct);
 noeq
 type u64_pair_struct_spec = {
 first : UInt64.t;
-second : ref u32_pair_struct
+second : ( ref u32_pair_struct) 
 
 }
 

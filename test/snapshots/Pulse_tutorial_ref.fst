@@ -8,7 +8,7 @@ open Pulse.Lib.C
 
 
 fn value_of
-(r : ref Int32.t)
+(r : ( ref Int32.t) )
 requires r |-> 'v
 returns v:int32
 ensures r |-> 'v
@@ -19,7 +19,7 @@ let mut r : (ref Int32.t) = r;
 }
 
 fn value_of_explicit
-(r : ref Int32.t)
+(r : ( ref Int32.t) )
 (#w:erased _)
 requires r |-> w
 returns v:int32
@@ -31,7 +31,7 @@ let mut r : (ref Int32.t) = r;
 }
 
 fn assign
-(r : ref Int32.t)
+(r : ( ref Int32.t) )
 (v : Int32.t)
 requires r |-> 'v
 ensures r |-> v
@@ -42,7 +42,7 @@ let mut v : Int32.t = v;
 }
 
 fn assign_alt
-(r : ref Int32.t)
+(r : ( ref Int32.t) )
 (v : Int32.t)
 requires exists* w. r |-> w
 ensures r |-> v
@@ -53,7 +53,7 @@ let mut v : Int32.t = v;
 }
 
 fn add
-(r : ref Int32.t)
+(r : ( ref Int32.t) )
 (n : Int32.t)
 (#w:erased _)
 requires r |-> w
@@ -66,7 +66,7 @@ let mut n : Int32.t = n;
 }
 
 fn add_alt
-(r : ref Int32.t)
+(r : ( ref Int32.t) )
 (n : Int32.t)
 (#w : erased _ { (fits (+) (as_int w) (as_int n)) })
 requires r |-> w
@@ -78,7 +78,7 @@ let mut n : Int32.t = n;
 }
 
 fn quadruple
-(r : ref Int32.t)
+(r : ( ref Int32.t) )
 (#w : erased _ { (fits ( * ) 4 (as_int w)) })
 requires r |-> w
 ensures exists* ww. (r |-> ww) ** pure (as_int ww == 4 * as_int w)
@@ -89,7 +89,7 @@ let mut r : (ref Int32.t) = r;
 }
 
 fn value_of_perm
-(x : ref Int32.t)
+(x : ( ref Int32.t) )
 (#w:erased _)
 (p:perm)
 requires x |-> Frac p w
@@ -102,7 +102,7 @@ let mut x : (ref Int32.t) = x;
 }
 
 fn share_ref
-(x : ref Int32.t)
+(x : ( ref Int32.t) )
 (#v:erased _)
 (p:perm)
 requires x |-> Frac p v
@@ -115,7 +115,7 @@ share(vx);
 }
 
 fn gather_ref
-(x : ref Int32.t)
+(x : ( ref Int32.t) )
 (#v0:erased _)
 (#v1:erased _)
 (p:perm)
@@ -130,7 +130,7 @@ gather(vx);
 }
 
 fn max_perm
-(x : ref Int32.t)
+(x : ( ref Int32.t) )
 (#v:erased _)
 (p:perm)
 requires x |-> Frac p v
@@ -144,7 +144,7 @@ unreachable();
 }
 
 fn alias_ref
-(r : ref Int32.t)
+(r : ( ref Int32.t) )
 (#v:erased _)
 (p:perm)
 requires r |-> Frac p v
@@ -160,7 +160,7 @@ share vr;
 }
 
 fn incr
-(r : ref Int32.t)
+(r : ( ref Int32.t) )
 (#vr:erased _)
 requires r |-> vr
 requires pure (fits (+) (as_int vr) 1)

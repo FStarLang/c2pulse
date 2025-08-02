@@ -8,7 +8,7 @@ open Pulse.Lib.C
 
 
 fn incr
-(r : ref Int32.t)
+(r : ( ref Int32.t) )
 (#vr:erased _)
 requires r |-> vr
 requires pure Pulse.Lib.C.Int32.(fits (+) (as_int vr) 1)

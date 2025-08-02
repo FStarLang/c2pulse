@@ -8,7 +8,7 @@ open Pulse.Lib.C
 
 
 fn count_down
-(x : ref UInt32.t)
+(x : ( ref UInt32.t) )
 requires exists* v. x |-> v
 returns UInt32.t
 ensures exists* v. x |-> v
@@ -18,7 +18,7 @@ let mut x : (ref UInt32.t) = x;
 }
 
 fn decr
-(x : ref UInt32.t)
+(x : ( ref UInt32.t) )
 requires exists* v. x |-> v
 returns b:FStar.UInt32.t
 ensures exists* v. x |-> v

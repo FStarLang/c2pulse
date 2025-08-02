@@ -9,8 +9,8 @@ open Pulse.Lib.C
 
 let pts_to_diag (#a:_) (r0 r1:ref a) (v:a) : slprop = (r0 |-> v) ** (r1 |-> v)
 fn double_int
-(r0 : ref Int32.t)
-(r1 : ref Int32.t)
+(r0 : ( ref Int32.t) )
+(r1 : ( ref Int32.t) )
 (#v:erased _ { fits ( * ) 2 (as_int v) })
 requires pts_to_diag r0 r1 v
 ensures exists* w. pts_to_diag r0 r1 w ** pure (as_int w = 2 * as_int v)
@@ -94,7 +94,7 @@ py = a1}) }
 
 let is_point (p:ref point) (xy : (int & int)) : slprop = exists* v. point_pred p v ** pure (as_int v.px == fst xy) ** pure (as_int v.py == snd xy)
 fn move
-(p : ref point)
+(p : ( ref point) )
 (dx : Int32.t)
 (dy : Int32.t)
 (#v:erased _)
@@ -117,7 +117,7 @@ point_recover vp; fold (is_point vp (fst v + as_int vdx, snd v + as_int vdy));
 
 ghost fn fold_is_point (p:ref point) (#s:point_spec) requires point_pred p s ensures exists* v. is_point p v ** pure (v == (as_int s.px, as_int s.py)) { fold (is_point p (as_int s.px, as_int s.py)); }
 fn move_alt
-(p : ref point)
+(p : ( ref point) )
 (dx : Int32.t)
 (dy : Int32.t)
 (#v:erased _)
@@ -166,7 +166,7 @@ unfold is_point;
 
 let is_point_curry (p:ref point) (x y : int) : slprop = exists* v. point_pred p v ** pure (as_int v.px == x) ** pure (as_int v.py == y)
 fn move_curry
-(p : ref point)
+(p : ( ref point) )
 (dx : Int32.t)
 (dy : Int32.t)
 (#x #y:erased _)

@@ -49,7 +49,7 @@ fold (ab_pred x s);
 }
 
 fn incr_a
-(x : ref ab)
+(x : ( ref ab) )
 (s:_)
 requires pure (Case_ab_a? s)
 requires ab_pred x s

@@ -73,7 +73,7 @@ public:
   std::string getGeneratedCodeForModule(std::string ModuleName);
   void generateCodeFromModule(const std::string ModuleName, PulseModul *Modul);
   void generateCodeFromPulseAST(osstream_with_pos &S, PulseDecl *FD);
-  std::string generateCodeFromTerm(osstream_with_pos &OS, Term *T);
+  void generateCodeFromTerm(osstream_with_pos &OS, Term *T);
   void generateCodeFromPulseStmt(osstream_with_pos &S, PulseStmt *T);
   std::string formatAsComments(PulseDecl *Decl);
   void writeHeaders(PulseModul *pulseModule, osstream_with_pos &Stream);

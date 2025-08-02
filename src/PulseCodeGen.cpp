@@ -127,7 +127,7 @@ void PulseCodeGen::generateCodeFromPulseAST(osstream_with_pos &OS,
     auto *FuncBody = FuncDef->Body;
 
     for (auto *Att : FuncDef->Attr) {
-      OS << generateCodeFromTerm(OS, Att);
+      generateCodeFromTerm(OS, Att);
       OS << PulseSyntax::NewLine;
     }
 
@@ -159,7 +159,7 @@ void PulseCodeGen::generateCodeFromPulseAST(osstream_with_pos &OS,
         OS << PulseSyntax::Space;
         OS << PulseSyntax::Colon;
         OS << PulseSyntax::Space;
-        OS << generateCodeFromTerm(OS, Ty);
+        generateCodeFromTerm(OS, Ty);
         OS << PulseSyntax::ClosingParenthesis;
         OS << PulseSyntax::NewLine;
       } else {
@@ -214,7 +214,7 @@ void PulseCodeGen::generateCodeFromPulseAST(osstream_with_pos &OS,
     OS << PulseSyntax::Space;
     OS << PulseSyntax::Colon;
     OS << PulseSyntax::Space;
-    OS << generateCodeFromTerm(OS, ValD->ValTerm);
+    generateCodeFromTerm(OS, ValD->ValTerm);
     PulseSourceLocation End = PulseSourceLocation(OS.line(), OS.col());
     PulseSourceRange Range = PulseSourceRange(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, ValD->getCSourceInfo()));
@@ -233,7 +233,7 @@ void PulseCodeGen::generateCodeFromPulseAST(osstream_with_pos &OS,
         auto Attrs = TCRecord->Attrs;
         auto Fields = TCRecord->RecordFields;
         for (auto *Attr : Attrs) {
-          OS << generateCodeFromTerm(OS, Attr);
+          generateCodeFromTerm(OS, Attr);
           OS << PulseSyntax::NewLine;
         }
 
@@ -255,7 +255,7 @@ void PulseCodeGen::generateCodeFromPulseAST(osstream_with_pos &OS,
           OS << PulseSyntax::Space;
           OS << PulseSyntax::Colon;
           OS << PulseSyntax::Space;
-          OS << generateCodeFromTerm(OS, ElemTerm);
+          generateCodeFromTerm(OS, ElemTerm);
           if (I < FldsSize - 1) {
             OS << PulseSyntax::Semicolon;
           }
@@ -306,7 +306,7 @@ void PulseCodeGen::generateCodeFromPulseAST(osstream_with_pos &OS,
 
     //Write out the annotations attached to the function
     for (auto *Att : FuncDef->Attr) {
-      OS << generateCodeFromTerm(OS, Att);
+      generateCodeFromTerm(OS, Att);
       OS << PulseSyntax::NewLine;
     }
     
@@ -335,7 +335,7 @@ void PulseCodeGen::generateCodeFromPulseAST(osstream_with_pos &OS,
         OS << PulseSyntax::Space;
         OS << PulseSyntax::Colon;
         OS << PulseSyntax::Space;
-        OS << generateCodeFromTerm(OS, Ty);
+        generateCodeFromTerm(OS, Ty);
         OS << PulseSyntax::ClosingParenthesis;
         OS << PulseSyntax::NewLine;
       } else {
@@ -373,22 +373,20 @@ void PulseCodeGen::generateCodeFromPulseAST(osstream_with_pos &OS,
   }
 }
 
-std::string PulseCodeGen::generateCodeFromTerm(osstream_with_pos &OS,
+void PulseCodeGen::generateCodeFromTerm(osstream_with_pos &OS,
                                                Term *T) {
 
-  std::string TermString = "";
-
   if (!T) {
-    return TermString;
+    return;
   }
 
   if (Paren *P = dyn_cast<Paren>(T)) {
 
     PulseSourceLocation Start(OS.line(), OS.col());
 
-    TermString += PulseSyntax::OpeningParenthesis;
-    TermString += generateCodeFromTerm(OS, P->InnerExpr);
-    TermString += PulseSyntax::ClosingParenthesis;
+    OS << PulseSyntax::OpeningParenthesis;
+    generateCodeFromTerm(OS, P->InnerExpr);
+    OS << PulseSyntax::ClosingParenthesis;
 
     PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
@@ -399,15 +397,15 @@ std::string PulseCodeGen::generateCodeFromTerm(osstream_with_pos &OS,
     PulseSourceLocation Start(OS.line(), OS.col());
     switch (CT->Symbol) {
     case SymbolTable::Int32: {
-      TermString += CT->ConstantValue + "l";
+      OS << CT->ConstantValue + "l";
       break;
     }
     case SymbolTable::Int64: {
-      TermString += CT->ConstantValue + "L";
+      OS << CT->ConstantValue + "L";
       break;
     }
     case SymbolTable::Int8: {
-      TermString += CT->ConstantValue + "y";
+      OS << CT->ConstantValue + "y";
       break;
     }
     case SymbolTable::Int16: {
@@ -420,25 +418,25 @@ std::string PulseCodeGen::generateCodeFromTerm(osstream_with_pos &OS,
       emitError("ConstTerm: did not implement case for UInt16!\n");
     }
     case SymbolTable::UInt32: {
-      TermString += CT->ConstantValue + "ul";
+      OS << CT->ConstantValue + "ul";
       break;
     }
     case SymbolTable::UInt64: {
-      TermString += CT->ConstantValue + "UL";
+      OS << CT->ConstantValue + "UL";
       break;
     }
     case SymbolTable::UInt128: {
       emitError("ConstTerm: did not implement case for UInt128!\n");
     }
     case SymbolTable::SizeT: {
-      TermString += CT->ConstantValue + "sz";
+      OS << CT->ConstantValue + "sz";
       break;
     }
     case SymbolTable::Bool: {
       if (CT->ConstantValue == "0") {
-        TermString += "false";
+        OS << "false";
       } else {
-        TermString += "true";
+        OS << "true";
       }
       break;
     }
@@ -455,49 +453,34 @@ std::string PulseCodeGen::generateCodeFromTerm(osstream_with_pos &OS,
 
   } else if (VarTerm *VT = dyn_cast<VarTerm>(T)) {
     PulseSourceLocation Start(OS.line(), OS.col());
-    TermString += VT->VarName;
+    OS << VT->VarName;
 
     PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, VT->getCSourceInfo()));
   } else if (Name *N = dyn_cast<Name>(T)) {
     PulseSourceLocation Start(OS.line(), OS.col());
-    TermString += N->NamedValue;
+    OS << N->NamedValue;
 
     PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, T->getCSourceInfo()));
   } else if (FStarType *FT = dyn_cast<FStarType>(T)) {
     PulseSourceLocation Start(OS.line(), OS.col());
-    TermString += FT->NamedValue;
-
+    OS << FT->NamedValue;
     PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, T->getCSourceInfo()));
   } else if (FStarPointerType *FPT = dyn_cast<FStarPointerType>(T)) {
     PulseSourceLocation Start(OS.line(), OS.col());
-    auto StrBase = generateCodeFromTerm(OS, FPT->PointerTo);
-    TermString += PulseSyntax::Reference;
-
-    // TODO: Angelica to be revisited: this is a hack to add space after the reference
-    std::string refWithSpace = std::string(PulseSyntax::Reference);
-
-    refWithSpace += PulseSyntax::Space;
-
-    if (StrBase.compare(0, refWithSpace.size(), refWithSpace) == 0) {
-      TermString += PulseSyntax::Space;
-
-      TermString += PulseSyntax::OpeningParenthesis;
-
-      TermString += StrBase; 
-
-      TermString += PulseSyntax::ClosingParenthesis;
-
-    } else {
-      TermString += PulseSyntax::Space;
-
-      TermString += StrBase; 
-    }
+    
+    OS << PulseSyntax::OpeningParenthesis;
+    OS << PulseSyntax::Space;
+    OS << PulseSyntax::Reference;
+    OS << PulseSyntax::Space;
+    generateCodeFromTerm(OS, FPT->PointerTo);
+    OS << PulseSyntax::ClosingParenthesis;
+    OS << PulseSyntax::Space;
 
     PulseSourceLocation End(OS.line(), OS.col()); 
     PulseSourceRange Range(Start, End);
@@ -505,12 +488,12 @@ std::string PulseCodeGen::generateCodeFromTerm(osstream_with_pos &OS,
 
   } else if (FStarArrType *FAT = dyn_cast<FStarArrType>(T)) {
     PulseSourceLocation Start(OS.line(), OS.col());
-    auto StrBase = generateCodeFromTerm(OS, FAT->ElementType);
-    TermString += PulseSyntax::Array;
 
-    TermString += PulseSyntax::Space;
+    OS << PulseSyntax::Array;
 
-    TermString += StrBase;
+    OS << PulseSyntax::Space;
+
+    generateCodeFromTerm(OS, FAT->ElementType);
 
     PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
@@ -518,19 +501,19 @@ std::string PulseCodeGen::generateCodeFromTerm(osstream_with_pos &OS,
   } else if (AppE *App = dyn_cast<AppE>(T)) {
     
     PulseSourceLocation Start(OS.line(), OS.col());
-    TermString += generateCodeFromTerm(OS, App->CallName);
-    TermString += PulseSyntax::Space;
+    generateCodeFromTerm(OS, App->CallName);
+    OS << PulseSyntax::Space;
 
     for (size_t i = 0; i < App->Args.size(); ++i) {
-      TermString += generateCodeFromTerm(OS, App->Args[i]);
+      generateCodeFromTerm(OS, App->Args[i]);
       if (i < (App->Args).size() - 1) {
-        TermString += PulseSyntax::Space;
+        OS << PulseSyntax::Space;
       }
     }
 
     if (App->Args.empty()) {
-      TermString += PulseSyntax::OpeningParenthesis;
-      TermString += PulseSyntax::ClosingParenthesis;
+      OS << PulseSyntax::OpeningParenthesis;
+      OS << PulseSyntax::ClosingParenthesis;
     }
 
     PulseSourceLocation End(OS.line(), OS.col());
@@ -621,9 +604,9 @@ std::string PulseCodeGen::generateCodeFromTerm(osstream_with_pos &OS,
   } else if (Project *P = dyn_cast<Project>(T)) {
     PulseSourceLocation Start(OS.line(), OS.col());
 
-    TermString += generateCodeFromTerm(OS, P->BaseTerm);
-    TermString += PulseSyntax::Dot;
-    TermString += P->MemberName;
+    generateCodeFromTerm(OS, P->BaseTerm);
+    OS << PulseSyntax::Dot;
+    OS << P->MemberName;
 
     PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
@@ -634,21 +617,21 @@ std::string PulseCodeGen::generateCodeFromTerm(osstream_with_pos &OS,
 
     PulseSourceLocation Start(OS.line(), OS.col());
 
-    TermString += PulseSyntax::PulseIf;
-    TermString += PulseSyntax::Space;
-    TermString += generateCodeFromTerm(OS, If->Cond);
+    OS << PulseSyntax::PulseIf;
+    OS << PulseSyntax::Space;
+    generateCodeFromTerm(OS, If->Cond);
     
-    TermString += PulseSyntax::NewLine;
+    OS << PulseSyntax::NewLine;
 
-    TermString += PulseSyntax::IfExprThen; 
-    TermString += PulseSyntax::Space;
-    TermString += generateCodeFromTerm(OS, If->TrueExpr);
+    OS << PulseSyntax::IfExprThen; 
+    OS << PulseSyntax::Space;
+    generateCodeFromTerm(OS, If->TrueExpr);
 
-    TermString += PulseSyntax::NewLine;
+    OS << PulseSyntax::NewLine;
 
-    TermString += PulseSyntax::IfExprElse;
-    TermString += PulseSyntax::Space;
-    TermString += generateCodeFromTerm(OS, If->FalseExpr);
+    OS << PulseSyntax::IfExprElse;
+    OS << PulseSyntax::Space;
+    generateCodeFromTerm(OS, If->FalseExpr);
 
     PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
@@ -660,7 +643,7 @@ std::string PulseCodeGen::generateCodeFromTerm(osstream_with_pos &OS,
     emitError("Did not expect Pulse AST Node!");
   }
 
-  return TermString;
+  return;
 }
 
 void PulseCodeGen::generateCodeFromPulseStmt(osstream_with_pos &OS,
@@ -673,7 +656,7 @@ void PulseCodeGen::generateCodeFromPulseStmt(osstream_with_pos &OS,
 
     PulseSourceLocation Start(OS.line(), OS.col());
 
-    OS << generateCodeFromTerm(OS, S->E);
+    generateCodeFromTerm(OS, S->E);
 
     OS << PulseSyntax::Semicolon;
     //End
@@ -687,11 +670,11 @@ void PulseCodeGen::generateCodeFromPulseStmt(osstream_with_pos &OS,
 
     PulseSourceLocation Start(OS.line(), OS.col());
 
-    OS << generateCodeFromTerm(OS, A->Lhs);
+    generateCodeFromTerm(OS, A->Lhs);
     OS << PulseSyntax::Space;
     OS << PulseSyntax::PulseAssignmentOpRef;
     OS << PulseSyntax::Space;
-    OS << generateCodeFromTerm(OS, A->Value);
+    generateCodeFromTerm(OS, A->Value);
 
     OS << PulseSyntax::Semicolon;
     //End 
@@ -709,13 +692,13 @@ void PulseCodeGen::generateCodeFromPulseStmt(osstream_with_pos &OS,
     auto *Idx = AS->Index;
     auto *LVal = AS->Value;
 
-    OS << generateCodeFromTerm(OS, Base);
+    generateCodeFromTerm(OS, Base);
     
     OS << PulseSyntax::Dot;
     
     OS << PulseSyntax::OpeningParenthesis;
 
-    OS << generateCodeFromTerm(OS, Idx);
+    generateCodeFromTerm(OS, Idx);
     
     OS << PulseSyntax::ClosingParenthesis;
 
@@ -725,7 +708,7 @@ void PulseCodeGen::generateCodeFromPulseStmt(osstream_with_pos &OS,
 
     OS << PulseSyntax::Space;
 
-    OS << generateCodeFromTerm(OS, LVal);
+    generateCodeFromTerm(OS, LVal);
 
     OS << PulseSyntax::Semicolon;
 
@@ -759,7 +742,7 @@ void PulseCodeGen::generateCodeFromPulseStmt(osstream_with_pos &OS,
 
     OS << PulseSyntax::PulseLetAssignmentOpRef;
     OS << PulseSyntax::Space;
-    OS << generateCodeFromTerm(OS, Let->LetInit);
+    generateCodeFromTerm(OS, Let->LetInit);
     
     OS << PulseSyntax::Semicolon;
     //End
@@ -782,7 +765,7 @@ void PulseCodeGen::generateCodeFromPulseStmt(osstream_with_pos &OS,
     auto *PulseElse = If->Else;
 
     OS << PulseSyntax::OpeningParenthesis;
-    OS << generateCodeFromTerm(OS, PulseIfCond);
+    generateCodeFromTerm(OS, PulseIfCond);
     OS << PulseSyntax::ClosingParenthesis;
     
     //Reset Col Counter at every new line
@@ -790,7 +773,7 @@ void PulseCodeGen::generateCodeFromPulseStmt(osstream_with_pos &OS,
 
     // Add all the if lemmas here
     for (auto &Lemma : If->IfLemmas) {
-      OS << generateCodeFromTerm(OS, Lemma);
+      generateCodeFromTerm(OS, Lemma);
     }
 
     OS << PulseSyntax::OpeningCurlyBrace;
@@ -852,7 +835,7 @@ void PulseCodeGen::generateCodeFromPulseStmt(osstream_with_pos &OS,
 
     size_t Idx = 1;
     for (auto *Lemma : Lemmas) {
-      OS << generateCodeFromTerm(OS, Lemma);
+      generateCodeFromTerm(OS, Lemma);
       if (Idx < Lemmas.size()){
         OS << PulseSyntax::NewLine;
       }

@@ -89,7 +89,7 @@ u32_pair_struct_recover !x;
 }
 
 fn swap_fields
-(x : ref u32_pair_struct)
+(x : ( ref u32_pair_struct) )
 (#s : u32_pair_struct_spec)
 requires u32_pair_struct_pred x s
 ensures exists* (s':u32_pair_struct_spec). u32_pair_struct_pred x s' ** pure (s' == ({first = s.second; second = s.first}))
@@ -103,8 +103,8 @@ u32_pair_struct_recover !x;
 }
 
 fn swap_refs
-(x : ref UInt32.t)
-(y : ref UInt32.t)
+(x : ( ref UInt32.t) )
+(y : ( ref UInt32.t) )
 requires x |-> 'x
 requires y |-> 'y
 ensures x |-> 'y
@@ -118,7 +118,7 @@ let mut tmp : UInt32.t = (! (! x));
 }
 
 fn swap_fields_alt
-(x : ref u32_pair_struct)
+(x : ( ref u32_pair_struct) )
 (#s : u32_pair_struct_spec)
 requires u32_pair_struct_pred x s
 ensures exists* (s':u32_pair_struct_spec). u32_pair_struct_pred x s' ** pure (s' == {first = s.second; second = s.first})

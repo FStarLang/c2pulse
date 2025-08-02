@@ -8,7 +8,7 @@ open Pulse.Lib.C
 
 
 fn foo
-(p : ref Int32.t)
+(p : ( ref Int32.t) )
 {
 let mut p : (ref Int32.t) = p;
 ();

@@ -8,7 +8,7 @@ open Pulse.Lib.C
 
 
 fn incr
-(x : ref Int32.t)
+(x : ( ref Int32.t) )
 requires x |-> 'i
 requires pure FStar.Int32.(fits (v 'i + 1))
 ensures exists* j. (x |-> j) ** pure FStar.Int32.((v j <: int) == v 'i + 1)
@@ -18,8 +18,8 @@ let mut x : (ref Int32.t) = x;
 }
 
 fn incr_frame
-(x : ref Int32.t)
-(y : ref Int32.t)
+(x : ( ref Int32.t) )
+(y : ( ref Int32.t) )
 (#i:_)
 (#j:_)
 requires x |-> i

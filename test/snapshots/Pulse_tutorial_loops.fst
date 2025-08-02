@@ -8,7 +8,7 @@ open Pulse.Lib.C
 
 
 fn count_down
-(x : ref Int32.t)
+(x : ( ref Int32.t) )
 requires exists* v. (x |-> v) ** pure (as_int v >= 0)
 ensures x |-> 0l
 {
@@ -80,8 +80,8 @@ acc := (Int32.add (! acc) (! ctr));
 let rec fib (n:nat) : nat = if n <= 1 then 1 else fib (n - 1) + fib (n - 2) let rec fib_mono (n:nat) (m:nat { m <= n}) : Lemma (ensures fib m <= fib n) = if n = m then () else fib_mono (n - 1) m
 fn rec fib_rec
 (n : Int32.t)
-(cur : ref Int32.t)
-(prev : ref Int32.t)
+(cur : ( ref Int32.t) )
+(prev : ( ref Int32.t) )
 requires pure (as_int n > 0)
 requires pure (as_int n > 0 ==> fib (as_int n) <= max_int32)
 requires exists* v0 v1. (cur |-> v0) ** (prev |-> v1)

@@ -15,7 +15,7 @@ next: ref (ref list);
 [@@erasable]
 noeq
 type list_spec = {
-next : ref list
+next : ( ref list) 
 
 }
 
@@ -67,7 +67,7 @@ ensures exists* w. list_pred x w ** pure (w == {next = a0})
 {fold list_pred x ({next = a0}) }
 
 fn foo
-(lst : ref list)
+(lst : ( ref list) )
 {
 let mut lst : (ref list) = lst;
 admit();

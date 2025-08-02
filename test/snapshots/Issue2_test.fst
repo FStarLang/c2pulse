@@ -8,7 +8,7 @@ open Pulse.Lib.C
 
 
 fn value_of_explicit
-(r : ref Int32.t)
+(r : ( ref Int32.t) )
 (#w:_)
 requires r |-> w
 returns v:Int32.t

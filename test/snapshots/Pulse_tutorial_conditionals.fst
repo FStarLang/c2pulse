@@ -9,8 +9,8 @@ open Pulse.Lib.C
 
 let max_spec x y = if x < y then y else x
 fn max
-(x : ref Int32.t)
-(y : ref Int32.t)
+(x : ( ref Int32.t) )
+(y : ( ref Int32.t) )
 (#vx #vy:_)
 (#px #py:_)
 requires x |-> Frac px vx
@@ -34,8 +34,8 @@ else
 
 [@@expect_failure]
 fn max_alt
-(x : ref Int32.t)
-(y : ref Int32.t)
+(x : ( ref Int32.t) )
+(y : ( ref Int32.t) )
 (#vx #vy:_)
 (#px #py:_)
 requires x |-> Frac px vx
@@ -63,7 +63,7 @@ result := (! vy);
 }
 
 fn read_nullable
-(r : ref Int32.t)
+(r : ( ref Int32.t) )
 (#w:option int32)
 (#p:_)
 requires r |->? Frac p w
@@ -87,7 +87,7 @@ intro_non_null !r;
 }
 
 fn write_nullable
-(r : ref Int32.t)
+(r : ( ref Int32.t) )
 (v : Int32.t)
 (#w:option int32)
 requires r |->? w

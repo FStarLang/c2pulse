@@ -17,7 +17,7 @@ next: ref (ref foo);
 noeq
 type foo_spec = {
 left : Int32.t;
-next : ref foo
+next : ( ref foo) 
 
 }
 

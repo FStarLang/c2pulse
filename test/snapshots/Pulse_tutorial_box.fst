@@ -37,7 +37,7 @@ let mut r : (ref Int32.t) = alloc_ref #Int32.t ();
 }
 
 fn last_value_of
-(r : ref Int32.t)
+(r : ( ref Int32.t) )
 (#w:_)
 requires (r |-> w) ** freeable r
 returns i:int32
@@ -50,7 +50,7 @@ let mut v : Int32.t = (! (! r));
 }
 
 fn copy_free_box
-(r : ref Int32.t)
+(r : ( ref Int32.t) )
 (#w:_)
 requires r |-> w
 requires freeable r
@@ -67,7 +67,7 @@ let mut s : (ref Int32.t) = alloc_ref #Int32.t ();
 }
 
 fn copy_box
-(r : ref Int32.t)
+(r : ( ref Int32.t) )
 (#w:_)
 requires r |-> w
 returns s:ref int32

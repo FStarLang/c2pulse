@@ -10,8 +10,8 @@ open Pulse.Lib.C
 let max_spec x y = if x < y then y else x
 [@@expect_failure]
 fn max_alt
-(x : ref Int32.t)
-(y : ref Int32.t)
+(x : ( ref Int32.t) )
+(y : ( ref Int32.t) )
 (#vx #vy : _)
 (#px #py : _)
 requires x |->Frac px vx
@@ -44,8 +44,8 @@ result := (! yy);
 }
 
 fn max_alt2
-(x : ref Int32.t)
-(y : ref Int32.t)
+(x : ( ref Int32.t) )
+(y : ( ref Int32.t) )
 (#vx #vy : _)
 (#px #py : _)
 requires x |->Frac px vx
@@ -72,8 +72,8 @@ result := (! vy);
 }
 
 fn max_alt3
-(x : ref Int32.t)
-(y : ref Int32.t)
+(x : ( ref Int32.t) )
+(y : ( ref Int32.t) )
 (#vx #vy : _)
 (#px #py : _)
 requires x |->Frac px vx
@@ -98,8 +98,8 @@ result := (! (! y));
 }
 
 fn max_alt4
-(x : ref Int32.t)
-(y : ref Int32.t)
+(x : ( ref Int32.t) )
+(y : ( ref Int32.t) )
 (#vx #vy : _)
 (#px #py : _)
 requires x |->Frac px vx

@@ -15,7 +15,7 @@ left: ref (ref foo);
 [@@erasable]
 noeq
 type foo_spec = {
-left : ref foo
+left : ( ref foo) 
 
 }
 

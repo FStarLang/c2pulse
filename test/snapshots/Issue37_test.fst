@@ -8,7 +8,7 @@ open Pulse.Lib.C
 
 
 fn set
-(n : ref Int32.t)
+(n : ( ref Int32.t) )
 requires n |-> 'v
 ensures n |-> 0l
 {
