@@ -21,7 +21,7 @@ next : ( ref foo)
 
 }
 
-let foo_pred (x:ref foo) (s:foo_spec) : slprop =
+let foo_pred ([@@@mkey]x:ref foo) (s:foo_spec) : slprop =
 exists* (y: foo). (x |-> y) **
 (y.left |-> s.left) **
 (y.next |-> s.next)

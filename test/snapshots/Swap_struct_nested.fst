@@ -21,7 +21,7 @@ y : Int32.t
 
 }
 
-let bar_pred (x:ref bar) (s:bar_spec) : slprop =
+let bar_pred ([@@@mkey]x:ref bar) (s:bar_spec) : slprop =
 exists* (y: bar). (x |-> y) **
 (y.x |-> s.x) **
 (y.y |-> s.y)
@@ -86,7 +86,7 @@ c : bar_spec
 
 }
 
-let foo_pred (x:ref foo) (s:foo_spec) : slprop =
+let foo_pred ([@@@mkey]x:ref foo) (s:foo_spec) : slprop =
 exists* (y: foo). (x |-> y) **
 bar_pred y.c s.c
 

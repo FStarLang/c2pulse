@@ -811,7 +811,11 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     auto *GenericPredicate = new GenericDecl();
     GenericPredicate->CInfo = getSourceInfoFromDecl(RD, Ctx, "");
     GenericPredicate->Ident = "let ";
-    GenericPredicate->Ident += StructName + "_pred (x:ref " +  StructName + ") (s:" + StructName + "_spec) : slprop =\n";
+    //Vidush:
+    //Discussed with Guido.
+    //We should add [@@@mkey] so that the SMT solver
+    //can match resources with different matching keys
+    GenericPredicate->Ident += StructName + "_pred ([@@@mkey]x:ref " +  StructName + ") (s:" + StructName + "_spec) : slprop =\n";
     GenericPredicate->Ident += "exists* (y: " + StructName + "). (x |-> y) **\n";
     Counter = 0;
     for (auto *Fld : RD->fields()){

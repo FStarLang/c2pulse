@@ -19,7 +19,7 @@ next : ( ref list)
 
 }
 
-let list_pred (x:ref list) (s:list_spec) : slprop =
+let list_pred ([@@@mkey]x:ref list) (s:list_spec) : slprop =
 exists* (y: list). (x |-> y) **
 (y.next |-> s.next)
 

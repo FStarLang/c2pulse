@@ -21,7 +21,7 @@ second : UInt32.t
 
 }
 
-let _u32_pair_struct_pred (x:ref _u32_pair_struct) (s:_u32_pair_struct_spec) : slprop =
+let _u32_pair_struct_pred ([@@@mkey]x:ref _u32_pair_struct) (s:_u32_pair_struct_spec) : slprop =
 exists* (y: _u32_pair_struct). (x |-> y) **
 (y.first |-> s.first) **
 (y.second |-> s.second)

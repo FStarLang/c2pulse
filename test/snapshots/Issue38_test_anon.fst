@@ -21,7 +21,7 @@ y : Int32.t
 
 }
 
-let anon_name0_pred (x:ref anon_name0) (s:anon_name0_spec) : slprop =
+let anon_name0_pred ([@@@mkey]x:ref anon_name0) (s:anon_name0_spec) : slprop =
 exists* (y: anon_name0). (x |-> y) **
 (y.x |-> s.x) **
 (y.y |-> s.y)
@@ -86,7 +86,7 @@ s : anon_name0_spec
 
 }
 
-let foo_pred (x:ref foo) (s:foo_spec) : slprop =
+let foo_pred ([@@@mkey]x:ref foo) (s:foo_spec) : slprop =
 exists* (y: foo). (x |-> y) **
 anon_name0_pred y.s s.s
 

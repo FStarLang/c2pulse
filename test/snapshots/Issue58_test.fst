@@ -38,7 +38,7 @@ Pulse.Lib.Array.length s.l0_binary == SizeT.v s.l0_binary_size /\
 Pulse.Lib.Array.length s.l0_binary_hash == 64 /\
 Pulse.Lib.Array.length s.l0_image_auth_pubkey == 32
 
-let engine_record_t_pred (x:ref engine_record_t) (s:engine_record_t_spec) : slprop =
+let engine_record_t_pred ([@@@mkey]x:ref engine_record_t) (s:engine_record_t_spec) : slprop =
 exists* (y: engine_record_t). (x |-> y) **
 (y.l0_image_header_size |-> s.l0_image_header_size) **
 (y.l0_image_header |-> s.l0_image_header) **

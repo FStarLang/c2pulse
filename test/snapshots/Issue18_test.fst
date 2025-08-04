@@ -29,7 +29,7 @@ py : Int32.t
 
 }
 
-let point_pred (x:ref point) (s:point_spec) : slprop =
+let point_pred ([@@@mkey]x:ref point) (s:point_spec) : slprop =
 exists* (y: point). (x |-> y) **
 (y.px |-> s.px) **
 (y.py |-> s.py)

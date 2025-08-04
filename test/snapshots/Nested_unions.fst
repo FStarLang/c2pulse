@@ -62,7 +62,7 @@ payload : ab_spec
 
 }
 
-let stru_pred (x:ref stru) (s:stru_spec) : slprop =
+let stru_pred ([@@@mkey]x:ref stru) (s:stru_spec) : slprop =
 exists* (y: stru). (x |-> y) **
 (y.tag |-> s.tag) **
 ab_pred y.payload s.payload

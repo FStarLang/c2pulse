@@ -21,7 +21,7 @@ second : UInt32.t
 
 }
 
-let u32_pair_struct_pred (x:ref u32_pair_struct) (s:u32_pair_struct_spec) : slprop =
+let u32_pair_struct_pred ([@@@mkey]x:ref u32_pair_struct) (s:u32_pair_struct_spec) : slprop =
 exists* (y: u32_pair_struct). (x |-> y) **
 (y.first |-> s.first) **
 (y.second |-> s.second)
@@ -88,7 +88,7 @@ second : ( ref u32_pair_struct)
 
 }
 
-let u64_pair_struct_pred (x:ref u64_pair_struct) (s:u64_pair_struct_spec) : slprop =
+let u64_pair_struct_pred ([@@@mkey]x:ref u64_pair_struct) (s:u64_pair_struct_spec) : slprop =
 exists* (y: u64_pair_struct). (x |-> y) **
 (y.first |-> s.first) **
 (y.second |-> s.second)
