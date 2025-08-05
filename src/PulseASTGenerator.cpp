@@ -2059,11 +2059,13 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
 
   if (ForceVisitFunction)
     goto override;
+  
+  //Vidush: Revisit, I am removing this check since it prevents macro functions that are in included headers.
+  //|| (FD->getLocation().isMacroID() &&
+  //     !SM.isWrittenInMainFile(SM.getExpansionLoc(FD->getLocation())))
 
   if (SM.isInSystemHeader(FD->getLocation()) ||
-      FD->isImplicit() ||
-      (FD->getLocation().isMacroID() &&
-       !SM.isWrittenInMainFile(SM.getExpansionLoc(FD->getLocation()))))
+      FD->isImplicit())
     return true;
 
 

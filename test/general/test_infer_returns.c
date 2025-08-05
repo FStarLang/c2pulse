@@ -21,6 +21,7 @@ long long foo1(){
     return 10;
 }
 
+
 long foo2(){
     return 10;
 }
