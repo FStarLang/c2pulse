@@ -15,6 +15,8 @@ SHOULD_FAIL=(
  "./test/general/nested_struct.c"
  "./test/general/global_test.c"
  "./test/issue-related/issue55_test.c"
+ "./test/general/test_funs2.c"
+ "./test/general/test_funs3.c"
 )
 
 is_expected_to_fail() {

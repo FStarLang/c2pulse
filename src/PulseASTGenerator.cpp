@@ -2387,9 +2387,13 @@ FStarType *PulseVisitor::getPulseTyFromCTy(clang::QualType CType) {
   // TODO: Check if Ctype is a pointer type, if so, use FStarPointerType.
 
   FStarType *PulseTy;
-  if (CType->isFunctionProtoType()){
 
+  //TODO: Vidush
+  //We need to implement function pointers.
+  if (CType->isFunctionProtoType()){
+    
   }
+
   if (CType->isPointerType()) {
     
     if (CType->isArrayType()) {
