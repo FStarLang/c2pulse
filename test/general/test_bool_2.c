@@ -2,6 +2,7 @@
 
 
 int foo(long p) {
-        if (p && p);
+   if (p && p);
+   return 0;
 }
 

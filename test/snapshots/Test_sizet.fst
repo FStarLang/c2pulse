@@ -11,6 +11,7 @@ fn test2_decl
 (l : SizeT.t)
 (k : SizeT.t)
 (j : UInt64.t)
+returns UInt64.t
 {
 admit();
 }

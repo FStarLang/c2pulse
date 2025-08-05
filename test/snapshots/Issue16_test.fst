@@ -12,10 +12,12 @@ fn incr
 (#vr:erased _)
 requires r |-> vr
 requires pure Pulse.Lib.C.Int32.(fits (+) (as_int vr) 1)
+returns Int32.t
 ensures exists* w. (r |-> w) ** pure Pulse.Lib.C.Int32.(as_int w == as_int vr + 1)
 {
 let mut r : (ref Int32.t) = r;
 (! r) := (Int32.add (! (! r)) 1l);
+(! (! r));
 }
 
 fn one ()

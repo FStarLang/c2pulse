@@ -60,4 +60,5 @@ int main() {
   LEMMA(with vx. assert x |-> vx);
   ASSERT(u32_pair_struct_pred vx {first = 0ul; second = 1ul});
   free(x);
+  return EXIT_SUCCESS;
 }

@@ -58,4 +58,5 @@ int main() {
   swap_fields_alt(x);
   LEMMA(with vx. assert ((x |-> vx) ** u32_pair_struct_pred vx {first = 0ul; second = 1ul}));
   free(x);
+  return EXIT_SUCCESS;
 }

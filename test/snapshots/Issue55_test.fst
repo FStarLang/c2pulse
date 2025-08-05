@@ -12,6 +12,7 @@ fn compare
 (a1 : array Int32.t)
 (a2 : array Int32.t)
 (l : SizeT.t)
+returns bool
 {
 let mut a1 : (array Int32.t) = a1;
 let mut a2 : (array Int32.t) = a2;

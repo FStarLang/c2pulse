@@ -68,6 +68,7 @@ ensures exists* w. list_pred x w ** pure (w == {next = a0})
 
 fn foo
 (lst : ( ref list) )
+returns Int32.t
 {
 let mut lst : (ref list) = lst;
 admit();

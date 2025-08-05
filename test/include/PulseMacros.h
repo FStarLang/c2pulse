@@ -16,8 +16,9 @@
 #define CONCAT_IND(x, y) x ## y
 #define CONCAT(x, y) CONCAT_IND(x, y)
 #define INCLUDE(...) [[clang::pulse("includes:" STR(__VA_ARGS__) "|END")]] void CONCAT(__pulse_include_anchor_, __COUNTER__) (void) {}
-//IS Pure could take additional args but these are not used anywhere at the moment. 
-//For now, this attribute is used to 
+//ISPURE could take additional args but these are not used anywhere at the moment. 
+//For now, this attribute is used to tell if a function is pure.
+//Vidush: TODO: This attribute is not parsed in the compiler atm. 
 #define ISPURE(...) [[clang::pulse("ispure:" STR(__VA_ARGS__)"|END")]]
 #else 
 #define STR(...)

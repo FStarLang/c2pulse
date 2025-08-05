@@ -131,3 +131,32 @@ payload = a1})
 payload = a1}) }
 
 let stru_ok (u : ref stru) (s : stru_spec) : slprop =stru_pred u s **pure (match s.tag with| 0y -> Case_ab_a? s.payload| 1y -> Case_ab_b? s.payload| _ -> false)
+[@@expect_failure]
+fn test_union
+(foo : ( ref stru) )
+(#s : stru_spec)
+(s:_)
+requires stru_pred foo s
+requires pure (Case_ab_a? s)
+requires ab_pred foo.payload s
+requires pure (UInt32.fits (UInt32.v (Case_ab_a?._0 s) + 1))
+ensures exists* s'. ab_pred foo.payload s'
+ensures exists* (s':stru_spec). stru_pred foo s' ** pure (s' == {tag = s.tag; payload = s.payload})
+{
+let mut foo : (ref stru) = foo;
+if((int32_to_bool (bool_to_int32 (Int32.eq (int8_to_int32 (! (! (! foo)).tag)) 0l))))
+{
+(! (! (! foo)).payload).a := (int32_to_uint32 1l);
+}
+else
+{
+if((int32_to_bool (bool_to_int32 (Int32.eq (int8_to_int32 (! (! (! foo)).tag)) 1l))))
+{
+(! (! (! foo)).payload).b := (int32_to_bool (bool_to_int32 (not (! ((! (! (! foo)).payload).b)))));
+}
+else
+{
+()
+};
+};
+}

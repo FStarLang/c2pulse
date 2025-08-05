@@ -1575,6 +1575,9 @@ FStarType *PulseVisitor::pulseTyFromDecl(const Decl* D){
     DeclTy = P->getType();
    }
    else if (auto *FD = dyn_cast<FieldDecl>(D)){
+    //llvm::outs() << "Print the name of the Field Decl!\n" << FD->getName() << "\n\n";
+    //FD->dump();
+    //llvm::outs() << "\n\n";
     DeclTy = FD->getType();
    }
    else if (auto *VD = dyn_cast<VarDecl>(D)){
@@ -1609,6 +1612,18 @@ FStarType *PulseVisitor::pulseTyFromDecl(const Decl* D){
       PulseTy = getPulseTyFromCTy(DeclTy);
     }
     return PulseTy;
+}
+
+
+static bool containsTerm(std::vector<Term*> &Vec, TermTag TagCheck){
+  
+  for (auto *T : Vec){
+    if (T->Tag == TagCheck){
+      return true;
+    }
+  }
+
+  return false;
 }
 
 void PulseVisitor::handleFunctionAttributes(FunctionDecl *FD,
@@ -1748,6 +1763,9 @@ void PulseVisitor::handleFunctionAttributes(FunctionDecl *FD,
               break;
             }
             case PulseAnnKind::Requires: {
+              if (containsTerm(FDefn->Annotation, TermTag::Returns)){
+                emitErrorWithLocation("Pulse functions can only have one return!", &Ctx, FD->getLocation());
+              }
               auto *NewRequires = new Requires();
               NewRequires->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
               NewRequires->Ann = Match;
@@ -2097,6 +2115,35 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
                                             false,
                                             PulseArgs, 
                                             ErasedArgs);
+    
+    //We automatically try to infer the RETURNS attribute if the user
+    //did not annotate the function with any returns macro                                        
+    if (!containsTerm(FDefn->Annotation, TermTag::Returns)){
+      auto FDReturnTy = FD->getReturnType();
+      if (!FDReturnTy->isVoidPointerType() && !FDReturnTy->isVoidType()){
+        auto *FDPulseReturnTy = getPulseTyFromCTy(FDReturnTy);
+        auto *NewReturns = new Returns();
+        NewReturns->CInfo = getSourceInfoFromDecl(FD, Ctx, "");
+        NewReturns->Ann = FDPulseReturnTy->print();
+
+        //Make sure to insert this just before the ensures
+        bool FoundEnsures = false;
+        for (auto It = FDefn->Annotation.begin(); It != FDefn->Annotation.end(); It++){
+          auto *Term = *It;
+          if (Term->Tag == TermTag::Ensures){
+            FDefn->Annotation.insert(It, NewReturns);
+            FoundEnsures = true;
+            break;
+          }
+        }
+        
+        //If no ensures are found, append returns at the end
+        if (!FoundEnsures){
+          FDefn->Annotation.push_back(NewReturns);
+        }
+
+      }
+    }
 
     if (Terminate == true){
       return true;
@@ -2159,6 +2206,35 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
                                             HasAssociatedDefinition,
                                             PulseArgs, 
                                             ErasedArgs);
+    
+    //We automatically try to infer the RETURNS attribute if the user
+    //did not annotate the function with any returns macro                                        
+    if (!containsTerm(FDefn->Annotation, TermTag::Returns)){
+      auto FDReturnTy = FD->getReturnType();
+      if (!FDReturnTy->isVoidPointerType() && !FDReturnTy->isVoidType()){
+        auto *FDPulseReturnTy = getPulseTyFromCTy(FDReturnTy);
+        auto *NewReturns = new Returns();
+        NewReturns->CInfo = getSourceInfoFromDecl(FD, Ctx, "");
+        NewReturns->Ann = FDPulseReturnTy->print();
+
+        //Make sure to insert this just before the ensures
+        bool FoundEnsures = false;
+        for (auto It = FDefn->Annotation.begin(); It != FDefn->Annotation.end(); It++){
+          auto *Term = *It;
+          if (Term->Tag == TermTag::Ensures){
+            FDefn->Annotation.insert(It, NewReturns);
+            FoundEnsures = true;
+            break;
+          }
+        }
+        
+        //If no ensures are found, append returns at the end
+        if (!FoundEnsures){
+          FDefn->Annotation.push_back(NewReturns);
+        }
+        
+      }
+    }
 
     if (Terminate == true){
       return true;
@@ -2170,7 +2246,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
     FDefn->isDeclaration = false;
 
     FDefn->isRecursive = true;
-    if (!checkIsRecursiveFunction(FD)) {
+    if (!checkIsRecursiveFunction(FD)){
       FDefn->isRecursive = false;
     }
     
@@ -2311,8 +2387,11 @@ FStarType *PulseVisitor::getPulseTyFromCTy(clang::QualType CType) {
   // TODO: Check if Ctype is a pointer type, if so, use FStarPointerType.
 
   FStarType *PulseTy;
-  if (CType->isPointerType()) {
+  if (CType->isFunctionProtoType()){
 
+  }
+  if (CType->isPointerType()) {
+    
     if (CType->isArrayType()) {
       emitError("PulseVisitor: Did not implement array type in clang");
     }

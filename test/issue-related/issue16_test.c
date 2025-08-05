@@ -7,6 +7,7 @@ ENSURES(exists* w. (r |-> w) ** pure Pulse.Lib.C.Int32.(as_int w == as_int vr + 
 int incr (int *r)
 {
     *r = *r + 1;
+    return *r;
 }
 
 REQUIRES(emp)

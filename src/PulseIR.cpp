@@ -411,7 +411,8 @@ SymbolTable getSymbolKeyForCType(clang::QualType Ty, clang::ASTContext &Ctx) {
   } else if (Ty->isPointerType()) {
     return SymbolTable::Ref;
   }
-
+  
+  llvm::outs() << "\n";
   Ty->dump();
   emitError("(getSymbolKeyForCType): Did not expect C type!\n");
 }

@@ -130,6 +130,7 @@ u32_pair_struct_recover !x;
 }
 
 fn main ()
+returns Int32.t
 {
 let mut x : (ref u32_pair_struct) = (new_u32_pair_struct ());
 (swap_fields (! x));
@@ -137,4 +138,5 @@ let mut x : (ref u32_pair_struct) = (new_u32_pair_struct ());
 with vx. assert x |-> vx;
 assert(u32_pair_struct_pred vx {first = 0ul; second = 1ul});
 (u32_pair_struct_free (! x));
+0l;
 }
