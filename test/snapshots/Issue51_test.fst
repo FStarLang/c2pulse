@@ -551,7 +551,7 @@ let mut y : UInt8.t = y;
 fn cmp55
 (x : bool)
 (y : bool)
-returns _Bool
+returns bool
 {
 let mut x : bool = x;
 let mut y : bool = y;
@@ -561,7 +561,7 @@ let mut y : bool = y;
 fn cmp56
 (x : bool)
 (y : bool)
-returns _Bool
+returns bool
 {
 let mut x : bool = x;
 let mut y : bool = y;
@@ -571,7 +571,7 @@ let mut y : bool = y;
 fn cmp57
 (x : bool)
 (y : bool)
-returns _Bool
+returns bool
 {
 let mut x : bool = x;
 let mut y : bool = y;
@@ -581,7 +581,7 @@ let mut y : bool = y;
 fn cmp58
 (x : bool)
 (y : bool)
-returns _Bool
+returns bool
 {
 let mut x : bool = x;
 let mut y : bool = y;
@@ -591,7 +591,7 @@ let mut y : bool = y;
 fn cmp59
 (x : bool)
 (y : bool)
-returns _Bool
+returns bool
 {
 let mut x : bool = x;
 let mut y : bool = y;
@@ -601,7 +601,7 @@ let mut y : bool = y;
 fn cmp60
 (x : bool)
 (y : bool)
-returns _Bool
+returns bool
 {
 let mut x : bool = x;
 let mut y : bool = y;
