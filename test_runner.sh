@@ -10,7 +10,6 @@ DEFAULT_PATHS=(
 SHOULD_FAIL=(
  "./test/issue-related/issue27_test.c"
  "./test/issue-related/issue22_test.c"
- "./test/issue-related/issue_anon_1.c"
  "./test/issue-related/issue38_test_2.c"
  "./test/general/global_test.c"
  "./test/general/test_funs2.c"
@@ -42,10 +41,15 @@ process_c_file() {
   echo "Processing: $cfile"
  
   if bash $HERE/scripts/run_test.sh "$cfile" &> /dev/null ; then
-    echo "  ✔ Success: $cfile"
+    if is_expected_to_fail $cfile; then
+	    echo "  ❌ File did not fail as expected: $cfile"
+	    FAILED_FILES+=("$cfile")
+    else
+      echo "  ✔ Success: $cfile"
+    fi
   else
     if is_expected_to_fail $cfile; then
-	    echo " ✔ Success expected failure: $cfile"
+	    echo "  ✔ Success expected failure: $cfile"
     else
 	    echo "  ❌ Failed: $cfile"
 	    FAILED_FILES+=("$cfile")
