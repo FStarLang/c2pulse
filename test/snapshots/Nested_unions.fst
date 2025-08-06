@@ -26,7 +26,7 @@ begin match s with
  | Case_ab_b v -> uv.b |-> v
 end
 
-fn ab_explode (x : ref ab) (#s : ab_spec)
+ghost fn ab_explode (x : ref ab) (#s : ab_spec)
 requires ab_pred x s
 ensures exists* (v : ab). (x |-> v) **
 begin match s with
@@ -134,7 +134,7 @@ begin match s with
  | Case_nested_z v -> uv.z |-> v
 end
 
-fn nested_explode (x : ref nested) (#s : nested_spec)
+ghost fn nested_explode (x : ref nested) (#s : nested_spec)
 requires nested_pred x s
 ensures exists* (v : nested). (x |-> v) **
 begin match s with
@@ -178,7 +178,7 @@ begin match s with
  | Case_nested2_strufield v -> uv.strufield |-> v
 end
 
-fn nested2_explode (x : ref nested2) (#s : nested2_spec)
+ghost fn nested2_explode (x : ref nested2) (#s : nested2_spec)
 requires nested2_pred x s
 ensures exists* (v : nested2). (x |-> v) **
 begin match s with

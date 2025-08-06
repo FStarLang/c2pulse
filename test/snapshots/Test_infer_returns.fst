@@ -93,7 +93,7 @@ begin match s with
  | Case_ab_b v -> uv.b |-> v
 end
 
-fn ab_explode (x : ref ab) (#s : ab_spec)
+ghost fn ab_explode (x : ref ab) (#s : ab_spec)
 requires ab_pred x s
 ensures exists* (v : ab). (x |-> v) **
 begin match s with
