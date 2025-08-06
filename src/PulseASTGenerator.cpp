@@ -1844,7 +1844,9 @@ void PulseVisitor::handleFunctionAttributes(FunctionDecl *FD,
   }
 }
 
-PulseSequence *PulseVisitor::handleFunctionParameters(FunctionDecl *FD, std::vector<Binder*> &PulseArgs,
+PulseSequence *PulseVisitor::handleFunctionParameters(FunctionDecl *FD,
+                                            _PulseFnDefn *FDefn,
+                                            std::vector<Binder*> &PulseArgs,
                                             std::map<Term *, FStarType *> &TermToPulseTy){
 
     ///Vidush: Also construct let mut for all function parameters
@@ -1918,14 +1920,14 @@ PulseSequence *PulseVisitor::handleFunctionParameters(FunctionDecl *FD, std::vec
               DeclTyMap.insert(std::make_pair(Param, VLAType));
               
               //Removing these since SizeT.v is assumed but length can be any type in C
-              // if (!Match.empty()) {
-              //   auto *NewRequires = new Requires();
-              //   NewRequires->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
-              //   NewRequires->Ann = "pure (length " + Param->getNameAsString() +
-              //                      " == SizeT.v " + Match + ")";
-              //   auto &Arr = FDefn->Annotation;
-              //   Arr.insert(Arr.begin(), NewRequires);
-              // }
+              if (!Match.empty()) {
+                auto *NewRequires = new Requires();
+                NewRequires->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
+                NewRequires->Ann = "pure (length " + Param->getNameAsString() +
+                                   " == SizeT.v " + Match + ")";
+                auto &Arr = FDefn->Annotation;
+                Arr.insert(Arr.begin(), NewRequires);
+              }
 
             } else {
               clang::QualType ConstArrayTy = Ctx.getConstantArrayType(
@@ -1933,14 +1935,14 @@ PulseSequence *PulseVisitor::handleFunctionParameters(FunctionDecl *FD, std::vec
                   ArraySizeModifier::Normal, 0);
               DeclTyMap.insert(std::make_pair(Param, ConstArrayTy));
               //Removing these since SizeT.v is assumed but length can be any type in C
-              // if (!Match.empty()) {
-              //   auto *NewRequires = new Requires();
-              //   NewRequires->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
-              //   NewRequires->Ann = "pure (length " + Param->getNameAsString() +
-              //                      " == SizeT.v " + Match + "sz)";
-              //   auto &Arr = FDefn->Annotation;
-              //   Arr.insert(Arr.begin(), NewRequires);
-              // }
+              if (!Match.empty()) {
+                auto *NewRequires = new Requires();
+                NewRequires->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
+                NewRequires->Ann = "pure (length " + Param->getNameAsString() +
+                                   " == SizeT.v " + Match + "sz)";
+                auto &Arr = FDefn->Annotation;
+                Arr.insert(Arr.begin(), NewRequires);
+              }
             }
           } else if (PulseAnnotKind == PulseAnnKind::HeapAllocated) {
             IsAllocatedOnHeap.insert(Param);
@@ -2044,6 +2046,26 @@ bool PulseVisitor::VisitFunctionDeclMain(FunctionDecl *FD, bool OverrideGen){
   return res;
 }
 
+bool PulseVisitor::checkDeclNameExists(std::string DeclName){
+
+  for (auto &P : DeclEnv){
+    auto PulseDecl = P.second;
+    if (auto *PF = dyn_cast<PulseFnDefn>(PulseDecl)){
+      if (PF->Defn->Name == DeclName)
+        return true;
+    }
+    else if (auto *PD = dyn_cast<PulseFnDecl>(PulseDecl)){
+      if (PD->Defn->Name == DeclName)
+        return true;
+    }
+    else{
+      emitError("Unimplemented case for pulse declaration!");
+    }
+  }
+
+  return false;
+}
+
 
 bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   
@@ -2107,6 +2129,12 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   auto *FDefn = new _PulseFnDefn();
   if (!FD->isThisDeclarationADefinition()){
     FuncName = FD->getNameAsString() + "_decl";
+    //check if the function exists in the decl environment.
+    //Another option is to error out if the user has duplicate definitions.
+    if (checkDeclNameExists(FuncName)){
+      return true;
+    }
+    
     FDefn->Name = FuncName;
     FDefn->isDeclaration = true;
 
@@ -2156,7 +2184,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
     //TODO: The let mut for function parameters is just unnecessary here. 
     //We should pass a flag to this function to not generate it in case of function declaration!
     //TODO: Vidush simplify the code.
-    PulseSequence *ParamSequence = handleFunctionParameters(FD, PulseArgs, VEnv);
+    PulseSequence *ParamSequence = handleFunctionParameters(FD, FDefn, PulseArgs, VEnv);
     
     std::copy(ErasedArgs.begin(), ErasedArgs.end(),
             std::back_inserter(PulseArgs));
@@ -2199,6 +2227,12 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
     }
     else {
       FuncName = FD->getNameAsString();
+    }
+
+    //check if the function exists in the decl environment.
+    //Another option is to error out if the user has duplicate definitions.
+    if (checkDeclNameExists(FuncName)){
+      return true;
     }
     
     std::vector<Binder*> PulseArgs;
@@ -2253,7 +2287,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
     }
     
     std::map<Term *, FStarType *> VEnv;
-    PulseSequence *ParamSequence = handleFunctionParameters(FD, PulseArgs, VEnv);
+    PulseSequence *ParamSequence = handleFunctionParameters(FD, FDefn, PulseArgs, VEnv);
     
     std::copy(ErasedArgs.begin(), ErasedArgs.end(),
             std::back_inserter(PulseArgs));

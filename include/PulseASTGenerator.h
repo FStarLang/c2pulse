@@ -77,6 +77,7 @@ public:
   bool isKnownArrayType(const clang::Decl *D);
   Term *checkAndAddCast(Term *Src, Term *Dst);
   clang::QualType getTypeFromDecl(const clang::Decl *D);
+  bool checkDeclNameExists(std::string DeclName);
 
   void handleFunctionAttributes(clang::FunctionDecl *FD,
                                 _PulseFnDefn *FDefn,
@@ -87,7 +88,7 @@ public:
                                 std::vector<Binder *> &PulseArgs, 
                                 std::vector<Binder *> &ErasedArgs);
 
-  PulseSequence * handleFunctionParameters(clang::FunctionDecl *FD, std::vector<Binder*> &PulseArgs, 
+  PulseSequence * handleFunctionParameters(clang::FunctionDecl *FD, _PulseFnDefn *Defn, std::vector<Binder*> &PulseArgs, 
                                 std::map<Term *, FStarType *> &TermToPulseTy);
 
   std::pair<Term *, VarTyEnv> getPulseTermForMallocSize(

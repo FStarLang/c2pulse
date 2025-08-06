@@ -10,8 +10,8 @@ open Pulse.Lib.C
 
 fn fake_arr
 (x : array Int32.t)
+requires pure (length x == SizeT.v 5sz)
 requires exists* v. (x |-> v)
-requires pure (length x == 5)
 returns Int32.t
 ensures exists* v. (x |-> v)
 {

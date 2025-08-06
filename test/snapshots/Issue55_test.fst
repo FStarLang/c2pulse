@@ -13,6 +13,8 @@ fn compare
 (a1 : array Int32.t)
 (a2 : array Int32.t)
 (l : SizeT.t)
+requires pure (length a2 == SizeT.v l)
+requires pure (length a1 == SizeT.v l)
 returns bool
 {
 let mut a1 : (array Int32.t) = a1;
