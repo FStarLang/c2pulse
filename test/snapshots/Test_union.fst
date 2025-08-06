@@ -147,7 +147,7 @@ ensures exists* (s':stru_spec). stru_pred foo s' ** pure (s' == {tag = s.tag; pa
 let mut foo : (ref stru) = foo;
 if((int32_to_bool (bool_to_int32 (Int32.eq (int8_to_int32 (! (! (! foo)).tag)) 0l))))
 {
-(! (! (! foo)).payload).a := (int32_to_uint32 1l);
+(! (! (! foo)).payload).a := UInt32.add (! (! (! (! foo)).payload).a) (int32_to_uint32 1l);
 }
 else
 {
