@@ -81,9 +81,11 @@ returns Int32.t
 {
 let mut length : SizeT.t = length;
 let mut b0 : (ref Int32.t) = alloc_ref #Int32.t ();
+let mut b1 : (ref Int32.t) = alloc_ref #Int32.t ();
 let mut size_expr0 : SizeT.t = (! length);
 let mut b : (array Int32.t) = alloc_array #Int32.t !size_expr0;
 (free_ref (! b0));
+(free_ref (! b1));
 (free_array #Int32.t (! b));
 (sizet_to_int32 (! length));
 }

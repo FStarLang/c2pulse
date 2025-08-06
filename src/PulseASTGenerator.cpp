@@ -2547,7 +2547,8 @@ PulseVisitor::getPulseTermForMallocSize(
   //(sizeof(int) * length)
   //(sizeof(int) * 100)
   //Everything else errors out.
-
+  //llvm::outs() << "Dump size expr for malloc \n";
+  //SizeExpr->dumpPretty(Ctx);
   if (auto *BO = dyn_cast<BinaryOperator>(SizeExpr)){
     auto *Lhs = BO->getLHS();
     auto *Rhs = BO->getRHS();
@@ -2558,6 +2559,15 @@ PulseVisitor::getPulseTermForMallocSize(
         if (Ty != ArrayElemType){
           emitErrorWithLocation("Size of malloc not supported!", &Ctx, SizeExpr->getExprLoc());
         }
+      }
+    }
+    
+    Expr::EvalResult RhsResultVal;
+    if (Rhs->EvaluateAsInt(RhsResultVal, Ctx)) {
+      llvm::APSInt Value = RhsResultVal.Val.getInt();
+      int64_t ValSigned = Value.getZExtValue();
+      if (ValSigned <= 0) {
+        emitErrorWithLocation("The length of the array cannot be 0 or negative!", &Ctx, Rhs->getExprLoc());
       }
     }
 
@@ -5017,6 +5027,99 @@ std::pair<Term *, PulseVisitor::VarTyEnv> PulseVisitor::getTermFromCExpr(
     // declaration new variables in call args.
     return std::make_pair(NewParen, VEnv);
   } else if (auto *IC = dyn_cast<ImplicitCastExpr>(E)) {
+    
+    //Check if this is a call to malloc
+    if (const CallExpr *Call =
+            dyn_cast<CallExpr>(E->IgnoreParenImpCasts()->IgnoreCasts())) {
+      if (const FunctionDecl *FD = Call->getDirectCallee()) {
+        if (FD->getName() == "malloc") {
+          DEBUG_WITH_TYPE(DEBUG_TYPE , {
+          llvm::outs() << "Found a malloc call inside CStyleCastExpr!\n";
+          });
+          auto *ElementTy =
+              IC->getType()->getPointeeOrArrayElementType();
+          auto *DesugaredElemTy = ElementTy->getUnqualifiedDesugaredType();
+          auto CastType = IC->getType();
+          
+          auto *SizeExpr = Call->getArg(0);
+          Expr::EvalResult Result;
+          if (SizeExpr->EvaluateAsInt(Result, Ctx)) {
+            llvm::APSInt val = Result.Val.getInt();
+            int64_t SizeVal = val.getZExtValue();
+            if (SizeVal != Ctx.getTypeSizeInChars(CastType->getPointeeType()).getQuantity()){
+              emitErrorWithLocation("Allocating incorrect size for reference. Did you want an array instead, if so, annotate with ISARRAY.\n", &Ctx, E->getExprLoc());
+            }
+          }
+          else{
+            emitErrorWithLocation("Could not deduce constant size for reference. Did you want an array instead, if so, annotate with ISARRAY.\n", &Ctx, E->getExprLoc());
+          }
+
+
+          if (const RecordType *TT = ElementTy->getAs<RecordType>()) {
+            const RecordDecl *RD = TT->getDecl();
+            auto It = RecordToRecordName.find(RD);
+            if (!RD || It == RecordToRecordName.end()) {
+              auto *CastType = IC->getType()
+                                   ->getPointeeOrArrayElementType()
+                                   ->getUnqualifiedDesugaredType();
+              CastType->dump();
+              emitErrorWithLocation(
+                  "Could not find Record Declaration or Corresponding Name!",
+                  &Ctx, FD->getLocation());
+            }
+            
+            auto RecordName = It->second;
+            auto *PulseRecordTy = new FStarType(RecordName);
+            auto *PulseRecordRefTy = new FStarPointerType(PulseRecordTy);
+            auto *NewCall = new AppE(RecordName + "_alloc", PulseRecordRefTy);
+            NewCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+            return std::make_pair(NewCall, VEnv);
+          }
+          DEBUG_WITH_TYPE(DEBUG_TYPE , {
+          llvm::outs() << "Print the type of cast!" << "\n";
+          }); 
+          
+          DEBUG_WITH_TYPE(DEBUG_TYPE , {
+          CastType->dump();
+          llvm::outs() << "The corresponding pulse type is: ";
+          });
+          auto *PulseTy = getPulseTyFromCTy(CastType);
+          DEBUG_WITH_TYPE(DEBUG_TYPE , {
+          llvm::outs() << PulseTy->print() << "\n";
+          });
+          if (auto *PulsePointerTy = dyn_cast<FStarPointerType>(PulseTy)){
+
+            // //Check size. 
+            // //Vidush: For now, if a ref asks for a larger size than the type of the cast,
+            // //We error out. 
+            // //Also if we can't tell the size staically we error out. 
+            // auto *SizeExpr = Call->getArg(0);
+            // Expr::EvalResult Result;
+            // if (SizeExpr->EvaluateAsInt(Result, Ctx)) {
+            //   llvm::APSInt val = Result.Val.getInt();
+            //   int64_t SizeVal = val.getZExtValue();
+            //   if (SizeVal != Ctx.getTypeSizeInChars(CastType->getPointeeType()).getQuantity()){
+            //     emitErrorWithLocation("Allocating incorrect size for reference. Did you want an array instead, if so, annotate with ISARRAY.\n", &Ctx, E->getExprLoc());
+            //   }
+            // }
+            // else{
+            //   emitErrorWithLocation("Could not deduce constant size for reference. Did you want an array instead, if so, annotate with ISARRAY.\n", &Ctx, E->getExprLoc());
+            // }
+
+            auto *NewCall =
+                new AppE("alloc_ref #" + PulsePointerTy->PointerTo->print(),
+                         PulsePointerTy);
+            NewCall->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
+            return std::make_pair(NewCall, VEnv);
+          }
+
+          emitErrorWithLocation(
+              "Expected allocated type for malloc to be a reference but found "
+              "a pulse type that's not a reference!",
+              &Ctx, FD->getBeginLoc());
+        }
+      }
+    }
     
     //Skip ArrayToPointer Decay casts for now.
     if (IC->getCastKind() == clang::CK_ArrayToPointerDecay){
