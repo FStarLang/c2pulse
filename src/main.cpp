@@ -54,7 +54,7 @@ static TransformModeEnum parseTransformMode(const std::string &modeStr) {
     return TransformModeEnum::Both;
 }
 
-llvm::Expected<std::string> readFileToEOF(std::string const & FN) {
+static llvm::Expected<std::string> readFileToEOF(std::string const & FN) {
     auto FD = llvm::sys::fs::openNativeFileForRead(FN);
     if (!FD) { return std::move(FD.takeError()); }
     llvm::SmallString<llvm::sys::fs::DefaultReadChunkSize> Buffer;
