@@ -13,6 +13,8 @@ fn compare_elt
 (a2 : array Int32.t)
 (i : SizeT.t)
 (len : SizeT.t)
+requires pure (length a2 == SizeT.v len)
+requires pure (length a1 == SizeT.v len)
 requires pure (length a1 == SizeT.v len)
 requires pure (length a2 == SizeT.v len)
 requires exists* v. (a1 |-> v)

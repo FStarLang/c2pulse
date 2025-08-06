@@ -1,7 +1,6 @@
 #include "../include/PulseMacros.h"
 
 
-REQUIRES(pure (length x == 5))
 REQUIRES(exists* v. (x |-> v))
 RETURNS(Int32.t)
 ENSURES(exists* v. (x |-> v))
