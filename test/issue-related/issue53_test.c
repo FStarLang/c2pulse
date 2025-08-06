@@ -3,13 +3,11 @@
 
 
 RETURNS(res : ref Int32.t)
-ENSURES(exists* v. res |-> v)
+ENSURES(exists* v. (res |-> v) ** freeable res)
 int* foo(int x) {
-	LEMMA(admit());
-	return &x; // bogus
+	return malloc(sizeof(int));
 }
 
-EXPECT_FAILURE()
 RETURNS(Int32.t)
 int bar(int x) {
 	free(foo(x));

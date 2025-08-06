@@ -11,14 +11,12 @@ open Pulse.Lib.C
 fn foo
 (x : Int32.t)
 returns res : ref Int32.t
-ensures exists* v. res |-> v
+ensures exists* v. (res |-> v) ** freeable res
 {
 let mut x : Int32.t = x;
-admit();
-(x);
+alloc_ref #Int32.t ();
 }
 
-[@@expect_failure]
 fn bar
 (x : Int32.t)
 returns Int32.t
