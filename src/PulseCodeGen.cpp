@@ -39,7 +39,12 @@ void PulseCodeGen::writeHeaders(PulseModul *M, osstream_with_pos &OS) {
   OS << M->ModuleName;
   OS << PulseSyntax::NewLine;
   OS << PulseSyntax::NewLine;
+
   OS << PulseSyntax::LangPulse;
+  OS << PulseSyntax::NewLine;
+  // Set this option to prevent excessive diagnostics on
+  // the admits we generate.
+  OS << "#set-options \"--ext pulse:no_admit_diag\"";
   OS << PulseSyntax::NewLine;
   OS << PulseSyntax::NewLine;
 

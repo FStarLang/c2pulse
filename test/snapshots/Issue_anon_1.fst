@@ -1,6 +1,7 @@
 module Issue_anon_1
 
 #lang-pulse
+#set-options "--ext pulse:no_admit_diag"
 
 open Pulse
 open Pulse.Lib.C

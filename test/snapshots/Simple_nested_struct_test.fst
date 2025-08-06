@@ -1,6 +1,7 @@
 module Simple_nested_struct_test
 
 #lang-pulse
+#set-options "--ext pulse:no_admit_diag"
 
 open Pulse
 open Pulse.Lib.C

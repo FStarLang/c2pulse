@@ -1,6 +1,7 @@
 module Swap_struct_test_3
 
 #lang-pulse
+#set-options "--ext pulse:no_admit_diag"
 
 open Pulse
 open Pulse.Lib.C

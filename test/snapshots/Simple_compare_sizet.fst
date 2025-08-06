@@ -1,6 +1,7 @@
 module Simple_compare_sizet
 
 #lang-pulse
+#set-options "--ext pulse:no_admit_diag"
 
 open Pulse
 open Pulse.Lib.C

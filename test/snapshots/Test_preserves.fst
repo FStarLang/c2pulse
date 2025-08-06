@@ -1,6 +1,7 @@
 module Test_preserves
 
 #lang-pulse
+#set-options "--ext pulse:no_admit_diag"
 
 open Pulse
 open Pulse.Lib.C

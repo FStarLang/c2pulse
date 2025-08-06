@@ -1,6 +1,7 @@
 module Heap_allocated_array
 
 #lang-pulse
+#set-options "--ext pulse:no_admit_diag"
 
 open Pulse
 open Pulse.Lib.C
