@@ -3168,6 +3168,80 @@ PulseVisitor::pulseFromStmt(Stmt *S, std::map<Term *, FStarType *> VEnv,
   } else if (auto *BO = dyn_cast<BinaryOperator>(S)) {
 
     if (BO->isAssignmentOp()) {
+
+
+      auto handleCompoundOpsHelper = [](clang::Expr* Lhs, 
+                                                  clang::BinaryOperator *BO,
+                                                  Term *PulseLhsTerm,
+                                                  Term *PulseRhsTerm,
+                                                  ASTContext &Ctx){
+
+        if (!BO->isCompoundAssignmentOp()){
+          return PulseRhsTerm;
+        }
+        
+        auto *RhsForPulseLhsTerm = PulseLhsTerm;
+        if (Lhs->isLValue()){
+          auto *PulseTy = PulseLhsTerm->getType();
+          if (auto *PulseRefTy = dyn_cast<FStarPointerType>(PulseTy)){
+            auto PointeeTy = PulseRefTy->PointerTo;
+            auto *CallForLhs = new AppE("!", PointeeTy);
+            CallForLhs->pushArg(PulseLhsTerm);
+            RhsForPulseLhsTerm = new Paren(CallForLhs, PointeeTy);
+          }
+          else {
+            emitErrorWithLocation("Expected lhs to be a ref!", &Ctx, Lhs->getExprLoc());
+          }
+        }
+        
+        //Check the kind of assignment
+        //TODO factor into a lambda function.
+        if (BO->getOpcode() == clang::BO_AddAssign){
+            SymbolTable TypeKey = getSymbolKeyForCType(Lhs->getType(), Ctx);
+            auto Op = clang::BO_Add;
+            auto *OpKey = getSymbolKeyForOperator(TypeKey, Op);
+            auto *Call = new AppE(OpKey, RhsForPulseLhsTerm->getType());
+            Call->pushArg(RhsForPulseLhsTerm);
+            Call->pushArg(PulseRhsTerm);
+            Term *Ret = Call;
+            return Ret;
+          }
+          else if (BO->getOpcode() == clang::BO_SubAssign){
+            SymbolTable TypeKey = getSymbolKeyForCType(Lhs->getType(), Ctx);
+            auto Op = clang::BO_Sub;
+            auto *OpKey = getSymbolKeyForOperator(TypeKey, Op);
+            auto *Call = new AppE(OpKey, RhsForPulseLhsTerm->getType());
+            Call->pushArg(RhsForPulseLhsTerm);
+            Call->pushArg(PulseRhsTerm);
+            Term *Ret = Call;
+            return Ret;
+          }
+          else if (BO->getOpcode() == clang::BO_MulAssign){
+            SymbolTable TypeKey = getSymbolKeyForCType(Lhs->getType(), Ctx);
+            auto Op = clang::BO_Mul;
+            auto *OpKey = getSymbolKeyForOperator(TypeKey, Op);
+            auto *Call = new AppE(OpKey, RhsForPulseLhsTerm->getType());
+            Call->pushArg(RhsForPulseLhsTerm);
+            Call->pushArg(PulseRhsTerm);
+            Term *Ret = Call;
+            return Ret;
+          }
+          else if (BO->getOpcode() == clang::BO_DivAssign){
+            SymbolTable TypeKey = getSymbolKeyForCType(Lhs->getType(), Ctx);
+            auto Op = clang::BO_Div;
+            auto *OpKey = getSymbolKeyForOperator(TypeKey, Op);
+            auto *Call = new AppE(OpKey, RhsForPulseLhsTerm->getType());
+            Call->pushArg(RhsForPulseLhsTerm);
+            Call->pushArg(PulseRhsTerm);
+            Term *Ret = Call;
+            return Ret;
+          }
+          else {
+            emitErrorWithLocation("Unimplemented compound assignment!", &Ctx, BO->getExprLoc());
+          }
+      };
+
+
       auto *Lhs = BO->getLHS();
       auto *Rhs = BO->getRHS();
 
@@ -3198,7 +3272,8 @@ PulseVisitor::pulseFromStmt(Stmt *S, std::map<Term *, FStarType *> VEnv,
               getTermFromCExpr(Rhs, PulseLhsTermRet.second, Analyzer, ExprsBef,
                                Parent, BO->getType(), Module);
           auto *PulseRhsTerm = PulseRhsTermRet.first;
-
+          PulseRhsTerm = handleCompoundOpsHelper(Lhs, BO, PulseLhsTerm, PulseRhsTerm, Ctx);
+          
           PulseAssignment *Assignment =
               new PulseAssignment(PulseLhsTerm, PulseRhsTerm);
 
@@ -3515,6 +3590,8 @@ PulseVisitor::pulseFromStmt(Stmt *S, std::map<Term *, FStarType *> VEnv,
             auto *PulseCall = new AppE(
                 "Mk" + StructName + "?." + MemberName.getAsString(), MemberTy);
             PulseCall->pushArg(PulseBaseExpr);
+            //Vidush: This call handles compound ops like += etc.
+            PulseRhsTerm = handleCompoundOpsHelper(Lhs, BO, PulseCall, PulseRhsTerm, Ctx);
             Assignment = new PulseAssignment(PulseCall, PulseRhsTerm);
             Assignment->CInfo = getSourceInfoFromExpr(BO, Ctx, "", "");
           }
@@ -3522,6 +3599,7 @@ PulseVisitor::pulseFromStmt(Stmt *S, std::map<Term *, FStarType *> VEnv,
             auto *NewProjection = new Project(MemberTy);
             NewProjection->BaseTerm = PulseBaseExpr;
             NewProjection->MemberName = MemberName.getAsString();
+            PulseRhsTerm = handleCompoundOpsHelper(Lhs, BO, NewProjection, PulseRhsTerm, Ctx);
             Assignment = new PulseAssignment(NewProjection, PulseRhsTerm);
             Assignment->CInfo = getSourceInfoFromExpr(BO, Ctx, "", "");
           }
@@ -3654,9 +3732,11 @@ PulseVisitor::pulseFromStmt(Stmt *S, std::map<Term *, FStarType *> VEnv,
                                Parent, BO->getType(), Module, true);
 
           auto *PulseLhsTerm = PulseLhsTermRet.first;
-
+          
+          Term *RhsTerm = ProjectRhs;
+          RhsTerm = handleCompoundOpsHelper(Lhs, BO, PulseLhsTerm, RhsTerm, Ctx);
           PulseAssignment *Assignment =
-              new PulseAssignment(PulseLhsTerm, ProjectRhs);
+              new PulseAssignment(PulseLhsTerm, RhsTerm);
 
           // auto It = TrackStructExplodeAndRecover.find(VD);
           // if (It == TrackStructExplodeAndRecover.end()) {
@@ -3691,7 +3771,9 @@ PulseVisitor::pulseFromStmt(Stmt *S, std::map<Term *, FStarType *> VEnv,
             getTermFromCExpr(Rhs, PulseLhsTermRet.second, Analyzer, ExprsBef,
                              Parent, BO->getType(), Module);
         auto *PulseRhsTerm = PulseRhsTermRet.first;
-
+        
+        PulseRhsTerm = handleCompoundOpsHelper(Lhs, BO, PulseLhsTerm, PulseRhsTerm, Ctx);
+        
         PulseAssignment *Assignment =
             new PulseAssignment(PulseLhsTerm, PulseRhsTerm);
 
@@ -4789,6 +4871,103 @@ std::pair<Term *, PulseVisitor::VarTyEnv> PulseVisitor::getTermFromCExpr(
       auto *Parenthesis = new Paren(UOMinus, UOMinus->getType());
       Parenthesis->CInfo = getSourceInfoFromExpr(UO, Ctx, "", "");
       return std::make_pair(Parenthesis, TermForBaseExprRet.second);
+    }
+    else if (UO->getOpcode() == clang::UO_PostDec){
+      auto *SubExpr = UO->getSubExpr();
+
+      auto PulseSubExprRet =
+          getTermFromCExpr(SubExpr, VEnv, MutAnalyzer, ExprsBefore,
+                           Parent, ParentType, Module);
+      
+      auto PulseSubExpr = PulseSubExprRet.first;
+      auto PulseSubExprTy = PulseSubExpr->getType();
+
+      //Vidush: The post and pre op functions take ref as arguments. 
+      //We should assert this here 
+      std::string StringForPulseTy;
+      if (auto *PulseRefTy = dyn_cast<FStarPointerType>(PulseSubExprTy)){
+        StringForPulseTy = getCastNameForPulseType(PulseRefTy->PointerTo);
+      }
+      else {
+        emitErrorWithLocation("Expected a pulse ref type!", &Ctx, UO->getExprLoc());
+      }
+
+      auto *PostDecPulseCall = new AppE("minusminuspost_" + StringForPulseTy, PulseSubExprTy);
+      PostDecPulseCall->pushArg(PulseSubExpr);
+      return std::make_pair(PostDecPulseCall, PulseSubExprRet.second);
+    }
+    else if (UO->getOpcode() == clang::UO_PostInc){
+      auto *SubExpr = UO->getSubExpr();
+      auto CTy = SubExpr->getType();
+
+      auto PulseSubExprRet =
+          getTermFromCExpr(SubExpr, VEnv, MutAnalyzer, ExprsBefore,
+                           Parent, ParentType, Module);
+      
+      auto PulseSubExpr = PulseSubExprRet.first;
+      auto PulseSubExprTy = PulseSubExpr->getType();
+
+      //Vidush: The post and pre op functions take ref as arguments. 
+      //We should assert this here 
+      std::string StringForPulseTy;
+      if (auto *PulseRefTy = dyn_cast<FStarPointerType>(PulseSubExprTy)){
+        StringForPulseTy = getCastNameForPulseType(PulseRefTy->PointerTo);
+      }
+      else {
+        emitErrorWithLocation("Expected a pulse ref type!", &Ctx, UO->getExprLoc());
+      }
+
+      auto *PostIncPulseCall = new AppE("pluspluspost_" + StringForPulseTy, PulseSubExprTy);
+      PostIncPulseCall->pushArg(PulseSubExpr);
+      return std::make_pair(PostIncPulseCall, PulseSubExprRet.second);
+    }
+    else if (UO->getOpcode() == clang::UO_PreDec){
+      auto *SubExpr = UO->getSubExpr();
+
+      auto PulseSubExprRet =
+          getTermFromCExpr(SubExpr, VEnv, MutAnalyzer, ExprsBefore,
+                           Parent, ParentType, Module);
+      
+      auto PulseSubExpr = PulseSubExprRet.first;
+      auto PulseSubExprTy = PulseSubExpr->getType();
+
+      //Vidush: The post and pre op functions take ref as arguments. 
+      //We should assert this here 
+      std::string StringForPulseTy;
+      if (auto *PulseRefTy = dyn_cast<FStarPointerType>(PulseSubExprTy)){
+        StringForPulseTy = getCastNameForPulseType(PulseRefTy->PointerTo);
+      }
+      else {
+        emitErrorWithLocation("Expected a pulse ref type!", &Ctx, UO->getExprLoc());
+      }
+
+      auto *PreDecPulseCall = new AppE("minusminuspre_" + StringForPulseTy, PulseSubExprTy);
+      PreDecPulseCall->pushArg(PulseSubExpr);
+      return std::make_pair(PreDecPulseCall, PulseSubExprRet.second);
+    }
+    else if (UO->getOpcode() == clang::UO_PreInc){
+      auto *SubExpr = UO->getSubExpr();
+
+      auto PulseSubExprRet =
+          getTermFromCExpr(SubExpr, VEnv, MutAnalyzer, ExprsBefore,
+                           Parent, ParentType, Module);
+      
+      auto PulseSubExpr = PulseSubExprRet.first;
+      auto PulseSubExprTy = PulseSubExpr->getType();
+
+      //Vidush: The post and pre op functions take ref as arguments. 
+      //We should assert this here 
+      std::string StringForPulseTy;
+      if (auto *PulseRefTy = dyn_cast<FStarPointerType>(PulseSubExprTy)){
+        StringForPulseTy = getCastNameForPulseType(PulseRefTy->PointerTo);
+      }
+      else {
+        emitErrorWithLocation("Expected a pulse ref type!", &Ctx, UO->getExprLoc());
+      }
+
+      auto *PreIncPulseCall = new AppE("pluspluspre_" + StringForPulseTy, PulseSubExprTy);
+      PreIncPulseCall->pushArg(PulseSubExpr);
+      return std::make_pair(PreIncPulseCall, PulseSubExprRet.second);
     }
     
     else {

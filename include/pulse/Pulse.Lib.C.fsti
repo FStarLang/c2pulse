@@ -7,6 +7,7 @@ include Pulse.Lib.C.Ref
 include Pulse.Lib.C.Array
 include FStar.Int.Cast
 include Pulse.Lib.C.Casts
+include Pulse.Lib.C.UnaryOps
 let _Bool = bool
 
 // We assume size_t is at least 64 bits.
