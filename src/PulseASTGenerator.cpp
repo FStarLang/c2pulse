@@ -1120,7 +1120,7 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     // }
 
     auto *UnionExplode = new GenericDecl(); 
-    UnionExplode->Ident = "fn " + StructName + "_explode " + "(x : ref " + StructName + ") " + "(#s : " + StructName + "_spec)\n";
+    UnionExplode->Ident = "ghost fn " + StructName + "_explode " + "(x : ref " + StructName + ") " + "(#s : " + StructName + "_spec)\n";
     UnionExplode->Ident += "requires " + StructName + "_pred x s\n";
     UnionExplode->Ident += "ensures exists* (v : " + StructName + "). (x |-> v) **\n";
     UnionExplode->Ident += "begin match s with\n";
