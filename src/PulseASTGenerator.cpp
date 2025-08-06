@@ -5242,6 +5242,22 @@ std::pair<Term *, PulseVisitor::VarTyEnv> PulseVisitor::getTermFromCExpr(
           auto *ElementTy =
               CCastExpr->getType()->getPointeeOrArrayElementType();
           auto *DesugaredElemTy = ElementTy->getUnqualifiedDesugaredType();
+          auto CastType = CCastExpr->getType();
+          
+          auto *SizeExpr = Call->getArg(0);
+          Expr::EvalResult Result;
+          if (SizeExpr->EvaluateAsInt(Result, Ctx)) {
+            llvm::APSInt val = Result.Val.getInt();
+            int64_t SizeVal = val.getZExtValue();
+            if (SizeVal != Ctx.getTypeSizeInChars(CastType->getPointeeType()).getQuantity()){
+              emitErrorWithLocation("Allocating incorrect size for reference. Did you want an array instead, if so, annotate with ISARRAY.\n", &Ctx, E->getExprLoc());
+            }
+          }
+          else{
+            emitErrorWithLocation("Could not deduce constant size for reference. Did you want an array instead, if so, annotate with ISARRAY.\n", &Ctx, E->getExprLoc());
+          }
+
+
           if (const RecordType *TT = ElementTy->getAs<RecordType>()) {
             const RecordDecl *RD = TT->getDecl();
             auto It = RecordToRecordName.find(RD);
@@ -5254,9 +5270,7 @@ std::pair<Term *, PulseVisitor::VarTyEnv> PulseVisitor::getTermFromCExpr(
                   "Could not find Record Declaration or Corresponding Name!",
                   &Ctx, FD->getLocation());
             }
-
-            // TODO: get the type of the record.
-            // Right now, I am hardcoding nullptr but this should be changed
+            
             auto RecordName = It->second;
             auto *PulseRecordTy = new FStarType(RecordName);
             auto *PulseRecordRefTy = new FStarPointerType(PulseRecordTy);
@@ -5267,7 +5281,7 @@ std::pair<Term *, PulseVisitor::VarTyEnv> PulseVisitor::getTermFromCExpr(
           DEBUG_WITH_TYPE(DEBUG_TYPE , {
           llvm::outs() << "Print the type of cast!" << "\n";
           }); 
-          auto CastType = CCastExpr->getType();
+          
           DEBUG_WITH_TYPE(DEBUG_TYPE , {
           CastType->dump();
           llvm::outs() << "The corresponding pulse type is: ";
@@ -5278,22 +5292,22 @@ std::pair<Term *, PulseVisitor::VarTyEnv> PulseVisitor::getTermFromCExpr(
           });
           if (auto *PulsePointerTy = dyn_cast<FStarPointerType>(PulseTy)){
 
-            //Check size. 
-            //Vidush: For now, if a ref asks for a larger size than the type of the cast,
-            //We error out. 
-            //Also if we can't tell the size staically we error out. 
-            auto *SizeExpr = Call->getArg(0);
-            Expr::EvalResult Result;
-            if (SizeExpr->EvaluateAsInt(Result, Ctx)) {
-              llvm::APSInt val = Result.Val.getInt();
-              int64_t SizeVal = val.getZExtValue();
-              if (SizeVal != Ctx.getTypeSizeInChars(CastType->getPointeeType()).getQuantity()){
-                emitErrorWithLocation("Allocating incorrect size for reference. Did you want an array instead, if so, annotate with ISARRAY.\n", &Ctx, E->getExprLoc());
-              }
-            }
-            else{
-              emitErrorWithLocation("Could not deduce constant size for reference. Did you want an array instead, if so, annotate with ISARRAY.\n", &Ctx, E->getExprLoc());
-            }
+            // //Check size. 
+            // //Vidush: For now, if a ref asks for a larger size than the type of the cast,
+            // //We error out. 
+            // //Also if we can't tell the size staically we error out. 
+            // auto *SizeExpr = Call->getArg(0);
+            // Expr::EvalResult Result;
+            // if (SizeExpr->EvaluateAsInt(Result, Ctx)) {
+            //   llvm::APSInt val = Result.Val.getInt();
+            //   int64_t SizeVal = val.getZExtValue();
+            //   if (SizeVal != Ctx.getTypeSizeInChars(CastType->getPointeeType()).getQuantity()){
+            //     emitErrorWithLocation("Allocating incorrect size for reference. Did you want an array instead, if so, annotate with ISARRAY.\n", &Ctx, E->getExprLoc());
+            //   }
+            // }
+            // else{
+            //   emitErrorWithLocation("Could not deduce constant size for reference. Did you want an array instead, if so, annotate with ISARRAY.\n", &Ctx, E->getExprLoc());
+            // }
 
             auto *NewCall =
                 new AppE("alloc_ref #" + PulsePointerTy->PointerTo->print(),
