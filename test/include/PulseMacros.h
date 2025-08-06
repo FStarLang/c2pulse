@@ -8,7 +8,7 @@
 #define INVARIANTS(...) [[clang::pulse("invariants:" STR(__VA_ARGS__)"|END")]]
 #define LEMMA(l) [[clang::pulse("lemma:" STR(l)"|END")]]0
 #define ERASED_ARG(arg) [[clang::pulse("erased_arg:" STR(arg)"|END")]]
-#define ASSERT(message) [[clang::pulse("assert:" STR(message) "|END")]]
+#define ASSERT(message) [[clang::pulse("assert:" STR(message) "|END")]]0
 #define HEAPALLOCATED(message) [[clang::pulse("heap_allocated:" STR(message) "|END")]]
 #define EXPECT_FAILURE(...)                                                    \
   [[clang::pulse("expect_failure:" STR(__VA_ARGS__) "|END")]]
