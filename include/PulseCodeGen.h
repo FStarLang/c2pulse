@@ -89,22 +89,6 @@ private:
   std::vector<std::pair<PulseSourceRange, SourceInfo>> PulseLocsToCLocs;
   clang::ASTContext &ClangCtx;
 };
-// class NoPointerTextDumper : public clang::TextNodeDumper {
-// public:
-//   NoPointerTextDumper(llvm::raw_ostream &OS,
-//                       const clang::ASTContext &Ctx)
-//       : TextNodeDumper(OS, Ctx, true), OS(OS) {}
-
-//   void dumpPointer(const void *Ptr) {
-//     // Suppress pointer output
-//     OS << "<ptr>";
-//   }
-
-// private:
-//   llvm::raw_ostream &OS;
-// };
-
-
 
 namespace PulseSyntax {
 inline constexpr CodegenStrTy PulseAssignmentOpRef = ":=";
