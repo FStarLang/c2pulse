@@ -19,7 +19,7 @@ public:
     MacroCommentTracker(clang::Preprocessor &PP,
                         clang::SourceManager &SM,
                         const clang::LangOptions &LangOpts,
-                        std::unordered_map<clang::FileID, std::map<unsigned, MacroEventInfo>> &macroInfoMap);
+                        std::unordered_map<clang::FileID, std::map<unsigned, MacroEventInfo>, FileIDHash> &macroInfoMap);
 
     // PPCallbacks overrides
     void MacroDefined(const clang::Token &MacroNameTok,
@@ -58,5 +58,5 @@ private:
     clang::SourceManager &SM;
     const clang::LangOptions &LangOpts;
 
-    std::unordered_map<clang::FileID, std::map<unsigned, MacroEventInfo>> &macroInfoMap;
+    std::unordered_map<clang::FileID, std::map<unsigned, MacroEventInfo>, FileIDHash> &macroInfoMap;
 };
