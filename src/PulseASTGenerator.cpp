@@ -639,7 +639,11 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
       FieldToUniqueNames.insert(std::make_pair(FD, FName));
       VarNamesInScope.insert(std::make_pair(FName, FD));
 
-
+      
+      std::set<std::string> VarNamesInScopeSet;
+      for (auto &KPair : VarNamesInScope){
+        VarNamesInScopeSet.insert(KPair.first);
+      }
       //Check for Attrs attached to Field declarations. 
       if (FD->hasAttrs()){
       for (auto Attr : FD->getAttrs()){
@@ -650,11 +654,11 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
           std::string Match;
           auto AnnKind = getPulseAnnKindFromString(Annotation, Match);
           if (AnnKind != PulseAnnKind::IsArray){
-            emitError("Did not expect an annotation other that ISARRAY!\n");
+            emitError("Unimplemented! Did not expect an annotation other that ISARRAY!\n");
           }
           HasArrayTypeFields = true;
           NumArrayFields++;
-          addArrayTy(Match, FD);
+          addArrayTy(Match, FD, VarNamesInScopeSet);
         }
       }
     }
@@ -1536,24 +1540,29 @@ bool PulseVisitor::VisitVarDecl(VarDecl *VD) {
   return true;
 }
 
-void PulseVisitor::addArrayTy(std::string Match, const Decl *ArrDecl) {
+void PulseVisitor::addArrayTy(std::string Match, const Decl *ArrDecl, std::set<std::string> VEnv) {
 
   QualType ArrTy;
   QualType ArrElementType;
+  SourceLocation Loc;
   if (auto *ParamDecl = dyn_cast<ParmVarDecl>(ArrDecl)) {
     ArrTy = ParamDecl->getType();
     ArrElementType = ArrTy->getPointeeType();
+    Loc = ParamDecl->getLocation();
   } else if (auto *Field = dyn_cast<FieldDecl>(ArrDecl)) {
     ArrTy = Field->getType();
     ArrElementType = ArrTy->getPointeeType();
+    Loc = Field->getLocation();
   }
   else if (auto *VD = dyn_cast<VarDecl>(ArrDecl)){
     ArrTy = VD->getType();
     ArrElementType = ArrTy->getPointeeType();
+    Loc = VD->getLocation();
   }
   else if (auto *FD = dyn_cast<FunctionDecl>(ArrDecl)){
     ArrTy = FD->getReturnType();
     ArrElementType = ArrTy->getPointeeType();
+    Loc = FD->getLocation();
   }
   else {
     emitErrorWithLocation("Not implemented for declaration type!", &Ctx, ArrDecl->getLocation());
@@ -1568,6 +1577,12 @@ void PulseVisitor::addArrayTy(std::string Match, const Decl *ArrDecl) {
     // Step 2: Create a VarDecl for the size variable 'n'
     // We should check here is the length is a constant or of variable
     // array type.
+    
+    //If the variable is not scope, we should just error out.
+    if (Match != "" && VEnv.count(Match) == 0){
+      emitErrorWithLocation("The variable: " + Match + " is not in scope! Please use a valid variable name!", &Ctx, Loc);
+    }
+
     IdentifierInfo &Id = Ctx.Idents.get(Match);
     VarDecl *SizeVar =
         VarDecl::Create(Ctx, Ctx.getTranslationUnitDecl(), SourceLocation(),
@@ -1657,7 +1672,8 @@ void PulseVisitor::handleFunctionAttributes(FunctionDecl *FD,
                                             bool *Terminate,
                                             bool HasAssociatedDefinition,
                                             std::vector<Binder *> &PulseArgs, 
-                                            std::vector<Binder *> &ErasedArgs){
+                                            std::vector<Binder *> &ErasedArgs, 
+                                            std::set<std::string> VEnv){
 
   llvm::outs() << "HandleFunctionAttributes " << FuncName << "\n";
   llvm::outs() <<  "Has Attrs: " << FD->hasAttrs() << "\n";
@@ -1848,7 +1864,7 @@ void PulseVisitor::handleFunctionAttributes(FunctionDecl *FD,
             case PulseAnnKind::IsArray:{
               //We parse this as: The function returns an array type.
               //So we could say that the function is of type array type.
-              addArrayTy(Match, FD);
+              addArrayTy(Match, FD, VEnv);
               break;
             }
             case PulseAnnKind::Invariants:
@@ -1868,10 +1884,14 @@ void PulseVisitor::handleFunctionAttributes(FunctionDecl *FD,
   }
 }
 
+//Vidush
+//TODO: We could just coalese VEnv and VEnvSet maps as one.
+//Maybe we can do this by makeing VEnv's key as a std::string rather than a term
 PulseSequence *PulseVisitor::handleFunctionParameters(FunctionDecl *FD,
                                             _PulseFnDefn *FDefn,
                                             std::vector<Binder*> &PulseArgs,
-                                            std::map<Term *, FStarType *> &TermToPulseTy){
+                                            std::map<Term *, FStarType *> &VEnv, 
+                                            std::set<std::string> VEnvSet){
 
     ///Vidush: Also construct let mut for all function parameters
   PulseSequence *ParamLetMutSequence = nullptr;
@@ -1923,6 +1943,13 @@ PulseSequence *PulseVisitor::handleFunctionParameters(FunctionDecl *FD,
               // Step 2: Create a VarDecl for the size variable 'n'
               // We should check here is the length is a constant or of variable
               // array type.
+
+
+              //If the variable name is not in scope error out. 
+              if (Match != "" && VEnvSet.count(Match) == 0){
+                emitErrorWithLocation("got Array length: " + Match + " is not in scope! Please use a variable in scope!", &Ctx, Attr->getLocation());
+              }
+
               IdentifierInfo &Id = Ctx.Idents.get(Match);
               VarDecl *SizeVar = VarDecl::Create(
                   Ctx, Ctx.getTranslationUnitDecl(), SourceLocation(),
@@ -2034,7 +2061,7 @@ PulseSequence *PulseVisitor::handleFunctionParameters(FunctionDecl *FD,
     LetMutParamTy->setPointerToTy(ParamTy);
     llvm::outs() << "Print the parameter type: " << LetMutParamTy->print()
                  << "\n";
-    TermToPulseTy.insert(std::make_pair(MutLetBindInit, LetMutParamTy));
+    VEnv.insert(std::make_pair(MutLetBindInit, LetMutParamTy));
 
     if (ParamLetMutSequence == nullptr){
       ParamLetMutSequence = new PulseSequence();
@@ -2165,10 +2192,22 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
     std::vector<Binder*> PulseArgs;
     std::vector<Binder*> ErasedArgs;
     bool Terminate = false;
+    
+    //TODO: The first map's key could just be made a string
+    std::map<Term *, FStarType *> VEnv;
+    std::set<std::string> VEnvSet;
+   
+    //Add variable names in scope
+    //TODO This could also include globals later on.
+    for (uint PI = 0; PI < FD->getNumParams(); PI++){
+      auto *Param = FD->getParamDecl(PI);
+      VEnvSet.insert(Param->getNameAsString());
+    }
+
     handleFunctionAttributes(FD, FDefn, FuncName, Module, &Terminate,
                                             false,
                                             PulseArgs, 
-                                            ErasedArgs);
+                                            ErasedArgs, VEnvSet);
     
     //We automatically try to infer the RETURNS attribute if the user
     //did not annotate the function with any returns macro                                        
@@ -2203,12 +2242,10 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
       return true;
     }
 
-    std::map<Term *, FStarType *> VEnv;
-
     //TODO: The let mut for function parameters is just unnecessary here. 
     //We should pass a flag to this function to not generate it in case of function declaration!
     //TODO: Vidush simplify the code.
-    PulseSequence *ParamSequence = handleFunctionParameters(FD, FDefn, PulseArgs, VEnv);
+    PulseSequence *ParamSequence = handleFunctionParameters(FD, FDefn, PulseArgs, VEnv, VEnvSet);
     
     std::copy(ErasedArgs.begin(), ErasedArgs.end(),
             std::back_inserter(PulseArgs));
@@ -2258,14 +2295,28 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
     if (checkDeclNameExists(FuncName)){
       return true;
     }
+
+    
     
     std::vector<Binder*> PulseArgs;
     std::vector<Binder*> ErasedArgs;
     bool Terminate = false;
+    
+    //TODO: The first maps key could just be make a string tbh.
+    std::map<Term *, FStarType *> VEnv;
+    std::set<std::string> VEnvSet;
+   
+    //Add variable names in scope
+    //TODO This could also include globals later on.
+    for (uint PI = 0; PI < FD->getNumParams(); PI++){
+      auto *Param = FD->getParamDecl(PI);
+      VEnvSet.insert(Param->getNameAsString());
+    }
+
     handleFunctionAttributes(FD, FDefn, FuncName, Module, &Terminate,
                                             HasAssociatedDefinition,
                                             PulseArgs, 
-                                            ErasedArgs);
+                                            ErasedArgs, VEnvSet);
     
     //We automatically try to infer the RETURNS attribute if the user
     //did not annotate the function with any returns macro                                        
@@ -2309,9 +2360,8 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
     if (!checkIsRecursiveFunction(FD)){
       FDefn->isRecursive = false;
     }
-    
-    std::map<Term *, FStarType *> VEnv;
-    PulseSequence *ParamSequence = handleFunctionParameters(FD, FDefn, PulseArgs, VEnv);
+
+    PulseSequence *ParamSequence = handleFunctionParameters(FD, FDefn, PulseArgs, VEnv, VEnvSet);
     
     std::copy(ErasedArgs.begin(), ErasedArgs.end(),
             std::back_inserter(PulseArgs));
@@ -2576,9 +2626,10 @@ PulseStmt *PulseVisitor::pulseFromCompoundStmt(
   return Head;
 }
 
-bool PulseVisitor::checkAndAddIsArrayTy(const AttrVec &Attrs, const Decl* D){
+bool PulseVisitor::checkAndAddIsArrayTy(const AttrVec &Attrs, const Decl* D, std::map<Term*, FStarType*> VEnv){
   
   bool IsArray = false;
+  auto VEnvToSet = toSetVEnv(VEnv);
   for (auto *Att : Attrs) {
     if (AnnotateAttr *AnnonAttr = dyn_cast<AnnotateAttr>(Att)) {
       if (AnnonAttr->getAttrName()->getName() == "pulse") {
@@ -2588,7 +2639,7 @@ bool PulseVisitor::checkAndAddIsArrayTy(const AttrVec &Attrs, const Decl* D){
           continue;
         }
         IsArray = true;
-        addArrayTy(Match, D);
+        addArrayTy(Match, D, VEnvToSet);
       }
     }
   }
@@ -2813,7 +2864,7 @@ PulseVisitor::pulseFromStmt(Stmt *S, std::map<Term *, FStarType *> VEnv,
           if (auto *Call = dyn_cast<CallExpr>(Init->IgnoreCasts()->IgnoreParens()->IgnoreCasts())){
             if (Call->getDirectCallee()->getNameAsString() == "malloc"){
               //Check if the user wanted this allocation to be an array
-              if (VD->hasAttrs() && checkAndAddIsArrayTy(VD->getAttrs(), D)){
+              if (VD->hasAttrs() && checkAndAddIsArrayTy(VD->getAttrs(), D, VEnv)){
                 auto PulseTy = pulseTyFromDecl(VD);
                 auto *ArrayRefTy = new FStarPointerType(PulseTy);
                 auto *ArrNameTerm =
@@ -3143,7 +3194,7 @@ PulseVisitor::pulseFromStmt(Stmt *S, std::map<Term *, FStarType *> VEnv,
         
         //Uninitialized array that is a pointer.
         //Check if it has been marked as an array by the user. 
-        if (VD->hasAttrs() && checkAndAddIsArrayTy(VD->getAttrs(), D)){
+        if (VD->hasAttrs() && checkAndAddIsArrayTy(VD->getAttrs(), D, VEnv)){
           auto *PulseTy = pulseTyFromDecl(VD);
           auto VarDeclName = VD->getNameAsString(); 
 

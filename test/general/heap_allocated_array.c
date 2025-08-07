@@ -21,6 +21,8 @@ int foo(size_t length){
   //Mark this with ISARRAY to tell the compiler its an array 
   //ISARRAY(length)int *b2 = (int*) malloc(sizeof(int) * (length * 100));
   ISARRAY(length) int *b = (int*) malloc(sizeof(int) * length);
+  int length2 = 100;
+  ISARRAY(length2) int *bb = (int*) malloc(sizeof(int) * length2);
   //ISARRAY(length)int *c = (struct foo_struct*) malloc(sizeof(struct foo_struct) * length);
   
   //free(a);
@@ -30,6 +32,7 @@ int foo(size_t length){
   //free(b1); 
   //free(b2);
   free(b);
+  free(bb);
   //free(c);
   return length;
 }

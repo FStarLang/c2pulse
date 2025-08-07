@@ -1,5 +1,5 @@
 #include "../include/PulseMacros.h"
-	
+#include <stdlib.h>	
 	
 REQUIRES(exists* v. (x |-> v))
 RETURNS(Int32.t)

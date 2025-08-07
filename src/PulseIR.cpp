@@ -1520,6 +1520,38 @@ FStarType *findVarTyPulseTyEnv(std::string VarName,
   emitError("Variable Name not found in pulse ty environment: " + VarName);
 }
 
+bool checkVarNameExistsInEnv(std::string VarName,
+                               std::map<Term *, FStarType *> Env) {
+
+  llvm::outs() << "Trying to access variable: " << VarName << "\n";
+  llvm::outs() << "Printing contents of the Env!" << "\n";
+  printVEnv(Env);
+  for (auto It = Env.begin(); It != Env.end(); It++) {
+    auto *T = It->first;
+    if (auto *VT = clang::dyn_cast<VarTerm>(T)) {
+      if (VT->VarName == VarName) {
+        return true;
+      }
+    }
+  }
+
+  printVEnv(Env);
+  return false;
+}
+
+std::set<std::string> toSetVEnv(std::map<Term *, FStarType *> Env) {
+
+  std::set<std::string> SetEnv;
+  for (auto It = Env.begin(); It != Env.end(); It++) {
+    auto *T = It->first;
+    if (auto *VT = clang::dyn_cast<VarTerm>(T)) {
+      SetEnv.insert(VT->VarName);
+    }
+  }
+
+  return SetEnv;
+}
+
 PulseDecl *lookupDecl(clang::Decl *D,
                       std::map<clang::Decl *, PulseDecl *> DeclEnv) {
 

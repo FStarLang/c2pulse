@@ -71,9 +71,9 @@ public:
                             clang::FunctionDecl *CurrFunction);
   bool checkIsRecursiveFunction(clang::FunctionDecl *FD);
   std::string getNameForRecordDecl(const clang::RecordDecl *RD);
-  void addArrayTy(std::string Match, const clang::Decl *ArrDecl);
+  void addArrayTy(std::string Match, const clang::Decl *ArrDecl, std::set<std::string> VEnv);
   FStarType *pulseTyFromDecl(const clang::Decl* D);
-  bool checkAndAddIsArrayTy(const clang::AttrVec &Attrs, const clang::Decl* D);
+  bool checkAndAddIsArrayTy(const clang::AttrVec &Attrs, const clang::Decl* D, std::map<Term*, FStarType*> Env);
   bool isKnownArrayType(const clang::Decl *D);
   Term *checkAndAddCast(Term *Src, Term *Dst);
   clang::QualType getTypeFromDecl(const clang::Decl *D);
@@ -86,10 +86,12 @@ public:
                                 bool *Terminate,
                                 bool HasAssociatedDefinition,
                                 std::vector<Binder *> &PulseArgs, 
-                                std::vector<Binder *> &ErasedArgs);
+                                std::vector<Binder *> &ErasedArgs,
+                                std::set<std::string> VEnv);
 
   PulseSequence * handleFunctionParameters(clang::FunctionDecl *FD, _PulseFnDefn *Defn, std::vector<Binder*> &PulseArgs, 
-                                std::map<Term *, FStarType *> &TermToPulseTy);
+                                std::map<Term *, FStarType *> &TermToPulseTy, 
+                                std::set<std::string> VEnvSet);
 
   std::pair<Term *, VarTyEnv> getPulseTermForMallocSize(
       clang::Expr *SizeExpr, VarTyEnv VEnv, clang::QualType ArrayElemType,
