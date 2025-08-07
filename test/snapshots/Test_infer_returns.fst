@@ -93,7 +93,7 @@ begin match s with
  | Case_ab_b v -> uv.b |-> v
 end
 
-fn ab_explode (x : ref ab) (#s : ab_spec)
+ghost fn ab_explode (x : ref ab) (#s : ab_spec)
 requires ab_pred x s
 ensures exists* (v : ab). (x |-> v) **
 begin match s with
@@ -115,6 +115,30 @@ ensures ab_pred x s
 {
 fold (ab_pred x s);
 }
+
+ghost
+fn ab_change_a(x : ref ab)
+requires exists* s. ab_pred x s
+ensures exists* s. ab_pred x (Case_ab_a s)
+{ admit() }
+
+ghost
+fn ab_change_b(x : ref ab)
+requires exists* s. ab_pred x s
+ensures exists* s. ab_pred x (Case_ab_b s)
+{ admit() }
+
+ghost
+fn ab_is_a(x : ref ab) (#s:_{Case_ab_a? s})
+requires ab_pred x s
+ensures  ab_pred x (Case_ab_a(Case_ab_a?._0 s))
+{ admit() }
+
+ghost
+fn ab_is_b(x : ref ab) (#s:_{Case_ab_b? s})
+requires ab_pred x s
+ensures  ab_pred x (Case_ab_b(Case_ab_b?._0 s))
+{ admit() }
 
 fn foo ()
 returns UInt32.t
