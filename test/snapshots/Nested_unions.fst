@@ -26,7 +26,7 @@ begin match s with
  | Case_ab_b v -> uv.b |-> v
 end
 
-fn ab_explode (x : ref ab) (#s : ab_spec)
+ghost fn ab_explode (x : ref ab) (#s : ab_spec)
 requires ab_pred x s
 ensures exists* (v : ab). (x |-> v) **
 begin match s with
@@ -48,6 +48,30 @@ ensures ab_pred x s
 {
 fold (ab_pred x s);
 }
+
+ghost
+fn ab_change_a(x : ref ab)
+requires exists* s. ab_pred x s
+ensures exists* s. ab_pred x (Case_ab_a s)
+{ admit() }
+
+ghost
+fn ab_change_b(x : ref ab)
+requires exists* s. ab_pred x s
+ensures exists* s. ab_pred x (Case_ab_b s)
+{ admit() }
+
+ghost
+fn ab_is_a(x : ref ab) (#s:_{Case_ab_a? s})
+requires ab_pred x s
+ensures  ab_pred x (Case_ab_a(Case_ab_a?._0 s))
+{ admit() }
+
+ghost
+fn ab_is_b(x : ref ab) (#s:_{Case_ab_b? s})
+requires ab_pred x s
+ensures  ab_pred x (Case_ab_b(Case_ab_b?._0 s))
+{ admit() }
 
 noeq
 type stru = {
@@ -134,7 +158,7 @@ begin match s with
  | Case_nested_z v -> uv.z |-> v
 end
 
-fn nested_explode (x : ref nested) (#s : nested_spec)
+ghost fn nested_explode (x : ref nested) (#s : nested_spec)
 requires nested_pred x s
 ensures exists* (v : nested). (x |-> v) **
 begin match s with
@@ -157,6 +181,30 @@ ensures nested_pred x s
 fold (nested_pred x s);
 }
 
+ghost
+fn nested_change_x(x : ref nested)
+requires exists* s. nested_pred x s
+ensures exists* s. nested_pred x (Case_nested_x s)
+{ admit() }
+
+ghost
+fn nested_change_z(x : ref nested)
+requires exists* s. nested_pred x s
+ensures exists* s. nested_pred x (Case_nested_z s)
+{ admit() }
+
+ghost
+fn nested_is_x(x : ref nested) (#s:_{Case_nested_x? s})
+requires nested_pred x s
+ensures  nested_pred x (Case_nested_x(Case_nested_x?._0 s))
+{ admit() }
+
+ghost
+fn nested_is_z(x : ref nested) (#s:_{Case_nested_z? s})
+requires nested_pred x s
+ensures  nested_pred x (Case_nested_z(Case_nested_z?._0 s))
+{ admit() }
+
 noeq
 type nested2 = {
 x: ref ab;
@@ -178,7 +226,7 @@ begin match s with
  | Case_nested2_strufield v -> uv.strufield |-> v
 end
 
-fn nested2_explode (x : ref nested2) (#s : nested2_spec)
+ghost fn nested2_explode (x : ref nested2) (#s : nested2_spec)
 requires nested2_pred x s
 ensures exists* (v : nested2). (x |-> v) **
 begin match s with
@@ -202,3 +250,39 @@ ensures nested2_pred x s
 {
 fold (nested2_pred x s);
 }
+
+ghost
+fn nested2_change_x(x : ref nested2)
+requires exists* s. nested2_pred x s
+ensures exists* s. nested2_pred x (Case_nested2_x s)
+{ admit() }
+
+ghost
+fn nested2_change_z(x : ref nested2)
+requires exists* s. nested2_pred x s
+ensures exists* s. nested2_pred x (Case_nested2_z s)
+{ admit() }
+
+ghost
+fn nested2_change_strufield(x : ref nested2)
+requires exists* s. nested2_pred x s
+ensures exists* s. nested2_pred x (Case_nested2_strufield s)
+{ admit() }
+
+ghost
+fn nested2_is_x(x : ref nested2) (#s:_{Case_nested2_x? s})
+requires nested2_pred x s
+ensures  nested2_pred x (Case_nested2_x(Case_nested2_x?._0 s))
+{ admit() }
+
+ghost
+fn nested2_is_z(x : ref nested2) (#s:_{Case_nested2_z? s})
+requires nested2_pred x s
+ensures  nested2_pred x (Case_nested2_z(Case_nested2_z?._0 s))
+{ admit() }
+
+ghost
+fn nested2_is_strufield(x : ref nested2) (#s:_{Case_nested2_strufield? s})
+requires nested2_pred x s
+ensures  nested2_pred x (Case_nested2_strufield(Case_nested2_strufield?._0 s))
+{ admit() }

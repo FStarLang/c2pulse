@@ -1162,6 +1162,30 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     GhostRecover->Ident += "}\n";
 
     NewModul->Decls.push_back(GhostRecover);
+
+    for (auto Fld : RD->fields()) {
+      auto FldName = FieldToUniqueNames[Fld];
+      auto *GhostChange = new GenericDecl(); 
+      GhostChange->CInfo = getSourceInfoFromDecl(RD, Ctx, "");
+      GhostChange->Ident = "ghost\n";
+      GhostChange->Ident += "fn " + StructName + "_change_" + FldName + "(x : ref " + StructName + ")\n";
+      GhostChange->Ident += "requires exists* s. " + StructName + "_pred x s\n";
+      GhostChange->Ident += "ensures exists* s. " + StructName + "_pred x (Case_" + StructName + "_" +FldName+ " s)\n";
+      GhostChange->Ident += "{ admit() }\n";
+      NewModul->Decls.push_back(GhostChange);    
+    }
+
+    for (auto Fld : RD->fields()) {
+      auto FldName = FieldToUniqueNames[Fld];
+      auto *GhostIs = new GenericDecl(); 
+      GhostIs->CInfo = getSourceInfoFromDecl(RD, Ctx, "");
+      GhostIs->Ident = "ghost\n";
+      GhostIs->Ident += "fn " + StructName + "_is_" + FldName + "(x : ref " + StructName + ") (#s:_{Case_"+StructName+"_"+FldName+"? s})\n";
+      GhostIs->Ident += "requires " + StructName + "_pred x s\n";
+      GhostIs->Ident += "ensures  " + StructName + "_pred x (Case_" + StructName + "_" +FldName+ "(Case_"+StructName+"_"+FldName+"?._0 s))\n";
+      GhostIs->Ident += "{ admit() }\n";
+      NewModul->Decls.push_back(GhostIs);    
+    }
   }
  
 

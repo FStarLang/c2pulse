@@ -26,7 +26,7 @@ begin match s with
  | Case_ab_b v -> uv.b |-> v
 end
 
-fn ab_explode (x : ref ab) (#s : ab_spec)
+ghost fn ab_explode (x : ref ab) (#s : ab_spec)
 requires ab_pred x s
 ensures exists* (v : ab). (x |-> v) **
 begin match s with
@@ -49,6 +49,30 @@ ensures ab_pred x s
 fold (ab_pred x s);
 }
 
+ghost
+fn ab_change_a(x : ref ab)
+requires exists* s. ab_pred x s
+ensures exists* s. ab_pred x (Case_ab_a s)
+{ admit() }
+
+ghost
+fn ab_change_b(x : ref ab)
+requires exists* s. ab_pred x s
+ensures exists* s. ab_pred x (Case_ab_b s)
+{ admit() }
+
+ghost
+fn ab_is_a(x : ref ab) (#s:_{Case_ab_a? s})
+requires ab_pred x s
+ensures  ab_pred x (Case_ab_a(Case_ab_a?._0 s))
+{ admit() }
+
+ghost
+fn ab_is_b(x : ref ab) (#s:_{Case_ab_b? s})
+requires ab_pred x s
+ensures  ab_pred x (Case_ab_b(Case_ab_b?._0 s))
+{ admit() }
+
 fn incr_a
 (x : ( ref ab) )
 (s:_)
@@ -58,9 +82,23 @@ requires pure (UInt32.fits (UInt32.v (Case_ab_a?._0 s) + 1))
 ensures exists* s'. ab_pred x s'
 {
 let mut x : (ref ab) = x;
+ab_is_a (!x);
 ab_explode !x;
-rewrite each s as Case_ab_a (Case_ab_a?._0 s);
 Mkab?.a (! (! x)) := (UInt32.add (! (! (! x)).a) (int32_to_uint32 1l));
+ab_recover !x #(Case_ab_a _);
+}
+
+fn set_case_a
+(x : ( ref ab) )
+(v : UInt32.t)
+requires exists* s. ab_pred x s
+ensures ab_pred x (Case_ab_a v)
+{
+let mut x : (ref ab) = x;
+let mut v : UInt32.t = v;
+ab_change_a !x;
+ab_explode !x;
+Mkab?.a (! (! x)) := (! v);
 ab_recover !x #(Case_ab_a _);
 }
 
@@ -131,33 +169,34 @@ payload = a1})
 {fold stru_pred x ({tag = a0;
 payload = a1}) }
 
-let stru_ok (u : ref stru) (s : stru_spec) : slprop =stru_pred u s **pure (match s.tag with| 0y -> Case_ab_a? s.payload| 1y -> Case_ab_b? s.payload| _ -> false)
-[@@expect_failure]
+[@@pulse_unfold] let stru_ok (u : ref stru) (s : stru_spec) : slprop = stru_pred u s ** pure ( match s.tag with | 0y -> Case_ab_a? s.payload | 1y -> Case_ab_b? s.payload | _ -> False )
 fn test_union
 (foo : ( ref stru) )
-(#s : stru_spec)
-(s:_)
-requires stru_pred foo s
-requires pure (Case_ab_a? s)
-requires ab_pred foo.payload s
-requires pure (UInt32.fits (UInt32.v (Case_ab_a?._0 s) + 1))
-ensures exists* s'. ab_pred foo.payload s'
-ensures exists* (s':stru_spec). stru_pred foo s' ** pure (s' == {tag = s.tag; payload = s.payload})
+preserves exists* s. stru_ok foo s
 {
 let mut foo : (ref stru) = foo;
+stru_explode (!foo);
 if((int32_to_bool (bool_to_int32 (Int32.eq (int8_to_int32 (! (! (! foo)).tag)) 0l))))
 {
+ab_is_a (! (! foo)).payload;
+ab_explode (! (!foo)).payload;
 (! (! (! foo)).payload).a := (int32_to_uint32 1l);
+ab_recover (! (!foo)).payload #(Case_ab_a _);
+stru_recover (!foo);
 }
 else
 {
 if((int32_to_bool (bool_to_int32 (Int32.eq (int8_to_int32 (! (! (! foo)).tag)) 1l))))
 {
-(! (! (! foo)).payload).b := (int32_to_bool (bool_to_int32 (not (! ((! (! (! foo)).payload).b)))));
+ab_is_b (! (! foo)).payload;
+ab_explode (! (!foo)).payload;
+(! (! (! foo)).payload).b := (int32_to_bool 0l);
+ab_recover (! (!foo)).payload #(Case_ab_b _);
+stru_recover (!foo);
 }
 else
 {
-()
+unreachable();
 };
 };
 }
