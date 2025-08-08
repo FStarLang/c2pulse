@@ -2214,7 +2214,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
     if (!containsTerm(FDefn->Annotation, TermTag::Returns)){
       auto FDReturnTy = FD->getReturnType();
       if (!FDReturnTy->isVoidPointerType() && !FDReturnTy->isVoidType()){
-        auto *FDPulseReturnTy = getPulseTyFromCTy(FDReturnTy);
+        auto *FDPulseReturnTy = pulseTyFromDecl(FD);
         auto *NewReturns = new Returns();
         NewReturns->CInfo = getSourceInfoFromDecl(FD, Ctx, "");
         NewReturns->Ann = FDPulseReturnTy->print();
@@ -2323,7 +2323,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
     if (!containsTerm(FDefn->Annotation, TermTag::Returns)){
       auto FDReturnTy = FD->getReturnType();
       if (!FDReturnTy->isVoidPointerType() && !FDReturnTy->isVoidType()){
-        auto *FDPulseReturnTy = getPulseTyFromCTy(FDReturnTy);
+        auto *FDPulseReturnTy = pulseTyFromDecl(FD);
         auto *NewReturns = new Returns();
         NewReturns->CInfo = getSourceInfoFromDecl(FD, Ctx, "");
         NewReturns->Ann = FDPulseReturnTy->print();
@@ -2655,13 +2655,17 @@ PulseVisitor::getPulseTermForMallocSize(
 
   //(sizeof(int) * length)
   //(sizeof(int) * 100)
+  //(length * sizeof(int))
+  //(100 * sizeof(int))
+  //(sizeof(..)) == length 1 array
   //Everything else errors out.
   //llvm::outs() << "Dump size expr for malloc \n";
   //SizeExpr->dumpPretty(Ctx);
   if (auto *BO = dyn_cast<BinaryOperator>(SizeExpr)){
     auto *Lhs = BO->getLHS();
     auto *Rhs = BO->getRHS();
-
+    
+    ///(sizeof(..) * _)
     if (auto *SizeOfExpr = dyn_cast<UnaryExprOrTypeTraitExpr>(Lhs)){
       if (SizeOfExpr->getKind() == UETT_SizeOf){
         auto Ty = SizeOfExpr->getArgumentType();
@@ -2669,7 +2673,7 @@ PulseVisitor::getPulseTermForMallocSize(
           emitErrorWithLocation("Size of malloc not supported!", &Ctx, SizeExpr->getExprLoc());
         }
       }
-    }
+    
     
     Expr::EvalResult RhsResultVal;
     if (Rhs->EvaluateAsInt(RhsResultVal, Ctx)) {
@@ -2684,6 +2688,34 @@ PulseVisitor::getPulseTermForMallocSize(
     auto Ret =
         getTermFromCExpr(Rhs, VEnv, A, ExprsBef, Parent, ParentType, Module);
     return Ret;
+  }
+  
+  ///(_ * sizeof(..))
+  if (auto *SizeOfExpr = dyn_cast<UnaryExprOrTypeTraitExpr>(Rhs)){
+      if (SizeOfExpr->getKind() == UETT_SizeOf){
+        auto Ty = SizeOfExpr->getArgumentType();
+        if (Ty != ArrayElemType){
+          emitErrorWithLocation("Size of malloc not supported!", &Ctx, SizeExpr->getExprLoc());
+        }
+      }
+    
+    
+    Expr::EvalResult LhsResultVal;
+    if (Lhs->EvaluateAsInt(LhsResultVal, Ctx)) {
+      llvm::APSInt Value = LhsResultVal.Val.getInt();
+      int64_t ValSigned = Value.getZExtValue();
+      if (ValSigned <= 0) {
+        emitErrorWithLocation("The length of the array cannot be 0 or negative!", &Ctx, Lhs->getExprLoc());
+      }
+    }
+
+    //Generate term for Rhs and return it as the length of the array.
+    auto Ret =
+        getTermFromCExpr(Lhs, VEnv, A, ExprsBef, Parent, ParentType, Module);
+    return Ret;
+  }
+
+  emitErrorWithLocation("Size of malloc not supported!", &Ctx, SizeExpr->getExprLoc());
 
   }
   else if (auto *SizeOfExpr = dyn_cast<UnaryExprOrTypeTraitExpr>(SizeExpr)){
