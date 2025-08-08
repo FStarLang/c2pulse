@@ -2214,7 +2214,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
     if (!containsTerm(FDefn->Annotation, TermTag::Returns)){
       auto FDReturnTy = FD->getReturnType();
       if (!FDReturnTy->isVoidPointerType() && !FDReturnTy->isVoidType()){
-        auto *FDPulseReturnTy = getPulseTyFromCTy(FDReturnTy);
+        auto *FDPulseReturnTy = pulseTyFromDecl(FD);
         auto *NewReturns = new Returns();
         NewReturns->CInfo = getSourceInfoFromDecl(FD, Ctx, "");
         NewReturns->Ann = FDPulseReturnTy->print();
@@ -2323,7 +2323,7 @@ bool PulseVisitor::VisitFunctionDecl(FunctionDecl *FD) {
     if (!containsTerm(FDefn->Annotation, TermTag::Returns)){
       auto FDReturnTy = FD->getReturnType();
       if (!FDReturnTy->isVoidPointerType() && !FDReturnTy->isVoidType()){
-        auto *FDPulseReturnTy = getPulseTyFromCTy(FDReturnTy);
+        auto *FDPulseReturnTy = pulseTyFromDecl(FD);
         auto *NewReturns = new Returns();
         NewReturns->CInfo = getSourceInfoFromDecl(FD, Ctx, "");
         NewReturns->Ann = FDPulseReturnTy->print();
@@ -2655,13 +2655,17 @@ PulseVisitor::getPulseTermForMallocSize(
 
   //(sizeof(int) * length)
   //(sizeof(int) * 100)
+  //(length * sizeof(int))
+  //(100 * sizeof(int))
+  //(sizeof(..)) == length 1 array
   //Everything else errors out.
   //llvm::outs() << "Dump size expr for malloc \n";
   //SizeExpr->dumpPretty(Ctx);
   if (auto *BO = dyn_cast<BinaryOperator>(SizeExpr)){
     auto *Lhs = BO->getLHS();
     auto *Rhs = BO->getRHS();
-
+    
+    ///(sizeof(..) * _)
     if (auto *SizeOfExpr = dyn_cast<UnaryExprOrTypeTraitExpr>(Lhs)){
       if (SizeOfExpr->getKind() == UETT_SizeOf){
         auto Ty = SizeOfExpr->getArgumentType();
@@ -2669,7 +2673,7 @@ PulseVisitor::getPulseTermForMallocSize(
           emitErrorWithLocation("Size of malloc not supported!", &Ctx, SizeExpr->getExprLoc());
         }
       }
-    }
+    
     
     Expr::EvalResult RhsResultVal;
     if (Rhs->EvaluateAsInt(RhsResultVal, Ctx)) {
@@ -2684,6 +2688,34 @@ PulseVisitor::getPulseTermForMallocSize(
     auto Ret =
         getTermFromCExpr(Rhs, VEnv, A, ExprsBef, Parent, ParentType, Module);
     return Ret;
+  }
+  
+  ///(_ * sizeof(..))
+  if (auto *SizeOfExpr = dyn_cast<UnaryExprOrTypeTraitExpr>(Rhs)){
+      if (SizeOfExpr->getKind() == UETT_SizeOf){
+        auto Ty = SizeOfExpr->getArgumentType();
+        if (Ty != ArrayElemType){
+          emitErrorWithLocation("Size of malloc not supported!", &Ctx, SizeExpr->getExprLoc());
+        }
+      }
+    
+    
+    Expr::EvalResult LhsResultVal;
+    if (Lhs->EvaluateAsInt(LhsResultVal, Ctx)) {
+      llvm::APSInt Value = LhsResultVal.Val.getInt();
+      int64_t ValSigned = Value.getZExtValue();
+      if (ValSigned <= 0) {
+        emitErrorWithLocation("The length of the array cannot be 0 or negative!", &Ctx, Lhs->getExprLoc());
+      }
+    }
+
+    //Generate term for Rhs and return it as the length of the array.
+    auto Ret =
+        getTermFromCExpr(Lhs, VEnv, A, ExprsBef, Parent, ParentType, Module);
+    return Ret;
+  }
+
+  emitErrorWithLocation("Size of malloc not supported!", &Ctx, SizeExpr->getExprLoc());
 
   }
   else if (auto *SizeOfExpr = dyn_cast<UnaryExprOrTypeTraitExpr>(SizeExpr)){
@@ -2895,7 +2927,15 @@ PulseVisitor::pulseFromStmt(Stmt *S, std::map<Term *, FStarType *> VEnv,
             // Overwrite old env.
             VEnv = LetInitRet.second;
 
-            auto *VDPulseTy = getPulseTyFromCTy(VD->getType());
+            FStarType *VDPulseTy;
+            if (VD->hasAttrs() && checkAndAddIsArrayTy(VD->getAttrs(), D, VEnv)){
+                VDPulseTy = pulseTyFromDecl(VD);
+            }
+            else {
+              VDPulseTy = getPulseTyFromCTy(VD->getType());
+            }
+
+            
             // if (Analyzer->isMutated(D)) {
             // auto TempVarName = gensym(VarName);
             // auto *PulseLetTmp = new LetBinding(TempVarName, LetInit,
@@ -3041,7 +3081,12 @@ PulseVisitor::pulseFromStmt(Stmt *S, std::map<Term *, FStarType *> VEnv,
                   Start->assignS2(LSE);
                 } else if (AnnKind == PulseAnnKind::HeapAllocated) {
                   IsAllocatedOnHeap.insert(VD);
-                } else {
+                }
+                else if (AnnKind == PulseAnnKind::IsArray){
+                  auto VEnvToSet = toSetVEnv(VEnv);
+                  addArrayTy(Match, VD, VEnvToSet);
+                }
+                else {
                   emitErrorWithLocation("Did not expect pulse annotation kind!",
                                         &Ctx, VD->getLocation());
                 }
@@ -3585,7 +3630,7 @@ PulseVisitor::pulseFromStmt(Stmt *S, std::map<Term *, FStarType *> VEnv,
 
           //assert base expression to typedef type.
           ValueDecl *MemberDecl = ME->getMemberDecl();
-          auto *MemberTy = getPulseTyFromCTy(MemberDecl->getType());
+          auto *MemberTy = pulseTyFromDecl(MemberDecl);
           MemberTy = new FStarPointerType(MemberTy);
           std::string StructName;
           if (FieldDecl *FieldDecl = llvm::dyn_cast<clang::FieldDecl>(MemberDecl)) {
@@ -3764,7 +3809,7 @@ PulseVisitor::pulseFromStmt(Stmt *S, std::map<Term *, FStarType *> VEnv,
           //StructName = TyOfDecl->getPointeeType().getAsString();
 
           auto MemberName = RhsDecl->getDeclName();
-          auto MemberTy = getPulseTyFromCTy(MemberDecl->getType());
+          auto MemberTy = pulseTyFromDecl(MemberDecl);
           // We make the member's type a ref since we assume it in out struct
           // declarations
           MemberTy = new FStarPointerType(MemberTy);
@@ -4794,7 +4839,7 @@ std::pair<Term *, PulseVisitor::VarTyEnv> PulseVisitor::getTermFromCExpr(
           //    new Name("(!" + Dec->getDecl()->getNameAsString() + ")." +
           //             Mem->getMemberDecl()->getDeclName().getAsString());
         auto MemberDecl = Mem->getMemberDecl();
-        auto MemberTy = getPulseTyFromCTy(MemberDecl->getType());
+        auto MemberTy = pulseTyFromDecl(MemberDecl);
         MemberTy = new FStarPointerType(MemberTy);
 
         auto *NewProject = new Project(MemberTy);
@@ -5572,6 +5617,11 @@ std::pair<Term *, PulseVisitor::VarTyEnv> PulseVisitor::getTermFromCExpr(
         PulseArrBase->getType(); // getPulseTyFromCTy(ArrBase->getType());
     auto *PulseArrTy = dyn_cast<FStarArrType>(PulseTy);
     if (!PulseArrTy) {
+      llvm::outs() << "\n";
+      ArrBase->dump(); 
+      llvm::outs() << "\n";
+      ArrIdx->dump();
+      llvm::outs() << "\n";
       emitErrorWithLocation("Expected a pulse array type but got: " +
                                 getPulseTyAsString(PulseTy),
                             &Ctx, ArrSubExpr->getExprLoc());
@@ -5764,11 +5814,16 @@ std::pair<Term *, PulseVisitor::VarTyEnv> PulseVisitor::getTermFromCExpr(
 
       auto MemberName = MemberExprDecl->getDeclName();
       ValueDecl *MemberDecl = ME->getMemberDecl();
-      auto *MemberTy = getPulseTyFromCTy(MemberDecl->getType());
+      auto *MemberTy = pulseTyFromDecl(MemberDecl);
       // We always assume member fields of a struct are a ref.
       MemberTy = new FStarPointerType(MemberTy);
       //auto *GenStmt =
       //    new Name("(!(!" + NameOfDecl + ")." + MemberName.getAsString() + ")");
+
+      llvm::outs() << "Print the type of the projection!\n\n";
+      MemberTy->dumpPretty();
+      llvm::outs() << "\n\nEnd printing member type!\n\n";
+
 
       auto *NewProject = new Project(MemberTy);
       NewProject->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
@@ -5783,6 +5838,11 @@ std::pair<Term *, PulseVisitor::VarTyEnv> PulseVisitor::getTermFromCExpr(
       // auto *MemberTy = findVarTyPulseTyEnv(MemberName.getAsString(),
       // BaseTermRet.second);
       auto *BaseTermTy = BaseTerm->getType();
+
+      llvm::outs() << "Print the type of the base term!\n\n";
+      BaseTermTy->dumpPretty();
+      llvm::outs() << "\n\nEnd printing base term!\n";
+
       if (IsLVal){
         // TODO: change from nullptr
         auto *BaseTermTyRef = dyn_cast<FStarPointerType>(BaseTermTy);
