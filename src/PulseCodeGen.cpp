@@ -503,7 +503,21 @@ void PulseCodeGen::generateCodeFromTerm(osstream_with_pos &OS,
     PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, T->getCSourceInfo()));
-  } else if (AppE *App = dyn_cast<AppE>(T)) {
+  }
+  else if (FStarSeqSeqType *FST = dyn_cast<FStarSeqSeqType>(T)) {
+    PulseSourceLocation Start(OS.line(), OS.col());
+
+    OS << PulseSyntax::SeqSeq;
+
+    OS << PulseSyntax::Space;
+
+    generateCodeFromTerm(OS, FST->ElementType);
+
+    PulseSourceLocation End(OS.line(), OS.col());
+    PulseSourceRange Range(Start, End);
+    PulseLocsToCLocs.push_back(std::make_pair(Range, T->getCSourceInfo()));
+  }
+  else if (AppE *App = dyn_cast<AppE>(T)) {
     
     PulseSourceLocation Start(OS.line(), OS.col());
     generateCodeFromTerm(OS, App->CallName);
