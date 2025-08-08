@@ -23,6 +23,7 @@ bytes : array UInt8.t
 let s1_relations (s:s1_spec) : prop = 
 Pulse.Lib.Array.length s.bytes == 32
 
+[@@pulse_unfold]
 let s1_pred ([@@@mkey]x:ref s1) (s:s1_spec) : slprop =
 exists* (y: s1). (x |-> y) **
 (y.bytes |-> s.bytes)

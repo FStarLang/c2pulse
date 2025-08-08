@@ -22,6 +22,7 @@ second : UInt32.t
 
 }
 
+[@@pulse_unfold]
 let u32_pair_struct_pred ([@@@mkey]x:ref u32_pair_struct) (s:u32_pair_struct_spec) : slprop =
 exists* (y: u32_pair_struct). (x |-> y) **
 (y.first |-> s.first) **
@@ -89,6 +90,7 @@ second : ( ref u32_pair_struct)
 
 }
 
+[@@pulse_unfold]
 let u64_pair_struct_pred ([@@@mkey]x:ref u64_pair_struct) (s:u64_pair_struct_spec) : slprop =
 exists* (y: u64_pair_struct). (x |-> y) **
 (y.first |-> s.first) **

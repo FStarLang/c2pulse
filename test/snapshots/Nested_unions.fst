@@ -87,6 +87,7 @@ payload : ab_spec
 
 }
 
+[@@pulse_unfold]
 let stru_pred ([@@@mkey]x:ref stru) (s:stru_spec) : slprop =
 exists* (y: stru). (x |-> y) **
 (y.tag |-> s.tag) **

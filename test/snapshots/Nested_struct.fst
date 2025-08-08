@@ -20,6 +20,7 @@ next : ( ref list)
 
 }
 
+[@@pulse_unfold]
 let list_pred ([@@@mkey]x:ref list) (s:list_spec) : slprop =
 exists* (y: list). (x |-> y) **
 (y.next |-> s.next)

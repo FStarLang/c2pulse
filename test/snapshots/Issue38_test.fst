@@ -20,6 +20,7 @@ left : Int32.t
 
 }
 
+[@@pulse_unfold]
 let foo_pred ([@@@mkey]x:ref foo) (s:foo_spec) : slprop =
 exists* (y: foo). (x |-> y) **
 (y.left |-> s.left)
@@ -79,6 +80,7 @@ left : Int32.t
 
 }
 
+[@@pulse_unfold]
 let foo2_pred ([@@@mkey]x:ref foo2) (s:foo2_spec) : slprop =
 exists* (y: foo2). (x |-> y) **
 (y.left |-> s.left)
@@ -140,6 +142,7 @@ y : Int32.t
 
 }
 
+[@@pulse_unfold]
 let xy_pred ([@@@mkey]x:ref xy) (s:xy_spec) : slprop =
 exists* (y: xy). (x |-> y) **
 (y.x |-> s.x) **

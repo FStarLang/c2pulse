@@ -22,6 +22,7 @@ second : UInt32.t
 
 }
 
+[@@pulse_unfold]
 let u32_pair_struct_pred ([@@@mkey]x:ref u32_pair_struct) (s:u32_pair_struct_spec) : slprop =
 exists* (y: u32_pair_struct). (x |-> y) **
 (y.first |-> s.first) **
@@ -74,70 +75,3 @@ ensures exists* w. u32_pair_struct_pred x w ** pure (w == {first = a0;
 second = a1})
 {fold u32_pair_struct_pred x ({first = a0;
 second = a1}) }
-
-fn new_u32_pair_struct ()
-requires emp
-returns x:ref u32_pair_struct
-ensures freeable x
-ensures (u32_pair_struct_pred x { first = 0ul; second = 1ul })
-{
-let mut x : (ref u32_pair_struct) = u32_pair_struct_alloc ();
-u32_pair_struct_explode !x;
-Mku32_pair_struct?.first (! (! x)) := (uint64_to_uint32 0UL);
-Mku32_pair_struct?.second (! (! x)) := (uint64_to_uint32 1UL);
-u32_pair_struct_recover !x;
-(! x);
-}
-
-fn swap_fields
-(x : ( ref u32_pair_struct) )
-(#s : u32_pair_struct_spec)
-requires u32_pair_struct_pred x s
-ensures exists* (s':u32_pair_struct_spec). u32_pair_struct_pred x s' ** pure (s' == ({first = s.second; second = s.first}))
-{
-let mut x : (ref u32_pair_struct) = x;
-u32_pair_struct_explode !x;
-let mut f1 : UInt32.t = (! (! (! x)).first);
-Mku32_pair_struct?.first (! (! x)) := (! (! (! x)).second);
-Mku32_pair_struct?.second (! (! x)) := (! f1);
-u32_pair_struct_recover !x;
-}
-
-fn swap_refs
-(x : ( ref UInt32.t) )
-(y : ( ref UInt32.t) )
-requires x |-> 'x
-requires y |-> 'y
-ensures x |-> 'y
-ensures y |-> 'x
-{
-let mut x : (ref UInt32.t) = x;
-let mut y : (ref UInt32.t) = y;
-let mut tmp : UInt32.t = (! (! x));
-(! x) := (! (! y));
-(! y) := (! tmp);
-}
-
-fn swap_fields_alt
-(x : ( ref u32_pair_struct) )
-(#s : u32_pair_struct_spec)
-requires u32_pair_struct_pred x s
-ensures exists* (s':u32_pair_struct_spec). u32_pair_struct_pred x s' ** pure (s' == {first = s.second; second = s.first})
-{
-let mut x : (ref u32_pair_struct) = x;
-u32_pair_struct_explode !x;
-(swap_refs (! (! x)).first (! (! x)).second);
-u32_pair_struct_recover !x;
-}
-
-fn main ()
-returns Int32.t
-{
-let mut x : (ref u32_pair_struct) = (new_u32_pair_struct ());
-(swap_fields (! x));
-(swap_fields_alt (! x));
-with vx. assert x |-> vx;
-assert(u32_pair_struct_pred vx {first = 0ul; second = 1ul});
-(u32_pair_struct_free (! x));
-0l;
-}

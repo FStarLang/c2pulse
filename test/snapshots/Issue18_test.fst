@@ -30,6 +30,7 @@ py : Int32.t
 
 }
 
+[@@pulse_unfold]
 let point_pred ([@@@mkey]x:ref point) (s:point_spec) : slprop =
 exists* (y: point). (x |-> y) **
 (y.px |-> s.px) **

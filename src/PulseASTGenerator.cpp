@@ -814,7 +814,7 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
 
     auto *GenericPredicate = new GenericDecl();
     GenericPredicate->CInfo = getSourceInfoFromDecl(RD, Ctx, "");
-    GenericPredicate->Ident = "let ";
+    GenericPredicate->Ident = "[@@pulse_unfold]\nlet ";
     //Vidush:
     //Discussed with Guido.
     //We should add [@@@mkey] so that the SMT solver

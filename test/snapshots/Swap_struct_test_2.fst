@@ -22,6 +22,7 @@ second : UInt32.t
 
 }
 
+[@@pulse_unfold]
 let _u32_pair_struct_pred ([@@@mkey]x:ref _u32_pair_struct) (s:_u32_pair_struct_spec) : slprop =
 exists* (y: _u32_pair_struct). (x |-> y) **
 (y.first |-> s.first) **
@@ -82,10 +83,8 @@ ensures freeable x
 ensures (_u32_pair_struct_pred x { first = 0ul; second = 1ul })
 {
 let mut x : (ref _u32_pair_struct) = _u32_pair_struct_alloc ();
-_u32_pair_struct_explode !x;
 Mk_u32_pair_struct?.first (! (! x)) := (uint64_to_uint32 0UL);
 Mk_u32_pair_struct?.second (! (! x)) := (uint64_to_uint32 1UL);
-_u32_pair_struct_recover !x;
 (! x);
 }
 

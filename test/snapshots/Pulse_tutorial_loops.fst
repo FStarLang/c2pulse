@@ -31,30 +31,30 @@ else
 };
 }
 
+module U32 = Pulse.Lib.C.UInt32
 fn multiply_by_repeated_addition
-(x : Int32.t)
-(y : Int32.t)
-requires pure (fits ( * ) (as_int x) (as_int y))
-requires pure (as_int x >= 0)
-returns i:int32
-ensures pure (as_int i == as_int x * as_int y)
+(x : UInt32.t)
+(y : UInt32.t)
+requires pure (U32.fits ( * ) (U32.as_int x) (U32.as_int y))
+returns i:_
+ensures pure (U32.as_int i == U32.as_int x * U32.as_int y)
 {
-let mut x : Int32.t = x;
-let mut y : Int32.t = y;
-let mut ctr : Int32.t = 0l;
-let mut acc : Int32.t = 0l;
+let mut x : UInt32.t = x;
+let mut y : UInt32.t = y;
+let mut ctr : UInt32.t = (int32_to_uint32 0l);
+let mut acc : UInt32.t = (int32_to_uint32 0l);
 with vx vy. assert (x |-> vx) ** (y |-> vy);
-while((int32_to_bool (bool_to_int32 (Int32.lt (! ctr) (! x))));
+while((int32_to_bool (bool_to_int32 (UInt32.lt (! ctr) (! x))));
 )
-invariant b. exists* c a. (x |-> vx) ** (y |-> vy) ** (* tedious *) (ctr |-> c) ** (acc |-> a) ** pure (as_int c <= as_int vx) ** pure (as_int a == (as_int c * as_int vy)) ** pure (b == (as_int c < as_int vx))
+invariant exists* c a. (ctr |-> c) ** (acc |-> a) ** pure (U32.as_int c <= U32.as_int vx) ** pure (U32.as_int a == U32.as_int c * U32.as_int vy)
 {
-ctr := (Int32.add (! ctr) 1l);
-acc := (Int32.add (! acc) (! y));
+ctr := (UInt32.add (! ctr) (int32_to_uint32 1l));
+acc := (UInt32.add (! acc) (! y));
 };
 (! acc);
 }
 
-let rec sum (n:nat) : nat = if n = 0 then 0 else n + sum (n - 1) let rec sum_lemma (n:nat) : Lemma (sum n == n * (n + 1) / 2) = if n = 0 then () else sum_lemma (n - 1) let rec sum_mono (c n:nat) : Lemma (requires c <= n) (ensures sum c <= sum n) [SMTPat (sum c); SMTPat (sum n)] = sum_lemma c; sum_lemma n
+let rec sum (n:nat) : nat = if n = 0 then 0 else n + sum (n - 1) let rec sum_lemma (n:nat) : Lemma (sum n == n * (n + 1) / 2) = if n = 0 then () else sum_lemma (n - 1) let sum_mono (c n:nat) : Lemma (requires c <= n) (ensures sum c <= sum n) [SMTPat (sum c); SMTPat (sum n)] = sum_lemma c; sum_lemma n
 fn isum
 (n : Int32.t)
 requires pure (as_int n >= 0)

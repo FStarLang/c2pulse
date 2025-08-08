@@ -22,6 +22,7 @@ foo0 : ( ref foo)
 
 }
 
+[@@pulse_unfold]
 let foo_pred ([@@@mkey]x:ref foo) (s:foo_spec) : slprop =
 exists* (y: foo). (x |-> y) **
 (y.v |-> s.v) **

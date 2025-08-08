@@ -15,10 +15,10 @@ ENSURES((_u32_pair_struct_pred x { first = 0ul; second = 1ul }))
 struct _u32_pair_struct* new_u32_pair_struct ()
 {
   struct _u32_pair_struct* x = ( struct _u32_pair_struct* )malloc(sizeof(struct _u32_pair_struct));
-  LEMMA(_u32_pair_struct_explode !x);
+  // LEMMA(_u32_pair_struct_explode !x);
   x->first = 0ul;
   x->second = 1ul;
-  LEMMA(_u32_pair_struct_recover !x);
+  // LEMMA(_u32_pair_struct_recover !x);
   return x;
 }
 

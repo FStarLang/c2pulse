@@ -29,25 +29,25 @@ void count_down (int *x)
     }
   }
 }
+INCLUDE ( 
+  module U32 = Pulse.Lib.C.UInt32
+)
 
-REQUIRES(pure (fits ( * ) (as_int x) (as_int y)))
-REQUIRES(pure (as_int x >= 0))
-RETURNS(i:int32)
-ENSURES(pure (as_int i == as_int x * as_int y))
-int multiply_by_repeated_addition (int x, int y)
+REQUIRES(pure (U32.fits ( * ) (U32.as_int x) (U32.as_int y)))
+RETURNS(i:_)
+ENSURES(pure (U32.as_int i == U32.as_int x * U32.as_int y))
+uint32_t multiply_by_repeated_addition (uint32_t x, uint32_t y)
 {
-  int ctr = 0;
-  int acc = 0;
+  uint32_t ctr = 0;
+  uint32_t acc = 0;
   LEMMA(with vx vy. assert (x |-> vx) ** (y |-> vy));
   while (ctr < x)
-  INVARIANTS(invariant b. 
+  INVARIANTS(invariant 
     exists* c a.
-      (x |-> vx) ** (y |-> vy) ** (* tedious *)
       (ctr |-> c) **
       (acc |-> a) **
-      pure (as_int c <= as_int vx) **
-      pure (as_int a == (as_int c * as_int vy)) **
-      pure (b == (as_int c < as_int vx))
+      pure (U32.as_int c <= U32.as_int vx) **
+      pure (U32.as_int a == U32.as_int c * U32.as_int vy)
   )
   {
     ctr = ctr + 1;
@@ -66,7 +66,7 @@ let rec sum_lemma (n:nat)
 = if n = 0 then ()
   else sum_lemma (n - 1)
 
-let rec sum_mono (c n:nat)
+let sum_mono (c n:nat)
 : Lemma
   (requires c <= n)
   (ensures sum c <= sum n)

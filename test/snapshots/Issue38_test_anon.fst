@@ -22,6 +22,7 @@ y : Int32.t
 
 }
 
+[@@pulse_unfold]
 let anon_name0_pred ([@@@mkey]x:ref anon_name0) (s:anon_name0_spec) : slprop =
 exists* (y: anon_name0). (x |-> y) **
 (y.x |-> s.x) **
@@ -87,6 +88,7 @@ s : anon_name0_spec
 
 }
 
+[@@pulse_unfold]
 let foo_pred ([@@@mkey]x:ref foo) (s:foo_spec) : slprop =
 exists* (y: foo). (x |-> y) **
 anon_name0_pred y.s s.s

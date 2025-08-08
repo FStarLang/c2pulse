@@ -22,6 +22,7 @@ b : Int32.t
 
 }
 
+[@@pulse_unfold]
 let _foo_pred ([@@@mkey]x:ref _foo) (s:_foo_spec) : slprop =
 exists* (y: _foo). (x |-> y) **
 (y.a |-> s.a) **
