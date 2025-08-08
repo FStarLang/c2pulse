@@ -2895,7 +2895,15 @@ PulseVisitor::pulseFromStmt(Stmt *S, std::map<Term *, FStarType *> VEnv,
             // Overwrite old env.
             VEnv = LetInitRet.second;
 
-            auto *VDPulseTy = getPulseTyFromCTy(VD->getType());
+            FStarType *VDPulseTy;
+            if (VD->hasAttrs() && checkAndAddIsArrayTy(VD->getAttrs(), D, VEnv)){
+                VDPulseTy = pulseTyFromDecl(VD);
+            }
+            else {
+              VDPulseTy = getPulseTyFromCTy(VD->getType());
+            }
+
+            
             // if (Analyzer->isMutated(D)) {
             // auto TempVarName = gensym(VarName);
             // auto *PulseLetTmp = new LetBinding(TempVarName, LetInit,
@@ -3041,7 +3049,12 @@ PulseVisitor::pulseFromStmt(Stmt *S, std::map<Term *, FStarType *> VEnv,
                   Start->assignS2(LSE);
                 } else if (AnnKind == PulseAnnKind::HeapAllocated) {
                   IsAllocatedOnHeap.insert(VD);
-                } else {
+                }
+                else if (AnnKind == PulseAnnKind::IsArray){
+                  auto VEnvToSet = toSetVEnv(VEnv);
+                  addArrayTy(Match, VD, VEnvToSet);
+                }
+                else {
                   emitErrorWithLocation("Did not expect pulse annotation kind!",
                                         &Ctx, VD->getLocation());
                 }
