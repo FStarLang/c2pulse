@@ -1191,6 +1191,23 @@ FStarSeqSeqType::FStarSeqSeqType(FStarType *BaseTy) {
   ElementType = BaseTy;
 }
 
+// FStarSeqSeqType::FStarSeqSeqType(FStarArrType *FromArrTy){
+//   Tag = TermTag::FStarSeqSeqType;
+  
+//   auto *ElemTy = FromArrTy->ElementType;
+//   auto ElemArrTy = clang::dyn_cast<FStarArrType>(ElemTy);
+  
+//   FStarType *NewElemTy;
+//   if (ElemArrTy){
+//     NewElemTy = new FStarSeqSeqType(ElemArrTy);
+//   }
+//   else{
+//     NewElemTy = ElemTy;
+//   } 
+  
+//   ElementType = NewElemTy;
+// }
+
 void FStarArrType::setElementTy(FStarType *Type) { ElementType = Type; }
 void FStarPointerType::setPointerToTy(FStarType *Type) { PointerTo = Type; }
 
