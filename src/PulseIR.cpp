@@ -1130,10 +1130,17 @@ FStarType::FStarType(std::string Name) {
 }
 
 void FStarArrType::setName(std::string Name) { NamedValue = Name; }
+void FStarSeqSeqType::setName(std::string Name) {NamedValue = Name; }
 void FStarPointerType::setName(std::string Name) { NamedValue = Name; }
+
 
 void FStarArrType::dumpPretty() {
   llvm::outs() << "array ";
+  ElementType->dumpPretty();
+}
+
+void FStarSeqSeqType::dumpPretty() {
+  llvm::outs() << "Seq.seq "; 
   ElementType->dumpPretty();
 }
 
@@ -1143,7 +1150,14 @@ std::string FStarArrType::print(){
   Out += ElementType->print();
   Out += ")";
   return Out;
+}
 
+std::string FStarSeqSeqType::print(){
+  std::string Out = "";
+  Out += "(Seq.seq ";
+  Out += ElementType->print();
+  Out += ")";
+  return Out;
 }
 
 void FStarPointerType::dumpPretty() {
@@ -1165,20 +1179,27 @@ SourceInfo PulseStmt::getCSourceInfo(){
 
 FStarArrType::FStarArrType() { Tag = TermTag::FStarArrType; }
 
+FStarPointerType::FStarPointerType() { Tag = TermTag::FStarPointerType; }
+FStarPointerType::FStarPointerType(FStarType *RefTo) {
+  Tag = TermTag::FStarPointerType;
+  PointerTo = RefTo;
+}
+
+FStarSeqSeqType::FStarSeqSeqType() {Tag = TermTag::FStarSeqSeqType; }
+FStarSeqSeqType::FStarSeqSeqType(FStarType *BaseTy) {
+  Tag = TermTag::FStarSeqSeqType;
+  ElementType = BaseTy;
+}
+
 void FStarArrType::setElementTy(FStarType *Type) { ElementType = Type; }
 void FStarPointerType::setPointerToTy(FStarType *Type) { PointerTo = Type; }
-
-FStarPointerType::FStarPointerType() { Tag = TermTag::FStarPointerType; }
 
 AppE::AppE() {
   Tag = TermTag::AppE;
   Args.clear();
 }
 
-FStarPointerType::FStarPointerType(FStarType *RefTo) {
-  Tag = TermTag::FStarPointerType;
-  PointerTo = RefTo;
-}
+
 
 AppE::AppE(std::string CallName, Term *Ty) {
   Tag = TermTag::AppE;
@@ -1425,7 +1446,12 @@ std::string getPulseTyAsString(Term *Type) {
   } else if (auto *Ty = clang::dyn_cast<FStarArrType>(Type)) {
     llvm::outs() << "Found FStarArrType!\n";
     return Ty->print();
-  } else if (auto *Ty = clang::dyn_cast<FStarPointerType>(Type)) {
+  }
+  else if (auto *Ty = clang::dyn_cast<FStarSeqSeqType>(Type)) {
+    llvm::outs() << "Found FStarSeqSeqType!\n";
+    return Ty->print();
+  }
+  else if (auto *Ty = clang::dyn_cast<FStarPointerType>(Type)) {
     llvm::outs() << "Found FStarPointerType!\n";
     return Ty->print();
   } else {

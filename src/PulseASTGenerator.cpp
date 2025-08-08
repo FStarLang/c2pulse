@@ -671,7 +671,18 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     AbstractType->Ident += StructName + " = {\n";
     for (const FieldDecl *FD : RD->fields()) {
       auto *PulseTy = pulseTyFromDecl(FD);
-      AbstractType->Ident += FieldToUniqueNames[FD] + ": ref ";
+      AbstractType->Ident += FieldToUniqueNames[FD]; 
+
+      //Check if the field is not a lvalue, for instance arrays
+      //Discussed with Guido, that arrays in structs are not lvalues.
+      //They should not be refs 
+      if (FD->getType()->isArrayType()){
+        AbstractType->Ident += ": ";
+      }
+      else {
+        AbstractType->Ident += ": ref ";
+      }
+      
       AbstractType->Ident += PulseTy->print() + ";";
       AbstractType->Ident += "\n";
 
@@ -708,7 +719,20 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
       if (FD->getType()->isRecordType()){
         FieldTy->NamedValue += "_spec";
       }
-      Element->ElementTerm = FieldTy;
+
+      if (FD->getType()->isArrayType()){
+        auto *FieldArrTy = dyn_cast<FStarArrType>(FieldTy);
+        if (!FieldArrTy){
+          emitErrorWithLocation("Expected member to be array type!", &Ctx, FD->getLocation());
+        }
+        auto *UnderlyingType = FieldArrTy->ElementType;
+        //should be Seq.seq
+        auto *NewSeqTy = new FStarSeqSeqType(UnderlyingType);
+        Element->ElementTerm = NewSeqTy;
+      }
+      else{
+        Element->ElementTerm = FieldTy;
+      }
       Element->Ident = FieldToUniqueNames[FD];
       Fields.push_back(Element);
     }
@@ -990,7 +1014,17 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
       NewGhostFunctionRecover->Ident += "#" + FieldPrefix + std::to_string(Counter) + " : ";
       if (Fld->getType()->isRecordType()){
         NewGhostFunctionRecover->Ident += PulseTy->print() + "_spec";
-      } 
+      }
+      else if (Fld->getType()->isArrayType()){
+        auto *PulseArrTy = dyn_cast<FStarArrType>(PulseTy);
+        if (!PulseArrTy){
+          emitErrorWithLocation("Expected field type to be array!", &Ctx, Fld->getLocation());
+        }
+
+        auto *ElemTy = PulseArrTy->ElementType;
+        auto *SeqTy = new FStarSeqSeqType(ElemTy);
+        NewGhostFunctionRecover->Ident += SeqTy->print();
+      }
       else {
         NewGhostFunctionRecover->Ident += PulseTy->print();
       }
@@ -2543,12 +2577,21 @@ FStarType *PulseVisitor::getPulseTyFromCTy(clang::QualType CType) {
     PulsePointerTy->setPointerToTy(FStartUnderLyingType);
     return PulsePointerTy;
   }
-  else if (CType->isConstantArrayType() || CType->isVariableArrayType()){
+  if (const auto *AT = CType->getAsArrayTypeUnsafe()) {
+    
+    QualType BaseTy;
+    if (const auto *CAT = dyn_cast<clang::ConstantArrayType>(AT)) {
+        BaseTy = CAT->getElementType();
+    } else if (const auto *IAT = dyn_cast<clang::IncompleteArrayType>(AT)) {
+        BaseTy = IAT->getElementType();  // For flexible array members
+    } else if (const auto *VAT = dyn_cast<clang::VariableArrayType>(AT)) {
+        BaseTy = VAT->getElementType();  // For VLAs
+    }
 
     auto *ArrTy = new FStarArrType(); 
-    auto BaseTy = CType->getPointeeOrArrayElementType();
-    auto BaseTyQual = QualType(BaseTy, 0);
-    ArrTy->ElementType = getPulseTyFromCTy(BaseTyQual);
+    //auto BaseTy = CType->getPointeeOrArrayElementType();
+    //auto BaseTyQual = QualType(BaseTy, 0);
+    ArrTy->ElementType = getPulseTyFromCTy(BaseTy);
     return ArrTy;
   }
 
@@ -2860,11 +2903,11 @@ Term *PulseVisitor::checkAndAddCast(Term *SrcTerm, Term *DstType){
     return SrcTerm;
   }
   
-  llvm::outs() << "Print the source type!\n";
+  llvm::outs() << "Print the source type!\n\n";
   SrcType->dumpPretty();
-  llvm::outs() << "Print the destination type!\n";
+  llvm::outs() << "\n\nPrint the destination type!\n";
   DstType->dumpPretty();
-  llvm::outs() << "\n";
+  llvm::outs() << "\n\nEnd printing Dst type\n";
 
   if (getPulseTyAsString(SrcType) != getPulseTyAsString(DstType)){
     
@@ -3630,8 +3673,12 @@ PulseVisitor::pulseFromStmt(Stmt *S, std::map<Term *, FStarType *> VEnv,
 
           //assert base expression to typedef type.
           ValueDecl *MemberDecl = ME->getMemberDecl();
+          auto MemberCTy = MemberDecl->getType();
           auto *MemberTy = pulseTyFromDecl(MemberDecl);
-          MemberTy = new FStarPointerType(MemberTy);
+          if (!MemberCTy->isArrayType()){
+            auto *ToPulseRef = new FStarPointerType(MemberTy);
+            MemberTy = ToPulseRef;
+          }
           std::string StructName;
           if (FieldDecl *FieldDecl = llvm::dyn_cast<clang::FieldDecl>(MemberDecl)) {
             const RecordDecl *RecordDecl = FieldDecl->getParent();
@@ -3809,10 +3856,14 @@ PulseVisitor::pulseFromStmt(Stmt *S, std::map<Term *, FStarType *> VEnv,
           //StructName = TyOfDecl->getPointeeType().getAsString();
 
           auto MemberName = RhsDecl->getDeclName();
+          auto MemberCTy = MemberDecl->getType();
           auto MemberTy = pulseTyFromDecl(MemberDecl);
           // We make the member's type a ref since we assume it in out struct
           // declarations
-          MemberTy = new FStarPointerType(MemberTy);
+          if (!MemberCTy->isArrayType()){
+            auto *ToPulseRef = new FStarPointerType(MemberTy);
+            MemberTy = ToPulseRef;
+          }
 
           //x->f translates to (!(!x).f)
           // auto *GenStmt = new Name("(!(!" + NameOfDecl + ")." +
@@ -4839,8 +4890,13 @@ std::pair<Term *, PulseVisitor::VarTyEnv> PulseVisitor::getTermFromCExpr(
           //    new Name("(!" + Dec->getDecl()->getNameAsString() + ")." +
           //             Mem->getMemberDecl()->getDeclName().getAsString());
         auto MemberDecl = Mem->getMemberDecl();
+        auto MemberCTy = MemberDecl->getType();
         auto MemberTy = pulseTyFromDecl(MemberDecl);
-        MemberTy = new FStarPointerType(MemberTy);
+
+        if (!MemberCTy->isArrayType()){
+          auto *ToPulseRef = new FStarPointerType(MemberTy);
+          MemberTy = ToPulseRef;
+        }
 
         auto *NewProject = new Project(MemberTy);
         NewProject->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
@@ -5457,8 +5513,31 @@ std::pair<Term *, PulseVisitor::VarTyEnv> PulseVisitor::getTermFromCExpr(
     //Skip ArrayToPointer Decay casts for now.
     if (IC->getCastKind() == clang::CK_ArrayToPointerDecay){
       auto *SubExpr = IC->getSubExpr();
-      return getTermFromCExpr(SubExpr, VEnv, MutAnalyzer, ExprsBefore, Parent,
+      auto PulseSubExprRet = getTermFromCExpr(SubExpr, VEnv, MutAnalyzer, ExprsBefore, Parent,
                               ParentType, Module);
+      return PulseSubExprRet;
+      // auto *PulseSubExpr = PulseSubExprRet.first;
+      // auto NewVEnv = PulseSubExprRet.second;
+
+      // //Assert it is a ref and change type!
+      // //Or Add a band here?? Vidush: Not sure about adding a bang.
+      // auto *PulseSubExprTy = PulseSubExpr->getType();
+      // if (auto *PulseArrPointerTy = dyn_cast<FStarPointerType>(PulseSubExprTy)){
+      //   auto *ArrTy = PulseArrPointerTy->PointerTo;
+      //   //Assert this is an array?
+      //   auto *PulseArrTy = dyn_cast<FStarArrType>(ArrTy);
+      //   if (!PulseArrTy){
+      //     emitErrorWithLocation("Expected underlying type to be array type!", &Ctx, IC->getExprLoc());
+      //   }
+      //   //We need to add a bang here and return the pulse array type as the eventual value.
+      //   auto *BangCall = new AppE("!", PulseArrTy);
+      //   auto *ParenAroundSubExpr = new Paren(PulseSubExpr, PulseSubExprTy);
+      //   BangCall->pushArg(ParenAroundSubExpr);
+      //   //Return!
+      //   return std::make_pair(BangCall, NewVEnv);
+      // }
+      
+      // emitErrorWithLocation("Expected type to be a ref!", &Ctx, IC->getExprLoc());
     }
 
     if (checkIfExprIsNullPtr(IC)) {
@@ -5814,9 +5893,14 @@ std::pair<Term *, PulseVisitor::VarTyEnv> PulseVisitor::getTermFromCExpr(
 
       auto MemberName = MemberExprDecl->getDeclName();
       ValueDecl *MemberDecl = ME->getMemberDecl();
+      auto MemberCTy = MemberDecl->getType();
       auto *MemberTy = pulseTyFromDecl(MemberDecl);
       // We always assume member fields of a struct are a ref.
-      MemberTy = new FStarPointerType(MemberTy);
+      if (!MemberCTy->isArrayType()){
+        auto *ToPulseRef = new FStarPointerType(MemberTy);
+        MemberTy = ToPulseRef;
+      }
+      
       //auto *GenStmt =
       //    new Name("(!(!" + NameOfDecl + ")." + MemberName.getAsString() + ")");
 

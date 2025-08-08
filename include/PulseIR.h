@@ -206,7 +206,10 @@ class PulseSourceRange {
 
 /// Define F* IR Similar to type term
 /// https://github.com/FStarLang/FStar/blob/3ff998c60bb0efe9925fc94e8fb8b785b9485af0/src/parser/FStarC.Parser.AST.fsti#L40
-enum class TermTag {Const, Paren, Var, Name, AppE, FStarType, FStarPointerType, FStarArrType, 
+enum class TermTag {Const, Paren, Var, Name, AppE, FStarType, 
+                    FStarPointerType, 
+                    FStarArrType,
+                    FStarSeqSeqType, 
                     Ensures, 
                     Requires,
                     Returns,
@@ -384,6 +387,23 @@ class FStarArrType : public FStarType {
       return T->Tag == TermTag::FStarArrType;
     }
 
+};
+
+/// An IR node for representing an array type in FStar.
+class FStarSeqSeqType : public FStarType {
+
+  public:
+    FStarSeqSeqType();
+    FStarSeqSeqType(FStarType *BaseTy);
+    FStarType *ElementType;
+    virtual void setName(std::string Name) override;
+    virtual ~FStarSeqSeqType() = default;
+    virtual void dumpPretty() override;
+    virtual std::string print() override;
+    void setElementTy(FStarType *Ty);
+    static bool classof(const Term *T) {
+      return T->Tag == TermTag::FStarSeqSeqType;
+    }
 };
 
 /// An IR node for representing a pointer type in FStar.

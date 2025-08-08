@@ -101,6 +101,7 @@ inline constexpr CodegenStrTy Colon = ":";
 inline constexpr CodegenStrTy Semicolon = ";";
 inline constexpr CodegenStrTy Reference = "ref";
 inline constexpr CodegenStrTy Array = "array";
+inline constexpr CodegenStrTy SeqSeq = "Seq.seq";
 inline constexpr CodegenStrTy OpeningCurlyBrace = "{";
 inline constexpr CodegenStrTy ClosingCurlyBrace = "}";
 inline constexpr CodegenStrTy NewLine = "\n";
