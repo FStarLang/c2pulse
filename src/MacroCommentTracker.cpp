@@ -12,7 +12,7 @@ using namespace clang;
 MacroCommentTracker::MacroCommentTracker(clang::Preprocessor &PP,
                         clang::SourceManager &SM,
                         const clang::LangOptions &LangOpts,
-                        std::unordered_map<clang::FileID, std::map<unsigned, MacroEventInfo>> &macroInfoMap)
+                        std::unordered_map<clang::FileID, std::map<unsigned, MacroEventInfo>, FileIDHash> &macroInfoMap)
     : SM(SM), LangOpts(LangOpts), macroInfoMap(macroInfoMap) {}
 
 static std::string locToStr(const SourceManager &SM, SourceLocation Loc) {

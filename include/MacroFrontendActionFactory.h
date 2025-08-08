@@ -12,7 +12,7 @@
 
 class MacroFrontendActionFactory : public clang::tooling::FrontendActionFactory {
 public:
-    MacroFrontendActionFactory(std::unordered_map<clang::FileID, std::map<unsigned, MacroEventInfo>> &events)
+    MacroFrontendActionFactory(std::unordered_map<clang::FileID, std::map<unsigned, MacroEventInfo>, FileIDHash> &events)
         : macroInfoMap(events) {}
 
     MacroFrontendAction *getAction() const { return ActionPtr; }
@@ -25,5 +25,5 @@ public:
 
 private:
     mutable MacroFrontendAction *ActionPtr = nullptr; 
-    std::unordered_map<clang::FileID, std::map<unsigned, MacroEventInfo>> &macroInfoMap;
+    std::unordered_map<clang::FileID, std::map<unsigned, MacroEventInfo>, FileIDHash> &macroInfoMap;
 };

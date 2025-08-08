@@ -8,6 +8,7 @@
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/StringRef.h"
 
+#include <set>
 #include <string>
 #include <vector>
 #include <utility>
@@ -765,6 +766,10 @@ FStarType *findVarTyPulseTyEnv(std::string VarName,
 void insertPulseTyEnv(Term *T, FStarType *Ty,
                       std::map<Term *, FStarType *> &Env);
 FStarType *lookupPulseTyEnv(Term *T, std::map<Term *, FStarType *> Env);
+
+bool checkVarNameExistsInEnv(std::string VarName,
+                               std::map<Term *, FStarType *> Env);
+
 PulseDecl *lookupDecl(clang::Decl *D,
                       std::map<clang::Decl *, PulseDecl *> DeclEnv);
 
@@ -773,3 +778,5 @@ std::string getDeclName(PulseDecl *D);
 void printVEnv(std::map<Term *, FStarType *> Env);
 
 std::string getCastNameForPulseType(Term *T);
+
+std::set<std::string> toSetVEnv(std::map<Term *, FStarType *> Env);

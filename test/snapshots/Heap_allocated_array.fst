@@ -85,8 +85,12 @@ let mut b0 : (ref Int32.t) = alloc_ref #Int32.t ();
 let mut b1 : (ref Int32.t) = alloc_ref #Int32.t ();
 let mut size_expr0 : SizeT.t = (! length);
 let mut b : (array Int32.t) = alloc_array #Int32.t !size_expr0;
+let mut length2 : Int32.t = 100l;
+let mut size_expr1 : SizeT.t = (uint64_to_sizet (int32_to_uint64 (! length2)));
+let mut bb : (array Int32.t) = alloc_array #Int32.t !size_expr1;
 (free_ref (! b0));
 (free_ref (! b1));
 (free_array #Int32.t (! b));
+(free_array #Int32.t (! bb));
 (sizet_to_int32 (! length));
 }

@@ -109,7 +109,7 @@ int main(int argc, const char **argv) {
     // files and locations. And also allows for events with same range in different files
     // be stored separately, I am trying to avoid collisions. I believe this is useful for 
     // large projects with many files.
-    std::unordered_map<FileID, std::map<unsigned, MacroEventInfo>> macroInfoMap;
+    std::unordered_map<FileID, std::map<unsigned, MacroEventInfo>, FileIDHash> macroInfoMap;
     auto Factory = std::make_unique<MacroFrontendActionFactory>(macroInfoMap);
     int Result = Tool->run(Factory.get());
     if (Result != 0) {
