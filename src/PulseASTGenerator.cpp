@@ -3585,7 +3585,7 @@ PulseVisitor::pulseFromStmt(Stmt *S, std::map<Term *, FStarType *> VEnv,
 
           //assert base expression to typedef type.
           ValueDecl *MemberDecl = ME->getMemberDecl();
-          auto *MemberTy = getPulseTyFromCTy(MemberDecl->getType());
+          auto *MemberTy = pulseTyFromDecl(MemberDecl);
           MemberTy = new FStarPointerType(MemberTy);
           std::string StructName;
           if (FieldDecl *FieldDecl = llvm::dyn_cast<clang::FieldDecl>(MemberDecl)) {
@@ -3764,7 +3764,7 @@ PulseVisitor::pulseFromStmt(Stmt *S, std::map<Term *, FStarType *> VEnv,
           //StructName = TyOfDecl->getPointeeType().getAsString();
 
           auto MemberName = RhsDecl->getDeclName();
-          auto MemberTy = getPulseTyFromCTy(MemberDecl->getType());
+          auto MemberTy = pulseTyFromDecl(MemberDecl);
           // We make the member's type a ref since we assume it in out struct
           // declarations
           MemberTy = new FStarPointerType(MemberTy);
@@ -4794,7 +4794,7 @@ std::pair<Term *, PulseVisitor::VarTyEnv> PulseVisitor::getTermFromCExpr(
           //    new Name("(!" + Dec->getDecl()->getNameAsString() + ")." +
           //             Mem->getMemberDecl()->getDeclName().getAsString());
         auto MemberDecl = Mem->getMemberDecl();
-        auto MemberTy = getPulseTyFromCTy(MemberDecl->getType());
+        auto MemberTy = pulseTyFromDecl(MemberDecl);
         MemberTy = new FStarPointerType(MemberTy);
 
         auto *NewProject = new Project(MemberTy);
@@ -5572,6 +5572,11 @@ std::pair<Term *, PulseVisitor::VarTyEnv> PulseVisitor::getTermFromCExpr(
         PulseArrBase->getType(); // getPulseTyFromCTy(ArrBase->getType());
     auto *PulseArrTy = dyn_cast<FStarArrType>(PulseTy);
     if (!PulseArrTy) {
+      llvm::outs() << "\n";
+      ArrBase->dump(); 
+      llvm::outs() << "\n";
+      ArrIdx->dump();
+      llvm::outs() << "\n";
       emitErrorWithLocation("Expected a pulse array type but got: " +
                                 getPulseTyAsString(PulseTy),
                             &Ctx, ArrSubExpr->getExprLoc());
@@ -5764,11 +5769,16 @@ std::pair<Term *, PulseVisitor::VarTyEnv> PulseVisitor::getTermFromCExpr(
 
       auto MemberName = MemberExprDecl->getDeclName();
       ValueDecl *MemberDecl = ME->getMemberDecl();
-      auto *MemberTy = getPulseTyFromCTy(MemberDecl->getType());
+      auto *MemberTy = pulseTyFromDecl(MemberDecl);
       // We always assume member fields of a struct are a ref.
       MemberTy = new FStarPointerType(MemberTy);
       //auto *GenStmt =
       //    new Name("(!(!" + NameOfDecl + ")." + MemberName.getAsString() + ")");
+
+      llvm::outs() << "Print the type of the projection!\n\n";
+      MemberTy->dumpPretty();
+      llvm::outs() << "\n\nEnd printing member type!\n\n";
+
 
       auto *NewProject = new Project(MemberTy);
       NewProject->CInfo = getSourceInfoFromExpr(E, Ctx, "", "");
@@ -5783,6 +5793,11 @@ std::pair<Term *, PulseVisitor::VarTyEnv> PulseVisitor::getTermFromCExpr(
       // auto *MemberTy = findVarTyPulseTyEnv(MemberName.getAsString(),
       // BaseTermRet.second);
       auto *BaseTermTy = BaseTerm->getType();
+
+      llvm::outs() << "Print the type of the base term!\n\n";
+      BaseTermTy->dumpPretty();
+      llvm::outs() << "\n\nEnd printing base term!\n";
+
       if (IsLVal){
         // TODO: change from nullptr
         auto *BaseTermTyRef = dyn_cast<FStarPointerType>(BaseTermTy);
