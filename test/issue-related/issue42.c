@@ -8,31 +8,22 @@ struct _foo {
 };
 
 REQUIRES(exists* v vn. foo_pred p v ** foo_pred v.next vn)
-ENSURES (exists* v vn. foo_pred p v ** foo_pred v.next vn)
+ENSURES (exists* v vn. foo_pred v.next vn ** foo_pred p v ** pure (vn.v == 0l))
 void set_next_zero(foo *p)
 {
-	LEMMA(foo_explode (!p));
 	foo *pn = p->next;
-	LEMMA(foo_explode (!pn));
 	pn->v = 0;
 	LEMMA(foo_recover (!pn));
-	LEMMA(foo_recover (!p));
 }
 
-EXPECT_FAILURE() // ambiguous...
 REQUIRES(exists* v vn vnn. foo_pred p v ** foo_pred v.next vn ** foo_pred vn.next vnn)
-ENSURES (exists* v vn vnn. foo_pred p v ** foo_pred v.next vn ** foo_pred vn.next vnn)
+ENSURES (exists* v vn vnn. foo_pred vn.next vnn ** foo_pred v.next vn ** foo_pred p v ** pure (vnn.v == 0l))
 void set_next_next_zero(foo *p)
 {
-	LEMMA(foo_explode (!p));
 	foo *pn = p->next;
-	LEMMA(foo_explode (!pn));
 	foo *pnn = pn->next;
-	LEMMA(foo_explode (!pnn));
 	pnn->v = 0;
 	LEMMA(foo_recover (!pnn));
-	LEMMA(foo_recover (!pn));
-	LEMMA(foo_recover (!p));
 }
 
 

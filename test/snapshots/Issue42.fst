@@ -22,6 +22,7 @@ v : Int32.t
 
 }
 
+[@@pulse_unfold]
 let foo_pred ([@@@mkey]x:ref foo) (s:foo_spec) : slprop =
 exists* (y: foo). (x |-> y) **
 (y.next |-> s.next) **
@@ -78,33 +79,24 @@ v = a1}) }
 fn set_next_zero
 (p : ( ref foo) )
 requires exists* v vn. foo_pred p v ** foo_pred v.next vn
-ensures exists* v vn. foo_pred p v ** foo_pred v.next vn
+ensures exists* v vn. foo_pred v.next vn ** foo_pred p v ** pure (vn.v == 0l)
 {
 let mut p : (ref foo) = p;
-foo_explode (!p);
 let mut pn : (ref foo) = (! (! (! p)).next);
-foo_explode (!pn);
 Mkfoo?.v (! (! pn)) := 0l;
 foo_recover (!pn);
-foo_recover (!p);
 }
 
-[@@expect_failure]
 fn set_next_next_zero
 (p : ( ref foo) )
 requires exists* v vn vnn. foo_pred p v ** foo_pred v.next vn ** foo_pred vn.next vnn
-ensures exists* v vn vnn. foo_pred p v ** foo_pred v.next vn ** foo_pred vn.next vnn
+ensures exists* v vn vnn. foo_pred vn.next vnn ** foo_pred v.next vn ** foo_pred p v ** pure (vnn.v == 0l)
 {
 let mut p : (ref foo) = p;
-foo_explode (!p);
 let mut pn : (ref foo) = (! (! (! p)).next);
-foo_explode (!pn);
 let mut pnn : (ref foo) = (! (! (! pn)).next);
-foo_explode (!pnn);
 Mkfoo?.v (! (! pnn)) := 0l;
 foo_recover (!pnn);
-foo_recover (!pn);
-foo_recover (!p);
 }
 
 fn get_next
