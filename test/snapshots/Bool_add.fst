@@ -11,7 +11,8 @@ open Pulse.Lib.C
 fn foo
 (a : bool)
 (b : bool)
-returns Int32.t
+returns r: Int32.t
+ensures pure (v r == (if a then 1 else 0) + (if b then 1 else 0))
 {
 let mut a : bool = a;
 let mut b : bool = b;
