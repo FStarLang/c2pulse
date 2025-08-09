@@ -26,8 +26,9 @@ void foo(s1 *x1){
     x /= 2;
     x *= 2; 
     x = x % 2;
-    //TODO: implement x %= 2;
+    
 
+    //TODO: implement x %= 2;
     LEMMA(admit());
     return;
 }
