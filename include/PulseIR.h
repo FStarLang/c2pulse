@@ -395,6 +395,7 @@ class FStarSeqSeqType : public FStarType {
   public:
     FStarSeqSeqType();
     FStarSeqSeqType(FStarType *BaseTy);
+    // FStarSeqSeqType(FStarArrType *ArrTy);
     FStarType *ElementType;
     virtual void setName(std::string Name) override;
     virtual ~FStarSeqSeqType() = default;

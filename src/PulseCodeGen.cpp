@@ -510,8 +510,9 @@ void PulseCodeGen::generateCodeFromTerm(osstream_with_pos &OS,
     OS << PulseSyntax::SeqSeq;
 
     OS << PulseSyntax::Space;
-
+    OS << PulseSyntax::OpeningParenthesis;
     generateCodeFromTerm(OS, FST->ElementType);
+    OS << PulseSyntax::ClosingParenthesis;
 
     PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
