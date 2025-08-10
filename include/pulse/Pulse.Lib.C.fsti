@@ -12,3 +12,11 @@ let _Bool = bool
 
 // We assume size_t is at least 64 bits.
 assume SizeTFitsU64 : fits_u64
+
+[@@Pulse.Lib.Core.pulse_unfold]
+unfold
+let _true_ = true
+
+[@@Pulse.Lib.Core.pulse_unfold]
+unfold
+let _false_ = false
