@@ -1118,11 +1118,95 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
     UnionSpec->Ident += "type " + StructName + "_spec = \n";
     for (auto Fld : RD->fields()){
       auto FldName = FieldToUniqueNames[Fld];
-      auto FldTy = getPulseTyFromCTy(Fld->getType());
+      auto FldTy = pulseTyFromDecl(Fld);
       UnionSpec->Ident += " | Case_" + StructName + "_" + FldName + " of " + FldTy->print() + "\n";
     }
 
     NewModul->Decls.push_back(UnionSpec);
+
+
+    // let ab_union_relations (s:ab_union_spec) : prop = 
+    // match s with
+    //   | Case_ab_union_a a -> length a == 24
+    //   | Case_ab_union_b b -> length b == 48
+
+    size_t Counter = 0; 
+    if (HasArrayTypeFields){
+      auto *GenericRelations = new GenericDecl(); 
+      GenericRelations->CInfo = getSourceInfoFromDecl(RD, Ctx, "");
+      GenericRelations->Ident = "let ";
+      GenericRelations->Ident += StructName + "_relations (s:" + StructName + "_spec) : prop = \n";
+      GenericRelations->Ident += "match s with\n";
+      //Only for fields that are array.
+      for (auto *Fld : RD->fields()){
+
+        auto It = DeclTyMap.find(Fld);
+        if (It != DeclTyMap.end()){
+          auto Len = It->second;
+          auto *ArrType = Len->getAsArrayTypeUnsafe();
+          if (!ArrType){
+            emitErrorWithLocation("Could not get Type of Array", &Ctx, Fld->getLocation());
+          }
+          if (const auto *constArray = dyn_cast<ConstantArrayType>(ArrType)) {
+            llvm::APInt size = constArray->getSize();
+            uint64_t ArraySize = size.getLimitedValue();
+
+            GenericRelations->Ident += "| Case_" + StructName + "_" + Fld->getNameAsString() + " " + Fld->getNameAsString(); 
+            GenericRelations->Ident += " -> length " + Fld->getNameAsString() + " == " + std::to_string(ArraySize);
+            GenericRelations->Ident += "\n";
+          }
+          else if (const auto *VarArray = dyn_cast<VariableArrayType>(ArrType)){
+            auto ArrSize = VarArray->getSizeExpr();
+
+            //Only implemented for single variables, no complex expressions.
+            if (auto *Decl = dyn_cast<DeclRefExpr>(ArrSize)){
+              //std::string ArrSizeStr;
+              //llvm::raw_string_ostream ArrSizeStream(ArrSizeStr);
+              //PrintingPolicy policy(Ctx.getLangOpts());
+              //ArrSize->printPretty(ArrSizeStream, nullptr, policy);
+              
+              auto VarName = Decl->getDecl()->getNameAsString();
+              auto It = VarNamesInScope.find(VarName);
+              std::string LengthExpr;
+              if (It != VarNamesInScope.end()){
+                //Check if is a field. 
+                auto *Def = It->second;
+                if (!Def){
+                  emitErrorWithLocation("Could not find definition for variable: " + VarName, &Ctx, RD->getLocation());
+                }
+
+                QualType DefTy = getTypeFromDecl(Def);
+                auto ModuleName = getPulseModuleNameForCType(DefTy, Ctx);
+                auto It2 = FieldToUniqueNames.find(Def); 
+                //Length is part of the Struct
+                if (It2 != FieldToUniqueNames.end()){
+                  LengthExpr = ModuleName + ".v " + "s." + VarName;
+                }
+                else {
+                  LengthExpr = ModuleName + ".v " + VarName;
+                }
+              }
+              else {
+                emitErrorWithLocation("Could not find variable in env: " + VarName, &Ctx, RD->getLocation());
+              }
+
+              GenericRelations->Ident += "| Case_" + StructName + "_" + Fld->getNameAsString() + " " + Fld->getNameAsString(); 
+              GenericRelations->Ident += " -> length " + Fld->getNameAsString() + " == " + LengthExpr;
+              GenericRelations->Ident += "\n";
+
+            }
+            else {
+              emitErrorWithLocation("Cannot handle complex size expressions for array!", &Ctx, RD->getLocation());
+            }
+
+          }
+          Counter++;
+        }
+    }
+    GenericRelations->Ident += "\n";
+    NewModul->Decls.push_back(GenericRelations);
+  }
+
 
     // (* Just like a struct, this should the predicate used by the translation
     // whenever there are fields of type `union ab`. *)
@@ -1143,6 +1227,11 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
       UnionPred->Ident += " | Case_" + StructName + "_" + FldName + " v -> " + "uv." + FldName + " |-> v\n";
     } 
     UnionPred->Ident += "end\n";
+
+    if (HasArrayTypeFields){
+      UnionPred->Ident += "** pure (" + StructName + "_relations s)\n";
+    }
+
     NewModul->Decls.push_back(UnionPred);
 
     // ghost
@@ -1167,6 +1256,9 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
       UnionExplode->Ident += " | Case_" + StructName + "_" + FldName + " w -> v." + FldName + " |-> w\n";
     }
     UnionExplode->Ident += "end\n";
+    if (HasArrayTypeFields){
+      UnionExplode->Ident += "** pure (" + StructName + "_relations s)\n";
+    }
     UnionExplode->Ident += "{\n";
     UnionExplode->Ident += "unfold " + StructName + "_pred;\n";
     UnionExplode->Ident += "}\n";
@@ -1194,6 +1286,9 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
       GhostRecover->Ident += " | Case_" + StructName + "_" + FldName + " w -> v." + FldName + "|-> w\n";
     }
     GhostRecover->Ident += "end\n";
+    if (HasArrayTypeFields){
+      GhostRecover->Ident += "** pure (" + StructName + "_relations s)\n";
+    }
     GhostRecover->Ident += "ensures " + StructName + "_pred x s\n";
     GhostRecover->Ident += "{\n";
     GhostRecover->Ident += "fold (" + StructName + "_pred x s);\n";
