@@ -100,7 +100,7 @@ let ab_union_relations (s:ab_union_spec) : prop =
 match s with
 | Case_ab_union_a a -> length a == 24
 | Case_ab_union_b b -> length b == 48
-
+| _ -> True 
 
 let ab_union_pred(u : ref ab_union) (s : ab_union_spec) : slprop =
 exists* uv. (u |-> uv) **

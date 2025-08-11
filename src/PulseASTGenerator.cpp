@@ -1203,7 +1203,7 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
           Counter++;
         }
     }
-    GenericRelations->Ident += "\n";
+    GenericRelations->Ident += "| _ -> True \n";
     NewModul->Decls.push_back(GenericRelations);
   }
 
