@@ -1,4 +1,5 @@
 module Pulse.Lib.C
+#lang-pulse
 include FStar.Mul
 include Pulse.Lib.C.Inhabited
 include FStar.SizeT // before Int32 to not shadow fits there
@@ -8,15 +9,34 @@ include Pulse.Lib.C.Array
 include FStar.Int.Cast
 include Pulse.Lib.C.Casts
 include Pulse.Lib.C.UnaryOps
+open Pulse.Lib.Core
 let _Bool = bool
 
 // We assume size_t is at least 64 bits.
 assume SizeTFitsU64 : fits_u64
 
-[@@Pulse.Lib.Core.pulse_unfold]
+[@@pulse_unfold]
 unfold
 let _true_ = true
 
-[@@Pulse.Lib.Core.pulse_unfold]
+[@@pulse_unfold]
 unfold
 let _false_ = false
+
+let maybe (b:bool) (p:slprop) = if b then p else emp
+
+ghost
+fn intro_maybe (p:slprop)
+requires p
+ensures maybe _true_ p
+{
+  fold (maybe _true_ p)
+}
+
+ghost
+fn intro_maybe_false (p:slprop)
+requires emp
+ensures maybe _false_ p
+{
+  fold (maybe _false_ p)
+}
