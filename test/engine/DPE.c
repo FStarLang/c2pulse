@@ -173,7 +173,7 @@ void init_l0_context(context_t *ctx, ISARRAY(DICE_DIGEST_LEN)uint8_t *cdi)
         elim_owns_payload_a _);
   ISARRAY() uint8_t* uds_buf = ctx->payload.uds;
   LEMMA(elim_maybe_true (freeable_array (!uds_buf)));
-  LEMMA(free_array (!uds_buf)); //TODO free on arrays
+  free (uds_buf);
   LEMMA(
     u_context_t_recover (!(!ctx)).payload #(Case_u_context_t_uds _);
     u_context_t_change_cdi (! (!ctx)).payload;
