@@ -47,40 +47,92 @@ let owns_context_t_aux (u: ref context_t) (pl: context_payload_spec) (f:bool) (s
 let is_context (u: ref context_t) (pl: context_payload_spec) (f:bool) : slprop =
   exists* s. owns_context_t_aux u pl f s
 
-ghost
-fn intro_owns_payload_a (a:u_context_t_spec { Case_u_context_t_uds? a }) (#f:bool) (#v:_) 
-requires (Case_u_context_t_uds?._0 a |-> v) ** maybe f (freeable_array (Case_u_context_t_uds?._0 a))
-ensures owns_payload (Case_u_context_t_uds (Case_u_context_t_uds?._0 a)) (PL_Engine v) f
-{
-  fold owns_payload (Case_u_context_t_uds (Case_u_context_t_uds?._0 a)) (PL_Engine v) f
-}
+
+ghost fn intro_owns_payload_a (a:u_context_t_spec { Case_u_context_t_uds? a }) (#f:_Bool) (#v:_) requires (Case_u_context_t_uds?._0 a |-> v) ** maybe f (freeable_array (Case_u_context_t_uds?._0 a)) ensures owns_payload (Case_u_context_t_uds (Case_u_context_t_uds?._0 a)) (PL_Engine v) f { fold owns_payload (Case_u_context_t_uds (Case_u_context_t_uds?._0 a)) (PL_Engine v) f }
+
 
 ghost
-fn intro_owns_payload
-    (u:ref context_t)
-    (#s:context_t_spec)
-    (#pl:u_context_t_spec)
-    (#ib:context_payload_spec) #f
-requires
-    context_t_pred u s **
-    owns_payload pl ib f **
-    pure (s.payload == pl) **
-    tag_relation s
-ensures is_context u ib f
+fn elim_owns_payload_a (a:u_context_t_spec { Case_u_context_t_uds? a }) (#ib #f:_)
+requires owns_payload a ib f
+ensures
+  exists* v. 
+    (Case_u_context_t_uds?._0 a |-> v) **
+    (maybe f (freeable_array (Case_u_context_t_uds?._0 a))) **
+    pure (ib == PL_Engine v)
 {
-  rewrite each pl as s.payload;
+  rewrite each a as (Case_u_context_t_uds (Case_u_context_t_uds?._0 a));
+  unfold owns_payload;
+}
+
+ghost fn intro_owns_payload_b (a:u_context_t_spec { Case_u_context_t_cdi? a }) (#f:_Bool) (#v:_) 
+requires (Case_u_context_t_cdi?._0 a |-> v) ** maybe f (freeable_array (Case_u_context_t_cdi?._0 a))
+ensures owns_payload (Case_u_context_t_cdi (Case_u_context_t_cdi?._0 a)) (PL_L0 v) f 
+{ fold owns_payload (Case_u_context_t_cdi (Case_u_context_t_cdi?._0 a)) (PL_L0 v) f }
+
+ghost
+fn elim_owns_payload_b (a:u_context_t_spec { Case_u_context_t_cdi? a }) (#ib #f:_)
+requires owns_payload a ib f
+ensures
+  exists* v. 
+    (Case_u_context_t_cdi?._0 a |-> v) **
+    (maybe f (freeable_array (Case_u_context_t_cdi?._0 a))) **
+    pure (ib == PL_L0 v)
+{
+  rewrite each a as (Case_u_context_t_cdi (Case_u_context_t_cdi?._0 a));
+  unfold owns_payload;
+}
+
+ghost fn intro_owns_payload (u:ref context_t) (#s:context_t_spec) (#pl:u_context_t_spec) (#ib:context_payload_spec) #f 
+requires context_t_pred u s ** owns_payload pl ib f ** pure (s.payload == pl) ** tag_relation s
+ensures is_context u ib f { rewrite each pl as s.payload; }
+
+ghost
+fn tag_relation_lemma (u:ref context_t) (#ib: context_payload_spec) #f (#s:context_t_spec) 
+preserves owns_context_t_aux u ib f s
+ensures pure (PL_Engine? ib <==> s.tag==0uy)
+ensures pure (PL_L0? ib <==> s.tag==1uy)
+ensures pure (PL_L1? ib <==> s.tag==2uy)
+{
+  let v = s.tag;
+  if (v = 0uy)
+  {
+    u_context_t_is_uds _;
+    elim_owns_payload_a _;
+    intro_owns_payload_a _;
+  }
+  else if (v = 1uy)
+  {
+    u_context_t_is_cdi _;
+    elim_owns_payload_b _;
+    intro_owns_payload_b _;
+  }
+  else {
+    admit()
+    // unreachable()
+  }
 }
 )
+
+ERASED_ARG(#b:erased _)
+ERASED_ARG(#p:_)
+PRESERVES(a1 |->  Frac p b)
+REQUIRES(exists* v. a2 |-> v)
+ENSURES(a2 |-> b)
+void memcpy_(size_t len, ISARRAY(len)uint8_t *a1, ISARRAY(len)uint8_t *a2)
+{
+  LEMMA(admit());
+}
 
 ERASED_ARG(#uds_bytes:erased (Seq.seq UInt8.t))
 ERASED_ARG(#p:_)
 PRESERVES(uds |-> Frac p uds_bytes)
 RETURNS(c:ref context_t)
-ENSURES(exists* s. is_context c s _true_ ** freeable c ** pure (PL_Engine? s))
+ENSURES(exists* s. is_context c s _true_ ** freeable c ** pure (s == PL_Engine uds_bytes))
 context_t* init_engine_context(ISARRAY(UDS_LEN) uint8_t *uds)
 {
   ISARRAY(UDS_LEN) uint8_t *uds_buf = (uint8_t*)malloc(sizeof(uint8_t)*UDS_LEN);
   LEMMA(intro_maybe (freeable_array (!uds_buf)));
+  memcpy_(UDS_LEN, uds, uds_buf);
   context_t *ctx = (context_t*)malloc(sizeof(context_t));
   LEMMA(
     context_t_explode (!ctx);
@@ -96,4 +148,43 @@ context_t* init_engine_context(ISARRAY(UDS_LEN) uint8_t *uds)
     intro_owns_payload (!ctx)
   );
   return ctx;
+}
+
+INCLUDE (
+  ghost fn elim_maybe_true (p:slprop)
+  requires maybe _true_ p
+  ensures p
+  { unfold maybe; }
+)
+
+ERASED_ARG(#uds_bytes:erased (Seq.seq UInt8.t))
+ERASED_ARG(#cdi_bytes:erased (Seq.seq UInt8.t))
+ERASED_ARG(#p:_)
+PRESERVES(cdi |-> Frac p cdi_bytes)
+REQUIRES(is_context ctx (PL_Engine uds_bytes) _true_)
+ENSURES(is_context ctx (PL_L0 cdi_bytes) _true_)
+void init_l0_context(context_t *ctx, ISARRAY(DICE_DIGEST_LEN)uint8_t *cdi)
+{
+  ISARRAY(DICE_DIGEST_LEN) uint8_t *cdi_buf = (uint8_t*)malloc(sizeof(uint8_t)*DICE_DIGEST_LEN);
+  LEMMA(let _cdi = !cdi_buf; assert pure (length (_cdi) == DICE_DIGEST_LEN); intro_maybe (freeable_array (!cdi_buf)));
+  memcpy_(DICE_DIGEST_LEN, cdi, cdi_buf);
+  LEMMA(tag_relation_lemma _; context_t_explode (!ctx);
+        u_context_t_is_uds (!(!ctx)).payload; u_context_t_explode (!(!ctx)).payload;
+        elim_owns_payload_a _);
+  ISARRAY() uint8_t* uds_buf = ctx->payload.uds;
+  LEMMA(elim_maybe_true (freeable_array (!uds_buf)));
+  LEMMA(free_array (!uds_buf)); //TODO free on arrays
+  LEMMA(
+    u_context_t_recover (!(!ctx)).payload #(Case_u_context_t_uds _);
+    u_context_t_change_cdi (! (!ctx)).payload;
+    u_context_t_explode (!(!ctx)).payload
+  );
+  ctx->tag = 1;
+  ctx->payload.cdi = cdi_buf;
+  LEMMA(
+    intro_owns_payload_b (Case_u_context_t_cdi (!cdi_buf));
+    u_context_t_recover (!(!ctx)).payload #(Case_u_context_t_cdi _);
+    context_t_recover (!ctx);
+    intro_owns_payload (!ctx)
+  );
 }
