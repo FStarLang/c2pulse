@@ -4,6 +4,16 @@
 
 INCLUDE (open Pulse.Lib.C.UInt32)
 
+PRESERVES(live x)
+PRESERVES(live y)
+ENSURES(pure (!x == old !y))
+ENSURES(pure (!y == old !x))
+void swap_refs(uint32_t *x, uint32_t *y) {
+  uint32_t tmp = *x;
+  *x = *y;
+  *y = tmp;
+}
+
 typedef struct _u32_pair_struct {
   uint32_t first;
   uint32_t second;
@@ -15,13 +25,13 @@ ENSURES(freeable x)
 ENSURES(u32_pair_pred x ({ first = 0ul; second = 1ul }))
 u32_pair* new_u32_pair ()
 {
-  u32_pair* x = (u32_pair* )malloc(sizeof(u32_pair));
+  u32_pair* x = (u32_pair*)malloc(sizeof(u32_pair));
   x->first = 0ul;
   x->second = 1ul;
   return x;
 }
 
-ERASED_ARG(#s : _)
+ERASED_ARG(#s:_)
 REQUIRES(u32_pair_pred x s)
 ENSURES(u32_pair_pred x ({first = s.second; second = s.first}))
 void swap_fields(u32_pair *x) {
@@ -30,26 +40,6 @@ void swap_fields(u32_pair *x) {
   x->second = f1;
 }
 
-ERASED_ARG(#vx #vy:erased _)
-REQUIRES(x |-> vx)
-REQUIRES(y |-> vy)
-ENSURES(x |-> vy)
-ENSURES(y |-> vx)
-void swap_refs(uint32_t *x, uint32_t *y) {
-  uint32_t tmp = *x;
-  *x = *y;
-  *y = tmp;
-}
-
-PRESERVES(live x)
-PRESERVES(live y)
-ENSURES(pure (!x == old !y))
-ENSURES(pure (!y == old !x))
-void swap_refs2(uint32_t *x, uint32_t *y) {
-  uint32_t tmp = *x;
-  *x = *y;
-  *y = tmp;
-}
 
 ERASED_ARG(#s : _)
 REQUIRES(u32_pair_pred x s)
@@ -62,7 +52,7 @@ int test_swaps() {
   u32_pair *x = new_u32_pair();
   swap_fields(x);
   swap_fields_alt(x);
-  LEMMA(u32_pair_pred (!x) {first = 0ul; second = 1ul});
+  ASSERT(u32_pair_pred (!x) {first = 0ul; second = 1ul});
   free(x);
   return EXIT_SUCCESS;
 }
