@@ -31,9 +31,9 @@ u32_pair* new_u32_pair ()
   return x;
 }
 
-ERASED_ARG(#s:_)
+GHOST_ARG(#s:_)
 REQUIRES(u32_pair_pred x s)
-ENSURES(u32_pair_pred x ({first = s.second; second = s.first}))
+ENSURES(u32_pair_pred x ({first=s.second; second=s.first}))
 void swap_fields(u32_pair *x) {
   uint32_t f1 = x->first;
   x->first = x->second;
@@ -41,7 +41,7 @@ void swap_fields(u32_pair *x) {
 }
 
 
-ERASED_ARG(#s : _)
+GHOST_ARG(#s:_)
 REQUIRES(u32_pair_pred x s)
 ENSURES(u32_pair_pred x ({first = s.second; second = s.first}))
 void swap_fields_alt(u32_pair *x) { 
@@ -60,7 +60,7 @@ int test_swaps() {
 REQUIRES(pure (fits ( * ) (as_int x) (as_int y)))
 RETURNS(i:uint32)
 ENSURES(pure (as_int i == as_int x * as_int y))
-uint32_t multiply_by_repeated_addition2 (uint32_t x, uint32_t y)
+uint32_t multiply_by_repeated_addition (uint32_t x, uint32_t y)
 {
   uint32_t ctr = 0;
   uint32_t acc = 0;

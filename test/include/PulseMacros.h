@@ -8,6 +8,7 @@
 #define INVARIANTS(...) [[clang::pulse("invariants:" STR(__VA_ARGS__)"|END")]]
 #define LEMMA(l) [[clang::pulse("lemma:" STR(l)"|END")]]0
 #define ERASED_ARG(arg) [[clang::pulse("erased_arg:" STR(arg)"|END")]]
+#define GHOST_ARG(arg) [[clang::pulse("erased_arg:" STR(arg)"|END")]]
 #define ASSERT(message) [[clang::pulse("assert:" STR(message) "|END")]]0
 #define HEAPALLOCATED(message) [[clang::pulse("heap_allocated:" STR(message) "|END")]]
 #define EXPECT_FAILURE(...)                                                    \
@@ -31,6 +32,7 @@
 #define INVARIANTS(...)
 #define LEMMA(l)
 #define ERASED_ARG(arg)
+#define GHOST_ARG(arg)
 #define ASSERT(message)
 #define HEAPALLOCATED(message)
 #define CONCAT_IND(x, y)
