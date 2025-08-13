@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include "../../include/PulseMacros.h" 
 
 typedef struct _DEVICE_OBJECT DEVICE_OBJECT;
 typedef struct _DEVICE_EXTENSION DEVICE_EXTENSION;
