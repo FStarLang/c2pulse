@@ -2,10 +2,7 @@
 #include <stdlib.h>
 #include "../include/PulseMacros.h"
 
-INCLUDE (
-  open Pulse.Lib.C.UInt32
-  module U32 = Pulse.Lib.C.UInt32
-)
+INCLUDE (open Pulse.Lib.C.UInt32)
 
 typedef struct _u32_pair_struct {
   uint32_t first;
@@ -70,9 +67,9 @@ int test_swaps() {
   return EXIT_SUCCESS;
 }
 
-REQUIRES(pure (U32.fits ( * ) (U32.as_int x) (U32.as_int y)))
+REQUIRES(pure (fits ( * ) (as_int x) (as_int y)))
 RETURNS(i:uint32)
-ENSURES(pure (U32.as_int i == U32.as_int x * U32.as_int y))
+ENSURES(pure (as_int i == as_int x * as_int y))
 uint32_t multiply_by_repeated_addition2 (uint32_t x, uint32_t y)
 {
   uint32_t ctr = 0;
@@ -80,8 +77,8 @@ uint32_t multiply_by_repeated_addition2 (uint32_t x, uint32_t y)
   while (ctr < x)
   INVARIANTS(invariant (
       live ctr ** live acc **
-      pure U32.(as_int !ctr <= as_int !x) **
-      pure U32.(as_int !acc == U32.as_int !ctr * U32.as_int !y)
+      pure (as_int !ctr <= as_int !x) **
+      pure (as_int !acc == as_int !ctr * as_int !y)
   ))
   {
     ctr = ctr + 1;
