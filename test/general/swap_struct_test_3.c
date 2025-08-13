@@ -19,6 +19,7 @@ u32_pair* new_u32_pair ()
   return x;
 }
 
+
 ERASED_ARG(#s : _)
 REQUIRES(u32_pair_pred x s)
 ENSURES(u32_pair_pred x ({first = s.second; second = s.first}))
@@ -28,8 +29,11 @@ void swap_fields(u32_pair *x) {
   x->second = f1;
 }
 
+
 ERASED_ARG(#vx #vy:erased _)
+//ERASED_ARG(vx:_)
 REQUIRES(x |-> vx)
+//ERASED_ARG(vy:_)
 REQUIRES(y |-> vy)
 ENSURES(x |-> vy)
 ENSURES(y |-> vx)
@@ -39,12 +43,14 @@ void swap_refs(uint32_t *x, uint32_t *y) {
   *y = tmp;
 }
 
+
 ERASED_ARG(#s : erased _)
 REQUIRES(u32_pair_pred x s)
 ENSURES(u32_pair_pred x ({first = s.second; second = s.first}))
 void swap_fields_alt(u32_pair *x) { 
   swap_refs(&x->first, &x->second); 
 }
+
 
 int main() {
   u32_pair *x = new_u32_pair();
