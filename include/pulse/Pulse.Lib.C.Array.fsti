@@ -6,7 +6,7 @@ open Pulse.Lib.C.Inhabited
 
 val pts_to_mask #t (arr: array t) (#[full_default()] f: perm) (v: erased (Seq.seq t)) (mask: nat -> prop) : slprop
 
-ghost fn to_mask #t (arr: array t) #f #v
+ghost fn to_mask #t (arr: array t) #f (#v:Seq.seq t)
   requires arr |-> Frac f v
   ensures pts_to_mask arr #f v (fun _ -> True)
 

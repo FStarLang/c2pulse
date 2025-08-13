@@ -25,8 +25,8 @@ fn free_ref (#a:Type) (r:ref a)
   requires freeable r
   requires exists* x. r |-> x
 
-let live (#a:Type) ([@@@mkey] r:ref a) : slprop =
-  exists* x. r |-> x
+// let live (#a:Type) ([@@@mkey] r:ref a) : slprop =
+//   exists* x. r |-> x
 
 let maybe_live (#a:Type) ([@@@mkey] r:ref a) : slprop =
   if is_null r then emp
@@ -88,7 +88,7 @@ ensures r |->? Frac p (Some x)
   pts_to_not_null r;
   introduce exists* v. (r |-> Frac p v) ** pure (Some x == Some v)
   with x;
-  rewrite (exists* v. (r |-> Frac p v) ** pure (Some x == Some v)) as (maybe_pts_to r #p (Some x));
+  rewrite (exists* (v:a). (r |-> Frac p v) ** pure (Some x == Some v)) as (maybe_pts_to r #p (Some x));
   rewrite (maybe_pts_to r #p (Some x)) as (r |->? Frac p (Some x));
 }
 

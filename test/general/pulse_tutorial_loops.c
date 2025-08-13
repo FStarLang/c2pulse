@@ -34,7 +34,7 @@ INCLUDE (
 )
 
 REQUIRES(pure (U32.fits ( * ) (U32.as_int x) (U32.as_int y)))
-RETURNS(i:_)
+RETURNS(i:U32.uint32)
 ENSURES(pure (U32.as_int i == U32.as_int x * U32.as_int y))
 uint32_t multiply_by_repeated_addition (uint32_t x, uint32_t y)
 {
@@ -42,12 +42,12 @@ uint32_t multiply_by_repeated_addition (uint32_t x, uint32_t y)
   uint32_t acc = 0;
   LEMMA(with vx vy. assert (x |-> vx) ** (y |-> vy));
   while (ctr < x)
-  INVARIANTS(invariant 
+  INVARIANTS(invariant
     exists* c a.
       (ctr |-> c) **
       (acc |-> a) **
-      pure (U32.as_int c <= U32.as_int vx) **
-      pure (U32.as_int a == U32.as_int c * U32.as_int vy)
+    pure (U32.as_int c <= U32.as_int vx) **
+    pure (U32.as_int a == U32.as_int c * U32.as_int vy)
   )
   {
     ctr = ctr + 1;
@@ -55,6 +55,27 @@ uint32_t multiply_by_repeated_addition (uint32_t x, uint32_t y)
   }
   return acc;
 }
+
+REQUIRES(pure (U32.fits ( * ) (U32.as_int x) (U32.as_int y)))
+RETURNS(i:U32.uint32)
+ENSURES(pure (U32.as_int i == U32.as_int x * U32.as_int y))
+uint32_t multiply_by_repeated_addition2 (uint32_t x, uint32_t y)
+{
+  uint32_t ctr = 0;
+  uint32_t acc = 0;
+  while (ctr < x)
+  INVARIANTS(invariant (
+      live ctr ** live acc **
+      pure U32.(as_int !ctr <= as_int !x) **
+      pure U32.(as_int !acc == U32.as_int !ctr * U32.as_int !y)
+  ))
+  {
+    ctr = ctr + 1;
+    acc = acc + y;
+  }
+  return acc;
+}
+
 
 INCLUDE (
 let rec sum (n:nat)
