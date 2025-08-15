@@ -31,9 +31,7 @@ void swap_fields(u32_pair *x) {
 
 
 ERASED_ARG(#vx #vy:erased _)
-//ERASED_ARG(vx:_)
 REQUIRES(x |-> vx)
-//ERASED_ARG(vy:_)
 REQUIRES(y |-> vy)
 ENSURES(x |-> vy)
 ENSURES(y |-> vx)

@@ -1,6 +1,5 @@
 #include <stdbool.h>
-#include <stdint.h>
-#include "../include/PulseMacros.h"
+#include "../include/PulseMacros.h"  
 
 RETURNS(r: Int32.t)
 ENSURES(pure (v r == (if a then 1 else 0) + (if b then 1 else 0)))
