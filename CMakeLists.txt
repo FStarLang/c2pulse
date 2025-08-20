@@ -4,7 +4,7 @@ project(C2Pulse LANGUAGES C CXX)
 set(LLVM_LINK_COMPONENTS support)
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 
-add_subdirectory(json)
+add_subdirectory(external/json)
 
 # Define which LLVM components we need
 llvm_map_components_to_libnames(LLVM_LIBS

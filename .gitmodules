@@ -9,5 +9,5 @@
 	url = https://github.com/angelica-moreira/llvm-project
 	branch = c-to-pulse
 [submodule "json"]
-	path = json
+	path = external/json
 	url = https://github.com/nlohmann/json.git

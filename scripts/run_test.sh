@@ -3,7 +3,7 @@ set -euo pipefail
 
 HERE="$(dirname "$0")/../"
 
-C2PULSE="$(realpath $HERE/external/llvm-project/build/bin/c2pulse)"
+C2PULSE="$(realpath $HERE/build/bin/c2pulse)"
 FSTAR_BIN="$(realpath $HERE/external/FStar/bin/fstar.exe)"
 PULSE_DIR="$(realpath $HERE/external/pulse/out/lib/pulse)"
 PULSE_LIB_C_DIR="$(realpath $HERE/include/pulse)"

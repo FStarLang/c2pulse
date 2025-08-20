@@ -66,12 +66,11 @@ git clone --recurse-submodules git@github.com:FStarLang/c2pulse.git
 ./build.sh
 ```
 
-Set the environment variable `C2PULSE_BUILD_TYPE=Release` if you are not a developer for faster build and faster
-binary executable. This will produce a binary executable in the build/bin directory of the LLVM build. 
+This will produce a binary executable in the build/bin directory of the LLVM build. 
 The binary will be called `c2pulse`. You can run the tool as follows:
 
 ```bash
-./external/llvm-project/build/bin/c2pulse /path/to/test.c
+./build/bin/c2pulse /path/to/test.c
 ```
 
 Alternatively, please find a `run_c2pulse.sh` scipt in the root directory.

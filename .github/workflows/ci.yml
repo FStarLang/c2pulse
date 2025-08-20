@@ -54,34 +54,10 @@ jobs:
     - name: Set up ccache compiler
       run: |
         echo "CCACHE_DIR=$(pwd)/ccache" | tee -a $GITHUB_ENV
-        # sudo apt-get install -y ccache
-        mkdir -p ./_bin
-        echo "PATH=$(pwd)/_bin:$PATH" | tee -a $GITHUB_ENV
-        ln -s $(which ccache) ./_bin/gcc
-        ln -s $(which ccache) ./_bin/g++
-        ln -s $(which ccache) ./_bin/cc
-        ln -s $(which ccache) ./_bin/cc1
-        ln -s $(which ccache) ./_bin/cc1plus
-        ln -s $(which ccache) ./_bin/c++
-
-    - name: Try fetch built LLVM/Clang
-      id: cache-llvm
-      uses: actions/cache/restore@v4
-      with:
-        path: external/llvm-project/build
-        key: llvm-${{ runner.os }}-${{ runner.arch }}-${{ steps.commits.outputs.LLVMCOMMIT }}
 
     - name: Build LLVM/Clang
-      if: steps.cache-llvm.outputs.cache-hit != 'true'
       run: |
-        C2PULSE_BUILD_TYPE=MinSizeRel ./scripts/build_clang.sh
-
-    - name: Save built LLVM/Clang
-      if: steps.cache-llvm.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v4
-      with:
-        path: external/llvm-project/build
-        key: llvm-${{ runner.os }}-${{ runner.arch }}-${{ steps.commits.outputs.LLVMCOMMIT }}
+        ./scripts/build_clang.sh
 
     - name: Save ccache
       if: always()
