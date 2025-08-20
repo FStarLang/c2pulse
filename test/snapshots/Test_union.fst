@@ -73,10 +73,11 @@ requires ab_pred x s
 ensures  ab_pred x (Case_ab_b(Case_ab_b?._0 s))
 { admit() }
 
+open Pulse.Lib.WithPure
 fn incr_a
 (x : ( ref ab) )
 (s:_)
-requires pure (Case_ab_a? s)
+requires with_pure (Case_ab_a? s)
 requires ab_pred x s
 requires pure (UInt32.fits (UInt32.v (Case_ab_a?._0 s) + 1))
 ensures exists* s'. ab_pred x s'

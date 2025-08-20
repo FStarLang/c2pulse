@@ -40,7 +40,7 @@ int max_alt(int *x, int *y) {
 }
 
 // However, this now works without an ENSURES clause
-ERASED_ARG(#vx #vy : _)
+ERASED_ARG(#vx #vy : erased _)
 ERASED_ARG(#px #py : _)
 REQUIRES(x |->Frac px vx)
 REQUIRES(y |->Frac py vy)
@@ -63,7 +63,7 @@ int max_alt2(int *x, int *y) {
 }
 
 // Or more naturally:
-ERASED_ARG(#vx #vy : _)
+ERASED_ARG(#vx #vy : erased _)
 ERASED_ARG(#px #py : _)
 REQUIRES(x |->Frac px vx)
 REQUIRES(y |->Frac py vy)
@@ -84,7 +84,7 @@ int max_alt3(int *x, int *y) {
 }
 
 // Or more naturally:
-ERASED_ARG(#vx #vy : _)
+ERASED_ARG(#vx #vy : erased _)
 ERASED_ARG(#px #py : _)
 REQUIRES(x |->Frac px vx)
 REQUIRES(y |->Frac py vy)

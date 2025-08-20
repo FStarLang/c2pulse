@@ -6,7 +6,7 @@ INCLUDE(
   let max_spec x y = if x < y then y else x
 )
 
-ERASED_ARG(#vx #vy:_)
+ERASED_ARG(#vx #vy:erased _)
 ERASED_ARG(#px #py:_)
 REQUIRES(x |-> Frac px vx)
 REQUIRES(y |-> Frac py vy)

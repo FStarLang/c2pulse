@@ -15,8 +15,10 @@ union ab {
   bool b;      
 };
 
+INCLUDE(open Pulse.Lib.WithPure)
+
 ERASED_ARG(s:_)
-REQUIRES(pure (Case_ab_a? s))
+REQUIRES(with_pure (Case_ab_a? s))
 REQUIRES(ab_pred x s)
 REQUIRES(pure (UInt32.fits (UInt32.v (Case_ab_a?._0 s) + 1)))
 ENSURES(exists* s'. ab_pred x s')

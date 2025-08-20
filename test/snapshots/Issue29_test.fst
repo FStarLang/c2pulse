@@ -12,13 +12,11 @@ let max_spec x y = if x < y then y else x
 fn max
 (x : ( ref Int32.t) )
 (y : ( ref Int32.t) )
-(#vx #vy : _)
+(#vx #vy : erased _)
 (#px #py : _)
-requires x |->Frac px vx
-requires y |->Frac py vy
+preserves x |->Frac px vx
+preserves y |->Frac py vy
 returns n : int32
-ensures x |->Frac px vx
-ensures y |->Frac py vy
 ensures pure(as_int n == max_spec(as_int vx)(as_int vy))
 {
 let mut x : (ref Int32.t) = x;

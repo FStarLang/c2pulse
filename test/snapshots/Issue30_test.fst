@@ -47,7 +47,7 @@ result := (! yy);
 fn max_alt2
 (x : ( ref Int32.t) )
 (y : ( ref Int32.t) )
-(#vx #vy : _)
+(#vx #vy : erased _)
 (#px #py : _)
 requires x |->Frac px vx
 requires y |->Frac py vy
@@ -75,7 +75,7 @@ result := (! vy);
 fn max_alt3
 (x : ( ref Int32.t) )
 (y : ( ref Int32.t) )
-(#vx #vy : _)
+(#vx #vy : erased _)
 (#px #py : _)
 requires x |->Frac px vx
 requires y |->Frac py vy
@@ -101,7 +101,7 @@ result := (! (! y));
 fn max_alt4
 (x : ( ref Int32.t) )
 (y : ( ref Int32.t) )
-(#vx #vy : _)
+(#vx #vy : erased _)
 (#px #py : _)
 requires x |->Frac px vx
 requires y |->Frac py vy

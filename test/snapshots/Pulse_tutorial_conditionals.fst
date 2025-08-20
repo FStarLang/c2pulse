@@ -12,7 +12,7 @@ let max_spec x y = if x < y then y else x
 fn max
 (x : ( ref Int32.t) )
 (y : ( ref Int32.t) )
-(#vx #vy:_)
+(#vx #vy:erased _)
 (#px #py:_)
 requires x |-> Frac px vx
 requires y |-> Frac py vy
