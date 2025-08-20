@@ -36,7 +36,7 @@ fn multiply_by_repeated_addition
 (x : UInt32.t)
 (y : UInt32.t)
 requires pure (U32.fits ( * ) (U32.as_int x) (U32.as_int y))
-returns i:_
+returns i:U32.uint32
 ensures pure (U32.as_int i == U32.as_int x * U32.as_int y)
 {
 let mut x : UInt32.t = x;
@@ -47,6 +47,27 @@ with vx vy. assert (x |-> vx) ** (y |-> vy);
 while((int32_to_bool (bool_to_int32 (UInt32.lt (! ctr) (! x))));
 )
 invariant exists* c a. (ctr |-> c) ** (acc |-> a) ** pure (U32.as_int c <= U32.as_int vx) ** pure (U32.as_int a == U32.as_int c * U32.as_int vy)
+{
+ctr := (UInt32.add (! ctr) (int32_to_uint32 1l));
+acc := (UInt32.add (! acc) (! y));
+};
+(! acc);
+}
+
+fn multiply_by_repeated_addition2
+(x : UInt32.t)
+(y : UInt32.t)
+requires pure (U32.fits ( * ) (U32.as_int x) (U32.as_int y))
+returns i:U32.uint32
+ensures pure (U32.as_int i == U32.as_int x * U32.as_int y)
+{
+let mut x : UInt32.t = x;
+let mut y : UInt32.t = y;
+let mut ctr : UInt32.t = (int32_to_uint32 0l);
+let mut acc : UInt32.t = (int32_to_uint32 0l);
+while((int32_to_bool (bool_to_int32 (UInt32.lt (! ctr) (! x))));
+)
+invariant ( live ctr ** live acc ** pure U32.(as_int !ctr <= as_int !x) ** pure U32.(as_int !acc == U32.as_int !ctr * U32.as_int !y) )
 {
 ctr := (UInt32.add (! ctr) (int32_to_uint32 1l));
 acc := (UInt32.add (! acc) (! y));

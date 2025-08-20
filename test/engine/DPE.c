@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include "../include/PulseMacros.h"
 #include "DPE.h"
+#include "EngineCore.h"
 
 INCLUDE (
 module U8 = FStar.UInt8
@@ -165,8 +166,10 @@ REQUIRES(is_context ctx (PL_Engine uds_bytes) _true_)
 ENSURES(is_context ctx (PL_L0 cdi_bytes) _true_)
 void init_l0_context(context_t *ctx, ISARRAY(DICE_DIGEST_LEN)uint8_t *cdi)
 {
-  ISARRAY(DICE_DIGEST_LEN) uint8_t *cdi_buf = (uint8_t*)malloc(sizeof(uint8_t)*DICE_DIGEST_LEN);
-  LEMMA(let _cdi = !cdi_buf; assert pure (length (_cdi) == DICE_DIGEST_LEN); intro_maybe (freeable_array (!cdi_buf)));
+  ISARRAY() uint8_t *cdi_buf = (uint8_t*)malloc(sizeof(uint8_t)*DICE_DIGEST_LEN);
+  LEMMA(let _cdi = !cdi_buf; 
+        assert pure (length (_cdi) == DICE_DIGEST_LEN));
+  LEMMA(intro_maybe (freeable_array (!cdi_buf)));
   memcpy_(DICE_DIGEST_LEN, cdi, cdi_buf);
   LEMMA(tag_relation_lemma _; context_t_explode (!ctx);
         u_context_t_is_uds (!(!ctx)).payload; u_context_t_explode (!(!ctx)).payload;
@@ -187,4 +190,92 @@ void init_l0_context(context_t *ctx, ISARRAY(DICE_DIGEST_LEN)uint8_t *cdi)
     context_t_recover (!ctx);
     intro_owns_payload (!ctx)
   );
+}
+
+REQUIRES(exists* uds. is_context ctx (PL_Engine uds) _true_)
+REQUIRES(freeable ctx)
+ENSURES(emp)
+void destroy_uds_context(context_t *ctx)
+{
+  LEMMA(tag_relation_lemma _; context_t_explode (!ctx);
+        u_context_t_is_uds (!(!ctx)).payload; u_context_t_explode (!(!ctx)).payload;
+        elim_owns_payload_a _);
+  ISARRAY() uint8_t* uds_buf = ctx->payload.uds;
+  LEMMA(elim_maybe_true (freeable_array (!uds_buf)));
+  free(uds_buf);
+  LEMMA(u_context_t_recover (!(!ctx)).payload #(Case_u_context_t_uds _));
+  LEMMA(context_t_recover (!ctx));
+  free(ctx);
+}
+
+ERASED_ARG(#uds_bytes:erased (Seq.seq UInt8.t))
+ERASED_ARG(#cdi_bytes:erased (Seq.seq UInt8.t))
+REQUIRES(cdi |-> cdi_bytes)
+REQUIRES(freeable_array cdi)
+REQUIRES(is_context ctx (PL_Engine uds_bytes) _true_)
+ENSURES(is_context ctx (PL_L0 cdi_bytes) _true_)
+void mk_l0_context(context_t *ctx, ISARRAY(DICE_DIGEST_LEN)uint8_t *cdi)
+{
+  LEMMA(let _cdi = !cdi; 
+        assert pure (length (_cdi) == DICE_DIGEST_LEN));
+  LEMMA(intro_maybe (freeable_array (!cdi)));
+  LEMMA(tag_relation_lemma _; context_t_explode (!ctx);
+        u_context_t_is_uds (!(!ctx)).payload; u_context_t_explode (!(!ctx)).payload;
+        elim_owns_payload_a _);
+  ISARRAY() uint8_t* uds_buf = ctx->payload.uds;
+  LEMMA(elim_maybe_true (freeable_array (!uds_buf)));
+  free (uds_buf);
+  LEMMA(
+    u_context_t_recover (!(!ctx)).payload #(Case_u_context_t_uds _);
+    u_context_t_change_cdi (! (!ctx)).payload;
+    u_context_t_explode (!(!ctx)).payload
+  );
+  ctx->tag = 1;
+  ctx->payload.cdi = cdi;
+  LEMMA(intro_owns_payload_b (Case_u_context_t_cdi (!cdi)));
+  LEMMA(u_context_t_recover (!(!ctx)).payload #(Case_u_context_t_cdi _));
+  LEMMA(context_t_recover (!ctx));
+  LEMMA(intro_owns_payload (!ctx));
+}
+
+ERASED_ARG(#uds:erased _)
+ERASED_ARG(#erec:erased _)
+ERASED_ARG(#p:perm)
+PRESERVES(is_engine_record record p erec)
+REQUIRES(freeable ctx)
+REQUIRES(is_context ctx (PL_Engine uds) _true_)
+RETURNS(ok:_)
+ENSURES(maybe ok (freeable ctx ** (exists* cdi. is_context ctx (PL_L0 cdi) _true_)))
+bool derive_child_from_context(context_t *ctx, engine_record_t *record)
+{
+    LEMMA(tag_relation_lemma _; context_t_explode (!ctx));
+    u_context_t *pl = &ctx->payload;
+    LEMMA(u_context_t_is_uds (!pl); u_context_t_explode (!pl); elim_owns_payload_a _);
+    ISARRAY() uint8_t *cdi_buf = (uint8_t*)malloc(sizeof(uint8_t)*DICE_DIGEST_LEN);
+    LEMMA(let _cdi = !cdi_buf; 
+          assert pure (length (_cdi) == DICE_DIGEST_LEN));
+    bool ok = engine_main(cdi_buf, pl->uds, record);
+    LEMMA(intro_owns_payload_a (Case_u_context_t_uds !(!(!pl)).uds);
+          u_context_t_recover (!pl) #(Case_u_context_t_uds _);
+          context_t_recover (!ctx);
+          intro_owns_payload (!ctx));
+    if (ok)
+    {
+      mk_l0_context(ctx, cdi_buf);
+      LEMMA(
+        let c = !ctx; 
+        intro_maybe (freeable c ** (exists* cdi. is_context c (PL_L0 cdi) _true_))
+      );
+      return true;
+    }
+    else
+    {
+      destroy_uds_context(ctx);
+      free(cdi_buf);
+      LEMMA(
+        let c = !ctx;
+        intro_maybe_false (freeable c ** (exists* cdi. is_context c (PL_L0 cdi) _true_))
+      );
+      return false;
+    }
 }

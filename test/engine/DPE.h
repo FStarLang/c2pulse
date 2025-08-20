@@ -1,3 +1,6 @@
+#ifndef _DPE_H_
+#define _DPE_H_
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -44,3 +47,4 @@ typedef struct _context_t {
   uint8_t tag;
   u_context_t payload;
 } context_t;
+#endif
