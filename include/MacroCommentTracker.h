@@ -13,13 +13,20 @@
 #include <unordered_map>
 #include <map>
 
+struct TokenInfo {
+    std::string Pre; // ' ' or '\n' or ''
+    clang::SourceRange Range;
+    std::string Text;
+};
+
 class MacroCommentTracker : public clang::PPCallbacks, public clang::CommentHandler {
 public:
 
     MacroCommentTracker(clang::Preprocessor &PP,
                         clang::SourceManager &SM,
                         const clang::LangOptions &LangOpts,
-                        std::unordered_map<clang::FileID, std::map<unsigned, MacroEventInfo>, FileIDHash> &macroInfoMap);
+                        std::unordered_map<clang::FileID, std::map<unsigned, MacroEventInfo>, FileIDHash> &macroInfoMap,
+                        std::unordered_map<unsigned, std::vector<TokenInfo>>& macroTokens);
 
     // PPCallbacks overrides
     void MacroDefined(const clang::Token &MacroNameTok,
@@ -28,7 +35,6 @@ public:
     void MacroUndefined(const clang::Token &MacroNameTok,
                         const clang::MacroDefinition &MD,
                         const clang::MacroDirective *Undef) override;
-
     void MacroExpands(const clang::Token &MacroNameTok,
                       const clang::MacroDefinition &MD,
                       clang::SourceRange Range,
@@ -55,8 +61,10 @@ public:
     void printMacroCollectedInfo() const;
 
 private:
+    clang::Preprocessor &PP;
     clang::SourceManager &SM;
     const clang::LangOptions &LangOpts;
 
     std::unordered_map<clang::FileID, std::map<unsigned, MacroEventInfo>, FileIDHash> &macroInfoMap;
+    std::unordered_map<unsigned, std::vector<TokenInfo>>& macroTokens;
 };

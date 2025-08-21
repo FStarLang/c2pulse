@@ -82,6 +82,11 @@ SourceInfo getSourceInfoFromAttr(const clang::Attr *AttrNode,
                                  clang::ASTContext &Context,
                                  std::string CtxString);
 
+SourceInfo getSourceInfoForToken(clang::SourceRange Start, unsigned Len,
+                                 clang::ASTContext &Context,
+                                 std::string CtxString,
+                                 bool verbatim);
+
 SourceInfo getSourceInfoFromFuncDecl(clang::FunctionDecl *S);
 SourceInfo getSourceInfoFromRecordDecl(clang::RecordDecl *S);
 

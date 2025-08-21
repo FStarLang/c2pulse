@@ -37,6 +37,7 @@ struct MacroTokenInfo {
 
 struct MacroEventInfo {
     std::string FileName; 
+    unsigned CounterValue;
     MacroEventKind Kind;
     std::string MacroName;
     std::string ExpansionText; // if any, I am planning  to use StringRef here

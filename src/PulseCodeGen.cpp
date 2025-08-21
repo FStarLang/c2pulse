@@ -300,6 +300,15 @@ void PulseCodeGen::generateCodeFromPulseAST(osstream_with_pos &OS,
 
     PulseSourceRange Range(Location);
     PulseLocsToCLocs.push_back(std::make_pair(Range, FallBackDeclaration->getCSourceInfo()));
+  } else if (auto *FallBackDeclaration = dyn_cast<GenericDecl2>(FD)){
+    for (auto& tok : FallBackDeclaration->Tokens) {
+      OS << tok.Pre;
+      PulseSourceLocation Start(OS.line(), OS.col());
+      OS << tok.SourceText;
+      PulseSourceLocation End(OS.line(), OS.col());
+      PulseSourceRange Range(Start, End);
+      PulseLocsToCLocs.push_back(std::make_pair(Range, tok.CInfo));
+    }
   } 
   else if (auto *PulseFunDecl = dyn_cast<PulseFnDecl>(FD)) {
 

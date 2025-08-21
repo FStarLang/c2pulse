@@ -12,8 +12,9 @@ using namespace clang;
 MacroCommentTracker::MacroCommentTracker(clang::Preprocessor &PP,
                         clang::SourceManager &SM,
                         const clang::LangOptions &LangOpts,
-                        std::unordered_map<clang::FileID, std::map<unsigned, MacroEventInfo>, FileIDHash> &macroInfoMap)
-    : SM(SM), LangOpts(LangOpts), macroInfoMap(macroInfoMap) {}
+                        std::unordered_map<clang::FileID, std::map<unsigned, MacroEventInfo>, FileIDHash> &macroInfoMap,
+                        std::unordered_map<unsigned, std::vector<TokenInfo>>& macroTokens)
+    : PP(PP), SM(SM), LangOpts(LangOpts), macroInfoMap(macroInfoMap), macroTokens(macroTokens) {}
 
 static std::string locToStr(const SourceManager &SM, SourceLocation Loc) {
     SourceLocation ExpansionLoc = SM.getExpansionLoc(Loc);
@@ -143,10 +144,38 @@ void MacroCommentTracker::MacroExpands(const Token &MacroNameTok,
                                        SourceRange Range,
                                        const MacroArgs *Args) {
 
+    SourceLocation Loc = MacroNameTok.getLocation();
+    FileID fileID = SM.getFileID(Loc);
+    if (Args) {
+        auto & toks = macroTokens[PP.getCounterValue()];
+        toks.clear();
+        unsigned numArgs = Args->getNumMacroArguments();
+        for (unsigned i = 0; i < numArgs; ++i) {
+            const Token *argTokens = Args->getUnexpArgument(i);
+            unsigned numTokens = Args->getArgLength(argTokens);
+
+            std::string paramTokens;
+            for (unsigned j = 0; j < numTokens; ++j) {
+                const Token &tok = argTokens[j];
+                std::string spelling = Lexer::getSpelling(tok, SM, LangOpts);
+                SourceLocation tokLoc = SM.getSpellingLoc(tok.getLocation());
+
+                toks.push_back({
+                    (tok.isAtStartOfLine() ? "\n" :
+                     tok.hasLeadingSpace() ? " " :
+                     ""),
+                    tokLoc,
+                    spelling,
+                });
+            }
+        }
+    }
+
     SourceLocation ExpansionLoc = SM.getExpansionLoc(MacroNameTok.getLocation());
+
+
     if (!SM.isWrittenInMainFile(ExpansionLoc)) return;
 
-    SourceLocation Loc = MacroNameTok.getLocation();
     std::string macroName = MacroNameTok.getIdentifierInfo()->getName().str();
 
     // NOTE: I need to skip STR macro as it is used to mark what will be replaced 
@@ -175,6 +204,7 @@ void MacroCommentTracker::MacroExpands(const Token &MacroNameTok,
 
     MacroEventInfo event;
     event.Kind = MacroEventKind::Expand;
+    event.CounterValue = PP.getCounterValue();
     event.MacroName = macroName;
     event.Line = SM.getSpellingLineNumber(Loc);
     event.Column = SM.getSpellingColumnNumber(Loc);
@@ -220,7 +250,6 @@ void MacroCommentTracker::MacroExpands(const Token &MacroNameTok,
 
     //macroEventsVec.push_back(event);
     // Get byte offsets within the source file
-    FileID fileID = SM.getFileID(Loc);
     unsigned startOffset = SM.getFileOffset(Range.getBegin());
     // unsigned endOffset = SM.getFileOffset(Range.getEnd());
     // // Create a unique key for the macro event

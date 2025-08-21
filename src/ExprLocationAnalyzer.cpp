@@ -494,6 +494,50 @@ SourceInfo getSourceInfoFromExpr(clang::Expr *ExprNode, clang::ASTContext &Conte
   return info;
 }
 
+SourceInfo getSourceInfoForToken(clang::SourceRange Start, unsigned Len,
+                                 clang::ASTContext &Context,
+                                 std::string CtxString,
+                                 bool verbatim) {
+
+  auto &SM = Context.getSourceManager();
+  SourceLocation BeginLoc = Start.getBegin();
+  SourceLocation EndLoc = Start.getEnd();
+
+  unsigned BeginLine = SM.getSpellingLineNumber(BeginLoc);
+  unsigned BeginCol = SM.getSpellingColumnNumber(BeginLoc);
+  
+  unsigned EndLine = SM.getSpellingLineNumber(EndLoc);
+  unsigned EndCol = SM.getSpellingColumnNumber(EndLoc);
+
+  unsigned line = SM.getSpellingLineNumber(BeginLoc);
+  unsigned column = SM.getSpellingColumnNumber(BeginLoc);
+
+  auto PresumedLoc = SM.getPresumedLoc(BeginLoc);
+
+  QualType QT;
+
+  std::optional<std::string> srcLine = getSourceLine(BeginLoc, SM);
+
+  SourceInfo info;
+  info.isValid = true;
+  info.Line = line;
+  info.Column = column;
+  info.Type = QT.getAsString();
+  info.SourceLine = srcLine.value_or("[Unavailable]");
+  info.Context = CtxString;
+  info.Operation = "Attribute";
+  info.range = Start;
+  info.StartLine = BeginLine;
+  info.StartColumn = BeginCol;
+  info.EndLine = EndLine;
+  info.EndColumn = EndCol;
+  if (PresumedLoc.isValid())
+    info.FileName = PresumedLoc.getFilename();
+  info.IsVerbatim = verbatim;
+  
+  return info;
+}
+
 SourceInfo getSourceInfoFromAttr(const clang::Attr *AttrNode,
                                  clang::ASTContext &Context,
                                  std::string CtxString) {

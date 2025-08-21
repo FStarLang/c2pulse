@@ -8,7 +8,9 @@ open Pulse.Lib.C
 
 
 
-module SZ = Pulse.Lib.C.SizeT module U64 = FStar.UInt64
+
+module SZ = Pulse.Lib.C.SizeT
+module U64 = FStar.UInt64
 fn read_i
 (arr : array Int32.t)
 (i : SizeT.t)
@@ -72,6 +74,7 @@ else
 0l;
 };
 }
+
 
 module SizeT = Pulse.Lib.C.SizeT
 fn compare

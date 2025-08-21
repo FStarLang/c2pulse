@@ -76,8 +76,18 @@ py = a1})
 {fold point_pred x ({px = a0;
 py = a1}) }
 
-let is_point (p:ref point) (xy : (int & int)) : slprop = exists* v. point_pred p v ** pure (as_int v.px == fst xy) ** pure (as_int v.py == snd xy)
-ghost fn fold_is_point (p:ref point) (#s:point_spec) requires point_pred p s ensures exists* v. is_point p v ** pure (v == (as_int s.px, as_int s.py)) { fold (is_point p (as_int s.px, as_int s.py)); }
+
+let is_point (p:ref point) (xy : (int & int))
+: slprop
+= exists* v. point_pred p v ** pure (as_int v.px == fst xy) ** pure (as_int v.py == snd xy)
+
+ghost
+fn fold_is_point (p:ref point) (#s:point_spec)
+requires point_pred p s
+ensures exists* v. is_point p v ** pure (v == (as_int s.px, as_int s.py))
+{
+fold (is_point p (as_int s.px, as_int s.py));
+}
 fn move_alt
 (p : ( ref point) )
 (dx : Int32.t)

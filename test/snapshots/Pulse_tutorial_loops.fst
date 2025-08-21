@@ -31,6 +31,7 @@ else
 };
 }
 
+
 module U32 = Pulse.Lib.C.UInt32
 fn multiply_by_repeated_addition
 (x : UInt32.t)
@@ -75,7 +76,20 @@ acc := (UInt32.add (! acc) (! y));
 (! acc);
 }
 
-let rec sum (n:nat) : nat = if n = 0 then 0 else n + sum (n - 1) let rec sum_lemma (n:nat) : Lemma (sum n == n * (n + 1) / 2) = if n = 0 then () else sum_lemma (n - 1) let sum_mono (c n:nat) : Lemma (requires c <= n) (ensures sum c <= sum n) [SMTPat (sum c); SMTPat (sum n)] = sum_lemma c; sum_lemma n
+
+let rec sum (n:nat)
+: nat
+= if n = 0 then 0 else n + sum (n - 1)
+let rec sum_lemma (n:nat)
+: Lemma (sum n == n * (n + 1) / 2)
+= if n = 0 then ()
+else sum_lemma (n - 1)
+let sum_mono (c n:nat)
+: Lemma
+(requires c <= n)
+(ensures sum c <= sum n)
+[SMTPat (sum c); SMTPat (sum n)]
+= sum_lemma c; sum_lemma n
 fn isum
 (n : Int32.t)
 requires pure (as_int n >= 0)
@@ -99,7 +113,15 @@ acc := (Int32.add (! acc) (! ctr));
 (! acc);
 }
 
-let rec fib (n:nat) : nat = if n <= 1 then 1 else fib (n - 1) + fib (n - 2) let rec fib_mono (n:nat) (m:nat { m <= n}) : Lemma (ensures fib m <= fib n) = if n = m then () else fib_mono (n - 1) m
+
+let rec fib (n:nat) : nat =
+if n <= 1 then 1
+else fib (n - 1) + fib (n - 2)
+let rec fib_mono (n:nat) (m:nat { m <= n})
+: Lemma
+(ensures fib m <= fib n)
+= if n = m then ()
+else fib_mono (n - 1) m
 fn rec fib_rec
 (n : Int32.t)
 (cur : ( ref Int32.t) )

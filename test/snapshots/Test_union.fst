@@ -171,7 +171,16 @@ payload = a1})
 {fold stru_pred x ({tag = a0;
 payload = a1}) }
 
-[@@pulse_unfold] let stru_ok (u : ref stru) (s : stru_spec) : slprop = stru_pred u s ** pure ( match s.tag with | 0y -> Case_ab_a? s.payload | 1y -> Case_ab_b? s.payload | _ -> False )
+
+[@@pulse_unfold]
+let stru_ok (u : ref stru) (s : stru_spec) : slprop =
+stru_pred u s **
+pure (
+match s.tag with
+| 0y -> Case_ab_a? s.payload
+| 1y -> Case_ab_b? s.payload
+| _ -> False
+)
 fn test_union
 (foo : ( ref stru) )
 preserves exists* s. stru_ok foo s

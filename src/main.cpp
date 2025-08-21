@@ -110,7 +110,8 @@ int main(int argc, const char **argv) {
     // be stored separately, I am trying to avoid collisions. I believe this is useful for 
     // large projects with many files.
     std::unordered_map<FileID, std::map<unsigned, MacroEventInfo>, FileIDHash> macroInfoMap;
-    auto Factory = std::make_unique<MacroFrontendActionFactory>(macroInfoMap);
+    std::unordered_map<unsigned, std::vector<TokenInfo>> macroTokens;
+    auto Factory = std::make_unique<MacroFrontendActionFactory>(macroInfoMap, macroTokens);
     int Result = Tool->run(Factory.get());
     if (Result != 0) {
         llvm::errs() << "c2pulse cannot compile the C files due to a syntax error!\n";
@@ -158,7 +159,7 @@ int main(int argc, const char **argv) {
         // I was wondering if we could have it modular, so we can have everything
         // organized in such a way that it is easy to maintain and extend.
         const std::map<unsigned, MacroEventInfo> &events = macroInfoMap[fileID]; 
-        LLVM_DEBUG( 
+        // LLVM_DEBUG( 
         if (!events.empty()) {
         llvm::outs() << "  Number of macro events collected: " << events.size() << "\n";
         llvm::outs() << "----------------------\n";
@@ -166,6 +167,8 @@ int main(int argc, const char **argv) {
             const MacroEventInfo &macroInfo = e.second;
             llvm::outs() << "Kind: " << toString(macroInfo.Kind) << "\n";
             llvm::outs() << "Macro: " << macroInfo.MacroName << "\n";
+            llvm::outs() << "Counter value: " << macroInfo.CounterValue << "\n";
+            llvm::outs() << "Range: " << macroInfo.range.printToString(SM) << "\n";
             llvm::outs() << "Expansion: " << macroInfo.ExpansionText << "\n";
             llvm::outs() << "Location: Line: " << macroInfo.Line << ", Column: " << macroInfo.Column << "\n";
             llvm::outs() << "Filename: " << macroInfo.FileName << "\n";
@@ -181,7 +184,7 @@ int main(int argc, const char **argv) {
         } else {
             llvm::outs() << "  [No macro events found]\n";
         }
-        );
+        // );
 
         if (mode == TransformModeEnum::LocOnly || mode == TransformModeEnum::Both) {
             ExprLocationAnalyzer Analyzer(Ctx);
@@ -189,7 +192,7 @@ int main(int argc, const char **argv) {
         }
 
         if (mode == TransformModeEnum::PulseOnly || mode == TransformModeEnum::Both) {
-            PulseTransformer Transformer(Ctx);
+            PulseTransformer Transformer(Ctx, macroTokens);
             Transformer.transform();
             Transformer.writeToFile(TmpDir);
         }

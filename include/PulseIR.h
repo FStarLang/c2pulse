@@ -664,6 +664,7 @@ enum class PulseDeclKind {
   TyconDecl, //TyCon declaration
   TopLevelLet, // Top level let binding
   GenericDecl, //A Super Generic declaration. A fallback AST Node in the compiler.
+  GenericDecl2, //A Super Generic declaration. A fallback AST Node in the compiler.
 };
 
 /// An enum class to represent what kind of a pulse declaration it is.
@@ -691,6 +692,21 @@ class GenericDecl : public PulseDecl {
       return D->Kind == PulseDeclKind::GenericDecl;
     }
 
+};
+
+struct GenericDecl2Token {
+  std::string Pre;
+  SourceInfo CInfo;
+  std::string SourceText;
+};
+
+class GenericDecl2 : public PulseDecl {
+  public:
+    GenericDecl2();
+    std::vector<GenericDecl2Token> Tokens;
+    static bool classof(const PulseDecl *D) {
+      return D->Kind == PulseDeclKind::GenericDecl2;
+    }
 };
 
 /// An IR node to represent a top level let bind.

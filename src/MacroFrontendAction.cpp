@@ -18,7 +18,7 @@ bool MacroFrontendAction::BeginSourceFileAction(CompilerInstance &CI) {
     const LangOptions &LangOpts = CI.getLangOpts();
 
     // std::unique_ptr<MacroCommentTracker> Tracker = std::make_unique<MacroCommentTracker>(PP, SM, LangOpts, macroEventsVec);
-    std::unique_ptr<MacroCommentTracker> Tracker = std::make_unique<MacroCommentTracker>(PP, SM, LangOpts, macroInfoMap);
+    std::unique_ptr<MacroCommentTracker> Tracker = std::make_unique<MacroCommentTracker>(PP, SM, LangOpts, macroInfoMap, macroTokens);
     TrackerRaw = Tracker.get();
 
     PP.addPPCallbacks(std::move(Tracker));

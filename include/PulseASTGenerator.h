@@ -2,6 +2,7 @@
 
 #include "PulseCodeGen.h"
 #include "PulseIR.h"
+#include "MacroCommentTracker.h"
 
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/DeclBase.h"
@@ -25,8 +26,9 @@ namespace {
 /// Visitor class to traverse AST nodes and generate Pulse IR.
 class PulseVisitor : public clang::RecursiveASTVisitor<PulseVisitor> {
 public:
-  PulseVisitor(clang::Rewriter &R, clang::ASTContext &Ctx)
-      : TheRewriter(R), Ctx(Ctx), SM(Ctx.getSourceManager()) {}
+  PulseVisitor(clang::Rewriter &R, clang::ASTContext &Ctx,
+    std::unordered_map<unsigned, std::vector<TokenInfo>>& macroTokens)
+      : TheRewriter(R), Ctx(Ctx), SM(Ctx.getSourceManager()), macroTokens(macroTokens) {}
 
   bool VisitFunctionDecl(clang::FunctionDecl *FD);
   bool VisitFunctionDeclMain(clang::FunctionDecl *FD, bool OverrideGen);
@@ -118,13 +120,15 @@ private:
   std::set<const clang::Decl*> TrackScopeOfStackAllocatedStructs;
   std::map<const clang::Decl*, std::pair<bool, bool>> TrackStructExplodeAndRecover;
   std::map<const clang::Decl *, std::string> RecordToRecordName;
+  std::unordered_map<unsigned, std::vector<TokenInfo>>& macroTokens;
 };
 
 } // end of anonymous namespace
 
 class PulseConsumer : public clang::ASTConsumer {
 public:
-  PulseConsumer(clang::ASTContext &Ctx, clang::Rewriter &R);
+  PulseConsumer(clang::ASTContext &Ctx, clang::Rewriter &R,
+    std::unordered_map<unsigned, std::vector<TokenInfo>>& macroTokens);
 
   void HandleTranslationUnit(clang::ASTContext &Ctx) override;
   void setNewModules(std::map<std::string, PulseModul *> &PulseModules);
@@ -138,7 +142,8 @@ private:
 
 class PulseTransformer {
 public:
-  PulseTransformer(clang::ASTContext &Ctx);
+  PulseTransformer(clang::ASTContext &Ctx,
+        std::unordered_map<unsigned, std::vector<TokenInfo>>& macroTokens);
   void transform();
   std::string writeToFile(std::optional<std::string> const& TmpDir);
 
@@ -147,4 +152,5 @@ private:
   PulseCodeGen CodeGen;
   clang::Rewriter RewriterForPlugin;
   std::string TransformedCode;
+  std::unordered_map<unsigned, std::vector<TokenInfo>>& macroTokens;
 };

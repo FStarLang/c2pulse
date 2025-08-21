@@ -12,18 +12,20 @@
 
 class MacroFrontendActionFactory : public clang::tooling::FrontendActionFactory {
 public:
-    MacroFrontendActionFactory(std::unordered_map<clang::FileID, std::map<unsigned, MacroEventInfo>, FileIDHash> &events)
-        : macroInfoMap(events) {}
+    MacroFrontendActionFactory(std::unordered_map<clang::FileID, std::map<unsigned, MacroEventInfo>, FileIDHash> &events,
+        std::unordered_map<unsigned, std::vector<TokenInfo>>& macroTokens)
+        : macroTokens(macroTokens), macroInfoMap(events) {}
 
     MacroFrontendAction *getAction() const { return ActionPtr; }
 
     std::unique_ptr<clang::FrontendAction> create() override {
-        auto Action = std::make_unique<MacroFrontendAction>(macroInfoMap);
+        auto Action = std::make_unique<MacroFrontendAction>(macroInfoMap, macroTokens);
         ActionPtr = Action.get(); // Keep raw pointer for later access in main.cpp [I need to revisit this decision]
         return Action;
     }
 
 private:
     mutable MacroFrontendAction *ActionPtr = nullptr; 
+    std::unordered_map<unsigned, std::vector<TokenInfo>>& macroTokens;
     std::unordered_map<clang::FileID, std::map<unsigned, MacroEventInfo>, FileIDHash> &macroInfoMap;
 };

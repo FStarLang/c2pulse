@@ -8,7 +8,9 @@ open Pulse.Lib.C
 
 
 
-module U32 = Pulse.Lib.C.UInt32 open Pulse.Lib.C.UInt32
+
+module U32 = Pulse.Lib.C.UInt32
+open Pulse.Lib.C.UInt32
 noeq
 type ab = {
 a: ref (ref UInt32.t);
@@ -174,7 +176,89 @@ payload = a1})
 {fold stru_pred x ({tag = a0;
 payload = a1}) }
 
-let stru_payload (a: ab_spec) (s: either uint32 _Bool) : slprop = match a with | Case_ab_a a -> exists* v. (a |-> v) ** pure (s == Inl v) | Case_ab_b b -> exists* v. (b |-> v) ** pure (s == Inr v) [@@ pulse_unfold] let tag_relation (s:stru_spec): slprop = pure (match s.tag with | 0y -> Case_ab_a? s.payload | 1y -> Case_ab_b? s.payload | _ -> False) [@@ pulse_unfold] let stru_ok_aux (u: ref stru) (ib: either uint32 _Bool) (s:_) : slprop = stru_pred u s ** stru_payload s.payload ib ** tag_relation s [@@ pulse_unfold] let stru_ok (u: ref stru) (ib: either uint32 _Bool) : slprop = exists* s. stru_ok_aux u ib s ghost fn elim_stru_payload_a (a:ab_spec { Case_ab_a? a }) (#ib:_) requires stru_payload a ib ensures exists* v. (Case_ab_a?._0 a |-> v) ** pure (ib == Inl v) { rewrite each a as (Case_ab_a (Case_ab_a?._0 a)); unfold stru_payload; } ghost fn elim_stru_payload_b (a:ab_spec { Case_ab_b? a }) (#ib:_) requires stru_payload a ib ensures exists* v. (Case_ab_b?._0 a |-> v) ** pure (ib == Inr v) { rewrite each a as (Case_ab_b (Case_ab_b?._0 a)); unfold stru_payload; } ghost fn intro_stru_payload_a (a:ab_spec { Case_ab_a? a }) (#v:_) requires (Case_ab_a?._0 a |-> v) ensures stru_payload (Case_ab_a (Case_ab_a?._0 a)) (Inl v) { fold stru_payload (Case_ab_a (Case_ab_a?._0 a)) (Inl v) } ghost fn intro_stru_payload_b (a:ab_spec { Case_ab_b? a }) (#v:_) requires (Case_ab_b?._0 a |-> v) ensures stru_payload (Case_ab_b (Case_ab_b?._0 a)) (Inr v) { fold stru_payload (Case_ab_b (Case_ab_b?._0 a)) (Inr v) } ghost fn intro_stru_ok (u:ref stru) (#s:stru_spec) (#pl:ab_spec) (#ib:_) requires stru_pred u s ** stru_payload pl ib ** pure (s.payload == pl) ** pure ( match s.tag with | 0y -> Case_ab_a? s.payload | 1y -> Case_ab_b? s.payload | _ -> False ) ensures stru_ok u ib { rewrite each pl as s.payload; } ghost fn tag_relation_lemma (y:ref stru) (#ib: either uint32 _Bool) (#s:stru_spec) preserves stru_ok_aux y ib s ensures pure (Inl? ib <==> s.tag==0y) ensures pure (Inr? ib <==> s.tag==1y) { let v = s.tag; if (v = 0y) { ab_is_a _; elim_stru_payload_a _; intro_stru_payload_a _; } else if (v = 1y) { ab_is_b _; elim_stru_payload_b _; intro_stru_payload_b _; } else { unreachable() } }
+
+let stru_payload (a: ab_spec) (s: either uint32 _Bool) : slprop =
+match a with
+| Case_ab_a a -> exists* v. (a |-> v) ** pure (s == Inl v)
+| Case_ab_b b -> exists* v. (b |-> v) ** pure (s == Inr v)
+[@@ pulse_unfold]
+let tag_relation (s:stru_spec): slprop =
+pure (match s.tag with
+| 0y -> Case_ab_a? s.payload
+| 1y -> Case_ab_b? s.payload
+| _ -> False)
+[@@ pulse_unfold]
+let stru_ok_aux (u: ref stru) (ib: either uint32 _Bool) (s:_) : slprop =
+stru_pred u s **
+stru_payload s.payload ib **
+tag_relation s
+[@@ pulse_unfold]
+let stru_ok (u: ref stru) (ib: either uint32 _Bool) : slprop =
+exists* s. stru_ok_aux u ib s
+ghost
+fn elim_stru_payload_a (a:ab_spec { Case_ab_a? a }) (#ib:_)
+requires stru_payload a ib
+ensures exists* v. (Case_ab_a?._0 a |-> v) ** pure (ib == Inl v)
+{
+rewrite each a as (Case_ab_a (Case_ab_a?._0 a));
+unfold stru_payload;
+}
+ghost
+fn elim_stru_payload_b (a:ab_spec { Case_ab_b? a }) (#ib:_)
+requires stru_payload a ib
+ensures exists* v. (Case_ab_b?._0 a |-> v) ** pure (ib == Inr v)
+{
+rewrite each a as (Case_ab_b (Case_ab_b?._0 a));
+unfold stru_payload;
+}
+ghost
+fn intro_stru_payload_a (a:ab_spec { Case_ab_a? a }) (#v:_)
+requires (Case_ab_a?._0 a |-> v)
+ensures stru_payload (Case_ab_a (Case_ab_a?._0 a)) (Inl v)
+{
+fold stru_payload (Case_ab_a (Case_ab_a?._0 a)) (Inl v)
+}
+ghost
+fn intro_stru_payload_b (a:ab_spec { Case_ab_b? a }) (#v:_)
+requires (Case_ab_b?._0 a |-> v)
+ensures stru_payload (Case_ab_b (Case_ab_b?._0 a)) (Inr v)
+{
+fold stru_payload (Case_ab_b (Case_ab_b?._0 a)) (Inr v)
+}
+ghost
+fn intro_stru_ok (u:ref stru) (#s:stru_spec) (#pl:ab_spec) (#ib:_)
+requires
+stru_pred u s **
+stru_payload pl ib **
+pure (s.payload == pl) **
+pure ( match s.tag with | 0y -> Case_ab_a? s.payload | 1y -> Case_ab_b? s.payload | _ -> False )
+ensures stru_ok u ib
+{
+rewrite each pl as s.payload;
+}
+ghost
+fn tag_relation_lemma (y:ref stru) (#ib: either uint32 _Bool) (#s:stru_spec)
+preserves stru_ok_aux y ib s
+ensures pure (Inl? ib <==> s.tag==0y)
+ensures pure (Inr? ib <==> s.tag==1y)
+{
+let v = s.tag;
+if (v = 0y)
+{
+ab_is_a _;
+elim_stru_payload_a _;
+intro_stru_payload_a _;
+}
+else if (v = 1y)
+{
+ab_is_b _;
+elim_stru_payload_b _;
+intro_stru_payload_b _;
+}
+else {
+unreachable()
+}
+}
 fn test_union
 (foo : ( ref stru) )
 (#s:erased (either uint32 _Bool))
@@ -270,7 +354,35 @@ ab_is_b (! (! foo)).payload; ab_explode (! (!foo)).payload; elim_stru_payload_b 
 intro_stru_payload_b _; ab_recover (! (!foo)).payload #(Case_ab_b _); stru_recover (!foo); intro_stru_ok (!foo);
 }
 
-[@pulse_unfold] let ab_cases (uv:ab) (s:ab_spec) : slprop = begin match s with | Case_ab_a v -> uv.a |-> v | Case_ab_b v -> uv.b |-> v end assume val ab_spec_default : ab_spec assume val ab_default (ab_var_spec:ab_spec) : ab instance ab_inhabited : inhabited ab = { witness = (ab_default ab_spec_default) } ghost fn ab_pack (ab_var:ref ab) (#ab_spec:ab_spec) requires ab_var|-> ab_default ab_spec ensures exists* v. ab_pred ab_var v ** pure (v == ab_spec) { admit() } ghost fn ab_unpack (ab_var:ref ab) (#v:ab_spec) requires ab_pred ab_var v ensures exists* ab. (ab_var |-> ab) ** ab_cases ab v { admit() } ghost fn ab_explode_drop (x : ref ab) (#s : ab_spec) requires ab_pred x s ensures exists* (v : ab). (x |-> v) { ab_explode x; drop_ (match s with | Case_ab_a _ -> _ | Case_ab_b _ -> _); }
+
+[@pulse_unfold]
+let ab_cases (uv:ab) (s:ab_spec) : slprop =
+begin match s with
+| Case_ab_a v -> uv.a |-> v
+| Case_ab_b v -> uv.b |-> v
+end
+assume val ab_spec_default : ab_spec
+assume val ab_default (ab_var_spec:ab_spec) : ab
+instance ab_inhabited : inhabited ab = {
+witness = (ab_default ab_spec_default)
+}
+ghost
+fn ab_pack (ab_var:ref ab) (#ab_spec:ab_spec)
+requires ab_var|-> ab_default ab_spec
+ensures exists* v. ab_pred ab_var v ** pure (v == ab_spec)
+{ admit() }
+ghost
+fn ab_unpack (ab_var:ref ab) (#v:ab_spec)
+requires ab_pred ab_var v
+ensures exists* ab. (ab_var |-> ab) ** ab_cases ab v
+{ admit() }
+ghost fn ab_explode_drop (x : ref ab) (#s : ab_spec)
+requires ab_pred x s
+ensures exists* (v : ab). (x |-> v)
+{
+ab_explode x;
+drop_ (match s with | Case_ab_a _ -> _ | Case_ab_b _ -> _);
+}
 fn mk_union_a ()
 returns x:ref stru
 ensures exists* v. stru_ok x v ** pure (v == Inl 0ul) ** freeable x

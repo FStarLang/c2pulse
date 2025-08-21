@@ -8,7 +8,14 @@ open Pulse.Lib.C
 
 
 
-ghost fn freebie () requires emp ensures pure False { admit(); }
+
+ghost
+fn freebie ()
+requires emp
+ensures pure False
+{
+admit();
+}
 fn test_empty ()
 requires emp
 returns i:int32

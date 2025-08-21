@@ -44,8 +44,10 @@ std::map<std::string, PulseModul *> &PulseConsumer::getNewModules() {
   return Modules;
 }
 
-PulseConsumer::PulseConsumer(clang::ASTContext &Ctx, clang::Rewriter &R)
-    : Visitor(R, Ctx) {}
+PulseConsumer::PulseConsumer(clang::ASTContext &Ctx, clang::Rewriter &R,
+  std::unordered_map<unsigned, std::vector<TokenInfo>>& macroTokens
+)
+    : Visitor(R, Ctx, macroTokens) {}
 
 void PulseConsumer::HandleTranslationUnit(clang::ASTContext &Ctx) {
   Visitor.TraverseDecl(Ctx.getTranslationUnitDecl());
@@ -1886,7 +1888,7 @@ void PulseVisitor::handleFunctionAttributes(FunctionDecl *FD,
            
           auto Ref = AnnAttr->getAnnotation();
           llvm::outs() << "Print Ann in handleAnnotations " << Ref << "\n";
-          if (!Ref.empty()) {
+          if (!Ref.empty() && Ref.find(':') != std::string::npos) {
             llvm::outs() << "Print Ann in handleAnnotations in if check " << Ref << "\n";
             std::string Match = "";
             PulseAnnKind AnnKind = getPulseAnnKindFromString(
@@ -2004,6 +2006,30 @@ void PulseVisitor::handleFunctionAttributes(FunctionDecl *FD,
               llvm::report_fatal_error(
                   "Unhandled PulseAnnKind::LemmaStatement in switch statement");
               break;
+            }
+          } else if (Ref == "includes") {
+            if (AnnAttr->args_size() != 1){
+              emitErrorWithLocation("pulse attr does not have exactly one arg", &Ctx, FD->getLocation());
+            }
+            Expr *ctrArg = AnnAttr->args_begin()[0];
+            if (auto ctrVal = ctrArg->getIntegerConstantExpr(Ctx)) {
+              unsigned ctr = ctrVal->getZExtValue();
+              auto & toks = macroTokens.at(ctr);
+              auto *Inc = new GenericDecl2();
+              // Inc->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
+              Module->Decls.push_back(Inc);
+              for (auto & tok : toks) {
+                Inc->Tokens.push_back({ tok.Pre, getSourceInfoForToken(tok.Range, tok.Text.length(), Ctx, "", true), tok.Text });
+              }
+              //If function name is the anchor dummy function. 
+              //Skip generating code for it entirely.
+              if ((FuncName.find("__pulse_include_anchor") != std::string::npos)){
+                *Terminate = true;
+              }
+            } else {
+              // ctrArg->printJson(llvm::outs(), nullptr, Ctx.getPrintingPolicy(), false);
+              // llvm::outs() << "\n" << ctrArg->getStmtClassName() << "\n";
+              emitErrorWithLocation("pulse attr arg is not an int lit", &Ctx, FD->getLocation());
             }
           }
         }
@@ -6176,7 +6202,9 @@ std::pair<Term *, PulseVisitor::VarTyEnv> PulseVisitor::getTermFromCExpr(
   }
 }
 
-PulseTransformer::PulseTransformer(ASTContext &Ctx) : AstCtx(Ctx), CodeGen(Ctx) {
+PulseTransformer::PulseTransformer(ASTContext &Ctx,
+  std::unordered_map<unsigned, std::vector<TokenInfo>>& macroTokens
+) : AstCtx(Ctx), CodeGen(Ctx), macroTokens(macroTokens) {
   RewriterForPlugin.setSourceMgr(Ctx.getSourceManager(), Ctx.getLangOpts());
 }
 
@@ -6264,6 +6292,7 @@ std::string PulseTransformer::writeToFile(std::optional<std::string> const& TmpD
     //     OutFile << "// " << Line << "\n";
     // }
    
+  if (false)
   CodeGen.printSourceLocations();
 
   CodeGen.JsonifySourceRangeMap(NewPath.string() + "/" + FileNameStr +  "_source_range_info.json");
@@ -6275,7 +6304,7 @@ std::string PulseTransformer::writeToFile(std::optional<std::string> const& TmpD
 
 void PulseTransformer::transform() {
 
-  PulseConsumer Consumer(AstCtx, RewriterForPlugin);
+  PulseConsumer Consumer(AstCtx, RewriterForPlugin, macroTokens);
   Consumer.HandleTranslationUnit(AstCtx);
 
   auto &Modules = Consumer.getNewModules();

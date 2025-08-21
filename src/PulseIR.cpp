@@ -1442,6 +1442,8 @@ TopLevelLet::TopLevelLet() { Kind = PulseDeclKind::TopLevelLet; }
 
 GenericDecl::GenericDecl() { Kind = PulseDeclKind::GenericDecl; }
 
+GenericDecl2::GenericDecl2() { Kind = PulseDeclKind::GenericDecl2; }
+
 
 void PulseModul::insertModule(std::string IncModule){
   //Module does not exists

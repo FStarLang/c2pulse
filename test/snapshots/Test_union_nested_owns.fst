@@ -8,7 +8,9 @@ open Pulse.Lib.C
 
 
 
-module U32 = Pulse.Lib.C.UInt32 open Pulse.Lib.C.UInt32
+
+module U32 = Pulse.Lib.C.UInt32
+open Pulse.Lib.C.UInt32
 noeq
 type ab = {
 a: ref (ref UInt32.t);
@@ -174,7 +176,57 @@ payload = a1})
 {fold stru_pred x ({tag = a0;
 payload = a1}) }
 
-let stru_payload (a:ab_spec) : slprop = match a with | Case_ab_a a -> exists* v. (a |-> v) | Case_ab_b b -> exists* v. (b |-> v) [@@pulse_unfold] let stru_ok (u : ref stru) (s : stru_spec) : slprop = stru_pred u s ** stru_payload s.payload ** pure ( match s.tag with | 0y -> Case_ab_a? s.payload | 1y -> Case_ab_b? s.payload | _ -> False ) ghost fn elim_stru_payload_a (a:ab_spec { Case_ab_a? a }) requires stru_payload a ensures exists* v. (Case_ab_a?._0 a |-> v) { rewrite each a as (Case_ab_a (Case_ab_a?._0 a)); unfold stru_payload; } ghost fn elim_stru_payload_b (a:ab_spec { Case_ab_b? a }) requires stru_payload a ensures exists* v. (Case_ab_b?._0 a |-> v) { rewrite each a as (Case_ab_b (Case_ab_b?._0 a)); unfold stru_payload; } ghost fn intro_stru_payload_a (a:ab_spec { Case_ab_a? a }) requires exists* v. (Case_ab_a?._0 a |-> v) ensures stru_payload (Case_ab_a (Case_ab_a?._0 a)) { fold stru_payload (Case_ab_a (Case_ab_a?._0 a)) } ghost fn intro_stru_payload_b (a:ab_spec { Case_ab_b? a }) requires exists* v. (Case_ab_b?._0 a |-> v) ensures stru_payload (Case_ab_b (Case_ab_b?._0 a)) { fold stru_payload (Case_ab_b (Case_ab_b?._0 a)) } ghost fn intro_stru_ok (u:ref stru) (#s:stru_spec) (#pl:ab_spec) requires stru_pred u s ** stru_payload pl ** pure (s.payload == pl) ** pure ( match s.tag with | 0y -> Case_ab_a? s.payload | 1y -> Case_ab_b? s.payload | _ -> False ) ensures stru_ok u s { rewrite each pl as s.payload; }
+
+let stru_payload (a:ab_spec) : slprop =
+match a with
+| Case_ab_a a -> exists* v. (a |-> v)
+| Case_ab_b b -> exists* v. (b |-> v)
+[@@pulse_unfold]
+let stru_ok (u : ref stru) (s : stru_spec) : slprop =
+stru_pred u s **
+stru_payload s.payload **
+pure ( match s.tag with | 0y -> Case_ab_a? s.payload | 1y -> Case_ab_b? s.payload | _ -> False )
+ghost
+fn elim_stru_payload_a (a:ab_spec { Case_ab_a? a })
+requires stru_payload a
+ensures exists* v. (Case_ab_a?._0 a |-> v)
+{
+rewrite each a as (Case_ab_a (Case_ab_a?._0 a));
+unfold stru_payload;
+}
+ghost
+fn elim_stru_payload_b (a:ab_spec { Case_ab_b? a })
+requires stru_payload a
+ensures exists* v. (Case_ab_b?._0 a |-> v)
+{
+rewrite each a as (Case_ab_b (Case_ab_b?._0 a));
+unfold stru_payload;
+}
+ghost
+fn intro_stru_payload_a (a:ab_spec { Case_ab_a? a })
+requires exists* v. (Case_ab_a?._0 a |-> v)
+ensures stru_payload (Case_ab_a (Case_ab_a?._0 a))
+{
+fold stru_payload (Case_ab_a (Case_ab_a?._0 a))
+}
+ghost
+fn intro_stru_payload_b (a:ab_spec { Case_ab_b? a })
+requires exists* v. (Case_ab_b?._0 a |-> v)
+ensures stru_payload (Case_ab_b (Case_ab_b?._0 a))
+{
+fold stru_payload (Case_ab_b (Case_ab_b?._0 a))
+}
+ghost
+fn intro_stru_ok (u:ref stru) (#s:stru_spec) (#pl:ab_spec)
+requires
+stru_pred u s **
+stru_payload pl **
+pure (s.payload == pl) **
+pure ( match s.tag with | 0y -> Case_ab_a? s.payload | 1y -> Case_ab_b? s.payload | _ -> False )
+ensures stru_ok u s
+{
+rewrite each pl as s.payload;
+}
 fn test_union
 (foo : ( ref stru) )
 preserves exists* s. stru_ok foo s
