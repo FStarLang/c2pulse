@@ -5,9 +5,9 @@ set -euo pipefail
 HERE=$(dirname "$0")
 BUILD_DIR="$HERE/build"
 
-if [[ ! -x "$BUILD_DIR" ]]; then
+if [[ ! -d "$BUILD_DIR" ]]; then
   echo "Running cmake"
-  (cd $BUILD_DIR &&
+  (mkdir -p $BUILD_DIR && cd $BUILD_DIR &&
     cmake .. -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo)
 fi
 
