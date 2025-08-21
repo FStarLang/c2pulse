@@ -31,6 +31,7 @@
 #include <string>
 #include <utility>
 
+#undef DEBUG_TYPE
 #define DEBUG_TYPE "pulse-ast-gen"
 
 using namespace clang;
@@ -1727,7 +1728,8 @@ void PulseVisitor::addArrayTy(std::string Match, const Decl *ArrDecl, std::set<s
 
     // Step 4: Create the VLA type
     QualType VLAType = Ctx.getVariableArrayType(ArrElementType, SizeExpr,
-                                                ArraySizeModifier::Normal, 0);
+                                                ArraySizeModifier::Normal, 0,
+                                                SourceRange());
     DeclTyMap.insert(std::make_pair(ArrDecl, VLAType));
 
   } else {
@@ -1796,6 +1798,11 @@ static bool containsTerm(std::vector<Term*> &Vec, TermTag TagCheck){
   return false;
 }
 
+static bool isPulseAnnotAttr(AnnotateAttr const *AnnAttr) {
+  auto name = AnnAttr->getAttrName()->getName();
+  return name == "annotate" || name == "annotate_type";
+}
+
 void PulseVisitor::handleFunctionAttributes(FunctionDecl *FD,
                                             _PulseFnDefn *FDefn,
                                             std::string FuncName,
@@ -1815,7 +1822,7 @@ void PulseVisitor::handleFunctionAttributes(FunctionDecl *FD,
       auto AnnotationsAttachedToFD = FD->getAttrs();
       for (auto *Attr : AnnotationsAttachedToFD) {
         if (auto *AnnAttr = dyn_cast<AnnotateAttr>(Attr)) {
-          if (!AnnAttr->isInherited() && AnnAttr->getAttrName()->getName() == "pulse"){
+          if (!AnnAttr->isInherited() && isPulseAnnotAttr(AnnAttr)){
             emitErrorWithLocation("This function has an associated declaration, please annotate pulse specs on the declaration instead of the definition!", &Ctx, FD->getLocation());
           }
         }
@@ -1856,7 +1863,7 @@ void PulseVisitor::handleFunctionAttributes(FunctionDecl *FD,
     for (auto *Attr : AnnotationsAttachedToFD) {
 
       if (auto *AnnAttr = dyn_cast<AnnotateAttr>(Attr)) {
-        if (AnnAttr->getAttrName()->getName() == "pulse") {
+        if (isPulseAnnotAttr(AnnAttr)) {
           
           // Uncomment to print location information.
           // 
@@ -2074,7 +2081,7 @@ PulseSequence *PulseVisitor::handleFunctionParameters(FunctionDecl *FD,
     auto Attrs = Param->attrs();
     for (auto *Attr : Attrs) {
       if (auto *AnnotAttr = dyn_cast<AnnotateAttr>(Attr)) {
-        if (AnnotAttr->getAttrName()->getName() == "pulse") {
+        if (isPulseAnnotAttr(AnnotAttr)) {
           auto AnnotationData = AnnotAttr->getAnnotation();
           std::string Match;
           auto PulseAnnotKind =
@@ -2118,7 +2125,8 @@ PulseSequence *PulseVisitor::handleFunctionParameters(FunctionDecl *FD,
 
               // Step 4: Create the VLA type
               QualType VLAType = Ctx.getVariableArrayType(
-                  ElementType, SizeExpr, ArraySizeModifier::Normal, 0);
+                  ElementType, SizeExpr, ArraySizeModifier::Normal, 0,
+                  SourceRange());
               // llvm::outs() << "Print the element type here!!!\n";
               // llvm::outs() <<
               // QualType(VLAType->getPointeeOrArrayElementType(), 0);
@@ -2796,7 +2804,7 @@ bool PulseVisitor::checkAndAddIsArrayTy(const AttrVec &Attrs, const Decl* D, std
   auto VEnvToSet = toSetVEnv(VEnv);
   for (auto *Att : Attrs) {
     if (AnnotateAttr *AnnonAttr = dyn_cast<AnnotateAttr>(Att)) {
-      if (AnnonAttr->getAttrName()->getName() == "pulse") {
+      if (isPulseAnnotAttr(AnnonAttr)) {
         std::string Match;
         auto AnnKind = getPulseAnnKindFromString(AnnonAttr->getAnnotation(), Match);
         if (AnnKind != PulseAnnKind::IsArray){
@@ -3192,7 +3200,7 @@ PulseVisitor::pulseFromStmt(Stmt *S, std::map<Term *, FStarType *> VEnv,
               auto Attrs = VD->attrs();
               for (auto *Att : Attrs) {
                 if (AnnotateAttr *AnnonAttr = dyn_cast<AnnotateAttr>(Att)) {
-                  if (AnnonAttr->getAttrName()->getName() == "pulse") {
+                  if (isPulseAnnotAttr(AnnonAttr)) {
                     std::string Match;
                     auto AnnKind = getPulseAnnKindFromString(
                       AnnonAttr->getAnnotation(), Match);
@@ -3219,7 +3227,7 @@ PulseVisitor::pulseFromStmt(Stmt *S, std::map<Term *, FStarType *> VEnv,
           auto Attrs = VD->attrs();
           for (auto *Att : Attrs) {
             if (AnnotateAttr *AnnonAttr = dyn_cast<AnnotateAttr>(Att)) {
-              if (AnnonAttr->getAttrName()->getName() == "pulse") {
+              if (isPulseAnnotAttr(AnnonAttr)) {
                 std::string Match;
                 auto AnnKind = getPulseAnnKindFromString(
                     AnnonAttr->getAnnotation(), Match);
@@ -4221,7 +4229,7 @@ PulseVisitor::pulseFromStmt(Stmt *S, std::map<Term *, FStarType *> VEnv,
       for (auto *Attr : Attributes) {
 
         if (auto *AnnAttr = dyn_cast<AnnotateAttr>(Attr)) {
-          if (AnnAttr->getAttrName()->getName() == "pulse") {
+          if (isPulseAnnotAttr(AnnAttr)) {
 
             auto AnnotationData = AnnAttr->getAnnotation().str();
 
@@ -4450,7 +4458,7 @@ PulseVisitor::pulseFromStmt(Stmt *S, std::map<Term *, FStarType *> VEnv,
       for (auto *Attr : Attributes) {
 
         if (auto *AnnAttr = dyn_cast<AnnotateAttr>(Attr)) {
-          if (AnnAttr->getAttrName()->getName() == "pulse") {
+          if (isPulseAnnotAttr(AnnAttr)) {
 
             auto AnnotationData = AnnAttr->getAnnotation().str();
 
@@ -4556,7 +4564,7 @@ PulseVisitor::pulseFromStmt(Stmt *S, std::map<Term *, FStarType *> VEnv,
     assert(Attrs.size() == 1 && "Did not handle multiple attrs in an attributed stmt.\n");
     for (auto *Attr : Attrs) {
       if (auto *AnnotAttr = dyn_cast<AnnotateAttr>(Attr)) {
-        if (AnnotAttr->getAttrName()->getName() == "pulse") {
+        if (isPulseAnnotAttr(AnnotAttr)) {
           std::string Match;
           auto AttrKind =
               getPulseAnnKindFromString(AnnotAttr->getAnnotation(), Match);
@@ -6119,7 +6127,7 @@ std::pair<Term *, PulseVisitor::VarTyEnv> PulseVisitor::getTermFromCExpr(
     //   for (auto *Attr : Attributes) {
 
     //     if (auto *AnnAttr = dyn_cast<AnnotateAttr>(Attr)) {
-    //       if (AnnAttr->getAttrName()->getName() == "pulse") {
+    //       if (isPulseAnnotAttr(AnnAttr)) {
 
     //         auto AnnotationData = AnnAttr->getAnnotation().str();
 

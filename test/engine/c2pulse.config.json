@@ -1,4 +1,4 @@
 {
-  "c2pulse_exe": "../../build/bin/c2pulse",
+  "c2pulse_exe": "../../build/c2pulse",
   "options": []
 }

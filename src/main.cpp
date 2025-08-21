@@ -6,14 +6,18 @@
 
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
+#include "clang/Driver/Driver.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/FileSystem.h"
+#include "llvm/Support/TargetSelect.h"
 #include <functional>
 
 #include <unistd.h>
 #include <memory>
 #include <unordered_map>
 #include <map>
+
+#include <dlfcn.h>
 
 using namespace clang;
 using namespace clang::tooling;
@@ -62,7 +66,24 @@ static llvm::Expected<std::string> readFileToEOF(std::string const & FN) {
     return std::string(Buffer.data(), Buffer.size());
 }
 
+std::string getBinaryForResourcesPath() {
+    Dl_info info;
+    if (dladdr((void *) &clang::driver::Driver::GetResourcesPath, &info)) {
+        return info.dli_fname;
+    } else {
+        return "/usr/bin/clang";
+    }
+}
+
+std::string getResourcesPath() {
+    return clang::driver::Driver::GetResourcesPath(getBinaryForResourcesPath());
+}
+
 int main(int argc, const char **argv) {
+
+    llvm::InitializeAllTargetInfos();
+    llvm::InitializeAllTargetMCs();
+    llvm::InitializeAllAsmParsers();
     
     auto OptionsParser = CommonOptionsParser::create(argc, argv, ToolCategory);
     if (auto error = OptionsParser.takeError()) {
@@ -77,8 +98,26 @@ int main(int argc, const char **argv) {
         OptionsParser->getCompilations(), SourceFiles
     );
 
+    for (auto & SF : SourceFiles) {
+        for (auto & CC : OptionsParser->getCompilations().getCompileCommands(SF)) {
+            for (auto & C : CC.CommandLine) {
+                llvm::outs() << C << " ";
+            }
+            llvm::outs() << " # " << CC.Heuristic << "\n";
+        }
+    }
+
+    Tool->appendArgumentsAdjuster(OptionsParser->getArgumentsAdjuster());
+
     Tool->appendArgumentsAdjuster(getInsertArgumentAdjuster(
         { "-DC2PULSE", "-fno-builtin" },
+        ArgumentInsertPosition::BEGIN));
+
+    auto resourceDir = getResourcesPath();
+    llvm::outs() << "resource dir is: " << resourceDir << "\n";
+
+    Tool->appendArgumentsAdjuster(getInsertArgumentAdjuster(
+        { "-resource-dir", resourceDir },
         ArgumentInsertPosition::BEGIN));
 
     std::optional<std::string> TmpDir;

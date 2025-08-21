@@ -11,4 +11,4 @@ fi
 
 echo "Processing all files: $@"
 
-exec $HERE/build/bin/c2pulse "$@"
+exec $HERE/build/c2pulse "$@"

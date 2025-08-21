@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.13)
 project(C2Pulse LANGUAGES C CXX)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+find_package(LLVM REQUIRED)
+find_package(Clang REQUIRED)
+
 set(LLVM_LINK_COMPONENTS support)
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 
@@ -11,8 +16,7 @@ llvm_map_components_to_libnames(LLVM_LIBS
   support
 )
 
-# Gather source files
-set(SRC_FILES
+add_executable(c2pulse
   src/ExprLocationAnalyzer.cpp
   src/PulseASTGenerator.cpp
   src/PulseIR.cpp
@@ -23,13 +27,6 @@ set(SRC_FILES
   src/MacroFrontendAction.cpp
 )
 
-
-add_clang_tool(c2pulse
-  ${SRC_FILES}
-  DEPENDS
-    intrinsics_gen
-)
-
 # Include directories for headers
 target_include_directories(c2pulse
   PRIVATE
@@ -38,18 +35,36 @@ target_include_directories(c2pulse
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-# Link against LLVM and Clang libraries
-target_link_libraries(c2pulse
+target_compile_definitions(c2pulse
   PRIVATE
-    ${LLVM_LIBS}
+    ${LLVM_DEFINITIONS}
+    ${CLANG_DEFINITIONS}
+)
+
+set(LIBS
+  nlohmann_json::nlohmann_json
+)
+
+if(LLVM_LINK_LLVM_DYLIB)
+  set(LIBS ${LIBS} LLVM)
+else()
+  set(LIBS ${LIBS} LLVMSupport)
+endif()
+
+if(CLANG_LINK_CLANG_DYLIB)
+  set(LIBS ${LIBS} clang-cpp)
+else()
+  set(LIBS ${LIBS}
     clangAST
     clangASTMatchers
     clangBasic
     clangFrontend
     clangRewrite
     clangTooling
-    nlohmann_json::nlohmann_json
-)
+  )
+endif()
+
+target_link_libraries(c2pulse PRIVATE ${LIBS})
 
 # Set C++ standard and other properties
 set_target_properties(c2pulse PROPERTIES

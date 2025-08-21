@@ -4,10 +4,6 @@
 [submodule "external/pulse"]
 	path = external/pulse
 	url = https://github.com/FStarLang/pulse
-[submodule "external/llvm-project"]
-	path = external/llvm-project
-	url = https://github.com/angelica-moreira/llvm-project
-	branch = c-to-pulse
 [submodule "json"]
 	path = external/json
 	url = https://github.com/nlohmann/json.git

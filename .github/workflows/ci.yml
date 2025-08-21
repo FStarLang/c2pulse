@@ -27,8 +27,6 @@ jobs:
     - name: Read submodule commit hashes
       id: commits
       run: |
-        C=$(git -C external/llvm-project rev-parse HEAD)
-        echo "LLVMCOMMIT=$C" >>"$GITHUB_OUTPUT"
         C=$(git -C external/FStar rev-parse HEAD)
         echo "FSTARCOMMIT=$C" >>"$GITHUB_OUTPUT"
         C=$(git -C external/pulse rev-parse HEAD)
@@ -44,27 +42,6 @@ jobs:
     #     sudo apt update
     #     sudo apt install -y lld
     #     opam install --deps-only external/FStar/fstar.opam
-
-    - name: Obtain cached ccache
-      uses: actions/cache/restore@v4
-      with:
-        path: ccache
-        key: ccache-${{ runner.os }}-${{ runner.arch }}
-
-    - name: Set up ccache compiler
-      run: |
-        echo "CCACHE_DIR=$(pwd)/ccache" | tee -a $GITHUB_ENV
-
-    - name: Build LLVM/Clang
-      run: |
-        ./scripts/build_clang.sh
-
-    - name: Save ccache
-      if: always()
-      uses: actions/cache/save@v4
-      with:
-        path: ccache
-        key: ccache-${{ runner.os }}-${{ runner.arch }}
 
     - name: Try fetch built F*
       id: cache-fstar
