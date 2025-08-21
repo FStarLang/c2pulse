@@ -11,11 +11,6 @@ set(JSON_BuildTests OFF CACHE INTERNAL "")
 
 add_subdirectory(external/json)
 
-# Define which LLVM components we need
-llvm_map_components_to_libnames(LLVM_LIBS
-  support
-)
-
 add_executable(c2pulse
   src/ExprLocationAnalyzer.cpp
   src/PulseASTGenerator.cpp
@@ -41,30 +36,11 @@ target_compile_definitions(c2pulse
     ${CLANG_DEFINITIONS}
 )
 
-set(LIBS
+target_link_libraries(c2pulse PRIVATE
   nlohmann_json::nlohmann_json
+  LLVM
+  clang-cpp
 )
-
-if(LLVM_LINK_LLVM_DYLIB)
-  set(LIBS ${LIBS} LLVM)
-else()
-  set(LIBS ${LIBS} LLVMSupport)
-endif()
-
-if(CLANG_LINK_CLANG_DYLIB)
-  set(LIBS ${LIBS} clang-cpp)
-else()
-  set(LIBS ${LIBS}
-    clangAST
-    clangASTMatchers
-    clangBasic
-    clangFrontend
-    clangRewrite
-    clangTooling
-  )
-endif()
-
-target_link_libraries(c2pulse PRIVATE ${LIBS})
 
 # Set C++ standard and other properties
 set_target_properties(c2pulse PROPERTIES
