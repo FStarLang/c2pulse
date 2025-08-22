@@ -36,8 +36,11 @@ jobs:
 
     - name: Install some dependencies
       run: |
+        wget https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh 20
         sudo apt update
-        sudo apt install -y clang-19 libclang-cpp19-dev g++ cmake clang-tools-19 libclang-19-dev
+        sudo apt install -y clang-20 libclang-cpp20-dev g++ cmake clang-tools-20 libclang-20-dev
         opam install --deps-only external/FStar/fstar.opam
 
     - name: Try fetch built F*
@@ -83,7 +86,7 @@ jobs:
     - name: Build c2pulse
       run: |
         eval $(opam env)
-        export CMAKE_PREFIX_PATH=/usr/lib/cmake/clang-19/:/usr/lib/llvm-19/cmake/
+        export CMAKE_PREFIX_PATH=/usr/lib/cmake/clang-20/:/usr/lib/llvm-20/cmake/
         ./build.sh
 
     - name: Run tests
