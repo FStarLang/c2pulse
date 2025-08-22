@@ -37,10 +37,11 @@ jobs:
     #   with:
     #     ocaml-compiler: 5
 
-    # - name: Install some dependencies
-    #   run: |
-    #     sudo apt update
-    #     sudo apt install -y lld
+    - name: Install some dependencies
+      run: |
+        cat /etc/lsb-release
+        sudo apt update
+        sudo apt install -y libclang-cpp19-dev
     #     opam install --deps-only external/FStar/fstar.opam
 
     - name: Try fetch built F*
