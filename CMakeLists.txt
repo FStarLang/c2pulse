@@ -6,6 +6,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 find_package(LLVM REQUIRED)
 find_package(Clang REQUIRED)
 
+set(Clang_MIN_VERSION 20)
+if("${Clang_VERSION}" VERSION_LESS "${Clang_MIN_VERSION}")
+  message(FATAL_ERROR "c2pulse requires clang version ${Clang_MIN_VERSION} (provided: ${Clang_VERSION})")
+endif()
+
 set(LLVM_LINK_COMPONENTS support)
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 
