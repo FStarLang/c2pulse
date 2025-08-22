@@ -81,10 +81,6 @@ std::string getResourcesPath() {
 
 int main(int argc, const char **argv) {
 
-    llvm::InitializeAllTargetInfos();
-    llvm::InitializeAllTargetMCs();
-    llvm::InitializeAllAsmParsers();
-    
     auto OptionsParser = CommonOptionsParser::create(argc, argv, ToolCategory);
     if (auto error = OptionsParser.takeError()) {
         llvm::errs() << "Error parsing command line options: "
