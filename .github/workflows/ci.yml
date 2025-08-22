@@ -83,6 +83,7 @@ jobs:
     - name: Build c2pulse
       run: |
         eval $(opam env)
+        export CMAKE_PREFIX_PATH=/usr/lib/cmake/clang-19/:/usr/lib/llvm-19/cmake/
         ./build.sh
 
     - name: Run tests
