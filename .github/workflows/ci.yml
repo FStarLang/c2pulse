@@ -10,11 +10,8 @@ defaults:
 
 jobs:
   main:
-    runs-on: [self-hosted, Linux, X64, c2pulse]
+    runs-on: ubuntu-latest
     steps:
-    - name: Clean
-      run: find . -delete
-
     - uses: actions/checkout@v3
     - uses: cda-tum/setup-z3@main
       with:
@@ -32,17 +29,16 @@ jobs:
         C=$(git -C external/pulse rev-parse HEAD)
         echo "PULSECOMMIT=$C" >>"$GITHUB_OUTPUT"
  
-    # - name: Set-up OCaml
-    #   uses: ocaml/setup-ocaml@v3
-    #   with:
-    #     ocaml-compiler: 5
+    - name: Set-up OCaml
+      uses: ocaml/setup-ocaml@v3
+      with:
+        ocaml-compiler: 5
 
     - name: Install some dependencies
       run: |
-        cat /etc/lsb-release
         sudo apt update
-        sudo apt install -y libclang-cpp19-dev
-    #     opam install --deps-only external/FStar/fstar.opam
+        sudo apt install -y clang-19 libclang-cpp19-dev g++ cmake clang-tools-19 libclang-19-dev
+        opam install --deps-only external/FStar/fstar.opam
 
     - name: Try fetch built F*
       id: cache-fstar
@@ -88,13 +84,6 @@ jobs:
       run: |
         eval $(opam env)
         ./build.sh
-
-    - name: Save ccache, again
-      if: always()
-      uses: actions/cache/save@v4
-      with:
-        path: ccache
-        key: ccache-${{ runner.os }}-${{ runner.arch }}
 
     - name: Run tests
       run: |
