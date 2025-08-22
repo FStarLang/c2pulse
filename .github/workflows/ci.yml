@@ -45,7 +45,7 @@ jobs:
       uses: actions/cache/restore@v4
       with:
         path: external/FStar
-        key: FStar-${{ runner.os }}-${{ runner.arch }}-${{ steps.commits.outputs.FSTARCOMMIT }}
+        key: FStar2-${{ runner.os }}-${{ runner.arch }}-${{ steps.commits.outputs.FSTARCOMMIT }}
 
     - name: Build F*
       if: steps.cache-fstar.outputs.cache-hit != 'true'
@@ -58,14 +58,14 @@ jobs:
       uses: actions/cache/save@v4
       with:
         path: external/FStar
-        key: FStar-${{ runner.os }}-${{ runner.arch }}-${{ steps.commits.outputs.FSTARCOMMIT }}
+        key: FStar2-${{ runner.os }}-${{ runner.arch }}-${{ steps.commits.outputs.FSTARCOMMIT }}
 
     - name: Try fetch built Pulse
       id: cache-pulse
       uses: actions/cache/restore@v4
       with:
         path: external/pulse
-        key: pulse-${{ runner.os }}-${{ runner.arch }}-${{ steps.commits.outputs.FSTARCOMMIT}}-${{ steps.commits.outputs.PULSECOMMIT }}
+        key: pulse2-${{ runner.os }}-${{ runner.arch }}-${{ steps.commits.outputs.FSTARCOMMIT}}-${{ steps.commits.outputs.PULSECOMMIT }}
 
     - name: Build Pulse
       if: steps.cache-pulse.outputs.cache-hit != 'true'
@@ -78,7 +78,7 @@ jobs:
       uses: actions/cache/save@v4
       with:
         path: external/pulse
-        key: pulse-${{ runner.os }}-${{ runner.arch }}-${{ steps.commits.outputs.FSTARCOMMIT}}-${{ steps.commits.outputs.PULSECOMMIT }}
+        key: pulse2-${{ runner.os }}-${{ runner.arch }}-${{ steps.commits.outputs.FSTARCOMMIT}}-${{ steps.commits.outputs.PULSECOMMIT }}
 
     - name: Build c2pulse
       run: |

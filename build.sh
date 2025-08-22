@@ -11,6 +11,8 @@ if [[ ! -d "$BUILD_DIR" ]]; then
     cmake .. -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo)
 fi
 
+ninja -C $BUILD_DIR c2pulse
+
 echo "Building F*"
 make -C $HERE/external/FStar -j$(nproc) ADMIT=1
 
@@ -19,7 +21,5 @@ make -C $HERE/external/pulse -j$(nproc) ADMIT=1 FSTAR_EXE=$(realpath $HERE/exter
 
 echo "Building Pulse.Lib.C libraries"
 make -C $HERE/include/pulse -j$(nproc)
-
-ninja -C $BUILD_DIR c2pulse
 
 echo "Build Successful! Please find the binary C2pulse in the llvm build directory. Use the run.sh script to invoke it from the current directory."
