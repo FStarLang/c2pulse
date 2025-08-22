@@ -205,7 +205,8 @@ returns (ref _foo)
 fn baz1
 (x : ( ref ab) )
 (s:_)
-requires pure (Case_ab_a? s)
+requires 
+pure (Case_ab_a? s)
 returns (ref ab)
 {
 let mut x : (ref ab) = x;

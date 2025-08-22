@@ -12,10 +12,14 @@ open Pulse.Lib.C.UInt32
 fn swap_refs
 (x : ( ref UInt32.t) )
 (y : ( ref UInt32.t) )
-preserves live x
-preserves live y
-ensures pure (!x == old !y)
-ensures pure (!y == old !x)
+preserves 
+live x
+preserves 
+live y
+ensures 
+pure (!x == old !y)
+ensures 
+pure (!y == old !x)
 {
 let mut x : (ref UInt32.t) = x;
 let mut y : (ref UInt32.t) = y;
@@ -94,8 +98,10 @@ second = a1}) }
 
 fn new_u32_pair ()
 returns x:ref u32_pair
-ensures freeable x
-ensures u32_pair_pred x ({ first = 0ul; second = 1ul })
+ensures 
+freeable x
+ensures 
+u32_pair_pred x ({ first = 0ul; second = 1ul })
 {
 let mut x : (ref u32_pair) = u32_pair_alloc ();
 Mku32_pair?.first (! (! x)) := (uint64_to_uint32 0UL);
@@ -106,8 +112,10 @@ Mku32_pair?.second (! (! x)) := (uint64_to_uint32 1UL);
 fn swap_fields
 (x : ( ref u32_pair) )
 (#s:_)
-requires u32_pair_pred x s
-ensures u32_pair_pred x ({first=s.second; second=s.first})
+requires 
+u32_pair_pred x s
+ensures 
+u32_pair_pred x ({first=s.second; second=s.first})
 {
 let mut x : (ref u32_pair) = x;
 let mut f1 : UInt32.t = (! (! (! x)).first);
@@ -118,8 +126,10 @@ Mku32_pair?.second (! (! x)) := (! f1);
 fn swap_fields_alt
 (x : ( ref u32_pair) )
 (#s:_)
-requires u32_pair_pred x s
-ensures u32_pair_pred x ({first = s.second; second = s.first})
+requires 
+u32_pair_pred x s
+ensures 
+u32_pair_pred x ({first = s.second; second = s.first})
 {
 let mut x : (ref u32_pair) = x;
 (swap_refs (! (! x)).first (! (! x)).second);
@@ -139,9 +149,11 @@ assert(u32_pair_pred (!x) {first = 0ul; second = 1ul});
 fn multiply_by_repeated_addition
 (x : UInt32.t)
 (y : UInt32.t)
-requires pure (fits ( * ) (as_int x) (as_int y))
+requires 
+pure (fits ( * ) (as_int x) (as_int y))
 returns i:uint32
-ensures pure (as_int i == as_int x * as_int y)
+ensures 
+pure (as_int i == as_int x * as_int y)
 {
 let mut x : UInt32.t = x;
 let mut y : UInt32.t = y;
@@ -149,7 +161,12 @@ let mut ctr : UInt32.t = (int32_to_uint32 0l);
 let mut acc : UInt32.t = (int32_to_uint32 0l);
 while((int32_to_bool (bool_to_int32 (UInt32.lt (! ctr) (! x))));
 )
-invariant ( live ctr ** live acc ** pure (as_int !ctr <= as_int !x) ** pure (as_int !acc == as_int !ctr * as_int !y) )
+
+invariant (
+live ctr ** live acc **
+pure (as_int !ctr <= as_int !x) **
+pure (as_int !acc == as_int !ctr * as_int !y)
+)
 {
 ctr := (UInt32.add (! ctr) (int32_to_uint32 1l));
 acc := (UInt32.add (! acc) (! y));

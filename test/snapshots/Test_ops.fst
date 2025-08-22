@@ -10,7 +10,8 @@ open Pulse.Lib.C
 
 fn bar_decl
 (a : Int32.t)
-requires pure FStar.Int32.(fits (v a + 1))
+requires 
+pure FStar.Int32.(fits (v a + 1))
 returns Int32.t
 {
 admit();
@@ -33,7 +34,8 @@ a := Int32.div (! a) 1l;
 
 fn test2
 (a : SizeT.t)
-requires pure FStar.SizeT.(fits (v a + 1))
+requires 
+pure FStar.SizeT.(fits (v a + 1))
 returns SizeT.t
 {
 let mut a : SizeT.t = a;
@@ -46,7 +48,8 @@ minusminuspre_sizet a;
 
 fn test3
 (a : Int64.t)
-requires pure FStar.Int64.(fits (v a + 1))
+requires 
+pure FStar.Int64.(fits (v a + 1))
 returns Int64.t
 {
 let mut a : Int64.t = a;
@@ -59,7 +62,8 @@ minusminuspre_int64 a;
 
 fn test4
 (a : Int64.t)
-requires pure FStar.Int64.(fits (v a + 1))
+requires 
+pure FStar.Int64.(fits (v a + 1))
 returns Int64.t
 {
 let mut a : Int64.t = a;
@@ -72,7 +76,8 @@ minusminuspre_int64 a;
 
 fn test5
 (a : UInt64.t)
-requires pure FStar.UInt64.(fits (v a + 1))
+requires 
+pure FStar.UInt64.(fits (v a + 1))
 returns UInt64.t
 {
 let mut a : UInt64.t = a;
@@ -85,7 +90,8 @@ minusminuspre_uint64 a;
 
 fn test6
 (a : UInt16.t)
-requires pure FStar.UInt16.(fits (v a + 1))
+requires 
+pure FStar.UInt16.(fits (v a + 1))
 returns UInt16.t
 {
 let mut a : UInt16.t = a;
@@ -98,7 +104,8 @@ minusminuspre_uint16 a;
 
 fn test7
 (a : UInt8.t)
-requires pure FStar.UInt8.(fits (v a + 1))
+requires 
+pure FStar.UInt8.(fits (v a + 1))
 returns UInt8.t
 {
 let mut a : UInt8.t = a;
@@ -111,7 +118,8 @@ minusminuspre_uint8 a;
 
 fn test8
 (a : UInt32.t)
-requires pure FStar.UInt32.(fits (v a + 1))
+requires 
+pure FStar.UInt32.(fits (v a + 1))
 returns UInt32.t
 {
 let mut a : UInt32.t = a;
@@ -124,7 +132,8 @@ minusminuspre_uint32 a;
 
 fn bar_impl
 (a : Int32.t)
-requires pure FStar.Int32.(fits (v a + 1))
+requires 
+pure FStar.Int32.(fits (v a + 1))
 returns Int32.t
 {
 let mut a : Int32.t = a;

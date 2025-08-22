@@ -557,6 +557,9 @@ void PulseCodeGen::generateCodeFromTerm(osstream_with_pos &OS,
     OS << PulseSyntax::Space;
     OS << Ensure->Ann;
 
+    if (Ensure->Ann2)
+      generateCodeFromPulseAST(OS, Ensure->Ann2);
+
     //End
     PulseSourceLocation End(OS.line(), OS.col());
     PulseSourceRange Range(Start, End);
@@ -577,6 +580,9 @@ void PulseCodeGen::generateCodeFromTerm(osstream_with_pos &OS,
     PulseSourceRange Range(Start, End);
     PulseLocsToCLocs.push_back(std::make_pair(Range, T->getCSourceInfo()));
 
+    if (Require->Ann2)
+      generateCodeFromPulseAST(OS, Require->Ann2);
+
     OS << PulseSyntax::NewLine;
 
   } else if (Preserves *Preserve = dyn_cast<Preserves>(T)) {
@@ -587,6 +593,9 @@ void PulseCodeGen::generateCodeFromTerm(osstream_with_pos &OS,
 
     OS << PulseSyntax::Space;
     OS << Preserve->Ann;
+
+    if (Preserve->Ann2)
+      generateCodeFromPulseAST(OS, Preserve->Ann2);
 
     //End
     PulseSourceLocation End(OS.line(), OS.col());
@@ -852,7 +861,6 @@ void PulseCodeGen::generateCodeFromPulseStmt(osstream_with_pos &OS,
     PulseSourceLocation Start(OS.line(), OS.col());
     auto *WCond = While->Guard;
     auto *WBod = While->Body;
-    auto Lemmas = While->Invariant;
 
     OS << PulseSyntax::PulseWhile;
     OS << PulseSyntax::OpeningParenthesis;
@@ -863,13 +871,8 @@ void PulseCodeGen::generateCodeFromPulseStmt(osstream_with_pos &OS,
     OS << PulseSyntax::NewLine;
 
     size_t Idx = 1;
-    for (auto *Lemma : Lemmas) {
-      generateCodeFromTerm(OS, Lemma);
-      if (Idx < Lemmas.size()){
-        OS << PulseSyntax::NewLine;
-      }
-      Idx++;
-    }
+    if (While->Invariant)
+      generateCodeFromPulseAST(OS, While->Invariant);
 
     OS << PulseSyntax::NewLine;
 

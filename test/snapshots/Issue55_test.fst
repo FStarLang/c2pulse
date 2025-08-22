@@ -25,7 +25,8 @@ while((int32_to_bool (if (int32_to_bool ((bool_to_int32 (SizeT.lt (! i) (! l))))
 then (bool_to_int32 (Int32.eq (op_Array_Access (! a1) (! i)) (op_Array_Access (! a2) (! i))))
 else 0l));
 )
-invariant c. emp
+
+ invariant c. emp
 {
 i := (SizeT.add (! i) (int32_to_sizet 1l));
 };

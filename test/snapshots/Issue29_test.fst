@@ -14,10 +14,13 @@ fn max
 (y : ( ref Int32.t) )
 (#vx #vy : erased _)
 (#px #py : _)
-preserves x |->Frac px vx
-preserves y |->Frac py vy
+preserves 
+x |->Frac px vx
+preserves 
+y |->Frac py vy
 returns n : int32
-ensures pure(as_int n == max_spec(as_int vx)(as_int vy))
+ensures 
+pure(as_int n == max_spec(as_int vx)(as_int vy))
 {
 let mut x : (ref Int32.t) = x;
 let mut y : (ref Int32.t) = y;

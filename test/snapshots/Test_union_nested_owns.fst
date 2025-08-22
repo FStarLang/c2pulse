@@ -80,10 +80,14 @@ fn incr_a
 (x : ( ref ab) )
 (a:erased (ref uint32))
 (v:erased uint32)
-preserves ab_pred x (Case_ab_a a)
-requires reveal a |-> v
-requires pure (U32.fits ( + ) (UInt32.v v) 1)
-ensures exists* (u:uint32). (reveal a |-> u) ** pure (U32.as_int u == U32.as_int v + 1)
+preserves 
+ab_pred x (Case_ab_a a)
+requires 
+reveal a |-> v
+requires 
+pure (U32.fits ( + ) (UInt32.v v) 1)
+ensures 
+exists* (u:uint32). (reveal a |-> u) ** pure (U32.as_int u == U32.as_int v + 1)
 {
 let mut x : (ref ab) = x;
 ab_is_a (!x);
@@ -96,9 +100,12 @@ fn set_case_a
 (x : ( ref ab) )
 (a : ( ref UInt32.t) )
 (v:erased _)
-requires exists* s. ab_pred x s
-preserves a |-> v
-ensures ab_pred x (Case_ab_a a)
+requires 
+exists* s. ab_pred x s
+preserves 
+a |-> v
+ensures 
+ab_pred x (Case_ab_a a)
 {
 let mut x : (ref ab) = x;
 let mut a : (ref UInt32.t) = a;
@@ -229,7 +236,8 @@ rewrite each pl as s.payload;
 }
 fn test_union
 (foo : ( ref stru) )
-preserves exists* s. stru_ok foo s
+preserves 
+exists* s. stru_ok foo s
 {
 let mut foo : (ref stru) = foo;
 stru_explode (!foo);

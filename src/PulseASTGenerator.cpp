@@ -1803,6 +1803,24 @@ static bool isPulseAnnotAttr(AnnotateAttr const *AnnAttr) {
   return name == "annotate" || name == "annotate_type";
 }
 
+GenericDecl2 *PulseVisitor::getAnnotationCode(AnnotateAttr const *AnnAttr, SourceLocation Loc) {
+  if (AnnAttr->args_size() != 1){
+    emitErrorWithLocation("pulse attr does not have exactly one arg", &Ctx, Loc);
+  }
+  Expr *ctrArg = AnnAttr->args_begin()[0];
+  if (auto ctrVal = ctrArg->getIntegerConstantExpr(Ctx)) {
+    unsigned ctr = ctrVal->getZExtValue();
+    auto & toks = macroTokens.at(ctr);
+    auto *Inc = new GenericDecl2();
+    for (auto & tok : toks) {
+      Inc->Tokens.push_back({ tok.Pre, getSourceInfoForToken(tok.Range, tok.Text.length(), Ctx, "", true), tok.Text });
+    }
+    return Inc;
+  } else {
+    emitErrorWithLocation("pulse attr arg is not an int lit", &Ctx, Loc);
+  }
+}
+
 void PulseVisitor::handleFunctionAttributes(FunctionDecl *FD,
                                             _PulseFnDefn *FDefn,
                                             std::string FuncName,
@@ -1940,30 +1958,6 @@ void PulseVisitor::handleFunctionAttributes(FunctionDecl *FD,
               FDefn->Attr.push_back(NewAttr);
               break;
             }
-            case PulseAnnKind::Requires: {
-              if (containsTerm(FDefn->Annotation, TermTag::Returns)){
-                emitErrorWithLocation("Pulse functions can only have one return!", &Ctx, FD->getLocation());
-              }
-              auto *NewRequires = new Requires();
-              NewRequires->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
-              NewRequires->Ann = Match;
-              FDefn->Annotation.push_back(NewRequires);
-              break;
-            }
-            case PulseAnnKind::Preserves: {
-              auto *NewPreserves = new Preserves();
-              NewPreserves->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
-              NewPreserves->Ann = Match;
-              FDefn->Annotation.push_back(NewPreserves);
-              break;
-            }
-            case PulseAnnKind::Ensures: {
-              auto *NewEnsures = new Ensures();
-              NewEnsures->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
-              NewEnsures->Ann = Match;
-              FDefn->Annotation.push_back(NewEnsures);
-              break;
-            }
             case PulseAnnKind::Returns: {
               auto *ReturnSpec = new Returns();
               ReturnSpec->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
@@ -1976,27 +1970,6 @@ void PulseVisitor::handleFunctionAttributes(FunctionDecl *FD,
               NewErasedArgBinder->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
               NewErasedArgBinder->useFallBack = true;
               ErasedArgs.push_back(NewErasedArgBinder);
-              break;
-            }
-            case PulseAnnKind::Includes: {
-              //Assume modules will be comma seperated.
-              //StringRef MatchRef(Match);
-              //llvm::SmallVector<StringRef, 4> IncModules;
-              //MatchRef.split(IncModules, ",");
-              //for (auto &IncModule : IncModules){
-              //  auto RTrimmed = IncModule.rtrim();
-              //  auto LTrimmed = RTrimmed.ltrim();
-              //  Module->insertModule(LTrimmed.str());
-              //}
-              auto *Inc = new GenericDecl();
-              Inc->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
-              Inc->Ident = Match;
-              Module->Decls.push_back(Inc);
-              //If function name is the anchor dummy function. 
-              //Skip generating code for it entirely.
-              if ((FuncName.find("__pulse_include_anchor") != std::string::npos)){
-                *Terminate = true;
-              }
               break;
             }
             case PulseAnnKind::IsArray:{
@@ -2015,29 +1988,27 @@ void PulseVisitor::handleFunctionAttributes(FunctionDecl *FD,
               break;
             }
           } else if (Ref == "includes") {
-            if (AnnAttr->args_size() != 1){
-              emitErrorWithLocation("pulse attr does not have exactly one arg", &Ctx, FD->getLocation());
+            Module->Decls.push_back(getAnnotationCode(AnnAttr, FD->getLocation()));
+            //If function name is the anchor dummy function. 
+            //Skip generating code for it entirely.
+            if ((FuncName.find("__pulse_include_anchor") != std::string::npos)){
+              *Terminate = true;
             }
-            Expr *ctrArg = AnnAttr->args_begin()[0];
-            if (auto ctrVal = ctrArg->getIntegerConstantExpr(Ctx)) {
-              unsigned ctr = ctrVal->getZExtValue();
-              auto & toks = macroTokens.at(ctr);
-              auto *Inc = new GenericDecl2();
-              // Inc->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
-              Module->Decls.push_back(Inc);
-              for (auto & tok : toks) {
-                Inc->Tokens.push_back({ tok.Pre, getSourceInfoForToken(tok.Range, tok.Text.length(), Ctx, "", true), tok.Text });
-              }
-              //If function name is the anchor dummy function. 
-              //Skip generating code for it entirely.
-              if ((FuncName.find("__pulse_include_anchor") != std::string::npos)){
-                *Terminate = true;
-              }
-            } else {
-              // ctrArg->printJson(llvm::outs(), nullptr, Ctx.getPrintingPolicy(), false);
-              // llvm::outs() << "\n" << ctrArg->getStmtClassName() << "\n";
-              emitErrorWithLocation("pulse attr arg is not an int lit", &Ctx, FD->getLocation());
-            }
+          } else if (Ref == "requires") {
+            auto *NewRequires = new Requires();
+            NewRequires->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
+            NewRequires->Ann2 = getAnnotationCode(AnnAttr, FD->getLocation());
+            FDefn->Annotation.push_back(NewRequires);
+          } else if (Ref == "preserves") {
+            auto *NewRequires = new Preserves();
+            NewRequires->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
+            NewRequires->Ann2 = getAnnotationCode(AnnAttr, FD->getLocation());
+            FDefn->Annotation.push_back(NewRequires);
+          } else if (Ref == "ensures") {
+            auto *NewRequires = new Ensures();
+            NewRequires->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
+            NewRequires->Ann2 = getAnnotationCode(AnnAttr, FD->getLocation());
+            FDefn->Annotation.push_back(NewRequires);
           }
         }
       }
@@ -4229,24 +4200,11 @@ PulseVisitor::pulseFromStmt(Stmt *S, std::map<Term *, FStarType *> VEnv,
       for (auto *Attr : Attributes) {
 
         if (auto *AnnAttr = dyn_cast<AnnotateAttr>(Attr)) {
-          if (isPulseAnnotAttr(AnnAttr)) {
-
-            auto AnnotationData = AnnAttr->getAnnotation().str();
-
-            std::string Match;
-            auto AnnKind = getPulseAnnKindFromString(AnnotationData, Match);
-            switch (AnnKind) {
-            case PulseAnnKind::Ensures: {
-              auto *NewEnsures = new Ensures();
-              NewEnsures->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
-              NewEnsures->Ann = Match;
-              PulseIfStmt->IfLemmas.push_back(NewEnsures);
-              break;
-            };
-            default:
-              emitErrorWithLocation("Annotation not expected for IfStmt", &Ctx,
-                                    IF->getBeginLoc());
-            };
+          if (AnnAttr->getAnnotation() == "ensures") {
+            auto *NewEnsures = new Ensures();
+            NewEnsures->CInfo = getSourceInfoFromAttr(Attr, Ctx, "");
+            NewEnsures->Ann2 = getAnnotationCode(AnnAttr, Attr->getLocation());
+            PulseIfStmt->IfLemmas.push_back(NewEnsures);
           }
         }
       }
@@ -4458,42 +4416,8 @@ PulseVisitor::pulseFromStmt(Stmt *S, std::map<Term *, FStarType *> VEnv,
       for (auto *Attr : Attributes) {
 
         if (auto *AnnAttr = dyn_cast<AnnotateAttr>(Attr)) {
-          if (isPulseAnnotAttr(AnnAttr)) {
-
-            auto AnnotationData = AnnAttr->getAnnotation().str();
-
-            std::string StartDelimiter = "invariants:";
-            size_t pos = AnnotationData.find(StartDelimiter);
-            std::string EndDelimiter = "|END";
-
-            size_t end = AnnotationData.find(EndDelimiter);
-            std::string match;
-            if (pos != std::string::npos) {
-              std::string firstPart = AnnotationData.substr(0, pos);
-              match =
-                  AnnotationData.substr(pos + StartDelimiter.length(),
-                                        end - (pos + StartDelimiter.length()));
-              if (!match.empty() && match.front() == '"' &&
-                  match.back() == '"') {
-                match = match.substr(1, match.size() - 2);
-              }
-            }
-
-            std::vector<std::string> tokens;
-            std::stringstream ss(match);
-            std::string token;
-            while (std::getline(ss, token, ',')) {
-              tokens.push_back(token.c_str());
-            }
-            // llvm::outs() << "PRINT OUT the invarinat tokens\n";
-            for (auto token : tokens) {
-              //llvm::outs() << token << "\n";
-              auto *NewLemmaTerm = new LemmaStatement();
-              NewLemmaTerm->CInfo = getSourceInfoFromStmt(AttrStmt, Ctx, "", "");
-              NewLemmaTerm->Lemma.assign(token.c_str());
-              PulseWhile->Invariant.push_back(NewLemmaTerm);
-            }
-            // llvm::outs() << "\n";
+          if (AnnAttr->getAnnotation() == "invariant") {
+            PulseWhile->Invariant = getAnnotationCode(AnnAttr, AttrStmt->getAttrLoc());
           }
         }
       }

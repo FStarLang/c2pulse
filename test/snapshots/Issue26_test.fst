@@ -93,10 +93,14 @@ fn move_alt
 (dx : Int32.t)
 (dy : Int32.t)
 (#v:erased _)
-requires is_point p v
-requires pure <| fits (+) (fst v) (as_int dx)
-requires pure <| fits (+) (snd v) (as_int dy)
-ensures is_point p (fst v + as_int dx, snd v + as_int dy)
+requires 
+is_point p v
+requires 
+pure <| fits (+) (fst v) (as_int dx)
+requires 
+pure <| fits (+) (snd v) (as_int dy)
+ensures 
+is_point p (fst v + as_int dx, snd v + as_int dy)
 {
 let mut p : (ref point) = p;
 let mut dx : Int32.t = dx;
@@ -111,8 +115,10 @@ fn create_point
 (x : Int32.t)
 (y : Int32.t)
 returns p:ref point
-ensures is_point p (as_int x, as_int y)
-ensures freeable p
+ensures 
+is_point p (as_int x, as_int y)
+ensures 
+freeable p
 {
 let mut x : Int32.t = x;
 let mut y : Int32.t = y;

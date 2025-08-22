@@ -80,10 +80,14 @@ fn incr_a
 (x : ( ref ab) )
 (#a:erased (ref uint32))
 (#v:erased uint32)
-preserves ab_pred x (Case_ab_a a)
-requires reveal a |-> v
-requires pure (U32.fits ( + ) (UInt32.v v) 1)
-ensures exists* (u:uint32). (reveal a |-> u) ** pure (U32.as_int u == U32.as_int v + 1)
+preserves 
+ab_pred x (Case_ab_a a)
+requires 
+reveal a |-> v
+requires 
+pure (U32.fits ( + ) (UInt32.v v) 1)
+ensures 
+exists* (u:uint32). (reveal a |-> u) ** pure (U32.as_int u == U32.as_int v + 1)
 {
 let mut x : (ref ab) = x;
 ab_is_a (!x);
@@ -96,9 +100,12 @@ fn set_case_a
 (x : ( ref ab) )
 (a : ( ref UInt32.t) )
 (#v:erased _)
-requires exists* s. ab_pred x s
-preserves a |-> v
-ensures ab_pred x (Case_ab_a a)
+requires 
+exists* s. ab_pred x s
+preserves 
+a |-> v
+ensures 
+ab_pred x (Case_ab_a a)
 {
 let mut x : (ref ab) = x;
 let mut a : (ref UInt32.t) = a;
@@ -280,8 +287,13 @@ fn test_union
 (foo : ( ref stru) )
 (#s:erased (either uint32 _Bool))
 (#f:erased _Bool)
-requires stru_ok foo s f
-ensures exists* (t:either uint32 _Bool). stru_ok foo t f ** pure (match s with | Inl _ -> t == Inl 1ul | Inr _ -> Inr? t && not (Inr?.v t))
+requires 
+stru_ok foo s f
+ensures 
+exists* (t:either uint32 bool). stru_ok foo t f **
+pure (match s with
+| Inl _ -> t == Inl 1ul
+| Inr _ -> Inr? t && not (Inr?.v t))
 {
 let mut foo : (ref stru) = foo;
 stru_explode (!foo);
@@ -310,8 +322,10 @@ fn test_union_a
 (foo : ( ref stru) )
 (#s:erased (either uint32 _Bool) { Inl? s })
 (#f:erased _Bool)
-requires stru_ok foo s f
-ensures stru_ok foo (Inl 1ul) f
+requires 
+stru_ok foo s f
+ensures 
+stru_ok foo (Inl 1ul) f
 {
 let mut foo : (ref stru) = foo;
 tag_relation_lemma _; stru_explode (!foo);
@@ -324,8 +338,10 @@ fn test_union_a_alt
 (foo : ( ref stru) )
 (#s:erased uint32)
 (#f:erased _Bool)
-requires stru_ok foo (Inl #uint32 s) f
-ensures stru_ok foo (Inl 1ul) f
+requires 
+stru_ok foo (Inl #uint32 s) f
+ensures 
+stru_ok foo (Inl 1ul) f
 {
 let mut foo : (ref stru) = foo;
 tag_relation_lemma _; stru_explode (!foo);
@@ -338,8 +354,10 @@ fn test_union_a_alt2
 (foo : ( ref stru) )
 (#s:erased uint32)
 (#f:erased _Bool)
-requires stru_ok foo (Inl #uint32 s) f
-ensures exists* v. stru_ok foo v f ** pure (v == Inl 1ul)
+requires 
+stru_ok foo (Inl #uint32 s) f
+ensures 
+exists* v. stru_ok foo v f ** pure (v == Inl 1ul)
 {
 let mut foo : (ref stru) = foo;
 tag_relation_lemma _; stru_explode (!foo);
@@ -353,8 +371,10 @@ fn test_union_b_alt
 (foo : ( ref stru) )
 (#s:erased _Bool)
 (#f:erased _Bool)
-requires stru_ok foo (Inr #_ #_Bool s) f
-ensures stru_ok foo (Inr (not s)) f
+requires 
+stru_ok foo (Inr #_ #bool s) f
+ensures 
+stru_ok foo (Inr (not s)) f
 {
 let mut foo : (ref stru) = foo;
 tag_relation_lemma _; stru_explode (!foo);
@@ -367,8 +387,10 @@ fn test_union_b_alt2
 (foo : ( ref stru) )
 (#s:erased _Bool)
 (#f:erased _Bool)
-requires stru_ok foo (Inr #_ #_Bool s) f
-ensures exists* v. stru_ok foo v f ** pure (v == Inr (not s))
+requires 
+stru_ok foo (Inr #_ #bool s) f
+ensures 
+exists* v. stru_ok foo v f ** pure (v == Inr (not s))
 {
 let mut foo : (ref stru) = foo;
 tag_relation_lemma _; stru_explode (!foo);
@@ -415,7 +437,8 @@ fold (maybe_freeable _true_ r)
 }
 fn mk_union_a ()
 returns x:ref stru
-ensures exists* v. stru_ok x v _true_ ** pure (v == Inl 0ul) ** freeable x
+ensures 
+exists* v. stru_ok x v _true_ ** pure (v == Inl 0ul) ** freeable x
 {
 let mut a : (ref UInt32.t) = alloc_ref #UInt32.t ();
 intro_maybe_freeable _ (!a);

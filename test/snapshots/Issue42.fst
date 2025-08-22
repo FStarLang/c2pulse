@@ -78,8 +78,10 @@ v = a1}) }
 
 fn set_next_zero
 (p : ( ref foo) )
-requires exists* v vn. foo_pred p v ** foo_pred v.next vn
-ensures exists* v vn. foo_pred v.next vn ** foo_pred p v ** pure (vn.v == 0l)
+requires 
+exists* v vn. foo_pred p v ** foo_pred v.next vn
+ensures 
+exists* v vn. foo_pred v.next vn ** foo_pred p v ** pure (vn.v == 0l)
 {
 let mut p : (ref foo) = p;
 let mut pn : (ref foo) = (! (! (! p)).next);
@@ -89,8 +91,10 @@ foo_recover (!pn);
 
 fn set_next_next_zero
 (p : ( ref foo) )
-requires exists* v vn vnn. foo_pred p v ** foo_pred v.next vn ** foo_pred vn.next vnn
-ensures exists* v vn vnn. foo_pred vn.next vnn ** foo_pred v.next vn ** foo_pred p v ** pure (vnn.v == 0l)
+requires 
+exists* v vn vnn. foo_pred p v ** foo_pred v.next vn ** foo_pred vn.next vnn
+ensures 
+exists* v vn vnn. foo_pred vn.next vnn ** foo_pred v.next vn ** foo_pred p v ** pure (vnn.v == 0l)
 {
 let mut p : (ref foo) = p;
 let mut pn : (ref foo) = (! (! (! p)).next);

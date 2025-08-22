@@ -1,11 +1,11 @@
 #ifdef C2PULSE
 #define STR(...) #__VA_ARGS__
-#define REQUIRES(s) [[clang::annotate("requires:" STR(s) "|END")]]
-#define ENSURES(...) [[clang::annotate("ensures:" STR(__VA_ARGS__) "|END")]]
-#define PRESERVES(...) [[clang::annotate("preserves:" STR(__VA_ARGS__) "|END")]]
+#define REQUIRES(s) [[clang::annotate("requires", __COUNTER__)]]
+#define ENSURES(...) [[clang::annotate("ensures", __COUNTER__)]]
+#define PRESERVES(...) [[clang::annotate("preserves", __COUNTER__)]]
 #define RETURNS(s) [[clang::annotate("returns:" STR(s)"|END")]]
 #define ISARRAY(len) [[clang::annotate("array:" STR(len)"|END")]]
-#define INVARIANTS(...) [[clang::annotate("invariants:" STR(__VA_ARGS__)"|END")]]
+#define INVARIANTS(...) [[clang::annotate("invariant", __COUNTER__)]]
 #define LEMMA(l) [[clang::annotate("lemma:" STR(l)"|END")]]0
 #define ERASED_ARG(arg) [[clang::annotate("erased_arg:" STR(arg)"|END")]]
 #define GHOST_ARG(arg) [[clang::annotate("erased_arg:" STR(arg)"|END")]]

@@ -77,10 +77,13 @@ second = a1})
 second = a1}) }
 
 fn new_u32_pair_struct ()
-requires emp
+requires 
+emp
 returns x:ref u32_pair_struct
-ensures freeable x
-ensures (u32_pair_struct_pred x { first = 0ul; second = 1ul })
+ensures 
+freeable x
+ensures 
+(u32_pair_struct_pred x { first = 0ul; second = 1ul })
 {
 let mut x : (ref u32_pair_struct) = u32_pair_struct_alloc ();
 u32_pair_struct_explode !x;
@@ -93,8 +96,10 @@ u32_pair_struct_recover !x;
 fn swap_fields
 (x : ( ref u32_pair_struct) )
 (#s : u32_pair_struct_spec)
-requires u32_pair_struct_pred x s
-ensures exists* (s':u32_pair_struct_spec). u32_pair_struct_pred x s' ** pure (s' == ({first = s.second; second = s.first}))
+requires 
+u32_pair_struct_pred x s
+ensures 
+exists* (s2:u32_pair_struct_spec). u32_pair_struct_pred x s2 ** pure (s2 == ({first = s.second; second = s.first}))
 {
 let mut x : (ref u32_pair_struct) = x;
 u32_pair_struct_explode !x;
@@ -107,10 +112,14 @@ u32_pair_struct_recover !x;
 fn swap_refs
 (x : ( ref UInt32.t) )
 (y : ( ref UInt32.t) )
-requires x |-> 'x
-requires y |-> 'y
-ensures x |-> 'y
-ensures y |-> 'x
+preserves 
+live x
+preserves 
+live y
+ensures 
+rewrites_to (!x) (old(!y))
+ensures 
+rewrites_to (!y) (old(!x))
 {
 let mut x : (ref UInt32.t) = x;
 let mut y : (ref UInt32.t) = y;
@@ -122,8 +131,10 @@ let mut tmp : UInt32.t = (! (! x));
 fn swap_fields_alt
 (x : ( ref u32_pair_struct) )
 (#s : u32_pair_struct_spec)
-requires u32_pair_struct_pred x s
-ensures exists* (s':u32_pair_struct_spec). u32_pair_struct_pred x s' ** pure (s' == {first = s.second; second = s.first})
+requires 
+u32_pair_struct_pred x s
+ensures 
+exists* (s2:u32_pair_struct_spec). u32_pair_struct_pred x s2 ** pure (s2 == {first = s.second; second = s.first})
 {
 let mut x : (ref u32_pair_struct) = x;
 u32_pair_struct_explode !x;

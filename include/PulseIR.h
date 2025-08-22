@@ -204,6 +204,8 @@ class PulseSourceRange {
   void dumpPretty();
 };
 
+class GenericDecl2;
+
 /// Define F* IR Similar to type term
 /// https://github.com/FStarLang/FStar/blob/3ff998c60bb0efe9925fc94e8fb8b785b9485af0/src/parser/FStarC.Parser.AST.fsti#L40
 enum class TermTag {Const, Paren, Var, Name, AppE, FStarType, 
@@ -288,6 +290,7 @@ public:
 class Ensures : public Term {
   public: 
     std::string Ann;
+    GenericDecl2 *Ann2 = nullptr;
     Ensures();
     virtual void dumpPretty() override;
     static bool classof(const Term *T) { return T->Tag == TermTag::Ensures; }
@@ -297,6 +300,7 @@ class Ensures : public Term {
 class Requires : public Term {
   public: 
     std::string Ann;
+    GenericDecl2 *Ann2 = nullptr;
     Requires();
     virtual void dumpPretty() override;
     static bool classof(const Term *T) { return T->Tag == TermTag::Requires; }
@@ -307,6 +311,7 @@ class Requires : public Term {
 class Preserves : public Term {
   public: 
     std::string Ann;
+    GenericDecl2 *Ann2 = nullptr;
     Preserves();
     virtual void dumpPretty() override;
     static bool classof(const Term *T) { return T->Tag == TermTag::Preserves; }
@@ -570,7 +575,7 @@ class PulseWhileStmt : public PulseStmt {
 public:
   PulseWhileStmt();
   PulseStmt *Guard;
-  std::vector<Slprop *> Invariant;
+  GenericDecl2 *Invariant = nullptr;
   PulseStmt *Body;
   virtual void dumpPretty() override;
   static bool classof(const PulseStmt *S) {

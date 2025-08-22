@@ -40,14 +40,14 @@ int recursiveFunction(int x, int limit) {
 
 ///Note: The Z3 solver may be flacky at times and Z3 might not
 ///be able to prove things. Chaning 1000 to 100 makes this test pass.
-REQUIRES(pure (abs (Int32.v x) < 100 /\\ abs (Int32.v y) < 100))
+REQUIRES(pure (abs (Int32.v x) < 100 /\ abs (Int32.v y) < 100))
 RETURNS(res : Int32.t)
 int complexComputation(int x, int y) {
     return square(triple(sum(doubleValue(x), y))) + 
            doubleValue(square(y - x)) /*- randomOffset(sum(x, y))*/;
 }
 
-REQUIRES(pure (abs (Int32.v x) < 1000 /\\ abs (Int32.v y) < 1000))
+REQUIRES(pure (abs (Int32.v x) < 1000 /\ abs (Int32.v y) < 1000))
 RETURNS(res : Int32.t)
 int conditionalProcessing(int x, int y) {
     if ((x * y) % 2 == 0) {

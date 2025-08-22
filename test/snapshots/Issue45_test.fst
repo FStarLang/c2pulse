@@ -10,19 +10,22 @@ open Pulse.Lib.C
 
 assume val res : slprop
 fn bar_decl ()
-requires res
+requires 
+res
 {
 admit();
 }
 
 fn foo ()
-requires res
+requires 
+res
 {
 (bar_decl ());
 }
 
 fn bar_impl ()
-requires res
+requires 
+res
 {
 (foo ());
 }

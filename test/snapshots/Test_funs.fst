@@ -11,7 +11,8 @@ open Pulse.Lib.C
 fn abs_decl
 (x : Int32.t)
 returns y:Int32.t
-ensures pure (Int32.v y > 0)
+ensures 
+pure (Int32.v y > 0)
 {
 admit();
 }

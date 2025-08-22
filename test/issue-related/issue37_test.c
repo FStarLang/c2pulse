@@ -1,6 +1,7 @@
 #include "../include/PulseMacros.h"
 
-REQUIRES("n |-> 'v")
+ERASED_ARG(#v: erased _)
+REQUIRES(n |-> v)
 ENSURES(n |-> 0l)
 void set(int *n)
 { *n = 0; }

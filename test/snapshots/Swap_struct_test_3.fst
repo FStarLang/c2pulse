@@ -78,8 +78,10 @@ second = a1}) }
 
 fn new_u32_pair ()
 returns x:_
-ensures freeable x
-ensures u32_pair_pred x ({ first = 0ul; second = 1ul })
+ensures 
+freeable x
+ensures 
+u32_pair_pred x ({ first = 0ul; second = 1ul })
 {
 let mut x : (ref u32_pair) = u32_pair_alloc ();
 Mku32_pair?.first (! (! x)) := (uint64_to_uint32 0UL);
@@ -90,8 +92,10 @@ Mku32_pair?.second (! (! x)) := (uint64_to_uint32 1UL);
 fn swap_fields
 (x : ( ref u32_pair) )
 (#s : _)
-requires u32_pair_pred x s
-ensures u32_pair_pred x ({first = s.second; second = s.first})
+requires 
+u32_pair_pred x s
+ensures 
+u32_pair_pred x ({first = s.second; second = s.first})
 {
 let mut x : (ref u32_pair) = x;
 let mut f1 : UInt32.t = (! (! (! x)).first);
@@ -103,10 +107,14 @@ fn swap_refs
 (x : ( ref UInt32.t) )
 (y : ( ref UInt32.t) )
 (#vx #vy:erased _)
-requires x |-> vx
-requires y |-> vy
-ensures x |-> vy
-ensures y |-> vx
+requires 
+x |-> vx
+requires 
+y |-> vy
+ensures 
+x |-> vy
+ensures 
+y |-> vx
 {
 let mut x : (ref UInt32.t) = x;
 let mut y : (ref UInt32.t) = y;
@@ -118,8 +126,10 @@ let mut tmp : UInt32.t = (! (! x));
 fn swap_fields_alt
 (x : ( ref u32_pair) )
 (#s : erased _)
-requires u32_pair_pred x s
-ensures u32_pair_pred x ({first = s.second; second = s.first})
+requires 
+u32_pair_pred x s
+ensures 
+u32_pair_pred x ({first = s.second; second = s.first})
 {
 let mut x : (ref u32_pair) = x;
 (swap_refs (! (! x)).first (! (! x)).second);

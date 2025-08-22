@@ -165,7 +165,8 @@ admit();
 
 fn mk_s2 ()
 returns x: _
-ensures exists* y. owns_s2 x y
+ensures 
+exists* y. owns_s2 x y
 {
 let mut size_expr1 : SizeT.t = (uint64_to_sizet (int32_to_uint64 32l));
 let mut bytes : (array UInt8.t) = alloc_array #UInt8.t !size_expr1;
@@ -179,7 +180,8 @@ intro_owns_s2 ();
 
 fn read_byte0
 (x2 : ( ref s2) )
-preserves exists* y. owns_s2 x2 y
+preserves 
+exists* y. owns_s2 x2 y
 returns UInt8.t
 {
 let mut x2 : (ref s2) = x2;

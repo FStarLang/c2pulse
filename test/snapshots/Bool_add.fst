@@ -12,7 +12,8 @@ fn foo
 (a : bool)
 (b : bool)
 returns r: Int32.t
-ensures pure (v r == (if a then 1 else 0) + (if b then 1 else 0))
+ensures 
+pure (v r == (if a then 1 else 0) + (if b then 1 else 0))
 {
 let mut a : bool = a;
 let mut b : bool = b;

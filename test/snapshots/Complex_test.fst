@@ -10,9 +10,11 @@ open Pulse.Lib.C
 
 fn triple
 (x : Int32.t)
-requires pure (Int32.fits (Int32.v x * 3))
+requires 
+pure (Int32.fits (Int32.v x * 3))
 returns res : Int32.t
-ensures pure (Int32.v x * 3 == Int32.v res)
+ensures 
+pure (Int32.v x * 3 == Int32.v res)
 {
 let mut x : Int32.t = x;
 (Int32.mul (! x) 3l);
@@ -20,9 +22,11 @@ let mut x : Int32.t = x;
 
 fn square
 (x : Int32.t)
-requires pure (Int32.fits (Int32.v x * Int32.v x))
+requires 
+pure (Int32.fits (Int32.v x * Int32.v x))
 returns res : Int32.t
-ensures pure (Int32.v x * Int32.v x == Int32.v res)
+ensures 
+pure (Int32.v x * Int32.v x == Int32.v res)
 {
 let mut x : Int32.t = x;
 (Int32.mul (! x) (! x));
@@ -30,9 +34,11 @@ let mut x : Int32.t = x;
 
 fn doubleValue
 (x : Int32.t)
-requires pure (Int32.fits (Int32.v x * 2))
+requires 
+pure (Int32.fits (Int32.v x * 2))
 returns res : Int32.t
-ensures pure (Int32.v x * 2 == Int32.v res)
+ensures 
+pure (Int32.v x * 2 == Int32.v res)
 {
 let mut x : Int32.t = x;
 (Int32.mul (! x) 2l);
@@ -41,9 +47,11 @@ let mut x : Int32.t = x;
 fn sum
 (x : Int32.t)
 (y : Int32.t)
-requires pure (Int32.fits (Int32.v x + Int32.v y))
+requires 
+pure (Int32.fits (Int32.v x + Int32.v y))
 returns res : Int32.t
-ensures pure (Int32.v x + Int32.v y == Int32.v res)
+ensures 
+pure (Int32.v x + Int32.v y == Int32.v res)
 {
 let mut x : Int32.t = x;
 let mut y : Int32.t = y;
@@ -53,7 +61,8 @@ let mut y : Int32.t = y;
 fn rec recursiveFunction
 (x : Int32.t)
 (limit : Int32.t)
-requires pure False
+requires 
+pure False
 returns res : Int32.t
 {
 let mut x : Int32.t = x;
@@ -71,7 +80,8 @@ else
 fn complexComputation
 (x : Int32.t)
 (y : Int32.t)
-requires pure (abs (Int32.v x) < 100 /\ abs (Int32.v y) < 100)
+requires 
+pure (abs (Int32.v x) < 100 /\ abs (Int32.v y) < 100)
 returns res : Int32.t
 {
 let mut x : Int32.t = x;
@@ -82,7 +92,8 @@ let mut y : Int32.t = y;
 fn conditionalProcessing
 (x : Int32.t)
 (y : Int32.t)
-requires pure (abs (Int32.v x) < 1000 /\ abs (Int32.v y) < 1000)
+requires 
+pure (abs (Int32.v x) < 1000 /\ abs (Int32.v y) < 1000)
 returns res : Int32.t
 {
 let mut x : Int32.t = x;

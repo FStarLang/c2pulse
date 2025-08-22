@@ -77,8 +77,10 @@ py = a1})
 py = a1}) }
 
 fn test_stack_allocator ()
-requires emp
-ensures emp
+requires 
+emp
+ensures 
+emp
 {
 let mut p : point = point_default point_spec_default;
 point_pack p;

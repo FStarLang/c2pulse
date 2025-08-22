@@ -11,7 +11,8 @@ open Pulse.Lib.C
 fn foo
 (a : Int32.t)
 (b : bool)
-requires pure (Int32.v a < 100)
+requires 
+pure (Int32.v a < 100)
 returns Int32.t
 {
 let mut a : Int32.t = a;

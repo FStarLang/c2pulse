@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include "../include/PulseMacros.h"
 
-REQUIRES("x |-> 'i")
-REQUIRES("pure FStar.Int32.(fits (v 'i + 1))")
-ENSURES("exists* j. (x |-> j) ** pure FStar.Int32.((v j <: int) == v 'i + 1)")
+PRESERVES(live x)
+REQUIRES(pure FStar.Int32.(fits (v (!x) + 1)))
+ENSURES(pure FStar.Int32.(eq2 #int (v (!x)) (v (old (!x)) + 1)))
 void incr (int *x)
 {
     *x = *x + 1;

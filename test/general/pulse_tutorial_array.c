@@ -30,11 +30,9 @@ void write_i(ISARRAY() int *arr, size_t i, int v)
 
 ERASED_ARG(#s1 #s2 : erased (Seq.seq int32))
 ERASED_ARG(#p:perm { Seq.length s1 = Seq.length s2 && Seq.length s2 = SizeT.v l })
-REQUIRES(a1 |-> Frac p s1)
-REQUIRES(a2 |-> Frac p s2)
+PRESERVES(a1 |-> Frac p s1)
+PRESERVES(a2 |-> Frac p s2)
 RETURNS(res:int32)
-ENSURES(a1 |-> Frac p s1)
-ENSURES(a2 |-> Frac p s2)
 ENSURES(pure (res==1l <==> (SizeT.v i < SizeT.v l && Seq.index s1 (SizeT.v i) = Seq.index s2 (SizeT.v i))))
 int compare_elements(ISARRAY() int *a1, ISARRAY() int *a2, size_t l, size_t i)
 {
@@ -61,11 +59,9 @@ INCLUDE (
 
 ERASED_ARG(#s1 #s2 : erased (Seq.seq int32))
 ERASED_ARG(#p:perm { Seq.length s1 = Seq.length s2 && Seq.length s2 = SizeT.v l })
-REQUIRES(a1 |-> Frac p s1)
-REQUIRES(a2 |-> Frac p s2)
+PRESERVES(a1 |-> Frac p s1)
+PRESERVES(a2 |-> Frac p s2)
 RETURNS(res:bool)
-ENSURES(a1 |-> Frac p s1)
-ENSURES(a2 |-> Frac p s2)
 ENSURES(pure (res <==> Seq.equal s1 s2))
 bool compare(ISARRAY() int *a1, ISARRAY() int *a2, size_t l)
 {
@@ -74,18 +70,18 @@ bool compare(ISARRAY() int *a1, ISARRAY() int *a2, size_t l)
     LEMMA(with va2. assert (a2 |-> va2));
     while( compare_elements(a1, a2, l, i) == 1 )
     INVARIANTS(
-"invariant b. \
-exists* vi vl. \
-(a1 |-> va1) ** (a2 |-> va2) ** (* tedious *) \
-(i |-> vi) ** (va1 |-> Frac p s1) ** (va2 |-> Frac p s2) **\
-(l |-> vl) **\
-pure (\
-Seq.length s1 = SizeT.v vl /\\
-Seq.length s2 = SizeT.v vl /\\
-SizeT.v vi <= SizeT.v vl /\\
-(b == (SizeT.v vi < SizeT.v vl && Seq.index s1 (SizeT.v vi) = Seq.index s2 (SizeT.v vi))) /\\
-(forall (i:nat). i < SizeT.v vi ==> Seq.index s1 i == Seq.index s2 i))"
-)
+        invariant b.
+        exists* vi vl.
+        (a1 |-> va1) ** (a2 |-> va2) ** (* tedious *)
+        (i |-> vi) ** (va1 |-> Frac p s1) ** (va2 |-> Frac p s2) **
+        (l |-> vl) **
+        pure (
+        Seq.length s1 = SizeT.v vl
+        /\ Seq.length s2 = SizeT.v vl
+        /\ SizeT.v vi <= SizeT.v vl
+        /\ (b == (SizeT.v vi < SizeT.v vl && Seq.index s1 (SizeT.v vi) = Seq.index s2 (SizeT.v vi)))
+        /\ (forall (i:nat). i < SizeT.v vi ==> Seq.index s1 i == Seq.index s2 i))
+    )
     {
         i = i + 1;
     }

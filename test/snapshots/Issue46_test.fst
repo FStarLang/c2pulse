@@ -27,7 +27,8 @@ let mut x : Int32.t = x;
 fn get3
 (x : Int32.t)
 returns res : ref Int32.t
-ensures exists* x. res |-> x
+ensures 
+exists* x. res |-> x
 {
 let mut x : Int32.t = x;
 (x);

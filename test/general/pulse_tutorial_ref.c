@@ -2,35 +2,19 @@
 #include <stdlib.h>
 #include "../include/PulseMacros.h"
 
-REQUIRES("r |-> 'v")
-RETURNS(v:int32)
-ENSURES("r |-> 'v")
-ENSURES("pure (v == 'v)")
-int value_of(int *r)
-{
-    return *r;
-}
-
 ERASED_ARG(#w:erased _)
 REQUIRES(r |-> w)
 RETURNS(v:int32)
 ENSURES(r |-> w)
 ENSURES(pure (v == w))
-int value_of_explicit(int *r)
+int value_of(int *r)
 {
     return *r;
 }
 
-REQUIRES("r |-> 'v")
-ENSURES(r |-> v)
-void assign(int *r, int v)
-{
-    *r = v;
-}
-
 REQUIRES(exists* w. r |-> w)
 ENSURES(r |-> v)
-void assign_alt(int *r, int v)
+void assign(int *r, int v)
 {
     *r = v;
 }

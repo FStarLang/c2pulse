@@ -77,7 +77,8 @@ ensures exists* w. s1_pred x w ** pure (w == {bytes = a0})
 
 fn read_s10
 (x1 : ( ref s1) )
-preserves exists* s1_s y. s1_pred x1 s1_s ** (s1_s.bytes |-> y)
+preserves 
+exists* s1_s y. s1_pred x1 s1_s ** (s1_s.bytes |-> y)
 returns UInt8.t
 {
 let mut x1 : (ref s1) = x1;

@@ -9,7 +9,8 @@ open Pulse.Lib.C
 
 
 fn foo ()
-preserves emp
+preserves 
+emp
 returns int32
 {
 0l;

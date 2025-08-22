@@ -30,10 +30,10 @@ void swap_fields(u32_pair_struct *x) {
   x->second = f1;
 }
 
-REQUIRES("x |-> 'x")
-REQUIRES("y |-> 'y")
-ENSURES("x |-> 'y")
-ENSURES("y |-> 'x")
+PRESERVES(live x)
+PRESERVES(live y)
+ENSURES(rewrites_to (!x) (old(!y)))
+ENSURES(rewrites_to (!y) (old(!x)))
 void swap_refs(uint32_t *x, uint32_t *y) {
   uint32_t tmp = *x;
   *x = *y;

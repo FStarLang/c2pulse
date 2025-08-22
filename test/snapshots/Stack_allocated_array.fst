@@ -10,8 +10,10 @@ open Pulse.Lib.C
 
 fn foo
 (len : Int32.t)
-requires pure (abs (Int32.v len) < 100)
-requires pure ((Int32.v len) > 0)
+requires 
+pure (abs (Int32.v len) < 100)
+requires 
+pure ((Int32.v len) > 0)
 {
 let mut len : Int32.t = len;
 let mut arr : (array Int32.t) = [| witness #_ #_; 10sz |];

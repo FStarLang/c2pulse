@@ -10,15 +10,25 @@ open Pulse.Lib.C
 
 fn count_down
 (x : ( ref Int32.t) )
-requires exists* v. (x |-> v) ** pure (as_int v >= 0)
-ensures x |-> 0l
+requires 
+exists* v. (x |-> v) ** pure (as_int v >= 0)
+ensures 
+x |-> 0l
 {
 let mut x : (ref Int32.t) = x;
 let mut keep_going : Int32.t = 1l;
 with vx. assert (x |-> vx);
 while((int32_to_bool (bool_to_int32 (Int32.eq (! keep_going) 1l)));
 )
-invariant b. exists* k v. (keep_going |-> k) ** (x |-> vx) ** (* tedious *) (vx |-> v) ** pure (as_int v >= 0) ** pure (b==(k=1l)) ** pure (k<>1l ==> v==0l)
+
+invariant b.
+exists* k v.
+(keep_going |-> k) **
+(x |-> vx) ** (* tedious *)
+(vx |-> v) **
+pure (as_int v >= 0) **
+pure (b==(k=1l)) **
+pure (k<>1l ==> v==0l)
 {
 if((int32_to_bool (bool_to_int32 (Int32.eq (! (! x)) 0l))))
 {
@@ -36,9 +46,11 @@ module U32 = Pulse.Lib.C.UInt32
 fn multiply_by_repeated_addition
 (x : UInt32.t)
 (y : UInt32.t)
-requires pure (U32.fits ( * ) (U32.as_int x) (U32.as_int y))
+requires 
+pure (U32.fits ( * ) (U32.as_int x) (U32.as_int y))
 returns i:U32.uint32
-ensures pure (U32.as_int i == U32.as_int x * U32.as_int y)
+ensures 
+pure (U32.as_int i == U32.as_int x * U32.as_int y)
 {
 let mut x : UInt32.t = x;
 let mut y : UInt32.t = y;
@@ -47,7 +59,13 @@ let mut acc : UInt32.t = (int32_to_uint32 0l);
 with vx vy. assert (x |-> vx) ** (y |-> vy);
 while((int32_to_bool (bool_to_int32 (UInt32.lt (! ctr) (! x))));
 )
-invariant exists* c a. (ctr |-> c) ** (acc |-> a) ** pure (U32.as_int c <= U32.as_int vx) ** pure (U32.as_int a == U32.as_int c * U32.as_int vy)
+
+invariant
+exists* c a.
+(ctr |-> c) **
+(acc |-> a) **
+pure (U32.as_int c <= U32.as_int vx) **
+pure (U32.as_int a == U32.as_int c * U32.as_int vy)
 {
 ctr := (UInt32.add (! ctr) (int32_to_uint32 1l));
 acc := (UInt32.add (! acc) (! y));
@@ -58,9 +76,11 @@ acc := (UInt32.add (! acc) (! y));
 fn multiply_by_repeated_addition2
 (x : UInt32.t)
 (y : UInt32.t)
-requires pure (U32.fits ( * ) (U32.as_int x) (U32.as_int y))
+requires 
+pure (U32.fits ( * ) (U32.as_int x) (U32.as_int y))
 returns i:U32.uint32
-ensures pure (U32.as_int i == U32.as_int x * U32.as_int y)
+ensures 
+pure (U32.as_int i == U32.as_int x * U32.as_int y)
 {
 let mut x : UInt32.t = x;
 let mut y : UInt32.t = y;
@@ -68,7 +88,12 @@ let mut ctr : UInt32.t = (int32_to_uint32 0l);
 let mut acc : UInt32.t = (int32_to_uint32 0l);
 while((int32_to_bool (bool_to_int32 (UInt32.lt (! ctr) (! x))));
 )
-invariant ( live ctr ** live acc ** pure U32.(as_int !ctr <= as_int !x) ** pure U32.(as_int !acc == U32.as_int !ctr * U32.as_int !y) )
+
+invariant (
+live ctr ** live acc **
+pure U32.(as_int !ctr <= as_int !x) **
+pure U32.(as_int !acc == U32.as_int !ctr * U32.as_int !y)
+)
 {
 ctr := (UInt32.add (! ctr) (int32_to_uint32 1l));
 acc := (UInt32.add (! acc) (! y));
@@ -92,11 +117,15 @@ let sum_mono (c n:nat)
 = sum_lemma c; sum_lemma n
 fn isum
 (n : Int32.t)
-requires pure (as_int n >= 0)
-requires pure (fits (+) (as_int n) 1)
-requires pure (fits ( * ) (as_int n) (as_int n + 1))
+requires 
+pure (as_int n >= 0)
+requires 
+pure (fits (+) (as_int n) 1)
+requires 
+pure (fits ( * ) (as_int n) (as_int n + 1))
 returns i:int32
-ensures pure (as_int i == (as_int n * (as_int n + 1)) / 2)
+ensures 
+pure (as_int i == (as_int n * (as_int n + 1)) / 2)
 {
 let mut n : Int32.t = n;
 let mut acc : Int32.t = 0l;
@@ -105,7 +134,16 @@ sum_lemma(as_int !n);
 with vn. assert (n |-> vn);
 while((int32_to_bool (bool_to_int32 (Int32.lt (! ctr) (! n))));
 )
-invariant b. exists* c a. (n |-> vn) ** (* tedious *) (ctr |-> c) ** (acc |-> a) ** pure (as_int c <= as_int vn) ** pure (as_int c >= 0) ** pure (as_int c >= 0 ==> as_int a == sum (as_int c)) ** pure (b == (as_int c < as_int vn))
+
+invariant b.
+exists* c a.
+(n |-> vn) ** (* tedious *)
+(ctr |-> c) **
+(acc |-> a) **
+pure (as_int c <= as_int vn) **
+pure (as_int c >= 0) **
+pure (as_int c >= 0 ==> as_int a == sum (as_int c)) **
+pure (b == (as_int c < as_int vn))
 {
 ctr := (Int32.add (! ctr) 1l);
 acc := (Int32.add (! acc) (! ctr));
@@ -126,10 +164,18 @@ fn rec fib_rec
 (n : Int32.t)
 (cur : ( ref Int32.t) )
 (prev : ( ref Int32.t) )
-requires pure (as_int n > 0)
-requires pure (as_int n > 0 ==> fib (as_int n) <= max_int32)
-requires exists* v0 v1. (cur |-> v0) ** (prev |-> v1)
-ensures exists* v0 v1. (cur |-> v0) ** (prev |-> v1) ** pure (as_int n > 0 ==> as_int v0 == fib (as_int n)) ** pure (as_int n > 0 ==> as_int v1 == fib (as_int n - 1))
+requires 
+pure (as_int n > 0)
+requires 
+pure (as_int n > 0 ==> fib (as_int n) <= max_int32)
+requires 
+exists* v0 v1. (cur |-> v0) ** (prev |-> v1)
+ensures 
+exists* v0 v1.
+(cur |-> v0) **
+(prev |-> v1) **
+pure (as_int n > 0 ==> as_int v0 == fib (as_int n)) **
+pure (as_int n > 0 ==> as_int v1 == fib (as_int n - 1))
 {
 let mut n : Int32.t = n;
 let mut cur : (ref Int32.t) = cur;
@@ -152,10 +198,13 @@ let mut tmp : Int32.t = (! (! cur));
 
 fn call_fib_rec
 (n : Int32.t)
-requires pure (as_int n > 0)
-requires pure (as_int n > 0 ==> fib (as_int n) <= max_int32)
+requires 
+pure (as_int n > 0)
+requires 
+pure (as_int n > 0 ==> fib (as_int n) <= max_int32)
 returns i:int32
-ensures pure (as_int n > 0 ==> as_int i == fib (as_int n))
+ensures 
+pure (as_int n > 0 ==> as_int i == fib (as_int n))
 {
 let mut n : Int32.t = n;
 let mut cur : Int32.t = 0l;

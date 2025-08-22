@@ -19,8 +19,10 @@ fn double_int
 (r0 : ( ref Int32.t) )
 (r1 : ( ref Int32.t) )
 (#v:erased _ { fits ( * ) 2 (as_int v) })
-requires pts_to_diag r0 r1 v
-ensures exists* w. pts_to_diag r0 r1 w ** pure (as_int w = 2 * as_int v)
+requires 
+pts_to_diag r0 r1 v
+ensures 
+exists* w. pts_to_diag r0 r1 w ** pure (as_int w = 2 * as_int v)
 {
 let mut r0 : (ref Int32.t) = r0;
 let mut r1 : (ref Int32.t) = r1;
@@ -109,10 +111,14 @@ fn move
 (dx : Int32.t)
 (dy : Int32.t)
 (#v:erased _)
-requires is_point p v
-requires pure <| fits (+) (fst v) (as_int dx)
-requires pure <| fits (+) (snd v) (as_int dy)
-ensures is_point p (fst v + as_int dx, snd v + as_int dy)
+requires 
+is_point p v
+requires 
+pure <| fits (+) (fst v) (as_int dx)
+requires 
+pure <| fits (+) (snd v) (as_int dy)
+ensures 
+is_point p (fst v + as_int dx, snd v + as_int dy)
 {
 let mut p : (ref point) = p;
 let mut dx : Int32.t = dx;
@@ -139,10 +145,14 @@ fn move_alt
 (dx : Int32.t)
 (dy : Int32.t)
 (#v:erased _)
-requires is_point p v
-requires pure <| fits (+) (fst v) (as_int dx)
-requires pure <| fits (+) (snd v) (as_int dy)
-ensures is_point p (fst v + as_int dx, snd v + as_int dy)
+requires 
+is_point p v
+requires 
+pure <| fits (+) (fst v) (as_int dx)
+requires 
+pure <| fits (+) (snd v) (as_int dy)
+ensures 
+is_point p (fst v + as_int dx, snd v + as_int dy)
 {
 let mut p : (ref point) = p;
 let mut dx : Int32.t = dx;
@@ -158,8 +168,10 @@ fn create_point
 (x : Int32.t)
 (y : Int32.t)
 returns p:ref point
-ensures is_point p (as_int x, as_int y)
-ensures freeable p
+ensures 
+is_point p (as_int x, as_int y)
+ensures 
+freeable p
 {
 let mut x : Int32.t = x;
 let mut y : Int32.t = y;
@@ -191,10 +203,14 @@ fn move_curry
 (dx : Int32.t)
 (dy : Int32.t)
 (#x #y:erased _)
-requires is_point_curry p x y
-requires pure <| fits (+) x (as_int dx)
-requires pure <| fits (+) y (as_int dy)
-ensures is_point_curry p (x + as_int dx) (y + as_int dy)
+requires 
+is_point_curry p x y
+requires 
+pure <| fits (+) x (as_int dx)
+requires 
+pure <| fits (+) y (as_int dy)
+ensures 
+is_point_curry p (x + as_int dx) (y + as_int dy)
 {
 let mut p : (ref point) = p;
 let mut dx : Int32.t = dx;

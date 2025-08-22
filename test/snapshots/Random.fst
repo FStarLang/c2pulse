@@ -102,7 +102,8 @@ arr = a4}) }
 
 fn foo
 (x1 : ( ref s1) )
-preserves exists* s1_s. s1_pred x1 s1_s
+preserves 
+exists* s1_s. s1_pred x1 s1_s
 {
 let mut x1 : (ref s1) = x1;
 s1_explode (!x1);

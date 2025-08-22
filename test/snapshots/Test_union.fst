@@ -77,10 +77,14 @@ open Pulse.Lib.WithPure
 fn incr_a
 (x : ( ref ab) )
 (s:_)
-requires with_pure (Case_ab_a? s)
-requires ab_pred x s
-requires pure (UInt32.fits (UInt32.v (Case_ab_a?._0 s) + 1))
-ensures exists* s'. ab_pred x s'
+requires 
+with_pure (Case_ab_a? s)
+requires 
+ab_pred x s
+requires 
+pure (UInt32.fits (UInt32.v (Case_ab_a?._0 s) + 1))
+ensures 
+exists* s'. ab_pred x s'
 {
 let mut x : (ref ab) = x;
 ab_is_a (!x);
@@ -92,8 +96,10 @@ ab_recover !x #(Case_ab_a _);
 fn set_case_a
 (x : ( ref ab) )
 (v : UInt32.t)
-requires exists* s. ab_pred x s
-ensures ab_pred x (Case_ab_a v)
+requires 
+exists* s. ab_pred x s
+ensures 
+ab_pred x (Case_ab_a v)
 {
 let mut x : (ref ab) = x;
 let mut v : UInt32.t = v;
@@ -183,7 +189,8 @@ match s.tag with
 )
 fn test_union
 (foo : ( ref stru) )
-preserves exists* s. stru_ok foo s
+preserves 
+exists* s. stru_ok foo s
 {
 let mut foo : (ref stru) = foo;
 stru_explode (!foo);

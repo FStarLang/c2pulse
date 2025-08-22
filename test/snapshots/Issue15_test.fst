@@ -9,8 +9,10 @@ open Pulse.Lib.C
 
 
 fn test_empty ()
-requires emp
-ensures emp
+requires 
+emp
+ensures 
+emp
 {
 ();
 }

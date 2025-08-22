@@ -15,13 +15,19 @@ fn compare_elt
 (len : SizeT.t)
 requires pure (length a2 == SizeT.v len)
 requires pure (length a1 == SizeT.v len)
-requires pure (length a1 == SizeT.v len)
-requires pure (length a2 == SizeT.v len)
-requires exists* v. (a1 |-> v)
-requires exists* v. (a2 |-> v)
+requires 
+pure (length a1 == SizeT.v len)
+requires 
+pure (length a2 == SizeT.v len)
+requires 
+exists* v. (a1 |-> v)
+requires 
+exists* v. (a2 |-> v)
 returns b:_Bool
-ensures exists* v. (a1 |-> v)
-ensures exists* v. (a2 |-> v)
+ensures 
+exists* v. (a1 |-> v)
+ensures 
+exists* v. (a2 |-> v)
 {
 let mut a1 : (array Int32.t) = a1;
 let mut a2 : (array Int32.t) = a2;

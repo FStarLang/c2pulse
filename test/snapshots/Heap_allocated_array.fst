@@ -78,7 +78,8 @@ b = a1}) }
 
 fn foo
 (length : SizeT.t)
-requires pure (SizeT.v length < 100)
+requires 
+pure (SizeT.v length < 100)
 returns Int32.t
 {
 let mut length : SizeT.t = length;

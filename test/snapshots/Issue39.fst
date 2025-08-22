@@ -11,7 +11,8 @@ open Pulse.Lib.C
 fn test0
 (x : Int32.t)
 returns res : Int32.t
-ensures pure (Int32.v res == 1)
+ensures 
+pure (Int32.v res == 1)
 {
 let mut x : Int32.t = x;
 x := 1l;
@@ -21,7 +22,8 @@ x := 1l;
 fn test1
 (x : Int32.t)
 returns res : Int32.t
-ensures pure (Int32.v res == 1)
+ensures 
+pure (Int32.v res == 1)
 {
 let mut x : Int32.t = x;
 ((x)) := 1l;
@@ -31,7 +33,8 @@ let mut x : Int32.t = x;
 fn test2
 (x : Int32.t)
 returns res : Int32.t
-ensures pure (Int32.v res == 1)
+ensures 
+pure (Int32.v res == 1)
 {
 let mut x : Int32.t = x;
 let mut p : (ref Int32.t) = (x);
@@ -42,7 +45,8 @@ let mut p : (ref Int32.t) = (x);
 fn test3
 (x : Int32.t)
 returns res : Int32.t
-ensures pure (Int32.v res == 1)
+ensures 
+pure (Int32.v res == 1)
 {
 let mut x : Int32.t = x;
 let mut p : (ref Int32.t) = (x);
@@ -53,7 +57,8 @@ let mut p : (ref Int32.t) = (x);
 fn test4
 (x : Int32.t)
 returns res : Int32.t
-ensures pure (Int32.v res == 1)
+ensures 
+pure (Int32.v res == 1)
 {
 let mut x : Int32.t = x;
 let mut p : (ref Int32.t) = (x);
@@ -64,7 +69,8 @@ let mut p : (ref Int32.t) = (x);
 fn test5
 (x : Int32.t)
 returns res : Int32.t
-ensures pure (Int32.v res == 1)
+ensures 
+pure (Int32.v res == 1)
 {
 let mut x : Int32.t = x;
 let mut p : (ref Int32.t) = (x);

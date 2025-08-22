@@ -11,7 +11,8 @@ open Pulse.Lib.C
 fn foo
 (x : Int32.t)
 returns res : ref Int32.t
-ensures exists* v. (res |-> v) ** freeable res
+ensures 
+exists* v. (res |-> v) ** freeable res
 {
 let mut x : Int32.t = x;
 alloc_ref #Int32.t ();

@@ -9,9 +9,11 @@ open Pulse.Lib.C
 
 
 fn test ()
-requires emp
+requires 
+emp
 returns i:int32
-ensures emp
+ensures 
+emp
 {
 0l;
 }
@@ -103,10 +105,14 @@ fn move
 (dx : Int32.t)
 (dy : Int32.t)
 (#v:erased _)
-requires is_point p v
-requires pure <| fits (+) (fst v) (as_int dx)
-requires pure <| fits (+) (snd v) (as_int dy)
-ensures is_point p (fst v + as_int dx, snd v + as_int dy)
+requires 
+is_point p v
+requires 
+pure <| fits (+) (fst v) (as_int dx)
+requires 
+pure <| fits (+) (snd v) (as_int dy)
+ensures 
+is_point p (fst v + as_int dx, snd v + as_int dy)
 {
 let mut p : (ref point) = p;
 let mut dx : Int32.t = dx;

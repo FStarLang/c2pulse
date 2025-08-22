@@ -19,7 +19,8 @@ admit();
 
 fn foo_decl
 (l : SizeT.t)
-requires pure (SizeT.v l < 100)
+requires 
+pure (SizeT.v l < 100)
 returns UInt64.t
 {
 admit();
@@ -27,7 +28,8 @@ admit();
 
 fn foo_impl
 (l : SizeT.t)
-requires pure (SizeT.v l < 100)
+requires 
+pure (SizeT.v l < 100)
 returns UInt64.t
 {
 let mut l : SizeT.t = l;
@@ -44,7 +46,8 @@ fn test
 (l : SizeT.t)
 (k : SizeT.t)
 (j : UInt64.t)
-requires pure (SizeT.v l < 100)
+requires 
+pure (SizeT.v l < 100)
 returns UInt64.t
 {
 let mut l : SizeT.t = l;

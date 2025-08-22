@@ -81,6 +81,7 @@ public:
   clang::QualType getTypeFromDecl(const clang::Decl *D);
   bool checkDeclNameExists(std::string DeclName);
 
+  GenericDecl2 *getAnnotationCode(clang::AnnotateAttr const *AnnAttr, clang::SourceLocation Loc);
   void handleFunctionAttributes(clang::FunctionDecl *FD,
                                 _PulseFnDefn *FDefn,
                                 std::string FuncName,
