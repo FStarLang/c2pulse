@@ -2,5 +2,5 @@ mod ir;
 mod clang;
 
 fn main() {
-    println!("Hello, world!");
+    clang::parse_file("foo.c");
 }
