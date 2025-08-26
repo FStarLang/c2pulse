@@ -1,4 +1,5 @@
 use std::process::Command;
+use zngur::Zngur;
 
 fn llvm_config_flags(arg: &str) -> Vec<String> {
     Command::new("llvm-config")
@@ -21,22 +22,48 @@ fn split_off<'a>(prefix: &str, s: &'a str) -> Option<&'a str> {
 }
 
 fn main() {
-    let mut build = cxx_build::bridge("src/clang.rs");
-    build.file("src/clang.cpp").std("c++17");
+    build_rs::output::rerun_if_changed("cpp/iface.zng");
+    build_rs::output::rerun_if_changed("cpp/impl.cpp");
+
+    let crate_dir = build_rs::input::cargo_manifest_dir();
+    let out_dir = build_rs::input::out_dir();
+
+    Zngur::from_zng_file(crate_dir.join("cpp/iface.zng"))
+        .with_cpp_file(out_dir.join("generated.cpp"))
+        .with_h_file(crate_dir.join("cpp/generated.h"))
+        .with_rs_file(out_dir.join("generated.rs"))
+        .generate();
+
+    let mut build = cc::Build::new();
+
+    // zngur warnings...
+    build
+        .flag("-Wno-undefined-inline")
+        .flag("-Wno-uninitialized-const-reference")
+        .flag("-Wno-unused-parameter");
+
+    build
+        .cpp(true)
+        .compiler("clang++")
+        .include(crate_dir.join("cpp"));
+
+    build
+        .clone()
+        .file(out_dir.join("generated.cpp"))
+        .flag("-Wno-unused-function")
+        .compile("zngur_generated");
+
     for flag in llvm_config_flags("--cxxflags") {
         build.flag(flag);
     }
-    build.compile("c2pulse-clang");
+    build.file("cpp/impl.cpp").compile("impls");
 
     for flag in llvm_config_flags("--libs") {
         if let Some(lib) = split_off("-l", &flag) {
-            println!("cargo::rustc-link-lib={lib}");
+            build_rs::output::rustc_link_lib(lib);
         } else if let Some(lib_path) = split_off("-L", &flag) {
-            println!("cargo::rustc-link-search={lib_path}");
+            build_rs::output::rustc_link_search(lib_path);
         }
     }
-    println!("cargo::rustc-link-lib=clang-cpp");
-
-    println!("cargo:rerun-if-changed=src/clang.cpp");
-    println!("cargo:rerun-if-changed=src/clang_bridge.h");
+    build_rs::output::rustc_link_lib("clang-cpp");
 }

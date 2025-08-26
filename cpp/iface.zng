@@ -1,0 +1,83 @@
+type str {
+    wellknown_traits(?Sized);
+    fn as_ptr(&self) -> *const u8;
+    fn len(&self) -> usize;
+}
+
+type ::std::rc::Rc<str> {
+    #layout(size=16, align=8);
+    fn deref(&self) -> &str;
+}
+
+mod crate::ir {
+    type Location { #only_by_ref; }
+    type Ident { wellknown_traits(?Sized); }
+    type Type { #only_by_ref; }
+    type LValue { #only_by_ref; }
+    type RValue { #only_by_ref; }
+    type Stmt { #only_by_ref; }
+
+    type ::std::rc::Rc<Location> {
+        #layout(size=8, align=8);
+        fn deref(&self) -> &Location;
+        fn clone(&self) -> ::std::rc::Rc<Location>;
+    }
+
+    type ::std::rc::Rc<LValue> {
+        #layout(size=8, align=8);
+        fn deref(&self) -> &LValue;
+    }
+
+    type ::std::rc::Rc<RValue> {
+        #layout(size=8, align=8);
+        fn deref(&self) -> &RValue;
+    }
+
+    type ::std::rc::Rc<Stmt> {
+        #layout(size=8, align=8);
+        fn deref(&self) -> &Stmt;
+    }
+
+    type ::std::rc::Rc<Type> {
+        #layout(size=8, align=8);
+        fn deref(&self) -> &Type;
+    }
+
+    type Ast<::std::rc::Rc<Ident>> {
+        #only_by_ref;
+    }
+
+    type ::std::rc::Rc<Ast<::std::rc::Rc<Ident>>> {
+        #layout(size=8, align=8);
+        fn deref(&self) -> &Ast<::std::rc::Rc<Ident>>;
+    }
+
+    type ::std::vec::Vec<(::std::rc::Rc<Ast<::std::rc::Rc<Ident>>>, ::std::rc::Rc<Type>)> {
+        #layout(size = 24, align = 8);
+    }
+}
+
+mod crate::clang {
+    type Ctx {
+        #only_by_ref;
+
+        fn get_input_file_name(&self) -> &str;
+
+        fn mk_file_name(&mut self, &str) -> ::std::rc::Rc<str>;
+        fn mk_location(&mut self, &str, u32, u32, u32, u32) -> ::std::rc::Rc<crate::ir::Location>;
+        fn mk_ident(&mut self, &str, ::std::rc::Rc<crate::ir::Location>) -> 
+            ::std::rc::Rc<crate::ir::Ast<::std::rc::Rc<crate::ir::Ident>>>;
+        fn add_fn_decl(&mut self,
+            ::std::rc::Rc<crate::ir::Ast<::std::rc::Rc<crate::ir::Ident>>>,
+            ::std::rc::Rc<crate::ir::Type>,
+            ::std::vec::Vec<(
+                ::std::rc::Rc<crate::ir::Ast<::std::rc::Rc<crate::ir::Ident>>>,
+                ::std::rc::Rc<crate::ir::Type>)>);
+    }
+
+    fn mk_assign(::std::rc::Rc<crate::ir::Location>, ::std::rc::Rc<crate::ir::LValue>, ::std::rc::Rc<crate::ir::RValue>) -> ::std::rc::Rc<crate::ir::Stmt>;
+}
+
+extern "C++" {
+    fn parse_file(&mut crate::clang::Ctx);
+}
