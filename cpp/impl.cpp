@@ -45,8 +45,6 @@ public:
                     SourceRange Range, MacroArgs const *Args) override {
     auto &sm = compilerInst.getSourceManager();
     auto &langOpts = compilerInst.getLangOpts();
-    // SourceLocation Loc = MacroNameTok.getLocation();
-    // FileID fileID = sm.getFileID(Loc);
     if (Args) {
       InlineCodeBuilder toks = InlineCodeBuilder::new_();
       unsigned numArgs = Args->getNumMacroArguments();
@@ -54,7 +52,6 @@ public:
         Token const *argTokens = Args->getUnexpArgument(i);
         unsigned numTokens = Args->getArgLength(argTokens);
 
-        std::string paramTokens;
         for (unsigned j = 0; j < numTokens; ++j) {
           auto &tok = argTokens[j];
           std::string spelling = Lexer::getSpelling(tok, sm, langOpts);
