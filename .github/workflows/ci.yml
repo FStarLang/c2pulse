@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  main:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install clang
+      run: |
+        wget https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh 20
+        sudo apt update
+        sudo apt install -y clang-20 libclang-cpp20-dev g++ clang-tools-20 libclang-20-dev
+
+    - name: Build c2pulse
+      run: |
+        cargo build
+
+    - name: Checking that code is correctly formatted
+      if: always()
+      run: |
+        cargo fmt
+        clang-format -i cpp/impl.cpp
+        git diff --exit-code

@@ -1,10 +1,9 @@
 use std::process::Command;
 use zngur::Zngur;
 
-fn llvm_config_flags(arg: &str) -> Vec<String> {
-    Command::new("llvm-config")
-        .arg(arg)
-        .output()
+fn llvm_config_flags(args: &[&str]) -> Vec<String> {
+    (Command::new("llvm-config-20").args(args.iter()).output())
+        .or(Command::new("llvm-config").args(args.iter()).output())
         .expect("Cannot find llvm-config")
         .stdout
         .split(|c| c.is_ascii_whitespace())
@@ -53,12 +52,12 @@ fn main() {
         .flag("-Wno-unused-function")
         .compile("zngur_generated");
 
-    for flag in llvm_config_flags("--cxxflags") {
+    for flag in llvm_config_flags(&["--cxxflags"]) {
         build.flag(flag);
     }
     build.file("cpp/impl.cpp").compile("impls");
 
-    for flag in llvm_config_flags("--libs") {
+    for flag in llvm_config_flags(&["--ldflags", "--libs"]) {
         if let Some(lib) = split_off("-l", &flag) {
             build_rs::output::rustc_link_lib(lib);
         } else if let Some(lib_path) = split_off("-L", &flag) {
