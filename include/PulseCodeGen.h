@@ -1,7 +1,6 @@
 #pragma once
 
 #include "PulseIR.h"
-#include "PulseCodeGen.h"
 
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/ASTDumper.h"
