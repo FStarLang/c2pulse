@@ -1,4 +1,5 @@
 mod clang;
+mod diag;
 mod ir;
 
 fn main() {

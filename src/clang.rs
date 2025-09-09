@@ -1,6 +1,9 @@
 use num_bigint::BigInt;
 
-use crate::ir::*;
+use crate::{
+    diag::{Diagnostic, DiagnosticLevel},
+    ir::*,
+};
 use core::slice;
 use std::{collections::HashSet, rc::Rc, str::FromStr};
 
@@ -17,6 +20,7 @@ pub struct Ctx {
     input_file_name: String,
     interned_strs: HashSet<Rc<str>>,
     translation_unit: TranslationUnit,
+    diagnostics: Vec<Diagnostic>,
 }
 
 impl Ctx {
@@ -25,6 +29,7 @@ impl Ctx {
             input_file_name,
             interned_strs: HashSet::new(),
             translation_unit: TranslationUnit { decls: vec![] },
+            diagnostics: vec![],
         }
     }
 
@@ -103,6 +108,21 @@ impl Ctx {
                 name: builder.name,
                 fields: builder.fields,
             }))
+    }
+
+    fn report_diag(&mut self, loc: Rc<SourceInfo>, is_err: bool, msg: &str) {
+        self.diagnostics.push(Diagnostic {
+            loc: (match &*loc {
+                SourceInfo::Original(loc) => loc.clone(),
+                _ => panic!(),
+            }),
+            level: (if is_err {
+                DiagnosticLevel::Error
+            } else {
+                DiagnosticLevel::Warning
+            }),
+            msg: msg.into(),
+        })
     }
 }
 
@@ -228,8 +248,8 @@ fn mk_stmt_err(loc: Rc<SourceInfo>) -> Rc<Stmt> {
     mk_ast(loc, StmtT::Error)
 }
 
-pub fn parse_file(file_name: &str) -> TranslationUnit {
+pub fn parse_file(file_name: &str) -> (TranslationUnit, Vec<Diagnostic>) {
     let mut ctx = Ctx::new(file_name.to_string());
     generated::parse_file(&mut ctx);
-    ctx.translation_unit
+    (ctx.translation_unit, ctx.diagnostics)
 }

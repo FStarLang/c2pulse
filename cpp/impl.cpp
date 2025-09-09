@@ -132,7 +132,7 @@ public:
       return mk_int_type(std::move(loc), isSigned, width);
     }
 
-    // TODO: report error
+    ctx.report_diag(loc.clone(), true, "unsupported type"_rs);
     return mk_type_err(std::move(loc));
   }
 
@@ -152,7 +152,7 @@ public:
       }
     }
 
-    // TODO: report error
+    ctx.report_diag(loc.clone(), true, "unsupported lvalue expression"_rs);
     return mk_lvalue_err(std::move(loc),
                          trQualType(e->getType(), e->getSourceRange()));
   }
@@ -182,7 +182,7 @@ public:
       }
     }
 
-    // TODO: report error
+    ctx.report_diag(loc.clone(), true, "unsupported rvalue expression"_rs);
     return mk_rvalue_err(std::move(loc),
                          trQualType(e->getType(), e->getSourceRange()));
   }
@@ -214,14 +214,15 @@ public:
                                  trRValue(vd->getInit())));
           }
         } else {
-          // TODO: report error
-          stmts.push(mk_stmt_err(loc.clone()));
+          ctx.report_diag(dloc.clone(), true,
+                          "unsupported variable declaration"_rs);
+          stmts.push(mk_stmt_err(dloc.clone()));
         }
       }
       return rust::Unit();
     }
 
-    // TODO: report error
+    ctx.report_diag(loc.clone(), true, "unsupported statement"_rs);
     return stmts.push(mk_stmt_err(std::move(loc)));
   }
 
@@ -248,8 +249,10 @@ public:
           for (auto stmt : body->body())
             trStmt(stmts, stmt);
         } else {
-          // TODO: report error
-          stmts.push(mk_stmt_err(getRange(FD->getBody()->getSourceRange())));
+          auto bodyloc = getRange(FD->getBody()->getSourceRange());
+          ctx.report_diag(bodyloc.clone(), true,
+                          "unsupported function body"_rs);
+          stmts.push(mk_stmt_err(std::move(bodyloc)));
         }
         ctx.add_fn_defn(std::move(builder), std::move(stmts));
       } else {
@@ -292,6 +295,31 @@ public:
   RefMut<Ctx> ctx;
 };
 
+class C2PulseDiagnosticConsumer : public DiagnosticConsumer {
+public:
+  C2PulseDiagnosticConsumer(RefMut<Ctx> c) : ctx(c) {}
+  RefMut<Ctx> ctx;
+
+  void HandleDiagnostic(DiagnosticsEngine::Level DiagLevel,
+                        const Diagnostic &Info) override {
+    auto &sm = Info.getSourceManager();
+    if (Info.getNumRanges() > 0) {
+      auto range = Info.getRange(0);
+      auto loc = ctx.mk_location(
+          toStr(sm.getFilename(sm.getExpansionLoc(range.getBegin()))),
+          sm.getExpansionLineNumber(range.getBegin()),
+          sm.getExpansionColumnNumber(range.getBegin()),
+          sm.getExpansionLineNumber(range.getEnd()),
+          sm.getExpansionColumnNumber(range.getEnd()));
+      llvm::SmallString<0> out;
+      Info.FormatDiagnostic(out);
+      ctx.report_diag(std::move(loc),
+                      DiagLevel >= DiagnosticsEngine::Level::Error, toStr(out));
+    }
+    return DiagnosticConsumer::HandleDiagnostic(DiagLevel, Info);
+  }
+};
+
 std::string getBinaryForResourcesPath() {
   Dl_info info;
   if (dladdr((void *)&clang::driver::Driver::GetResourcesPath, &info)) {
@@ -319,7 +347,8 @@ static void parse_file(RefMut<Ctx> ctx) {
 
   auto Tool = std::make_unique<ClangTool>(*compDB, sourcePathList);
 
-  // Tool->setDiagnosticConsumer(nullptr);
+  C2PulseDiagnosticConsumer consumer(ctx);
+  Tool->setDiagnosticConsumer(&consumer);
 
   // Tool->appendArgumentsAdjuster(OptionsParser->getArgumentsAdjuster());
 
