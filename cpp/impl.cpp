@@ -62,8 +62,11 @@ public:
           unsigned beginChar = sm.getSpellingColumnNumber(tokLoc);
           unsigned endLine = beginLine;
           unsigned endChar = beginChar + spelling.length();
-          auto loc = ctx.mk_location(toStr(sm.getFilename(tokLoc)), beginLine,
-                                     beginChar, endLine, endChar);
+          auto fileName = sm.getFilename(tokLoc);
+          auto loc = fileName.data()
+                         ? ctx.mk_location(toStr(fileName), beginLine,
+                                           beginChar, endLine, endChar)
+                         : ctx.mk_none_sourceinfo();
 
           Ref<rust::Str> before = tok.isAtStartOfLine()   ? "\n"_rs
                                   : tok.hasLeadingSpace() ? " "_rs
