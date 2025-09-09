@@ -11,6 +11,7 @@ using namespace clang::tooling;
 using rust::Ref;
 using rust::RefMut;
 using rust::std::rc::Rc;
+using rust::std::vec::Vec;
 using namespace rust::crate::clang;
 namespace ir = rust::crate::ir;
 
@@ -193,43 +194,42 @@ public:
     return mk_rvalue_err(std::move(loc));
   }
 
-  void trStmt(std::vector<Rc<ir::Stmt>> &stmts, Stmt *stmt) {
+  rust::Unit trStmt(Vec<Rc<ir::Stmt>> &stmts, Stmt *stmt) {
     auto loc = getRange(stmt->getSourceRange());
 
     if (auto *bo = dyn_cast<BinaryOperator>(stmt)) {
       switch (bo->getOpcode()) {
       case clang::BO_Assign:
-        return stmts.push_back(mk_assign(std::move(loc), trLValue(bo->getLHS()),
-                                         trRValue(bo->getRHS())));
+        return stmts.push(mk_assign(std::move(loc), trLValue(bo->getLHS()),
+                                    trRValue(bo->getRHS())));
 
       default:;
         // continue to error case
       }
     } else if (auto *r = dyn_cast<ReturnStmt>(stmt)) {
-      return stmts.push_back(
-          mk_return(std::move(loc), trRValue(r->getRetValue())));
+      return stmts.push(mk_return(std::move(loc), trRValue(r->getRetValue())));
     } else if (auto *ds = dyn_cast<DeclStmt>(stmt)) {
       for (auto d : ds->decls()) {
         auto dloc = getRange(d->getSourceRange());
         if (auto vd = dyn_cast<VarDecl>(d)) {
           auto id = ctx.mk_ident(toStr(vd->getName()), dloc.clone());
           auto ty = trQualType(vd->getType(), vd->getSourceRange());
-          stmts.push_back(mk_var_decl(dloc.clone(), id.clone(), std::move(ty)));
+          stmts.push(mk_var_decl(dloc.clone(), id.clone(), std::move(ty)));
           if (vd->hasInit()) {
-            stmts.push_back(mk_assign(dloc.clone(),
-                                      mk_lvalue_var(dloc.clone(), id.clone()),
-                                      trRValue(vd->getInit())));
+            stmts.push(mk_assign(dloc.clone(),
+                                 mk_lvalue_var(dloc.clone(), id.clone()),
+                                 trRValue(vd->getInit())));
           }
         } else {
           // TODO: report error
-          stmts.push_back(mk_stmt_err(loc.clone()));
+          stmts.push(mk_stmt_err(loc.clone()));
         }
       }
-      return;
+      return rust::Unit();
     }
 
     // TODO: report error
-    return stmts.push_back(mk_stmt_err(std::move(loc)));
+    return stmts.push(mk_stmt_err(std::move(loc)));
   }
 
   void HandleDecl(Decl *D) {
@@ -249,17 +249,15 @@ public:
       builder.return_type(
           trQualType(FD->getReturnType(), FD->getReturnTypeSourceRange()));
       if (FD->hasBody()) {
+        auto stmts = Vec<Rc<ir::Stmt>>::new_();
         if (auto *body = dyn_cast<CompoundStmt>(FD->getBody())) {
-          std::vector<Rc<ir::Stmt>> stmts;
           for (auto stmt : body->body())
             trStmt(stmts, stmt);
-          for (auto &stmt : stmts)
-            builder.stmt(std::move(stmt));
         } else {
           // TODO: report error
-          builder.stmt(mk_stmt_err(getRange(FD->getBody()->getSourceRange())));
+          stmts.push(mk_stmt_err(getRange(FD->getBody()->getSourceRange())));
         }
-        ctx.add_fn_defn(std::move(builder));
+        ctx.add_fn_defn(std::move(builder), std::move(stmts));
       } else {
         ctx.add_fn_decl(std::move(builder));
       }

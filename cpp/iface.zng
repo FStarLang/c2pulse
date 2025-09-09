@@ -11,6 +11,7 @@ type bool {
 
 use ::num_bigint::BigInt as BigInt;
 use ::std::rc::Rc as Rc;
+use ::std::vec::Vec as Vec;
 use crate::ir::Ident as Ident;
 use crate::ir::SourceInfo as SourceInfo;
 use crate::ir::Type as Type;
@@ -55,6 +56,12 @@ mod crate::ir {
         fn deref(&self) -> &Stmt;
     }
 
+    type Vec<Rc<Stmt>> {
+        #heap_allocated;
+        fn new() -> Vec<Rc<Stmt>>;
+        fn push(&mut self, Rc<Stmt>);
+    }
+
     type Rc<Type> {
         #layout(size=8, align=8);
         fn deref(&self) -> &Type;
@@ -78,7 +85,7 @@ mod crate::clang {
         fn mk_ident(&mut self, &str, Rc<SourceInfo>) -> Rc<Ident>;
 
         fn add_fn_decl(&mut self, DeclBuilder);
-        fn add_fn_defn(&mut self, DeclBuilder);
+        fn add_fn_defn(&mut self, DeclBuilder, Vec<Rc<Stmt>>);
         fn add_struct(&mut self, DeclBuilder);
     }
 
@@ -86,7 +93,6 @@ mod crate::clang {
         #heap_allocated;
         fn new(Rc<Ident>) -> DeclBuilder;
         fn return_type(&mut self, Rc<Type>);
-        fn stmt(&mut self, Rc<Stmt>);
         fn arg(&mut self, Rc<Ident>, Rc<Type>);
         fn arg_anon(&mut self, Rc<Type>);
         fn field(&mut self, Rc<Ident>, Rc<Type>);

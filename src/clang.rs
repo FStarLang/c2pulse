@@ -85,14 +85,14 @@ impl Ctx {
         }))
     }
 
-    fn add_fn_defn(&mut self, builder: DeclBuilder) {
+    fn add_fn_defn(&mut self, builder: DeclBuilder, body: Vec<Rc<Stmt>>) {
         self.translation_unit.decls.push(Decl::FnDefn(FnDefn {
             decl: FnDecl {
                 name: builder.name,
                 ret_type: builder.ret_type.unwrap(),
                 args: builder.args,
             },
-            body: builder.stmts,
+            body: body,
         }))
     }
 
@@ -111,7 +111,6 @@ struct DeclBuilder {
     ret_type: Option<Rc<Type>>,
     args: Vec<(Option<Ident>, Rc<Type>)>,
     fields: Vec<(Ident, Rc<Type>)>,
-    stmts: Stmts,
 }
 
 impl DeclBuilder {
@@ -121,16 +120,11 @@ impl DeclBuilder {
             ret_type: None,
             args: vec![],
             fields: vec![],
-            stmts: vec![],
         }
     }
 
     fn return_type(&mut self, ret_type: Rc<Type>) {
         self.ret_type = Some(ret_type);
-    }
-
-    fn stmt(&mut self, stmt: Rc<Stmt>) {
-        self.stmts.push(stmt);
     }
 
     fn arg(&mut self, name: Rc<Ident>, ty: Rc<Type>) {
