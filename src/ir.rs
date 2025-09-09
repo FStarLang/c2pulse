@@ -86,7 +86,7 @@ pub enum RValueT {
     LValue(Rc<LValue>),
     Ref(Rc<LValue>),
     Cast { val: Rc<RValue>, ty: Rc<Type> },
-    Error,
+    Error(Rc<Type>),
 }
 
 pub type IdentT = str;
@@ -97,7 +97,7 @@ pub type LValue = Ast<LValueT>;
 pub enum LValueT {
     Var(Rc<Ident>),
     Deref(Rc<RValue>),
-    Error,
+    Error(Rc<Type>),
 }
 
 pub type Stmt = Ast<StmtT>;

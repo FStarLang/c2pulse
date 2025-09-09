@@ -201,8 +201,8 @@ fn mk_rvalue_ref(loc: Rc<SourceInfo>, lval: Rc<LValue>) -> Rc<RValue> {
 fn mk_cast(loc: Rc<SourceInfo>, val: Rc<RValue>, ty: Rc<Type>) -> Rc<RValue> {
     mk_ast(loc, RValueT::Cast { val: val, ty: ty })
 }
-fn mk_rvalue_err(loc: Rc<SourceInfo>) -> Rc<RValue> {
-    mk_ast(loc, RValueT::Error)
+fn mk_rvalue_err(loc: Rc<SourceInfo>, ty: Rc<Type>) -> Rc<RValue> {
+    mk_ast(loc, RValueT::Error(ty))
 }
 
 fn mk_lvalue_var(loc: Rc<SourceInfo>, name: Rc<Ident>) -> Rc<LValue> {
@@ -211,8 +211,8 @@ fn mk_lvalue_var(loc: Rc<SourceInfo>, name: Rc<Ident>) -> Rc<LValue> {
 fn mk_deref(loc: Rc<SourceInfo>, v: Rc<RValue>) -> Rc<LValue> {
     mk_ast(loc, LValueT::Deref(v))
 }
-fn mk_lvalue_err(loc: Rc<SourceInfo>) -> Rc<LValue> {
-    mk_ast(loc, LValueT::Error)
+fn mk_lvalue_err(loc: Rc<SourceInfo>, ty: Rc<Type>) -> Rc<LValue> {
+    mk_ast(loc, LValueT::Error(ty))
 }
 
 fn mk_var_decl(loc: Rc<SourceInfo>, id: Rc<Ident>, ty: Rc<Type>) -> Rc<Stmt> {

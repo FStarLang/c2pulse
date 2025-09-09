@@ -117,11 +117,11 @@ mod crate::clang {
     fn mk_rvalue_lvalue(Rc<SourceInfo>, Rc<LValue>) -> Rc<RValue>;
     fn mk_rvalue_ref(Rc<SourceInfo>, Rc<LValue>) -> Rc<RValue>;
     fn mk_cast(Rc<SourceInfo>, Rc<RValue>, Rc<Type>) -> Rc<RValue>;
-    fn mk_rvalue_err(Rc<SourceInfo>) -> Rc<RValue>;
+    fn mk_rvalue_err(Rc<SourceInfo>, Rc<Type>) -> Rc<RValue>;
 
     fn mk_lvalue_var(Rc<SourceInfo>, Rc<Ident>) -> Rc<LValue>;
     fn mk_deref(Rc<SourceInfo>, Rc<RValue>) -> Rc<LValue>;
-    fn mk_lvalue_err(Rc<SourceInfo>) -> Rc<LValue>;
+    fn mk_lvalue_err(Rc<SourceInfo>, Rc<Type>) -> Rc<LValue>;
 
     fn mk_var_decl(Rc<SourceInfo>, Rc<Ident>, Rc<Type>) -> Rc<Stmt>;
     fn mk_assign(Rc<SourceInfo>, Rc<LValue>, Rc<RValue>) -> Rc<Stmt>;

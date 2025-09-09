@@ -120,12 +120,6 @@ public:
         sm.getExpansionColumnNumber(range.getEnd()));
   }
 
-  Rc<ir::Type> trType(Type *t, SourceRange range) {
-    auto loc = getRange(range);
-
-    return mk_type_err(std::move(loc));
-  }
-
   Rc<ir::Type> trQualType(QualType t, SourceRange range) {
     auto loc = getRange(range);
 
@@ -162,7 +156,8 @@ public:
     }
 
     // TODO: report error
-    return mk_lvalue_err(std::move(loc));
+    return mk_lvalue_err(std::move(loc),
+                         trQualType(e->getType(), e->getSourceRange()));
   }
 
   Rc<ir::RValue> trRValue(Expr *e) {
@@ -191,7 +186,8 @@ public:
     }
 
     // TODO: report error
-    return mk_rvalue_err(std::move(loc));
+    return mk_rvalue_err(std::move(loc),
+                         trQualType(e->getType(), e->getSourceRange()));
   }
 
   rust::Unit trStmt(Vec<Rc<ir::Stmt>> &stmts, Stmt *stmt) {
