@@ -54,10 +54,11 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.2.34"
+version = "1.2.36"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42bc4aea80032b7bf409b0bc7ccad88853858911b7713a8062fdc0623867bedc"
+checksum = "5252b3d2648e5eedbc1a6f501e3c795e07025c1e93bbf8bbdd6eef7f447a6d54"
 dependencies = [
+ "find-msvc-tools",
  "shlex",
 ]
 
@@ -92,6 +93,12 @@ name = "equivalent"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
+
+[[package]]
+name = "find-msvc-tools"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7fd99930f64d146689264c637b5af2f0233a933bef0d8570e2526bf9e083192d"
 
 [[package]]
 name = "foldhash"
@@ -352,27 +359,27 @@ checksum = "09041cd90cf85f7f8b2df60c646f853b7f535ce68f85244eb6731cf89fa498ec"
 
 [[package]]
 name = "zngur"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af580954f508ca9328ba5da21b6b94e839430fc8c80e30f66f5dcc7177877da2"
+checksum = "4149b4d31c320567b4ff83ede3fd75d8bbca8269a3cde7ad91f13496d563c5c8"
 dependencies = [
  "zngur-generator",
 ]
 
 [[package]]
 name = "zngur-def"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b99212936af5c058a7693ed9cfa6f68a9b2a93abbb67a9177cf182249b2a78f8"
+checksum = "a82030ab38c023d00e39d0d7175c7fad4f3e7607a463313b6b73f2cccd3d84f5"
 dependencies = [
  "itertools",
 ]
 
 [[package]]
 name = "zngur-generator"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee096d9e24f3362be6a577fef4ca0fcb7187ddb0b7e4d8e278ad7b346e29dad1"
+checksum = "90cb11d26d305fbeceb0f84dd276bb18e37f07edea1c61238a738f3084f3c629"
 dependencies = [
  "itertools",
  "zngur-def",
@@ -381,9 +388,9 @@ dependencies = [
 
 [[package]]
 name = "zngur-parser"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a86e226147f67dc3ff5774ef6d15c84b90181f3f38b94c2484a67ff89ef07f4b"
+checksum = "e186484d4f21737fcb00cfc3f96fdf5e5609b6f8f0d6df824f4e3dce893a59a3"
 dependencies = [
  "ariadne",
  "chumsky",

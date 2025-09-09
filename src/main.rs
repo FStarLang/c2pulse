@@ -1,6 +1,8 @@
-mod ir;
 mod clang;
+mod ir;
 
 fn main() {
-    clang::parse_file("foo.c");
+    let argv: Vec<_> = std::env::args().collect();
+    let tu = clang::parse_file(&argv[1]);
+    println!("{:#?}", tu);
 }

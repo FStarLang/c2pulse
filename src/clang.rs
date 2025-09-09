@@ -1,14 +1,21 @@
+use num_bigint::BigInt;
+
 use crate::ir::*;
-use std::{collections::HashSet, rc::Rc};
+use core::slice;
+use std::{collections::HashSet, rc::Rc, str::FromStr};
 
 mod generated {
     use std::ops::Deref;
     include!(concat!(env!("OUT_DIR"), "/generated.rs"));
 }
 
+unsafe fn str_from_parts<'a>(ptr: *const u8, sz: usize) -> &'a str {
+    str::from_utf8(unsafe { slice::from_raw_parts(ptr, sz) }).unwrap()
+}
+
 pub struct Ctx {
     input_file_name: String,
-    file_names: HashSet<Rc<str>>,
+    interned_strs: HashSet<Rc<str>>,
     translation_unit: TranslationUnit,
 }
 
@@ -16,7 +23,7 @@ impl Ctx {
     fn new(input_file_name: String) -> Ctx {
         Ctx {
             input_file_name,
-            file_names: HashSet::new(),
+            interned_strs: HashSet::new(),
             translation_unit: TranslationUnit { decls: vec![] },
         }
     }
@@ -25,13 +32,13 @@ impl Ctx {
         &self.input_file_name
     }
 
-    fn mk_file_name(&mut self, file_name: &str) -> Rc<str> {
-        match self.file_names.get(file_name) {
-            Some(file_name) => file_name.clone(),
+    fn intern_str(&mut self, s: &str) -> Rc<str> {
+        match self.interned_strs.get(s) {
+            Some(s) => s.clone(),
             None => {
-                let file_name: Rc<str> = Rc::from(file_name);
-                self.file_names.insert(file_name.clone());
-                file_name
+                let s: Rc<str> = Rc::from(s);
+                self.interned_strs.insert(s.clone());
+                s
             }
         }
     }
@@ -43,9 +50,9 @@ impl Ctx {
         start_char: u32,
         end_line: u32,
         end_char: u32,
-    ) -> Rc<Location> {
-        let file_name = self.mk_file_name(file_name);
-        Rc::new(Location {
+    ) -> Rc<SourceInfo> {
+        let file_name = self.intern_str(file_name);
+        Rc::new(SourceInfo::Original(Location {
             file_name: file_name,
             range: Range {
                 start: Position {
@@ -57,38 +64,174 @@ impl Ctx {
                     character: end_char,
                 },
             },
-        })
+        }))
+    }
+    fn mk_none_sourceinfo(&mut self) -> Rc<SourceInfo> {
+        Rc::new(SourceInfo::None)
     }
 
-    fn mk_ident(&mut self, name: &str, loc: Rc<Location>) -> Rc<Ast<Rc<Ident>>> {
+    fn mk_ident(&mut self, name: &str, loc: Rc<SourceInfo>) -> Rc<Ident> {
         Rc::new(Ast {
-            val: Rc::from(name),
+            val: self.intern_str(name),
             loc: loc,
         })
     }
 
-    fn add_fn_decl(
-        &mut self,
-        name: Rc<Ast<Rc<Ident>>>,
-        ret_type: Rc<Type>,
-        args: Vec<(Rc<Ast<Rc<Ident>>>, Rc<Type>)>,
-    ) {
+    fn add_fn_decl(&mut self, builder: DeclBuilder) {
         self.translation_unit.decls.push(Decl::FnDecl(FnDecl {
-            name: (*name).clone(),
-            ret_type: ret_type,
-            args: args
-                .into_iter()
-                .map(|(name, ty)| ((*name).clone(), ty))
-                .collect(),
+            name: builder.name,
+            ret_type: builder.ret_type.unwrap(),
+            args: builder.args,
         }))
+    }
+
+    fn add_fn_defn(&mut self, builder: DeclBuilder) {
+        self.translation_unit.decls.push(Decl::FnDefn(FnDefn {
+            decl: FnDecl {
+                name: builder.name,
+                ret_type: builder.ret_type.unwrap(),
+                args: builder.args,
+            },
+            body: builder.stmts,
+        }))
+    }
+
+    fn add_struct(&mut self, builder: DeclBuilder) {
+        self.translation_unit
+            .decls
+            .push(Decl::StructDefn(StructDefn {
+                name: builder.name,
+                fields: builder.fields,
+            }))
     }
 }
 
-fn mk_assign(loc: Rc<Location>, lhs: Rc<LValue>, rhs: Rc<RValue>) -> Rc<Stmt> {
-    Rc::new(Ast {
-        val: StmtT::Assign(lhs, rhs),
-        loc: loc,
-    })
+struct DeclBuilder {
+    name: Ident,
+    ret_type: Option<Rc<Type>>,
+    args: Vec<(Option<Ident>, Rc<Type>)>,
+    fields: Vec<(Ident, Rc<Type>)>,
+    stmts: Stmts,
+}
+
+impl DeclBuilder {
+    fn new(name: Rc<Ident>) -> DeclBuilder {
+        DeclBuilder {
+            name: (*name).clone(),
+            ret_type: None,
+            args: vec![],
+            fields: vec![],
+            stmts: vec![],
+        }
+    }
+
+    fn return_type(&mut self, ret_type: Rc<Type>) {
+        self.ret_type = Some(ret_type);
+    }
+
+    fn stmt(&mut self, stmt: Rc<Stmt>) {
+        self.stmts.push(stmt);
+    }
+
+    fn arg(&mut self, name: Rc<Ident>, ty: Rc<Type>) {
+        self.args.push((Some((*name).clone()), ty))
+    }
+    fn arg_anon(&mut self, ty: Rc<Type>) {
+        self.args.push((None, ty))
+    }
+
+    fn field(&mut self, name: Rc<Ident>, ty: Rc<Type>) {
+        self.fields.push(((*name).clone(), ty))
+    }
+}
+
+struct InlineCodeBuilder(InlineCode);
+
+impl InlineCodeBuilder {
+    fn new() -> InlineCodeBuilder {
+        InlineCodeBuilder(InlineCode { tokens: vec![] })
+    }
+    fn push_token(&mut self, before: &'static str, loc: Rc<SourceInfo>, tok: &str) {
+        self.0.tokens.push(CodeToken {
+            before: before,
+            text: Ast {
+                val: Rc::from(tok),
+                loc: loc,
+            },
+        })
+    }
+}
+
+fn mk_ast<T>(loc: Rc<SourceInfo>, val: T) -> Rc<Ast<T>> {
+    Rc::new(Ast { val: val, loc: loc })
+}
+
+fn mk_int_type(loc: Rc<SourceInfo>, signed: bool, width: u32) -> Rc<Type> {
+    mk_ast(
+        loc,
+        TypeT::Int {
+            signed: signed,
+            width: width,
+        },
+    )
+}
+fn mk_sizet(loc: Rc<SourceInfo>) -> Rc<Type> {
+    mk_ast(loc, TypeT::SizeT)
+}
+fn mk_pointer_unknown(loc: Rc<SourceInfo>, to: Rc<Type>) -> Rc<Type> {
+    mk_ast(
+        loc,
+        TypeT::Pointer {
+            to: to,
+            kind: PointerKind::Unknown,
+        },
+    )
+}
+fn mk_type_err(loc: Rc<SourceInfo>) -> Rc<Type> {
+    mk_ast(loc, TypeT::Error)
+}
+
+fn mk_bigint(s: &str) -> Rc<BigInt> {
+    Rc::from(BigInt::from_str(s).unwrap())
+}
+
+fn mk_int_lit(loc: Rc<SourceInfo>, val: Rc<BigInt>, ty: Rc<Type>) -> Rc<RValue> {
+    mk_ast(loc, RValueT::IntLit { val: val, ty: ty })
+}
+fn mk_rvalue_lvalue(loc: Rc<SourceInfo>, lval: Rc<LValue>) -> Rc<RValue> {
+    mk_ast(loc, RValueT::LValue(lval))
+}
+fn mk_rvalue_ref(loc: Rc<SourceInfo>, lval: Rc<LValue>) -> Rc<RValue> {
+    mk_ast(loc, RValueT::Ref(lval))
+}
+fn mk_cast(loc: Rc<SourceInfo>, val: Rc<RValue>, ty: Rc<Type>) -> Rc<RValue> {
+    mk_ast(loc, RValueT::Cast { val: val, ty: ty })
+}
+fn mk_rvalue_err(loc: Rc<SourceInfo>) -> Rc<RValue> {
+    mk_ast(loc, RValueT::Error)
+}
+
+fn mk_lvalue_var(loc: Rc<SourceInfo>, name: Rc<Ident>) -> Rc<LValue> {
+    mk_ast(loc, LValueT::Var(name))
+}
+fn mk_deref(loc: Rc<SourceInfo>, v: Rc<RValue>) -> Rc<LValue> {
+    mk_ast(loc, LValueT::Deref(v))
+}
+fn mk_lvalue_err(loc: Rc<SourceInfo>) -> Rc<LValue> {
+    mk_ast(loc, LValueT::Error)
+}
+
+fn mk_var_decl(loc: Rc<SourceInfo>, id: Rc<Ident>, ty: Rc<Type>) -> Rc<Stmt> {
+    mk_ast(loc, StmtT::Decl(id, ty))
+}
+fn mk_assign(loc: Rc<SourceInfo>, lhs: Rc<LValue>, rhs: Rc<RValue>) -> Rc<Stmt> {
+    mk_ast(loc, StmtT::Assign(lhs, rhs))
+}
+fn mk_return(loc: Rc<SourceInfo>, v: Rc<RValue>) -> Rc<Stmt> {
+    mk_ast(loc, StmtT::Return(v))
+}
+fn mk_stmt_err(loc: Rc<SourceInfo>) -> Rc<Stmt> {
+    mk_ast(loc, StmtT::Error)
 }
 
 pub fn parse_file(file_name: &str) -> TranslationUnit {

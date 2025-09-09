@@ -4,56 +4,66 @@ type str {
     fn len(&self) -> usize;
 }
 
-type ::std::rc::Rc<str> {
+type bool {
+    #layout(size=1, align=1);
+    wellknown_traits(Copy);
+}
+
+use ::num_bigint::BigInt as BigInt;
+use ::std::rc::Rc as Rc;
+use crate::ir::Ident as Ident;
+use crate::ir::SourceInfo as SourceInfo;
+use crate::ir::Type as Type;
+use crate::ir::Stmt as Stmt;
+use crate::ir::LValue as LValue;
+use crate::ir::RValue as RValue;
+
+type Rc<str> {
     #layout(size=16, align=8);
     fn deref(&self) -> &str;
 }
 
+type BigInt { #only_by_ref; }
+type Rc<BigInt> { #layout(size=8, align=8); }
+
 mod crate::ir {
-    type Location { #only_by_ref; }
+    type SourceInfo { #only_by_ref; }
     type Ident { wellknown_traits(?Sized); }
     type Type { #only_by_ref; }
     type LValue { #only_by_ref; }
     type RValue { #only_by_ref; }
     type Stmt { #only_by_ref; }
 
-    type ::std::rc::Rc<Location> {
+    type Rc<SourceInfo> {
         #layout(size=8, align=8);
-        fn deref(&self) -> &Location;
-        fn clone(&self) -> ::std::rc::Rc<Location>;
+        fn deref(&self) -> &SourceInfo;
+        fn clone(&self) -> Rc<SourceInfo>;
     }
 
-    type ::std::rc::Rc<LValue> {
+    type Rc<LValue> {
         #layout(size=8, align=8);
         fn deref(&self) -> &LValue;
     }
 
-    type ::std::rc::Rc<RValue> {
+    type Rc<RValue> {
         #layout(size=8, align=8);
         fn deref(&self) -> &RValue;
     }
 
-    type ::std::rc::Rc<Stmt> {
+    type Rc<Stmt> {
         #layout(size=8, align=8);
         fn deref(&self) -> &Stmt;
     }
 
-    type ::std::rc::Rc<Type> {
+    type Rc<Type> {
         #layout(size=8, align=8);
         fn deref(&self) -> &Type;
     }
 
-    type Ast<::std::rc::Rc<Ident>> {
-        #only_by_ref;
-    }
-
-    type ::std::rc::Rc<Ast<::std::rc::Rc<Ident>>> {
+    type Rc<Ident> {
         #layout(size=8, align=8);
-        fn deref(&self) -> &Ast<::std::rc::Rc<Ident>>;
-    }
-
-    type ::std::vec::Vec<(::std::rc::Rc<Ast<::std::rc::Rc<Ident>>>, ::std::rc::Rc<Type>)> {
-        #layout(size = 24, align = 8);
+        fn deref(&self) -> &Ident;
+        fn clone(&self) -> Rc<Ident>;
     }
 }
 
@@ -63,19 +73,54 @@ mod crate::clang {
 
         fn get_input_file_name(&self) -> &str;
 
-        fn mk_file_name(&mut self, &str) -> ::std::rc::Rc<str>;
-        fn mk_location(&mut self, &str, u32, u32, u32, u32) -> ::std::rc::Rc<crate::ir::Location>;
-        fn mk_ident(&mut self, &str, ::std::rc::Rc<crate::ir::Location>) -> 
-            ::std::rc::Rc<crate::ir::Ast<::std::rc::Rc<crate::ir::Ident>>>;
-        fn add_fn_decl(&mut self,
-            ::std::rc::Rc<crate::ir::Ast<::std::rc::Rc<crate::ir::Ident>>>,
-            ::std::rc::Rc<crate::ir::Type>,
-            ::std::vec::Vec<(
-                ::std::rc::Rc<crate::ir::Ast<::std::rc::Rc<crate::ir::Ident>>>,
-                ::std::rc::Rc<crate::ir::Type>)>);
+        fn mk_location(&mut self, &str, u32, u32, u32, u32) -> Rc<SourceInfo>;
+        fn mk_none_sourceinfo(&mut self) -> Rc<SourceInfo>;
+        fn mk_ident(&mut self, &str, Rc<SourceInfo>) -> Rc<Ident>;
+
+        fn add_fn_decl(&mut self, DeclBuilder);
+        fn add_fn_defn(&mut self, DeclBuilder);
+        fn add_struct(&mut self, DeclBuilder);
     }
 
-    fn mk_assign(::std::rc::Rc<crate::ir::Location>, ::std::rc::Rc<crate::ir::LValue>, ::std::rc::Rc<crate::ir::RValue>) -> ::std::rc::Rc<crate::ir::Stmt>;
+    type DeclBuilder {
+        #heap_allocated;
+        fn new(Rc<Ident>) -> DeclBuilder;
+        fn return_type(&mut self, Rc<Type>);
+        fn stmt(&mut self, Rc<Stmt>);
+        fn arg(&mut self, Rc<Ident>, Rc<Type>);
+        fn arg_anon(&mut self, Rc<Type>);
+        fn field(&mut self, Rc<Ident>, Rc<Type>);
+    }
+
+    type InlineCodeBuilder {
+        #heap_allocated;
+        fn new() -> InlineCodeBuilder;
+        fn push_token(&mut self, &str, Rc<SourceInfo>, &str);
+    }
+
+    fn str_from_parts(*const u8, usize) -> &str;
+
+    fn mk_int_type(Rc<SourceInfo>, bool, u32) -> Rc<Type>;
+    fn mk_sizet(Rc<SourceInfo>) -> Rc<Type>;
+    fn mk_pointer_unknown(Rc<SourceInfo>, Rc<Type>) -> Rc<Type>;
+    fn mk_type_err(Rc<SourceInfo>) -> Rc<Type>;
+
+    fn mk_bigint(&str) -> Rc<BigInt>;
+
+    fn mk_int_lit(Rc<SourceInfo>, Rc<BigInt>, Rc<Type>) -> Rc<RValue>;
+    fn mk_rvalue_lvalue(Rc<SourceInfo>, Rc<LValue>) -> Rc<RValue>;
+    fn mk_rvalue_ref(Rc<SourceInfo>, Rc<LValue>) -> Rc<RValue>;
+    fn mk_cast(Rc<SourceInfo>, Rc<RValue>, Rc<Type>) -> Rc<RValue>;
+    fn mk_rvalue_err(Rc<SourceInfo>) -> Rc<RValue>;
+
+    fn mk_lvalue_var(Rc<SourceInfo>, Rc<Ident>) -> Rc<LValue>;
+    fn mk_deref(Rc<SourceInfo>, Rc<RValue>) -> Rc<LValue>;
+    fn mk_lvalue_err(Rc<SourceInfo>) -> Rc<LValue>;
+
+    fn mk_var_decl(Rc<SourceInfo>, Rc<Ident>, Rc<Type>) -> Rc<Stmt>;
+    fn mk_assign(Rc<SourceInfo>, Rc<LValue>, Rc<RValue>) -> Rc<Stmt>;
+    fn mk_return(Rc<SourceInfo>, Rc<RValue>) -> Rc<Stmt>;
+    fn mk_stmt_err(Rc<SourceInfo>) -> Rc<Stmt>;
 }
 
 extern "C++" {
