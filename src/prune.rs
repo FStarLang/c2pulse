@@ -26,12 +26,8 @@ where
         self.roots.insert(root);
     }
 
-    fn get_deps(&mut self, from: T) -> &mut HashSet<T> {
+    fn deps_for(&mut self, from: T) -> &mut HashSet<T> {
         self.deps.entry(from).or_default()
-    }
-
-    fn add_dep(&mut self, from: T, to: T) {
-        self.get_deps(from).insert(to);
     }
 
     fn propagate(&mut self) {
@@ -49,6 +45,10 @@ where
                 self.roots.insert(n);
             }
         }
+    }
+
+    fn contains(&mut self, t: &T) -> bool {
+        self.roots.contains(t)
     }
 }
 
@@ -109,7 +109,7 @@ fn scan_stmt(deps: &mut HashSet<DeclName>, stmt: &Stmt) {
             scan_stmts(deps, b2)
         }
         StmtT::Return(v) => scan_rvalue(deps, v),
-        StmtT::Error => todo!(),
+        StmtT::Error => {}
     }
 }
 
@@ -123,35 +123,40 @@ fn scan_translation_unit(deps: &mut Deps<DeclName>, tu: &TranslationUnit) {
     for decl in &tu.decls {
         let in_main_file = in_main_file(&tu.main_file_name, &*decl.loc);
         let mut scan_fn_decl = |decl: &FnDecl| -> DeclName {
-            let n = DeclName::Fn(decl.name.val.clone());
+            let FnDecl {
+                name,
+                ret_type,
+                args,
+            } = decl;
+            let n = DeclName::Fn(name.val.clone());
 
             if in_main_file {
                 deps.add_root(n.clone());
             }
-            let ds = deps.get_deps(n.clone());
-            for arg in &decl.args {
-                scan_type(ds, &arg.1)
+            let ds = deps.deps_for(n.clone());
+            for (_name, ty) in args {
+                scan_type(ds, ty)
             }
-            scan_type(ds, &decl.ret_type);
+            scan_type(ds, &ret_type);
 
             n
         };
         match &decl.val {
-            Decl::FnDefn(fn_defn) => {
-                let n = scan_fn_decl(&fn_defn.decl);
-                scan_stmts(deps.get_deps(n), &fn_defn.body);
+            DeclT::FnDefn(FnDefn { decl, body }) => {
+                let n = scan_fn_decl(&decl);
+                scan_stmts(deps.deps_for(n), &body);
             }
-            Decl::FnDecl(fn_decl) => {
+            DeclT::FnDecl(fn_decl) => {
                 scan_fn_decl(fn_decl);
             }
-            Decl::StructDefn(struct_defn) => {
-                let n = DeclName::Struct(struct_defn.name.val.clone());
-                let ds = deps.get_deps(n);
-                for fld in &struct_defn.fields {
-                    scan_type(ds, &fld.1)
+            DeclT::StructDefn(StructDefn { name, fields }) => {
+                let n = DeclName::Struct(name.val.clone());
+                let ds = deps.deps_for(n);
+                for (_name, ty) in fields {
+                    scan_type(ds, ty)
                 }
             }
-            Decl::IncludeDecl(_) => {}
+            DeclT::IncludeDecl(_) => {}
         }
     }
 }
@@ -163,16 +168,14 @@ pub fn prune(tu: &mut TranslationUnit) {
     tu.decls.retain(|decl| {
         in_main_file(&tu.main_file_name, &*decl.loc)
             || (match &decl.val {
-                Decl::FnDefn(fn_defn) => deps
-                    .roots
-                    .contains(&DeclName::Fn(fn_defn.decl.name.val.clone())),
-                Decl::FnDecl(fn_decl) => {
-                    deps.roots.contains(&DeclName::Fn(fn_decl.name.val.clone()))
+                DeclT::FnDefn(fn_defn) => {
+                    deps.contains(&DeclName::Fn(fn_defn.decl.name.val.clone()))
                 }
-                Decl::StructDefn(struct_defn) => deps
-                    .roots
-                    .contains(&DeclName::Struct(struct_defn.name.val.clone())),
-                Decl::IncludeDecl(_) => true,
+                DeclT::FnDecl(fn_decl) => deps.contains(&DeclName::Fn(fn_decl.name.val.clone())),
+                DeclT::StructDefn(struct_defn) => {
+                    deps.contains(&DeclName::Struct(struct_defn.name.val.clone()))
+                }
+                DeclT::IncludeDecl(_) => true,
             })
     });
 }

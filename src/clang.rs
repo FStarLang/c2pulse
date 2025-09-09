@@ -63,7 +63,7 @@ impl Ctx {
     fn add_fn_decl(&mut self, builder: DeclBuilder) {
         self.translation_unit.decls.push(Ast {
             loc: builder.loc,
-            val: Decl::FnDecl(FnDecl {
+            val: DeclT::FnDecl(FnDecl {
                 name: builder.name,
                 ret_type: builder.ret_type.unwrap(),
                 args: builder.args,
@@ -74,7 +74,7 @@ impl Ctx {
     fn add_fn_defn(&mut self, builder: DeclBuilder, body: Vec<Rc<Stmt>>) {
         self.translation_unit.decls.push(Ast {
             loc: builder.loc,
-            val: Decl::FnDefn(FnDefn {
+            val: DeclT::FnDefn(FnDefn {
                 decl: FnDecl {
                     name: builder.name,
                     ret_type: builder.ret_type.unwrap(),
@@ -88,7 +88,7 @@ impl Ctx {
     fn add_struct(&mut self, builder: DeclBuilder) {
         self.translation_unit.decls.push(Ast {
             loc: builder.loc,
-            val: Decl::StructDefn(StructDefn {
+            val: DeclT::StructDefn(StructDefn {
                 name: builder.name,
                 fields: builder.fields,
             }),

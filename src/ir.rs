@@ -147,8 +147,9 @@ pub struct IncludeDecl {
     pub code: Ast<InlineCode>,
 }
 
+pub type Decl = Ast<DeclT>;
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
-pub enum Decl {
+pub enum DeclT {
     FnDefn(FnDefn),
     FnDecl(FnDecl),
     StructDefn(StructDefn),
@@ -158,5 +159,5 @@ pub enum Decl {
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct TranslationUnit {
     pub main_file_name: Rc<str>,
-    pub decls: Vec<Ast<Decl>>,
+    pub decls: Vec<Decl>,
 }
