@@ -25,10 +25,15 @@ pub struct Ctx {
 
 impl Ctx {
     fn new(input_file_name: String) -> Ctx {
+        let input_fn: &str = &input_file_name;
+        let main_file_name: Rc<str> = Rc::from(input_fn);
         Ctx {
             input_file_name,
             interned_strs: HashSet::new(),
-            translation_unit: TranslationUnit { decls: vec![] },
+            translation_unit: TranslationUnit {
+                main_file_name: main_file_name,
+                decls: vec![],
+            },
             diagnostics: vec![],
         }
     }
@@ -56,31 +61,38 @@ impl Ctx {
     }
 
     fn add_fn_decl(&mut self, builder: DeclBuilder) {
-        self.translation_unit.decls.push(Decl::FnDecl(FnDecl {
-            name: builder.name,
-            ret_type: builder.ret_type.unwrap(),
-            args: builder.args,
-        }))
-    }
-
-    fn add_fn_defn(&mut self, builder: DeclBuilder, body: Vec<Rc<Stmt>>) {
-        self.translation_unit.decls.push(Decl::FnDefn(FnDefn {
-            decl: FnDecl {
+        self.translation_unit.decls.push(Ast {
+            loc: builder.loc,
+            val: Decl::FnDecl(FnDecl {
                 name: builder.name,
                 ret_type: builder.ret_type.unwrap(),
                 args: builder.args,
-            },
-            body: body,
-        }))
+            }),
+        })
+    }
+
+    fn add_fn_defn(&mut self, builder: DeclBuilder, body: Vec<Rc<Stmt>>) {
+        self.translation_unit.decls.push(Ast {
+            loc: builder.loc,
+            val: Decl::FnDefn(FnDefn {
+                decl: FnDecl {
+                    name: builder.name,
+                    ret_type: builder.ret_type.unwrap(),
+                    args: builder.args,
+                },
+                body: body,
+            }),
+        })
     }
 
     fn add_struct(&mut self, builder: DeclBuilder) {
-        self.translation_unit
-            .decls
-            .push(Decl::StructDefn(StructDefn {
+        self.translation_unit.decls.push(Ast {
+            loc: builder.loc,
+            val: Decl::StructDefn(StructDefn {
                 name: builder.name,
                 fields: builder.fields,
-            }))
+            }),
+        })
     }
 
     fn report_diag(&mut self, loc: Rc<SourceInfo>, is_err: bool, msg: &str) {
@@ -101,15 +113,17 @@ impl Ctx {
 
 struct DeclBuilder {
     name: Ident,
+    loc: Rc<SourceInfo>,
     ret_type: Option<Rc<Type>>,
     args: Vec<(Option<Ident>, Rc<Type>)>,
     fields: Vec<(Ident, Rc<Type>)>,
 }
 
 impl DeclBuilder {
-    fn new(name: Rc<Ident>) -> DeclBuilder {
+    fn new(loc: Rc<SourceInfo>, name: Rc<Ident>) -> DeclBuilder {
         DeclBuilder {
             name: (*name).clone(),
+            loc: loc,
             ret_type: None,
             args: vec![],
             fields: vec![],

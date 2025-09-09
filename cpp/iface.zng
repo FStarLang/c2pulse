@@ -94,7 +94,7 @@ mod crate::clang {
 
     type DeclBuilder {
         #heap_allocated;
-        fn new(Rc<Ident>) -> DeclBuilder;
+        fn new(Rc<SourceInfo>, Rc<Ident>) -> DeclBuilder;
         fn return_type(&mut self, Rc<Type>);
         fn arg(&mut self, Rc<Ident>, Rc<Type>);
         fn arg_anon(&mut self, Rc<Type>);

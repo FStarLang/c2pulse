@@ -144,6 +144,15 @@ public:
     return rangeMap.getExpansionRange(sm, range);
   }
 
+  void reportUnsupported(SourceRange const &rng, Rc<ir::SourceInfo> const &loc,
+                         Ref<rust::Str> msg) {
+    if (!sm.isInMainFile(sm.getExpansionLoc(rng.getBegin()))) {
+      // only complain about unsupported syntax in main file
+      return;
+    }
+    ctx.report_diag(loc.clone(), true, msg);
+  }
+
   Rc<ir::Type> trQualType(QualType t, SourceRange range) {
     auto loc = getRange(range);
 
@@ -159,7 +168,7 @@ public:
       return mk_int_type(std::move(loc), isSigned, width);
     }
 
-    ctx.report_diag(loc.clone(), true, "unsupported type"_rs);
+    reportUnsupported(range, loc, "unsupported type"_rs);
     return mk_type_err(std::move(loc));
   }
 
@@ -179,7 +188,8 @@ public:
       }
     }
 
-    ctx.report_diag(loc.clone(), true, "unsupported lvalue expression"_rs);
+    reportUnsupported(e->getSourceRange(), loc,
+                      "unsupported lvalue expression"_rs);
     return mk_lvalue_err(std::move(loc),
                          trQualType(e->getType(), e->getSourceRange()));
   }
@@ -209,7 +219,8 @@ public:
       }
     }
 
-    ctx.report_diag(loc.clone(), true, "unsupported rvalue expression"_rs);
+    reportUnsupported(e->getSourceRange(), loc,
+                      "unsupported rvalue expression"_rs);
     return mk_rvalue_err(std::move(loc),
                          trQualType(e->getType(), e->getSourceRange()));
   }
@@ -241,22 +252,23 @@ public:
                                  trRValue(vd->getInit())));
           }
         } else {
-          ctx.report_diag(dloc.clone(), true,
-                          "unsupported variable declaration"_rs);
+          reportUnsupported(d->getSourceRange(), dloc,
+                            "unsupported variable declaration"_rs);
           stmts.push(mk_stmt_err(dloc.clone()));
         }
       }
       return rust::Unit();
     }
 
-    ctx.report_diag(loc.clone(), true, "unsupported statement"_rs);
+    reportUnsupported(stmt->getSourceRange(), loc, "unsupported statement"_rs);
     return stmts.push(mk_stmt_err(std::move(loc)));
   }
 
   void HandleDecl(Decl *D) {
     if (auto *FD = dyn_cast<FunctionDecl>(D)) {
       auto ident = getDeclName(FD);
-      auto builder = DeclBuilder::new_(ident.clone());
+      auto builder =
+          DeclBuilder::new_(getRange(FD->getSourceRange()), ident.clone());
       for (auto param : FD->parameters()) {
         auto ty = trQualType(param->getType(), param->getSourceRange());
         if (param->getDeclName().isIdentifier() &&
@@ -277,8 +289,8 @@ public:
             trStmt(stmts, stmt);
         } else {
           auto bodyloc = getRange(FD->getBody()->getSourceRange());
-          ctx.report_diag(bodyloc.clone(), true,
-                          "unsupported function body"_rs);
+          reportUnsupported(FD->getBody()->getSourceRange(), bodyloc,
+                            "unsupported function body"_rs);
           stmts.push(mk_stmt_err(std::move(bodyloc)));
         }
         ctx.add_fn_defn(std::move(builder), std::move(stmts));

@@ -157,5 +157,6 @@ pub enum Decl {
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct TranslationUnit {
-    pub decls: Vec<Decl>,
+    pub main_file_name: Rc<str>,
+    pub decls: Vec<Ast<Decl>>,
 }
