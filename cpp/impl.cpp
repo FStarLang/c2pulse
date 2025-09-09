@@ -234,7 +234,8 @@ public:
       auto builder = DeclBuilder::new_(ident.clone());
       for (auto param : FD->parameters()) {
         auto ty = trQualType(param->getType(), param->getSourceRange());
-        if (param->getDeclName().isIdentifier()) {
+        if (param->getDeclName().isIdentifier() &&
+            param->getName().size() > 0) {
           builder.arg(ctx.mk_ident(toStr(param->getName()),
                                    getRange(param->getSourceRange())),
                       std::move(ty));
