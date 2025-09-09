@@ -20,6 +20,10 @@ fn split_off<'a>(prefix: &str, s: &'a str) -> Option<&'a str> {
     }
 }
 
+fn take_until(s: &str, c: char) -> &str {
+    s.find(c).map(|i| &s[..i]).unwrap_or(s)
+}
+
 fn main() {
     build_rs::output::rerun_if_changed("cpp/iface.zng");
     build_rs::output::rerun_if_changed("cpp/impl.cpp");
@@ -34,6 +38,17 @@ fn main() {
         .generate();
 
     let mut build = cc::Build::new();
+
+    let llvm_version = llvm_config_flags(&["--version"])
+        .first()
+        .and_then(|v| str::parse::<u32>(take_until(v, '.')).ok())
+        .expect("Cannot parse `llvm-config --version` output");
+    if llvm_version < 20 {
+        panic!(
+            "\nC2Pulse requires clang >= 20, but found version {:}\n",
+            llvm_version
+        )
+    }
 
     // zngur warnings...
     build
