@@ -22,6 +22,7 @@ use crate::ir::RValue as RValue;
 type Rc<str> {
     #layout(size=16, align=8);
     fn deref(&self) -> &str;
+    fn clone(&self) -> Rc<str>;
 }
 
 type BigInt { #only_by_ref; }
@@ -80,8 +81,8 @@ mod crate::clang {
 
         fn get_input_file_name(&self) -> &str;
 
-        fn mk_location(&mut self, &str, u32, u32, u32, u32) -> Rc<SourceInfo>;
-        fn mk_none_sourceinfo(&mut self) -> Rc<SourceInfo>;
+        fn intern_str(&mut self, &str) -> Rc<str>;
+
         fn mk_ident(&mut self, &str, Rc<SourceInfo>) -> Rc<Ident>;
 
         fn add_fn_decl(&mut self, DeclBuilder);
@@ -107,6 +108,9 @@ mod crate::clang {
     }
 
     fn str_from_parts(*const u8, usize) -> &str;
+
+    fn mk_original_location(Rc<str>, u32, u32, u32, u32) -> Rc<SourceInfo>;
+    fn mk_none_sourceinfo() -> Rc<SourceInfo>;
 
     fn mk_int_type(Rc<SourceInfo>, bool, u32) -> Rc<Type>;
     fn mk_sizet(Rc<SourceInfo>) -> Rc<Type>;

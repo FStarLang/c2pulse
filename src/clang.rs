@@ -48,33 +48,6 @@ impl Ctx {
         }
     }
 
-    fn mk_location(
-        &mut self,
-        file_name: &str,
-        start_line: u32,
-        start_char: u32,
-        end_line: u32,
-        end_char: u32,
-    ) -> Rc<SourceInfo> {
-        let file_name = self.intern_str(file_name);
-        Rc::new(SourceInfo::Original(Location {
-            file_name: file_name,
-            range: Range {
-                start: Position {
-                    line: start_line,
-                    character: start_char,
-                },
-                end: Position {
-                    line: end_line,
-                    character: end_char,
-                },
-            },
-        }))
-    }
-    fn mk_none_sourceinfo(&mut self) -> Rc<SourceInfo> {
-        Rc::new(SourceInfo::None)
-    }
-
     fn mk_ident(&mut self, name: &str, loc: Rc<SourceInfo>) -> Rc<Ident> {
         Rc::new(Ast {
             val: self.intern_str(name),
@@ -174,6 +147,31 @@ impl InlineCodeBuilder {
             },
         })
     }
+}
+
+fn mk_original_location(
+    file_name: Rc<str>,
+    start_line: u32,
+    start_char: u32,
+    end_line: u32,
+    end_char: u32,
+) -> Rc<SourceInfo> {
+    Rc::new(SourceInfo::Original(Location {
+        file_name: file_name,
+        range: Range {
+            start: Position {
+                line: start_line,
+                character: start_char,
+            },
+            end: Position {
+                line: end_line,
+                character: end_char,
+            },
+        },
+    }))
+}
+fn mk_none_sourceinfo() -> Rc<SourceInfo> {
+    Rc::new(SourceInfo::None)
 }
 
 fn mk_ast<T>(loc: Rc<SourceInfo>, val: T) -> Rc<Ast<T>> {

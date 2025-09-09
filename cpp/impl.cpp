@@ -33,11 +33,41 @@ Ref<rust::Str> toStr(std::string const &str) {
 
 using SnipMap = std::unordered_map<unsigned, InlineCodeBuilder>;
 
+template <> struct std::hash<FileID> {
+  std::size_t operator()(FileID const &s) const noexcept {
+    return s.getHashValue();
+  }
+};
+struct RangeMap {
+  RangeMap(RefMut<Ctx> &c) : ctx(c) {}
+  RefMut<Ctx> ctx;
+  std::unordered_map<FileID, Rc<rust::Str>> files;
+
+  Rc<rust::Str> getFileName(SourceManager &sm, FileID id) {
+    if (auto result = files.find(id); result != files.end()) {
+      return result->second.clone();
+    } else {
+      auto res = ctx.intern_str(toStr(sm.getFileEntryRefForID(id)->getName()));
+      files[id] = res.clone();
+      return res;
+    }
+  }
+
+  Rc<ir::SourceInfo> getExpansionRange(SourceManager &sm, SourceRange range) {
+    return mk_original_location(
+        getFileName(sm, sm.getFileID(sm.getExpansionLoc(range.getBegin()))),
+        sm.getExpansionLineNumber(range.getBegin()),
+        sm.getExpansionColumnNumber(range.getBegin()),
+        sm.getExpansionLineNumber(range.getEnd()),
+        sm.getExpansionColumnNumber(range.getEnd()));
+  }
+};
+
 class MacroTracker : public PPCallbacks {
 public:
-  MacroTracker(RefMut<Ctx> c, SnipMap &s, CompilerInstance &ci)
-      : ctx(c), snippets(s), compilerInst(ci) {}
-  RefMut<Ctx> ctx;
+  MacroTracker(RangeMap &m, SnipMap &s, CompilerInstance &ci)
+      : rangeMap(m), snippets(s), compilerInst(ci) {}
+  RangeMap &rangeMap;
   SnipMap &snippets;
   CompilerInstance &compilerInst;
 
@@ -62,9 +92,10 @@ public:
           unsigned endChar = beginChar + spelling.length();
           auto fileName = sm.getFilename(tokLoc);
           auto loc = fileName.data()
-                         ? ctx.mk_location(toStr(fileName), beginLine,
-                                           beginChar, endLine, endChar)
-                         : ctx.mk_none_sourceinfo();
+                         ? mk_original_location(
+                               rangeMap.getFileName(sm, sm.getFileID(tokLoc)),
+                               beginLine, beginChar, endLine, endChar)
+                         : mk_none_sourceinfo();
 
           Ref<rust::Str> before = tok.isAtStartOfLine()   ? "\n"_rs
                                   : tok.hasLeadingSpace() ? " "_rs
@@ -86,10 +117,11 @@ Rc<rust::num_bigint::BigInt> toBigInt(llvm::APInt const &n) {
 
 class C2PulseConsumer : public ASTConsumer {
 public:
-  C2PulseConsumer(RefMut<Ctx> c, SnipMap &s, CompilerInstance &ci)
-      : ctx(c), snippets(s), sm(ci.getSourceManager()) {}
+  C2PulseConsumer(RefMut<Ctx> c, RangeMap &m, SnipMap &s, CompilerInstance &ci)
+      : ctx(c), rangeMap(m), snippets(s), sm(ci.getSourceManager()) {}
 
   RefMut<Ctx> ctx;
+  RangeMap &rangeMap;
   SnipMap &snippets;
   SourceManager &sm;
   ASTContext *astCtx = nullptr;
@@ -105,16 +137,11 @@ public:
   }
 
   Rc<ir::Ident> getDeclName(NamedDecl *d) {
-    return ctx.mk_ident(toStr(d->getName()), ctx.mk_none_sourceinfo());
+    return ctx.mk_ident(toStr(d->getName()), mk_none_sourceinfo());
   }
 
   Rc<ir::SourceInfo> getRange(SourceRange const &range) {
-    return ctx.mk_location(
-        toStr(sm.getFilename(sm.getExpansionLoc(range.getBegin()))),
-        sm.getExpansionLineNumber(range.getBegin()),
-        sm.getExpansionColumnNumber(range.getBegin()),
-        sm.getExpansionLineNumber(range.getEnd()),
-        sm.getExpansionColumnNumber(range.getEnd()));
+    return rangeMap.getExpansionRange(sm, range);
   }
 
   Rc<ir::Type> trQualType(QualType t, SourceRange range) {
@@ -264,19 +291,20 @@ public:
 
 class C2PulseAction : public SyntaxOnlyAction {
 public:
-  C2PulseAction(RefMut<Ctx> c) : ctx(c) {}
+  C2PulseAction(RefMut<Ctx> c, RangeMap &m) : ctx(c), rangeMap(m) {}
   RefMut<Ctx> ctx;
+  RangeMap &rangeMap;
   SnipMap snippets;
 
   bool BeginSourceFileAction(CompilerInstance &CI) override {
     CI.getPreprocessor().addPPCallbacks(
-        std::make_unique<MacroTracker>(ctx, snippets, CI));
+        std::make_unique<MacroTracker>(rangeMap, snippets, CI));
     return SyntaxOnlyAction::BeginSourceFileAction(CI);
   }
 
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI,
                                                  StringRef InFile) override {
-    return std::make_unique<C2PulseConsumer>(ctx, snippets, CI);
+    return std::make_unique<C2PulseConsumer>(ctx, rangeMap, snippets, CI);
   }
 
   void EndSourceFileAction() override {
@@ -286,27 +314,30 @@ public:
 
 class C2PulseActionFactory : public FrontendActionFactory {
 public:
-  C2PulseActionFactory(RefMut<Ctx> c) : ctx(c) {}
+  C2PulseActionFactory(RefMut<Ctx> c, RangeMap &m) : ctx(c), rangeMap(m) {}
 
   std::unique_ptr<FrontendAction> create() override {
-    return std::make_unique<C2PulseAction>(ctx);
+    return std::make_unique<C2PulseAction>(ctx, rangeMap);
   }
 
   RefMut<Ctx> ctx;
+  RangeMap &rangeMap;
 };
 
 class C2PulseDiagnosticConsumer : public DiagnosticConsumer {
 public:
-  C2PulseDiagnosticConsumer(RefMut<Ctx> c) : ctx(c) {}
+  C2PulseDiagnosticConsumer(RefMut<Ctx> c, RangeMap &m) : ctx(c), rangeMap(m) {}
   RefMut<Ctx> ctx;
+  RangeMap &rangeMap;
 
   void HandleDiagnostic(DiagnosticsEngine::Level DiagLevel,
                         const Diagnostic &Info) override {
     auto &sm = Info.getSourceManager();
     if (Info.getNumRanges() > 0) {
       auto range = Info.getRange(0);
-      auto loc = ctx.mk_location(
-          toStr(sm.getFilename(sm.getExpansionLoc(range.getBegin()))),
+      auto loc = mk_original_location(
+          rangeMap.getFileName(
+              sm, sm.getFileID(sm.getExpansionLoc(range.getBegin()))),
           sm.getExpansionLineNumber(range.getBegin()),
           sm.getExpansionColumnNumber(range.getBegin()),
           sm.getExpansionLineNumber(range.getEnd()),
@@ -347,7 +378,8 @@ static void parse_file(RefMut<Ctx> ctx) {
 
   auto Tool = std::make_unique<ClangTool>(*compDB, sourcePathList);
 
-  C2PulseDiagnosticConsumer consumer(ctx);
+  RangeMap rangeMap(ctx);
+  C2PulseDiagnosticConsumer consumer(ctx, rangeMap);
   Tool->setDiagnosticConsumer(&consumer);
 
   // Tool->appendArgumentsAdjuster(OptionsParser->getArgumentsAdjuster());
@@ -357,7 +389,7 @@ static void parse_file(RefMut<Ctx> ctx) {
   Tool->appendArgumentsAdjuster(getInsertArgumentAdjuster(
       {"-resource-dir", getResourcesPath()}, ArgumentInsertPosition::BEGIN));
 
-  auto factory = std::make_unique<C2PulseActionFactory>(ctx);
+  auto factory = std::make_unique<C2PulseActionFactory>(ctx, rangeMap);
   Tool->run(factory.get());
 }
 
