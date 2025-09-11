@@ -2,13 +2,13 @@ use num_bigint::BigInt;
 use std::fmt::Debug;
 use std::rc::Rc;
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub struct Position {
     pub line: u32,
     pub character: u32,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub struct Range {
     pub start: Position,
     pub end: Position,

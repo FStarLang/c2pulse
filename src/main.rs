@@ -1,9 +1,9 @@
 mod clang;
 mod diag;
+mod elab;
+mod env;
 mod ir;
 mod prune;
-mod env;
-mod elab;
 
 fn main() {
     let argv: Vec<_> = std::env::args().collect();
@@ -11,5 +11,6 @@ fn main() {
     let (mut tu, diags) = clang::parse_file(file_name.to_str().unwrap());
     prune::prune(&mut tu);
     elab::elab(&mut tu);
-    println!("{:#?}", (tu, diags));
+    println!("{:#?}", tu);
+    diag::print_to_stderr(&diags);
 }
