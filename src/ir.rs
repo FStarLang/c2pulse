@@ -54,6 +54,15 @@ pub struct Ast<T> {
     pub loc: Rc<SourceInfo>,
 }
 
+impl<T> Ast<T> {
+    pub fn reuse_loc<S>(&self, val: S) -> Ast<S> {
+        Ast {
+            loc: self.loc.clone(),
+            val,
+        }
+    }
+}
+
 impl<T> Debug for Ast<T>
 where
     T: Debug,
