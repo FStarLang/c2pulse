@@ -201,6 +201,9 @@ fn mk_ast<T>(loc: Rc<SourceInfo>, val: T) -> Rc<Ast<T>> {
     Rc::new(Ast { val: val, loc: loc })
 }
 
+fn mk_void_type(loc: Rc<SourceInfo>) -> Rc<Type> {
+    mk_ast(loc, TypeT::Void)
+}
 fn mk_int_type(loc: Rc<SourceInfo>, signed: bool, width: u32) -> Rc<Type> {
     mk_ast(
         loc,

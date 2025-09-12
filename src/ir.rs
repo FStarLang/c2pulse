@@ -82,6 +82,7 @@ pub enum PointerKind {
 pub type Type = Ast<TypeT>;
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum TypeT {
+    Void,
     Int { signed: bool, width: u32 },
     SizeT,
     Pointer { to: Rc<Type>, kind: PointerKind },

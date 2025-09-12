@@ -18,6 +18,7 @@ fn elab_type(env: &Env, ty: &mut Type) {
             }
         }
         TypeT::Error => {}
+        TypeT::Void => {}
     }
 }
 

@@ -81,6 +81,7 @@ fn scan_type(deps: &mut HashSet<DeclName>, ty: &Type) {
             }
         }
         TypeT::Error => {}
+        TypeT::Void => {}
     }
 }
 

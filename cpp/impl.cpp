@@ -162,6 +162,9 @@ public:
       return mk_pointer_unknown(
           std::move(loc), trQualType(t->getPointeeType(), /*TODO*/ range));
     }
+    if (t->isVoidType()) {
+      return mk_void_type(std::move(loc));
+    }
     if (t->isSignedIntegerType() || t->isUnsignedIntegerType()) {
       bool isSigned = t->isSignedIntegerType();
       unsigned width = astCtx->getIntWidth(t);

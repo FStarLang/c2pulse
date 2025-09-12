@@ -113,6 +113,7 @@ mod crate::clang {
     fn mk_original_location(Rc<str>, u32, u32, u32, u32) -> Rc<SourceInfo>;
     fn mk_none_sourceinfo() -> Rc<SourceInfo>;
 
+    fn mk_void_type(Rc<SourceInfo>) -> Rc<Type>;
     fn mk_int_type(Rc<SourceInfo>, bool, u32) -> Rc<Type>;
     fn mk_sizet(Rc<SourceInfo>) -> Rc<Type>;
     fn mk_pointer_unknown(Rc<SourceInfo>, Rc<Type>) -> Rc<Type>;
