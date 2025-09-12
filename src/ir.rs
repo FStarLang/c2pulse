@@ -76,7 +76,7 @@ where
 pub enum PointerKind {
     Unknown,
     Ref,
-    Array { length: Rc<RValue> },
+    Array,
 }
 
 pub type Type = Ast<TypeT>;

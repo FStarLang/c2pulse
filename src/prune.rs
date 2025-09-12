@@ -77,7 +77,7 @@ fn scan_type(deps: &mut HashSet<DeclName>, ty: &Type) {
             match kind {
                 PointerKind::Unknown => {}
                 PointerKind::Ref => {}
-                PointerKind::Array { length } => scan_rvalue(deps, length),
+                PointerKind::Array => {}
             }
         }
         TypeT::Error => {}

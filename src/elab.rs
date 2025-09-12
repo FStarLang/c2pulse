@@ -14,7 +14,7 @@ fn elab_type(env: &Env, ty: &mut Type) {
             match kind {
                 PointerKind::Unknown => *kind = PointerKind::Ref,
                 PointerKind::Ref => {}
-                PointerKind::Array { length } => elab_rvalue(env, Rc::make_mut(length), None),
+                PointerKind::Array => {}
             }
         }
         TypeT::Error => {}
