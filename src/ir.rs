@@ -153,7 +153,7 @@ pub struct InlineCode {
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct IncludeDecl {
-    pub code: Ast<InlineCode>,
+    pub code: InlineCode,
 }
 
 pub type Decl = Ast<DeclT>;

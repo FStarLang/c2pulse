@@ -95,6 +95,15 @@ impl Ctx {
         })
     }
 
+    fn add_include(&mut self, loc: Rc<SourceInfo>, code: &InlineCodeBuilder) {
+        self.translation_unit.decls.push(Ast {
+            loc,
+            val: DeclT::IncludeDecl(IncludeDecl {
+                code: code.0.clone(),
+            }),
+        });
+    }
+
     fn report_diag(&mut self, loc: Rc<SourceInfo>, is_err: bool, msg: &str) {
         self.diagnostics.push(Diagnostic {
             loc: (match &*loc {

@@ -88,6 +88,7 @@ mod crate::clang {
         fn add_fn_decl(&mut self, DeclBuilder);
         fn add_fn_defn(&mut self, DeclBuilder, Vec<Rc<Stmt>>);
         fn add_struct(&mut self, DeclBuilder);
+        fn add_include(&mut self, Rc<SourceInfo>, &InlineCodeBuilder);
 
         fn report_diag(&mut self, Rc<SourceInfo>, bool, &str);
     }

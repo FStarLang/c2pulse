@@ -266,6 +266,33 @@ public:
 
   void HandleDecl(Decl *D) {
     if (auto *FD = dyn_cast<FunctionDecl>(D)) {
+      // Include block
+      if (FD->getName().starts_with("__pulse_include_anchor")) {
+        InlineCodeBuilder *code = nullptr;
+        for (auto attr : FD->getAttrs()) {
+          if (auto ann = dyn_cast<AnnotateAttr>(attr);
+              ann->getAnnotation() == "includes" && ann->args_size() == 1) {
+            if (auto ctrVal =
+                    ann->args_begin()[0]->getIntegerConstantExpr(*astCtx)) {
+              unsigned ctr = ctrVal->getZExtValue();
+              if (auto snip = snippets.find(ctr); snip != snippets.end()) {
+                code = &snip->second;
+                break;
+              }
+            }
+          }
+        }
+        auto loc = getRange(D->getSourceRange());
+        if (code) {
+          ctx.add_include(std::move(loc), *code);
+        } else {
+          ctx.report_diag(std::move(loc), true,
+                          "internal error: invalid INCLUDES encoding"_rs);
+        }
+        return;
+      }
+
+      // Regular function decl
       auto ident = getDeclName(FD);
       auto builder =
           DeclBuilder::new_(getRange(FD->getSourceRange()), ident.clone());
