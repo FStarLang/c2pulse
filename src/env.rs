@@ -70,7 +70,7 @@ impl Env {
 
     pub fn infer_lvalue(&self, lvalue: &LValue) -> Option<Rc<Type>> {
         match &lvalue.val {
-            LValueT::Var(ident) => Some(self.locals.get(&ident.val)?.clone()),
+            LValueT::Var(ident) => Some(self.lookup_var(ident)?.clone()),
             LValueT::Deref(x) => {
                 let x_ty = self.infer_rvalue(x)?;
                 match &x_ty.val {
