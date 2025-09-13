@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 codespan-reporting = "0.12.0"
 num-bigint = "0.4"
+pretty = "0.12.4"
 
 [build-dependencies]
 build-rs = "0.3.1"

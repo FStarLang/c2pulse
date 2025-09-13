@@ -8,11 +8,22 @@ pub struct Position {
     pub character: u32,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy)]
 pub struct Range {
     pub start: Position,
     pub end: Position,
 }
+
+impl Debug for Range {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "{}:{}-{}:{}",
+            self.start.line, self.start.character, self.end.line, self.end.character
+        )
+    }
+}
+
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub struct Location {
     pub file_name: Rc<str>,
@@ -21,15 +32,7 @@ pub struct Location {
 
 impl Debug for Location {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(
-            f,
-            "{}:{}:{}-{}:{}",
-            self.file_name,
-            self.range.start.line,
-            self.range.start.character,
-            self.range.end.line,
-            self.range.end.character
-        )
+        write!(f, "{}:{:#?}", self.file_name, self.range)
     }
 }
 
