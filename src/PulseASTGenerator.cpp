@@ -13,6 +13,7 @@
 #include "clang/AST/Stmt.h"
 #include "clang/AST/Type.h"
 #include "clang/Analysis/Analyses/ExprMutationAnalyzer.h"
+#include "clang/Basic/Version.h"
 #include "clang/Basic/Module.h"
 #include "clang/Basic/SourceLocation.h"
 #include "llvm/ADT/DenseMap.h"
@@ -484,13 +485,13 @@ std::string PulseVisitor::getNameForRecordDecl(const RecordDecl *RD){
   }
 
   if (RD->isAnonymousStructOrUnion()){
-    auto NewName = gensym("anon_struct"); 
+    auto NewName = c2pulse::gensym("anon_struct"); 
     RecordToRecordName.insert(std::make_pair(RD, NewName));
     return NewName;
   }
 
   if (RD->isInAnonymousNamespace()){
-    auto NewName = gensym("anon_struct"); 
+    auto NewName = c2pulse::gensym("anon_struct"); 
     RecordToRecordName.insert(std::make_pair(RD, NewName));
     return NewName;
   }
@@ -520,7 +521,7 @@ std::string PulseVisitor::getNameForRecordDecl(const RecordDecl *RD){
 
   //Could not find a struct Name, hence we just gensym a struct name.
   if (StructName == ""){
-    auto NewName = gensym("anon_name");
+    auto NewName = c2pulse::gensym("anon_name");
     RecordToRecordName.insert(std::make_pair(RD, NewName));
     return NewName;
   }
@@ -636,7 +637,7 @@ bool PulseVisitor::VisitRecordDecl(const RecordDecl *RD) {
       }
 
       if (VarNamesInScope.count(FName) > 0){
-        FName = gensym(FName);
+        FName = c2pulse::gensym(FName);
       }
       //Make sure name of the field is made unique.
       FieldToUniqueNames.insert(std::make_pair(FD, FName));
@@ -1672,6 +1673,19 @@ bool PulseVisitor::VisitVarDecl(VarDecl *VD) {
   return true;
 }
 
+static inline clang::QualType makeVLA(clang::ASTContext &Ctx,
+                                      clang::QualType EltTy,
+                                      clang::Expr *NumElts) {
+#if defined(CLANG_VERSION_MAJOR) && (CLANG_VERSION_MAJOR >= 21)
+  return Ctx.getVariableArrayType(EltTy, NumElts,
+                                  clang::ArraySizeModifier::Normal, 0);
+#else
+  return Ctx.getVariableArrayType(EltTy, NumElts,
+                                  clang::ArraySizeModifier::Normal, 0,
+                                  clang::SourceRange());
+#endif
+}
+
 void PulseVisitor::addArrayTy(std::string Match, const Decl *ArrDecl, std::set<std::string> VEnv) {
 
   QualType ArrTy;
@@ -1727,9 +1741,10 @@ void PulseVisitor::addArrayTy(std::string Match, const Decl *ArrDecl, std::set<s
         clang::Expr::getValueKindForType(ArrElementType));
 
     // Step 4: Create the VLA type
-    QualType VLAType = Ctx.getVariableArrayType(ArrElementType, SizeExpr,
-                                                ArraySizeModifier::Normal, 0,
-                                                SourceRange());
+    // QualType VLAType = Ctx.getVariableArrayType(ArrElementType, SizeExpr,
+    //                                             ArraySizeModifier::Normal, 0,
+    //                                             SourceRange());
+    QualType VLAType = makeVLA(Ctx, ArrElementType, SizeExpr);
     DeclTyMap.insert(std::make_pair(ArrDecl, VLAType));
 
   } else {
@@ -2095,9 +2110,10 @@ PulseSequence *PulseVisitor::handleFunctionParameters(FunctionDecl *FD,
                   clang::Expr::getValueKindForType(ElementType));
 
               // Step 4: Create the VLA type
-              QualType VLAType = Ctx.getVariableArrayType(
-                  ElementType, SizeExpr, ArraySizeModifier::Normal, 0,
-                  SourceRange());
+              // QualType VLAType = Ctx.getVariableArrayType(
+              //     ElementType, SizeExpr, ArraySizeModifier::Normal, 0,
+              //     SourceRange());
+              QualType VLAType = makeVLA(Ctx, ElementType, SizeExpr);
               // llvm::outs() << "Print the element type here!!!\n";
               // llvm::outs() <<
               // QualType(VLAType->getPointeeOrArrayElementType(), 0);
@@ -2932,7 +2948,7 @@ std::pair<PulseStmt *, PulseVisitor::VarTyEnv> PulseVisitor::handleMallocs(
             TermForSizeExpr = NewParen;
           }
 
-          auto SizeName = gensym("size_expr");
+          auto SizeName = c2pulse::gensym("size_expr");
           auto *LetBindSize = new LetBinding(SizeName, TermForSizeExpr, MutOrRef::MUT);
           LetBindSize->CInfo = getSourceInfoFromExpr(SizeExpr, Ctx, "", "");
           //Since we added a cast this is fine to hardcode.
@@ -3080,7 +3096,7 @@ PulseVisitor::pulseFromStmt(Stmt *S, std::map<Term *, FStarType *> VEnv,
 
             
             // if (Analyzer->isMutated(D)) {
-            // auto TempVarName = gensym(VarName);
+            // auto TempVarName = c2pulse::gensym(VarName);
             // auto *PulseLetTmp = new LetBinding(TempVarName, LetInit,
             // MutOrRef::NOTMUT); PulseLetTmp->CInfo = getSourceInfoFromStmt(S,
             // Ctx, "", ""); PulseLetTmp->VarTy = VDPulseTy->print();
@@ -3323,7 +3339,7 @@ PulseVisitor::pulseFromStmt(Stmt *S, std::map<Term *, FStarType *> VEnv,
               auto *PulseSizeExpr = PulseSizeExprRet.first;
               VEnv = PulseSizeExprRet.second;
 
-              auto NewNameForSizeExpr = gensym("size_expr");
+              auto NewNameForSizeExpr = c2pulse::gensym("size_expr");
               //This should ideally be casted to a sizeTy. 
               //Add a cast here if the expression type is not sizet. 
               //Vidush: TODO check if this is correct.
