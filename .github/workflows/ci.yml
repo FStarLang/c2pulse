@@ -43,12 +43,19 @@ jobs:
         sudo apt install -y clang-20 libclang-cpp20-dev g++ cmake clang-tools-20 libclang-20-dev
         opam install --deps-only external/FStar/fstar.opam
 
+    - name: Read menhir version
+      id: menhir
+      run: |
+        eval $(opam env)
+        M=$(opam info -f version menhirLib)
+        echo "MENHIRVER=$M" >>"$GITHUB_OUTPUT"
+
     - name: Try fetch built F*
       id: cache-fstar
       uses: actions/cache/restore@v4
       with:
         path: external/FStar
-        key: FStar2-${{ runner.os }}-${{ runner.arch }}-${{ steps.commits.outputs.FSTARCOMMIT }}
+        key: FStar2-${{ runner.os }}-${{ runner.arch }}-${{ steps.commits.outputs.FSTARCOMMIT }}-${{ steps.menhir.outputs.MENHIRVER }}
 
     - name: Build F*
       if: steps.cache-fstar.outputs.cache-hit != 'true'
@@ -61,7 +68,7 @@ jobs:
       uses: actions/cache/save@v4
       with:
         path: external/FStar
-        key: FStar2-${{ runner.os }}-${{ runner.arch }}-${{ steps.commits.outputs.FSTARCOMMIT }}
+        key: FStar2-${{ runner.os }}-${{ runner.arch }}-${{ steps.commits.outputs.FSTARCOMMIT }}-${{ steps.menhir.outputs.MENHIRVER }}
 
     - name: Try fetch built Pulse
       id: cache-pulse
