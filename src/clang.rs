@@ -239,6 +239,9 @@ fn mk_int_lit(loc: Rc<SourceInfo>, val: Rc<BigInt>, ty: Rc<Type>) -> Rc<RValue> 
 fn mk_rvalue_lvalue(loc: Rc<SourceInfo>, lval: Rc<LValue>) -> Rc<RValue> {
     mk_ast(loc, RValueT::LValue(lval))
 }
+fn mk_rvalue_cast(loc: Rc<SourceInfo>, val: Rc<RValue>, ty: Rc<Type>) -> Rc<RValue> {
+    mk_ast(loc, RValueT::Cast { val, ty })
+}
 fn mk_rvalue_ref(loc: Rc<SourceInfo>, lval: Rc<LValue>) -> Rc<RValue> {
     mk_ast(loc, RValueT::Ref(lval))
 }

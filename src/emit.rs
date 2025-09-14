@@ -159,7 +159,7 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
             }
             RValueT::LValue(v) => parens(Doc::text("!").append(emit_lvalue(env, v))),
             RValueT::Ref(v) => emit_lvalue(env, v),
-            RValueT::Cast { val, ty } => todo!(),
+            RValueT::Cast { val, ty } => Doc::text("(*TODO cast*)").append(emit_rvalue(env, val)),
             RValueT::Error(_ty) => Doc::text("(admit())"),
         }
     })
@@ -202,11 +202,7 @@ fn emit_stmt(env: &Env, stmt: &Stmt) -> Doc {
                 .append(";")
                 .group()
                 .nest(2),
-            StmtT::Return(t) => Doc::text("return ")
-                .append(emit_rvalue(env, t))
-                .append(";")
-                .group()
-                .nest(2),
+            StmtT::Return(t) => emit_rvalue(env, t).append(";").group().nest(2),
             StmtT::Error => Doc::text("(admit());"),
         }
     })

@@ -205,6 +205,20 @@ public:
       case CK_LValueToRValue:
         return mk_rvalue_lvalue(std::move(loc), trLValue(ic->getSubExpr()));
 
+      case CK_IntegralCast:
+        return mk_rvalue_cast(std::move(loc), trRValue(ic->getSubExpr()),
+                              trQualType(ic->getType(), ic->getSourceRange()));
+
+      default:;
+        // continue to error case
+      }
+    } else if (auto ec = dyn_cast<ExplicitCastExpr>(e)) {
+      switch (ic->getCastKind()) {
+      case CK_IntegralCast:
+        return mk_rvalue_cast(
+            std::move(loc), trRValue(ec->getSubExpr()),
+            trQualType(ec->getType(), /*FIXME*/ ec->getSourceRange()));
+
       default:;
         // continue to error case
       }
