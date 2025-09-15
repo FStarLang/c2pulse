@@ -43,6 +43,13 @@ impl Env {
         self.locals.insert(ident.val.clone(), ty);
     }
 
+    pub fn push_arg(&mut self, arg: &FnArg) {
+        match arg {
+            (Some(n), ty) => self.push_var_decl(n, ty.clone()),
+            (None, _) => {}
+        }
+    }
+
     pub fn lookup_var(&self, ident: &Ident) -> Option<&Rc<Type>> {
         self.locals.get(&ident.val)
     }
@@ -65,7 +72,7 @@ impl Env {
             }))),
             RValueT::Cast { val: _, ty } => Some(ty.clone()),
             RValueT::Error(ty) => Some(ty.clone()),
-            RValueT::InlinePulse { val, ty } => Some(ty.clone()),
+            RValueT::InlinePulse { val: _, ty } => Some(ty.clone()),
         }
     }
 

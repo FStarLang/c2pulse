@@ -152,11 +152,13 @@ pub struct StructDefn {
     pub fields: Vec<(Ident, Rc<Type>)>,
 }
 
+pub type FnArg = (Option<Ident>, Rc<Type>);
+
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct FnDecl {
     pub name: Ident,
     pub ret_type: Rc<Type>,
-    pub args: Vec<(Option<Ident>, Rc<Type>)>,
+    pub args: Vec<FnArg>,
     pub requires: Vec<Rc<RValue>>,
     pub ensures: Vec<Rc<RValue>>,
 }

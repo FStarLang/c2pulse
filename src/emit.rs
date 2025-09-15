@@ -238,7 +238,7 @@ fn emit_block(env: &Env, stmts: &Vec<Rc<Stmt>>) -> Doc {
 }
 
 fn emit_fn_decl(
-    env: &Env,
+    env: &mut Env,
     FnDecl {
         name,
         ret_type,
@@ -253,8 +253,8 @@ fn emit_fn_decl(
             .append(name.val.to_string()),
     )
     .append(
-        Doc::concat(args.iter().map(|(n, ty)| {
-            Doc::line().append(parens(
+        Doc::concat(args.iter().map(|arg @ (n, ty)| {
+            let doc = Doc::line().append(parens(
                 (match n {
                     Some(n) => annotated(n, Doc::text(n.val.to_string())),
                     None => Doc::text("_"),
@@ -262,7 +262,9 @@ fn emit_fn_decl(
                 .append(":")
                 .append(Doc::line())
                 .append(emit_type(env, ty)),
-            ))
+            ));
+            env.push_arg(arg);
+            doc
         }))
         .nest(2),
     )
@@ -309,30 +311,33 @@ fn emit_decl(env: &Env, decl: &Decl) -> Doc {
     let todo = || Doc::text(format!("(*TODO:\n{:#?}\n*)", decl));
     annotated(decl, {
         match &decl.val {
-            DeclT::FnDefn(FnDefn { decl, body }) => emit_fn_decl(env, decl)
-                .nest(2)
-                .append(Doc::hardline())
-                .append(
-                    block(
-                        Doc::concat(decl.args.iter().filter_map(|(n, _)| {
-                            n.as_ref().map(|n| {
-                                Doc::line().append(annotated(
-                                    n,
-                                    Doc::group(
-                                        Doc::text("let mut ")
-                                            .append(n.val.to_string())
-                                            .append(" = ")
-                                            .append(n.val.to_string())
-                                            .append(";"),
-                                    ),
-                                ))
-                            })
-                        }))
-                        .append(emit_stmts(env, body)),
+            DeclT::FnDefn(FnDefn { decl, body }) => {
+                let env = &mut env.clone();
+                emit_fn_decl(env, decl)
+                    .nest(2)
+                    .append(Doc::hardline())
+                    .append(
+                        block(
+                            Doc::concat(decl.args.iter().filter_map(|(n, _)| {
+                                n.as_ref().map(|n| {
+                                    Doc::line().append(annotated(
+                                        n,
+                                        Doc::group(
+                                            Doc::text("let mut ")
+                                                .append(n.val.to_string())
+                                                .append(" = ")
+                                                .append(n.val.to_string())
+                                                .append(";"),
+                                        ),
+                                    ))
+                                })
+                            }))
+                            .append(emit_stmts(env, body)),
+                        )
+                        .group(),
                     )
-                    .group(),
-                ),
-            DeclT::FnDecl(fn_decl) => emit_fn_decl(env, fn_decl),
+            }
+            DeclT::FnDecl(fn_decl) => emit_fn_decl(&mut env.clone(), fn_decl),
             DeclT::StructDefn(struct_defn) => todo(),
             DeclT::IncludeDecl(include_decl) => emit_inline_code(&include_decl.code),
         }
