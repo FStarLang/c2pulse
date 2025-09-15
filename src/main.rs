@@ -3,6 +3,7 @@ mod diag;
 mod elab;
 mod emit;
 mod env;
+mod hauntedc;
 mod ir;
 mod prune;
 

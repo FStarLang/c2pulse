@@ -2,7 +2,7 @@ use num_bigint::BigInt;
 use std::fmt::Debug;
 use std::rc::Rc;
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, PartialOrd, Ord)]
 pub struct Position {
     pub line: u32,
     pub character: u32,
@@ -12,6 +12,15 @@ pub struct Position {
 pub struct Range {
     pub start: Position,
     pub end: Position,
+}
+
+impl Range {
+    pub fn union(&self, other: &Range) -> Range {
+        Range {
+            start: self.start.min(other.start),
+            end: self.end.max(other.end),
+        }
+    }
 }
 
 impl Debug for Range {
@@ -66,6 +75,16 @@ impl<T> Ast<T> {
     }
 }
 
+pub trait WithLoc: Sized {
+    fn with_loc(self, loc: Rc<SourceInfo>) -> Rc<Ast<Self>>;
+}
+
+impl<T> WithLoc for T {
+    fn with_loc(self, loc: Rc<SourceInfo>) -> Rc<Ast<Self>> {
+        Rc::new(Ast { val: self, loc })
+    }
+}
+
 impl<T> Debug for Ast<T>
 where
     T: Debug,
@@ -89,6 +108,7 @@ pub enum TypeT {
     Int { signed: bool, width: u32 },
     SizeT,
     Pointer { to: Rc<Type>, kind: PointerKind },
+    SLProp,
     Error,
 }
 
@@ -99,6 +119,7 @@ pub enum RValueT {
     LValue(Rc<LValue>),
     Ref(Rc<LValue>),
     Cast { val: Rc<RValue>, ty: Rc<Type> },
+    InlinePulse { val: Rc<InlineCode>, ty: Rc<Type> },
     Error(Rc<Type>),
 }
 
@@ -136,6 +157,8 @@ pub struct FnDecl {
     pub name: Ident,
     pub ret_type: Rc<Type>,
     pub args: Vec<(Option<Ident>, Rc<Type>)>,
+    pub requires: Vec<Rc<RValue>>,
+    pub ensures: Vec<Rc<RValue>>,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]

@@ -18,6 +18,7 @@ use crate::ir::Type as Type;
 use crate::ir::Stmt as Stmt;
 use crate::ir::LValue as LValue;
 use crate::ir::RValue as RValue;
+use crate::hauntedc::SnippetMap as SnippetMap;
 
 type Rc<str> {
     #layout(size=16, align=8);
@@ -75,6 +76,11 @@ mod crate::ir {
     }
 }
 
+type SnippetMap {
+    #heap_allocated;
+    fn default() -> SnippetMap;
+}
+
 mod crate::clang {
     type Ctx {
         #only_by_ref;
@@ -88,7 +94,9 @@ mod crate::clang {
         fn add_fn_decl(&mut self, DeclBuilder);
         fn add_fn_defn(&mut self, DeclBuilder, Vec<Rc<Stmt>>);
         fn add_struct(&mut self, DeclBuilder);
-        fn add_include(&mut self, Rc<SourceInfo>, &InlineCodeBuilder);
+        fn add_include(&mut self, Rc<SourceInfo>, u32, &SnippetMap);
+
+        fn parse_rvalue(&mut self, Rc<SourceInfo>, u32, &SnippetMap) -> Rc<RValue>;
 
         fn report_diag(&mut self, Rc<SourceInfo>, bool, &str);
     }
@@ -100,12 +108,15 @@ mod crate::clang {
         fn arg(&mut self, Rc<Ident>, Rc<Type>);
         fn arg_anon(&mut self, Rc<Type>);
         fn field(&mut self, Rc<Ident>, Rc<Type>);
+        fn requires(&mut self, Rc<RValue>);
+        fn ensures(&mut self, Rc<RValue>);
     }
 
     type InlineCodeBuilder {
         #heap_allocated;
         fn new() -> InlineCodeBuilder;
         fn push_token(&mut self, &str, Rc<SourceInfo>, &str);
+        fn insert_into_map(self, u32, &mut SnippetMap);
     }
 
     fn str_from_parts(*const u8, usize) -> &str;

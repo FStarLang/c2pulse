@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+chumsky = "0.11.1"
 codespan-reporting = "0.12.0"
 num-bigint = "0.4"
 pretty = "0.12.4"

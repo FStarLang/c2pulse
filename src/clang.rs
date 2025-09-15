@@ -2,6 +2,7 @@ use num_bigint::BigInt;
 
 use crate::{
     diag::{Diagnostic, DiagnosticLevel},
+    hauntedc::{SnippetMap, parse_rvalue},
     ir::*,
 };
 use core::slice;
@@ -67,6 +68,8 @@ impl Ctx {
                 name: builder.name,
                 ret_type: builder.ret_type.unwrap(),
                 args: builder.args,
+                requires: builder.requires,
+                ensures: builder.ensures,
             }),
         })
     }
@@ -79,6 +82,8 @@ impl Ctx {
                     name: builder.name,
                     ret_type: builder.ret_type.unwrap(),
                     args: builder.args,
+                    requires: builder.requires,
+                    ensures: builder.ensures,
                 },
                 body: body,
             }),
@@ -95,13 +100,28 @@ impl Ctx {
         })
     }
 
-    fn add_include(&mut self, loc: Rc<SourceInfo>, code: &InlineCodeBuilder) {
-        self.translation_unit.decls.push(Ast {
-            loc,
-            val: DeclT::IncludeDecl(IncludeDecl {
-                code: code.0.clone(),
+    fn add_include(&mut self, loc: Rc<SourceInfo>, idx: u32, snippets: &SnippetMap) {
+        match snippets.snippets.get(&idx) {
+            Some(code) => self.translation_unit.decls.push(Ast {
+                loc,
+                val: DeclT::IncludeDecl(IncludeDecl { code: code.clone() }),
             }),
-        });
+            None => self.report_diag(loc, true, "internal error: invalid inline_pulse encoding"),
+        }
+    }
+
+    fn parse_rvalue(&mut self, loc: Rc<SourceInfo>, idx: u32, snippets: &SnippetMap) -> Rc<RValue> {
+        match snippets.snippets.get(&idx) {
+            Some(code) => {
+                let (expr, mut diags) = parse_rvalue(code, snippets);
+                self.diagnostics.extend(diags.drain(..));
+                expr
+            }
+            None => {
+                self.report_diag(loc.clone(), true, "internal error: invalid code snippet");
+                RValueT::Error(TypeT::Error.with_loc(loc.clone())).with_loc(loc)
+            }
+        }
     }
 
     fn report_diag(&mut self, loc: Rc<SourceInfo>, is_err: bool, msg: &str) {
@@ -126,6 +146,8 @@ struct DeclBuilder {
     ret_type: Option<Rc<Type>>,
     args: Vec<(Option<Ident>, Rc<Type>)>,
     fields: Vec<(Ident, Rc<Type>)>,
+    requires: Vec<Rc<RValue>>,
+    ensures: Vec<Rc<RValue>>,
 }
 
 impl DeclBuilder {
@@ -136,6 +158,8 @@ impl DeclBuilder {
             ret_type: None,
             args: vec![],
             fields: vec![],
+            requires: vec![],
+            ensures: vec![],
         }
     }
 
@@ -153,6 +177,13 @@ impl DeclBuilder {
     fn field(&mut self, name: Rc<Ident>, ty: Rc<Type>) {
         self.fields.push(((*name).clone(), ty))
     }
+
+    fn requires(&mut self, p: Rc<RValue>) {
+        self.requires.push(p)
+    }
+    fn ensures(&mut self, p: Rc<RValue>) {
+        self.ensures.push(p)
+    }
 }
 
 struct InlineCodeBuilder(InlineCode);
@@ -169,6 +200,9 @@ impl InlineCodeBuilder {
                 loc: loc,
             },
         })
+    }
+    fn insert_into_map(self, idx: u32, snippets: &mut SnippetMap) {
+        snippets.snippets.insert(idx, self.0);
     }
 }
 

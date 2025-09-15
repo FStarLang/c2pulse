@@ -19,6 +19,7 @@ fn elab_type(env: &Env, ty: &mut Type) {
         }
         TypeT::Error => {}
         TypeT::Void => {}
+        TypeT::SLProp => {}
     }
 }
 
@@ -62,6 +63,7 @@ fn elab_rvalue(env: &Env, rval: &mut RValue, expected_type: Option<Rc<Type>>) {
             // TODO: check that actual_ty can be casted to ty
         }
         RValueT::Error(ty) => elab_type(env, Rc::make_mut(ty)),
+        RValueT::InlinePulse { val: _, ty } => elab_type(env, Rc::make_mut(ty)),
     }
 }
 
@@ -98,18 +100,29 @@ fn elab_stmts(env: &Env, stmts: &mut Vec<Rc<Stmt>>) {
     }
 }
 
+fn elab_slprops(env: &Env, slprops: &mut Vec<Rc<RValue>>) {
+    for p in slprops {
+        let expected_type = TypeT::SLProp.with_loc(p.loc.clone());
+        elab_rvalue(env, Rc::make_mut(p), Some(expected_type));
+    }
+}
+
 fn elab_fn_decl(
     env: &Env,
     FnDecl {
         name: _,
         ret_type,
         args,
+        requires,
+        ensures,
     }: &mut FnDecl,
 ) {
     for (_n, ty) in args {
         elab_type(env, Rc::make_mut(ty))
     }
     elab_type(env, Rc::make_mut(ret_type));
+    elab_slprops(env, requires);
+    elab_slprops(env, ensures);
 }
 
 fn elab_decl(env: &Env, decl: &mut Decl) {

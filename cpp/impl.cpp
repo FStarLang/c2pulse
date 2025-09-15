@@ -31,7 +31,7 @@ Ref<rust::Str> toStr(std::string const &str) {
   return str_from_parts((uint8_t const *)str.data(), str.size());
 }
 
-using SnipMap = std::unordered_map<unsigned, InlineCodeBuilder>;
+using SnipMap = rust::crate::hauntedc::SnippetMap;
 
 template <> struct std::hash<FileID> {
   std::size_t operator()(FileID const &s) const noexcept {
@@ -104,7 +104,7 @@ public:
         }
       }
       unsigned ctr = compilerInst.getPreprocessor().getCounterValue();
-      snippets[ctr] = std::move(toks);
+      toks.insert_into_map(ctr, snippets);
     }
   }
 };
@@ -285,23 +285,21 @@ public:
     if (auto *FD = dyn_cast<FunctionDecl>(D)) {
       // Include block
       if (FD->getName().starts_with("__pulse_include_anchor")) {
-        InlineCodeBuilder *code = nullptr;
+        std::optional<unsigned> code;
         for (auto attr : FD->getAttrs()) {
           if (auto ann = dyn_cast<AnnotateAttr>(attr);
-              ann->getAnnotation() == "includes" && ann->args_size() == 1) {
+              ann && ann->getAnnotation() == "includes" &&
+              ann->args_size() == 1) {
             if (auto ctrVal =
                     ann->args_begin()[0]->getIntegerConstantExpr(*astCtx)) {
               unsigned ctr = ctrVal->getZExtValue();
-              if (auto snip = snippets.find(ctr); snip != snippets.end()) {
-                code = &snip->second;
-                break;
-              }
+              code = ctr;
             }
           }
         }
         auto loc = getRange(D->getSourceRange());
         if (code) {
-          ctx.add_include(std::move(loc), *code);
+          ctx.add_include(std::move(loc), *code, snippets);
         } else {
           ctx.report_diag(std::move(loc), true,
                           "internal error: invalid INCLUDES encoding"_rs);
@@ -326,6 +324,27 @@ public:
       }
       builder.return_type(
           trQualType(FD->getReturnType(), FD->getReturnTypeSourceRange()));
+      for (auto attr : FD->getAttrs()) {
+        if (auto ann = dyn_cast<AnnotateAttr>(attr);
+            ann && ann->args_size() == 1) {
+          if (ann->getAnnotation() == "c2pulse-requires") {
+            if (auto ctrVal =
+                    ann->args_begin()[0]->getIntegerConstantExpr(*astCtx)) {
+              unsigned ctr = ctrVal->getZExtValue();
+              builder.requires(
+                  ctx.parse_rvalue(getRange(attr->getRange()), ctr, snippets));
+            }
+          }
+          if (ann->getAnnotation() == "c2pulse-ensures") {
+            if (auto ctrVal =
+                    ann->args_begin()[0]->getIntegerConstantExpr(*astCtx)) {
+              unsigned ctr = ctrVal->getZExtValue();
+              builder.ensures(
+                  ctx.parse_rvalue(getRange(attr->getRange()), ctr, snippets));
+            }
+          }
+        }
+      }
       if (FD->hasBody()) {
         auto stmts = Vec<Rc<ir::Stmt>>::new_();
         if (auto *body = dyn_cast<CompoundStmt>(FD->getBody())) {
@@ -350,7 +369,7 @@ public:
   C2PulseAction(RefMut<Ctx> c, RangeMap &m) : ctx(c), rangeMap(m) {}
   RefMut<Ctx> ctx;
   RangeMap &rangeMap;
-  SnipMap snippets;
+  SnipMap snippets = SnipMap::default_();
 
   bool BeginSourceFileAction(CompilerInstance &CI) override {
     CI.getPreprocessor().addPPCallbacks(

@@ -54,6 +54,7 @@ version = "0.1.0"
 dependencies = [
  "build-rs",
  "cc",
+ "chumsky 0.11.1",
  "codespan-reporting",
  "num-bigint",
  "pretty",
@@ -75,6 +76,20 @@ name = "cfg-if"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2fd1289c04a9ea8cb22300a459a72a385d7c73d3259e2ed7dcb2af674838cfa9"
+
+[[package]]
+name = "chumsky"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6cd3ef0a728f561e3b4157213d178ae7523cbc405423f862da757447588ae103"
+dependencies = [
+ "hashbrown",
+ "regex-automata",
+ "serde",
+ "stacker",
+ "unicode-ident",
+ "unicode-segmentation",
+]
 
 [[package]]
 name = "chumsky"
@@ -447,7 +462,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e186484d4f21737fcb00cfc3f96fdf5e5609b6f8f0d6df824f4e3dce893a59a3"
 dependencies = [
  "ariadne",
- "chumsky",
+ "chumsky 1.0.0-alpha.8",
  "itertools",
  "zngur-def",
 ]

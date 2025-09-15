@@ -124,6 +124,7 @@ fn emit_type(env: &Env, ty: &Type) -> Doc {
                     .append(emit_type(env, to)),
             ),
             TypeT::Error => Doc::text("unit"),
+            TypeT::SLProp => Doc::text("slprop"),
         }
     })
 }
@@ -161,6 +162,10 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
             RValueT::Ref(v) => emit_lvalue(env, v),
             RValueT::Cast { val, ty } => Doc::text("(*TODO cast*)").append(emit_rvalue(env, val)),
             RValueT::Error(_ty) => Doc::text("(admit())"),
+            RValueT::InlinePulse { val, ty } => parens(Doc::concat(val.tokens.iter().map(|tok| {
+                Doc::text(tok.before)
+                    .append(annotated(&tok.text, Doc::text(tok.text.val.to_string())))
+            }))),
         }
     })
 }
@@ -238,6 +243,8 @@ fn emit_fn_decl(
         name,
         ret_type,
         args,
+        requires,
+        ensures,
     }: &FnDecl,
 ) -> Doc {
     Doc::group(
@@ -271,6 +278,24 @@ fn emit_fn_decl(
             .append(Doc::line())
             .append(emit_type(env, ret_type)),
     ))
+    .append(Doc::concat(requires.iter().map(|r| {
+        Doc::hardline().append(
+            Doc::text("requires")
+                .append(Doc::line())
+                .append(emit_rvalue(env, r))
+                .nest(2)
+                .group(),
+        )
+    })))
+    .append(Doc::concat(ensures.iter().map(|r| {
+        Doc::hardline().append(
+            Doc::text("ensures")
+                .append(Doc::line())
+                .append(emit_rvalue(env, r))
+                .nest(2)
+                .group(),
+        )
+    })))
     .group()
 }
 

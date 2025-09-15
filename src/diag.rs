@@ -35,8 +35,8 @@ pub fn print_to_stderr<'a>(diags: &'a Vec<Diagnostic>) {
         let file_id = *file_ids.entry(file_name).or_insert_with(|| {
             files.add(
                 file_name,
-                String::from_utf8(std::fs::read(file_name).expect("cannot read file"))
-                    .expect("invalid utf-8"),
+                String::from_utf8(std::fs::read(file_name).unwrap_or_else(|_| vec![]))
+                    .unwrap_or("".to_string()),
             )
         });
         let pos_to_byte = |pos: Position| {

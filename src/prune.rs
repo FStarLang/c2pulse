@@ -82,6 +82,7 @@ fn scan_type(deps: &mut HashSet<DeclName>, ty: &Type) {
         }
         TypeT::Error => {}
         TypeT::Void => {}
+        TypeT::SLProp => {}
     }
 }
 
@@ -103,6 +104,7 @@ fn scan_rvalue(deps: &mut HashSet<DeclName>, rv: &RValue) {
             scan_type(deps, ty);
         }
         RValueT::Error(ty) => scan_type(deps, ty),
+        RValueT::InlinePulse { val, ty } => scan_type(deps, ty),
     }
 }
 
@@ -135,6 +137,8 @@ fn scan_translation_unit(deps: &mut Deps<DeclName>, tu: &TranslationUnit) {
                 name,
                 ret_type,
                 args,
+                requires,
+                ensures,
             } = decl;
             let n = DeclName::Fn(name.val.clone());
 
@@ -146,6 +150,13 @@ fn scan_translation_unit(deps: &mut Deps<DeclName>, tu: &TranslationUnit) {
                 scan_type(ds, ty)
             }
             scan_type(ds, &ret_type);
+
+            for r in requires {
+                scan_rvalue(ds, r);
+            }
+            for e in ensures {
+                scan_rvalue(ds, e);
+            }
 
             n
         };

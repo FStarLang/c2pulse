@@ -65,6 +65,7 @@ impl Env {
             }))),
             RValueT::Cast { val: _, ty } => Some(ty.clone()),
             RValueT::Error(ty) => Some(ty.clone()),
+            RValueT::InlinePulse { val, ty } => Some(ty.clone()),
         }
     }
 
