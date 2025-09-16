@@ -284,11 +284,11 @@ public:
   void HandleDecl(Decl *D) {
     if (auto *FD = dyn_cast<FunctionDecl>(D)) {
       // Include block
-      if (FD->getName().starts_with("__pulse_include_anchor")) {
+      if (FD->getName().starts_with("__c2pulse_include_anchor")) {
         std::optional<unsigned> code;
         for (auto attr : FD->getAttrs()) {
           if (auto ann = dyn_cast<AnnotateAttr>(attr);
-              ann && ann->getAnnotation() == "includes" &&
+              ann && ann->getAnnotation() == "c2pulse-includes" &&
               ann->args_size() == 1) {
             if (auto ctrVal =
                     ann->args_begin()[0]->getIntegerConstantExpr(*astCtx)) {
