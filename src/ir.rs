@@ -112,12 +112,20 @@ pub enum TypeT {
     Error,
 }
 
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub enum BinOp {
+    Eq,
+    LogAnd,
+}
+
 pub type RValue = Ast<RValueT>;
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum RValueT {
     IntLit { val: Rc<BigInt>, ty: Rc<Type> },
     LValue(Rc<LValue>),
     Ref(Rc<LValue>),
+    BinOp(BinOp, Rc<RValue>, Rc<RValue>),
+    FnCall(Rc<Ident>, Vec<Rc<RValue>>),
     Cast { val: Rc<RValue>, ty: Rc<Type> },
     InlinePulse { val: Rc<InlineCode>, ty: Rc<Type> },
     Error(Rc<Type>),

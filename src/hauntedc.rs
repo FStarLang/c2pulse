@@ -2,7 +2,7 @@ use std::{collections::HashMap, fmt::Display, rc::Rc, str::FromStr};
 
 use chumsky::{
     Parser,
-    input::{IterInput, ValueInput},
+    input::{IterInput, MapExtra, ValueInput},
     prelude::*,
 };
 use num_bigint::BigInt;
@@ -10,8 +10,8 @@ use num_bigint::BigInt;
 use crate::{
     diag::{Diagnostic, DiagnosticLevel},
     ir::{
-        Ast, CodeToken, InlineCode, LValue, LValueT, Location, Position, RValue, RValueT, Range,
-        SourceInfo, TypeT, WithLoc,
+        Ast, BinOp, CodeToken, Ident, InlineCode, LValue, LValueT, Location, Position, RValue,
+        RValueT, Range, SourceInfo, TypeT, WithLoc,
     },
 };
 
@@ -79,17 +79,30 @@ macro_rules! mk_punct_table {
 }
 
 mk_punct_table! {
+    StarEq => "*=",
+    SlashEq => "/=",
+    PercEq => "%=",
+    PlusEq => "+=",
+    DashEq => "-=",
+    LtLtEq => "<<=",
+    GtGtEq => ">>=",
+    AmpEq => "&=",
+    HatEq => "^=",
+    PipeEq => "|=",
+
     LBracket => "[",
     RBracket => "]",
     LParen => "(",
     RParen => ")",
     LBrace => "{",
     RBrace => "}",
+    DotDotDot => "...",
     Dot => ".",
     DashGt => "->",
 
     PlusPlus => "++",
     DashDash => "--",
+    AmpAmp => "&&",
     Amp => "&",
     Star => "*",
     Plus => "+",
@@ -101,38 +114,25 @@ mk_punct_table! {
     Perc => "%",
     LtLt => "<<",
     GtGt => ">>",
-    Lt => "<",
-    Gt => ">",
     LtEq => "<=",
     GtEq => ">=",
+    Lt => "<",
+    Gt => ">",
     EqEq => "==",
     BangEq => "!=",
     Hat => "^",
-    Pipe => "|",
-    AmpAmp => "&&",
     PipePipe => "||",
+    Pipe => "|",
 
     Question => "?",
     Colon => ":",
     Semi => ";",
-    DotDotDot => "...",
 
     Eq => "=",
-    StarEq => "*=",
-    SlashEq => "/=",
-    PercEq => "%=",
-    PlusEq => "+=",
-    DashEq => "-=",
-    LtLtEq => "<<=",
-    GtGtEq => ">>=",
-
-    AmpEq => "&=",
-    HatEq => "^=",
-    PipeEq => "|=",
 
     Comma => ",",
-    Hash => "#",
     HashHash => "##",
+    Hash => "#",
 
     ColonColon => "::",
 }
@@ -263,23 +263,27 @@ impl From<Rc<RValue>> for Expr {
 }
 
 macro_rules! left_recursion {
-    ($base:expr, { $($n:ident($acc:ident, $x:ident: $t:ty: $p:expr) => $cb:expr,)* }) => {{
+    ($base:expr, { $($n:ident($acc:ident, $x:ident: $t:ty: $p:expr) $(= $extra:ident)? => $cb:expr,)* }) => {{
         enum Rhs {
             $($n($t),)*
         }
         let rhs = choice((
             $(($p).map(Rhs::$n),)*
         ));
-        ($base).foldl(rhs.repeated(), |acc, rhs| match rhs {
-            $(Rhs::$n($x) => { let $acc = acc; $cb },)*
+        ($base).foldl_with(rhs.repeated(), |acc, rhs, _extra| match rhs {
+            $(Rhs::$n($x) => {
+                let $acc = acc;
+                $(let $extra = _extra;)?
+                $cb
+            },)*
         })
     }}
 }
 
 macro_rules! left_rec_binop {
-    ($base:expr, { $($n:ident($acc:ident, $p:expr, $x:ident) => $cb:expr,)* }) => {{
+    ($base:expr, { $($n:ident($acc:ident, $p:expr, $x:ident) $(= $extra:ident)? => $cb:expr,)* }) => {{
         let base = $base;
-        left_recursion!(base, {$($n($acc, $x: Expr: $p.ignore_then(base.clone())) => $cb,)*})
+        left_recursion!(base, {$($n($acc, $x: Expr: $p.ignore_then(base.clone())) $(= $extra)? => $cb,)*})
     }}
 }
 
@@ -303,15 +307,27 @@ macro_rules! and_then {
     }}
 }
 
+fn mk_binop(binop: BinOp, lhs: Expr, rhs: Expr, loc: Rc<SourceInfo>) -> Expr {
+    RValueT::BinOp(binop, lhs.to_rvalue(), rhs.to_rvalue())
+        .with_loc(loc)
+        .into()
+}
+
+type Extra<'tokens, 'src> = extra::Err<Rich<'tokens, Token<'src>, SimpleSpan>>;
+
 fn expr_parser<'tokens, 'src: 'tokens, I, SIFT>(
     snip_map: &'src SnippetMap,
     sift: &'src SIFT,
-) -> impl Parser<'tokens, I, Expr, extra::Err<Rich<'tokens, Token<'src>, SimpleSpan>>> + Clone
+) -> impl Parser<'tokens, I, Expr, Extra<'tokens, 'src>> + Clone
 where
     I: ValueInput<'tokens, Token = Token<'src>, Span = SimpleSpan>,
     SIFT: SourceInfoForTokens,
 {
     recursive(|expr| {
+        let assignment_expression = expr.clone();
+
+        // let expression = assignment_expression;
+
         let type_name = select! { Token { tok: CoreToken::Ident("_slprop"), .. } => TypeT::SLProp }
             .map_with(|ty, e| ty.with_loc(sift.resolve_source_info(&e.span())));
 
@@ -331,13 +347,14 @@ where
             })
             .boxed();
 
-        let identifier =
+        let ident =
             select! { Token { tok: CoreToken::Ident(ident), .. } => ident}.map_with(|ident, e| {
-                let loc = sift.resolve_source_info(&e.span());
-                LValueT::Var(Rc::<str>::from(ident).with_loc(loc.clone()))
-                    .with_loc(loc)
-                    .into()
+                Rc::<str>::from(ident).with_loc(sift.resolve_source_info(&e.span()))
             });
+        let identifier = ident.map(|i| {
+            let loc = i.loc.clone();
+            LValueT::Var(i).with_loc(loc).into()
+        });
 
         let integer_constant = select! { Token { tok: CoreToken::Integer(i, suf), .. } => (i,suf)}
             .try_map(|(i, suf), span| {
@@ -368,11 +385,36 @@ where
 
         let primary_expression = identifier.or(constant).or(parenthesized);
 
-        let postfix_expression = primary_expression;
-
-        let unary_expression = postfix_expression.boxed();
+        let postfix_expression = choice((
+            ident // TODO: function should be postfix_expression
+                .then(
+                    assignment_expression
+                        .clone()
+                        .separated_by(punct(Punct::Comma))
+                        .collect::<Vec<_>>()
+                        .delimited_by(punct(Punct::LParen), punct(Punct::RParen)),
+                )
+                .map_with(|(f, args), extra| {
+                    RValueT::FnCall(f, args.into_iter().map(|e: Expr| e.to_rvalue()).collect())
+                        .with_loc(sift.resolve_source_info(&extra.span()))
+                        .into()
+                }),
+            primary_expression,
+        ))
+        .boxed();
 
         let cast_expression = recursive(|cast_expression| {
+            let unary_expression = choice((
+                postfix_expression,
+                punct(Punct::Star)
+                    .ignore_then(cast_expression.clone())
+                    .map_with(|e: Expr, extra| {
+                        LValueT::Deref(e.to_rvalue())
+                            .with_loc(sift.resolve_source_info(&extra.span()))
+                            .into()
+                    }),
+            ));
+
             and_then!(type_name.delimited_by(punct(Punct::LParen), punct(Punct::RParen)), {
                 InlinePulse(ty, code: Rc<InlineCode>: inline_pulse) = e =>
                     RValueT::InlinePulse { val: code, ty }.with_loc(sift.resolve_source_info(&e.span())).into(),
@@ -398,20 +440,30 @@ where
 
         let relational_expression = shift_expression;
 
-        let equality_expression = relational_expression;
+        let equality_expression = left_rec_binop!(relational_expression, {
+            Eq(lhs, punct(Punct::EqEq), rhs) = e =>
+                mk_binop(BinOp::Eq, lhs, rhs, sift.resolve_source_info(&e.span())),
+        })
+        .boxed();
 
         let and_expression = equality_expression;
 
         let exclusive_or_expression = and_expression;
         let inclusive_or_expression = exclusive_or_expression;
-        let logical_and_expression = inclusive_or_expression;
+        let logical_and_expression = left_rec_binop!(inclusive_or_expression, {
+            LogAnd(lhs, punct(Punct::AmpAmp), rhs) = e =>
+                mk_binop(BinOp::LogAnd, lhs, rhs, sift.resolve_source_info(&e.span())),
+        })
+        .boxed();
         let logical_or_expression = logical_and_expression;
 
         let conditional_expression = logical_or_expression;
 
         let constant_expression = conditional_expression;
 
-        constant_expression
+        let expr = constant_expression;
+
+        expr
     })
 }
 
@@ -529,7 +581,7 @@ pub fn parse_rvalue(code: &InlineCode, snippets: &SnippetMap) -> (Rc<RValue>, Ve
                 .resolve_error_location(err.span())
                 .unwrap_or_else(default_location),
             level: DiagnosticLevel::Error,
-            msg: format!("{}", err), // TODO
+            msg: format!("{} {:?}", err, tokens), // TODO
         }
     }));
     (output, diags)

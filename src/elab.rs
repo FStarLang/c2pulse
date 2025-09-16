@@ -55,6 +55,12 @@ fn elab_rvalue(env: &Env, rval: &mut RValue, expected_type: Option<Rc<Type>>) {
                 _ => None,
             }),
         ),
+        RValueT::FnCall(_f, args) => {
+            // TODO: check type for f
+            for arg in args {
+                elab_rvalue(env, Rc::make_mut(arg), None);
+            }
+        }
         RValueT::Cast { val, ty } => {
             let val = Rc::make_mut(val);
             elab_type(env, Rc::make_mut(ty));
@@ -64,6 +70,11 @@ fn elab_rvalue(env: &Env, rval: &mut RValue, expected_type: Option<Rc<Type>>) {
         }
         RValueT::Error(ty) => elab_type(env, Rc::make_mut(ty)),
         RValueT::InlinePulse { val: _, ty } => elab_type(env, Rc::make_mut(ty)),
+        RValueT::BinOp(bin_op, lhs, rhs) => {
+            elab_rvalue(env, Rc::make_mut(lhs), expected_type.clone());
+            elab_rvalue(env, Rc::make_mut(rhs), expected_type);
+            // TODO: widen and insert casts
+        }
     }
 }
 

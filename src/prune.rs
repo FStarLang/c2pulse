@@ -105,6 +105,16 @@ fn scan_rvalue(deps: &mut HashSet<DeclName>, rv: &RValue) {
         }
         RValueT::Error(ty) => scan_type(deps, ty),
         RValueT::InlinePulse { val, ty } => scan_type(deps, ty),
+        RValueT::BinOp(_, lhs, rhs) => {
+            scan_rvalue(deps, lhs);
+            scan_rvalue(deps, rhs);
+        }
+        RValueT::FnCall(f, args) => {
+            deps.insert(DeclName::Fn(f.val.clone()));
+            for arg in args {
+                scan_rvalue(deps, arg)
+            }
+        }
     }
 }
 

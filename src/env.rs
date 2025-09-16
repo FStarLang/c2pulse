@@ -70,9 +70,14 @@ impl Env {
                 // TODO: put kind on Ref?
                 kind: PointerKind::Unknown,
             }))),
+            RValueT::FnCall(f, _args) => match self.globals.fns.get(&f.val) {
+                Some(f_decl) => Some(f_decl.ret_type.clone()),
+                None => None,
+            },
             RValueT::Cast { val: _, ty } => Some(ty.clone()),
             RValueT::Error(ty) => Some(ty.clone()),
             RValueT::InlinePulse { val: _, ty } => Some(ty.clone()),
+            RValueT::BinOp(_, lhs, _) => self.infer_rvalue(lhs),
         }
     }
 

@@ -139,6 +139,16 @@ fn emit_lvalue(env: &Env, v: &LValue) -> Doc {
     })
 }
 
+fn binop(a: Doc, op: Doc, b: Doc) -> Doc {
+    parens(
+        a.append(Doc::line())
+            .append(op)
+            .group()
+            .append(Doc::line())
+            .append(b),
+    )
+}
+
 fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
     annotated(v, {
         match &v.val {
@@ -166,6 +176,34 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
                 Doc::text(tok.before)
                     .append(annotated(&tok.text, Doc::text(tok.text.val.to_string())))
             }))),
+            RValueT::BinOp(BinOp::LogAnd, lhs, rhs) => {
+                if let Some(ty) = env.infer_rvalue(lhs) {
+                    if ty.val == TypeT::SLProp {
+                        return binop(
+                            emit_rvalue(env, lhs),
+                            Doc::text("**"),
+                            emit_rvalue(env, rhs),
+                        );
+                    }
+                }
+                binop(
+                    emit_rvalue(env, lhs),
+                    Doc::text("&&"),
+                    emit_rvalue(env, rhs),
+                )
+            }
+            RValueT::BinOp(BinOp::Eq, lhs, rhs) => {
+                // TODO: this should be == in ghost contexts
+                binop(emit_rvalue(env, lhs), Doc::text("="), emit_rvalue(env, rhs))
+            }
+            RValueT::FnCall(f, args) => parens(
+                Doc::text(f.val.to_string())
+                    .append(Doc::line())
+                    .append(Doc::intersperse(
+                        args.iter().map(|arg| emit_rvalue(env, arg)),
+                        Doc::line(),
+                    )),
+            ),
         }
     })
 }
