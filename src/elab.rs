@@ -20,6 +20,7 @@ fn elab_type(env: &Env, ty: &mut Type) {
         TypeT::Error => {}
         TypeT::Void => {}
         TypeT::SLProp => {}
+        TypeT::Bool => {}
     }
 }
 
@@ -75,6 +76,7 @@ fn elab_rvalue(env: &Env, rval: &mut RValue, expected_type: Option<Rc<Type>>) {
             elab_rvalue(env, Rc::make_mut(rhs), expected_type);
             // TODO: widen and insert casts
         }
+        RValueT::BoolLit(_) => {}
     }
 }
 

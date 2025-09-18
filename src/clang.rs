@@ -238,6 +238,9 @@ fn mk_ast<T>(loc: Rc<SourceInfo>, val: T) -> Rc<Ast<T>> {
 fn mk_void_type(loc: Rc<SourceInfo>) -> Rc<Type> {
     mk_ast(loc, TypeT::Void)
 }
+fn mk_bool_type(loc: Rc<SourceInfo>) -> Rc<Type> {
+    mk_ast(loc, TypeT::Bool)
+}
 fn mk_int_type(loc: Rc<SourceInfo>, signed: bool, width: u32) -> Rc<Type> {
     mk_ast(
         loc,
@@ -267,6 +270,9 @@ fn mk_bigint(s: &str) -> Rc<BigInt> {
     Rc::from(BigInt::from_str(s).unwrap())
 }
 
+fn mk_bool_lit(loc: Rc<SourceInfo>, val: bool) -> Rc<RValue> {
+    mk_ast(loc, RValueT::BoolLit(val))
+}
 fn mk_int_lit(loc: Rc<SourceInfo>, val: Rc<BigInt>, ty: Rc<Type>) -> Rc<RValue> {
     mk_ast(loc, RValueT::IntLit { val: val, ty: ty })
 }

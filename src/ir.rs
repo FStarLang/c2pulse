@@ -105,6 +105,7 @@ pub type Type = Ast<TypeT>;
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum TypeT {
     Void,
+    Bool,
     Int { signed: bool, width: u32 },
     SizeT,
     Pointer { to: Rc<Type>, kind: PointerKind },
@@ -121,6 +122,7 @@ pub enum BinOp {
 pub type RValue = Ast<RValueT>;
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum RValueT {
+    BoolLit(bool),
     IntLit { val: Rc<BigInt>, ty: Rc<Type> },
     LValue(Rc<LValue>),
     Ref(Rc<LValue>),

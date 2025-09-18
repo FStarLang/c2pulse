@@ -98,15 +98,20 @@ fn emit_type(env: &Env, ty: &Type) -> Doc {
     annotated(ty, {
         match &ty.val {
             TypeT::Void => Doc::text("unit"),
+
+            // TODO: support all widths
             TypeT::Int {
                 signed: false,
-                width: 1,
-            } => Doc::text("bool"),
-            TypeT::Int { signed, width } => {
-                // TODO
-                Doc::text("Int.t")
-            }
+                width,
+            } => Doc::text(format!("UInt{}.t", width)),
+            TypeT::Int {
+                signed: true,
+                width,
+            } => Doc::text(format!("Int{}.t", width)),
+
+            TypeT::Bool => Doc::text("bool"),
             TypeT::SizeT => Doc::text("SizeT.t"),
+
             TypeT::Pointer {
                 to,
                 kind: PointerKind::Array,
@@ -152,21 +157,10 @@ fn binop(a: Doc, op: Doc, b: Doc) -> Doc {
 fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
     annotated(v, {
         match &v.val {
+            RValueT::BoolLit(v) => Doc::text(if *v { "true" } else { "false" }),
             RValueT::IntLit { val, ty } => {
-                match &ty.val {
-                    TypeT::Int {
-                        signed: false,
-                        width: 1,
-                    } => Doc::text(if **val == BigInt::ZERO {
-                        "false"
-                    } else {
-                        "true"
-                    }),
-                    _ => {
-                        // TODO
-                        Doc::text(val.to_string())
-                    }
-                }
+                // TODO
+                Doc::text(val.to_string())
             }
             RValueT::LValue(v) => parens(Doc::text("!").append(emit_lvalue(env, v))),
             RValueT::Ref(v) => emit_lvalue(env, v),

@@ -78,6 +78,7 @@ impl Env {
             RValueT::Error(ty) => Some(ty.clone()),
             RValueT::InlinePulse { val: _, ty } => Some(ty.clone()),
             RValueT::BinOp(_, lhs, _) => self.infer_rvalue(lhs),
+            RValueT::BoolLit(_) => Some(TypeT::Bool.with_loc(rvalue.loc.clone())),
         }
     }
 

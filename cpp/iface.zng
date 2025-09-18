@@ -125,6 +125,7 @@ mod crate::clang {
     fn mk_none_sourceinfo() -> Rc<SourceInfo>;
 
     fn mk_void_type(Rc<SourceInfo>) -> Rc<Type>;
+    fn mk_bool_type(Rc<SourceInfo>) -> Rc<Type>;
     fn mk_int_type(Rc<SourceInfo>, bool, u32) -> Rc<Type>;
     fn mk_sizet(Rc<SourceInfo>) -> Rc<Type>;
     fn mk_pointer_unknown(Rc<SourceInfo>, Rc<Type>) -> Rc<Type>;
@@ -132,6 +133,7 @@ mod crate::clang {
 
     fn mk_bigint(&str) -> Rc<BigInt>;
 
+    fn mk_bool_lit(Rc<SourceInfo>, bool) -> Rc<RValue>;
     fn mk_int_lit(Rc<SourceInfo>, Rc<BigInt>, Rc<Type>) -> Rc<RValue>;
     fn mk_rvalue_lvalue(Rc<SourceInfo>, Rc<LValue>) -> Rc<RValue>;
     fn mk_rvalue_ref(Rc<SourceInfo>, Rc<LValue>) -> Rc<RValue>;

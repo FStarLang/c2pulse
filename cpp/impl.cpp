@@ -165,6 +165,9 @@ public:
     if (t->isVoidType()) {
       return mk_void_type(std::move(loc));
     }
+    if (isBoolType(t)) {
+      return mk_bool_type(std::move(loc));
+    }
     if (t->isSignedIntegerType() || t->isUnsignedIntegerType()) {
       bool isSigned = t->isSignedIntegerType();
       unsigned width = astCtx->getIntWidth(t);
@@ -173,6 +176,10 @@ public:
 
     reportUnsupported(range, loc, "unsupported type"_rs);
     return mk_type_err(std::move(loc));
+  }
+
+  bool isBoolType(QualType t) {
+    return t->isUnsignedIntegerType() && astCtx->getIntWidth(t) == 1;
   }
 
   Rc<ir::LValue> trLValue(Expr *e) {
@@ -223,9 +230,13 @@ public:
         // continue to error case
       }
     } else if (auto il = dyn_cast<IntegerLiteral>(e)) {
-      auto ty = trQualType(il->getType(), il->getSourceRange());
-      return mk_int_lit(std::move(loc), toBigInt(il->getValue()),
-                        std::move(ty));
+      if (isBoolType(il->getType())) {
+        return mk_bool_lit(std::move(loc), !il->getValue().isZero());
+      } else {
+        auto ty = trQualType(il->getType(), il->getSourceRange());
+        return mk_int_lit(std::move(loc), toBigInt(il->getValue()),
+                          std::move(ty));
+      }
     } else if (auto uo = dyn_cast<UnaryOperator>(e)) {
       switch (uo->getOpcode()) {
       case UO_AddrOf:

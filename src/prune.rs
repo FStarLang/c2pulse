@@ -83,6 +83,7 @@ fn scan_type(deps: &mut HashSet<DeclName>, ty: &Type) {
         TypeT::Error => {}
         TypeT::Void => {}
         TypeT::SLProp => {}
+        TypeT::Bool => {}
     }
 }
 
@@ -115,6 +116,7 @@ fn scan_rvalue(deps: &mut HashSet<DeclName>, rv: &RValue) {
                 scan_rvalue(deps, arg)
             }
         }
+        RValueT::BoolLit(_) => {}
     }
 }
 
