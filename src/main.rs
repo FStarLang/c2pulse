@@ -18,4 +18,7 @@ fn main() {
     println!("{:#?}", tu);
     println!("{}", pulse_code);
     diags.print_to_stderr();
+    if diags.has_errors() {
+        std::process::exit(1)
+    }
 }
