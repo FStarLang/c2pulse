@@ -7,10 +7,22 @@ struct Globals {
     structs: HashMap<Rc<str>, StructDefn>,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum LocalDeclKind {
+    LValue,
+    RValue,
+}
+
+#[derive(Clone, Debug)]
+pub struct LocalDecl {
+    pub ty: Rc<Type>,
+    pub kind: LocalDeclKind,
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct Env {
     globals: Rc<Globals>,
-    locals: HashMap<Rc<str>, Rc<Type>>,
+    locals: HashMap<Rc<str>, LocalDecl>,
 }
 
 impl Env {
@@ -39,24 +51,40 @@ impl Env {
         }
     }
 
-    pub fn push_var_decl(&mut self, ident: &Ident, ty: Rc<Type>) {
-        self.locals.insert(ident.val.clone(), ty);
+    pub fn push_var_decl(&mut self, ident: &Ident, ty: Rc<Type>, is_rvalue: LocalDeclKind) {
+        self.locals.insert(
+            ident.val.clone(),
+            LocalDecl {
+                ty,
+                kind: is_rvalue,
+            },
+        );
     }
 
-    pub fn push_arg(&mut self, arg: &FnArg) {
+    pub fn push_arg(&mut self, arg: &FnArg, is_rvalue: LocalDeclKind) {
         match arg {
-            (Some(n), ty) => self.push_var_decl(n, ty.clone()),
+            (Some(n), ty) => self.push_var_decl(n, ty.clone(), is_rvalue),
             (None, _) => {}
         }
     }
 
-    pub fn lookup_var(&self, ident: &Ident) -> Option<&Rc<Type>> {
+    pub fn push_fn_decl_args_for_body(&mut self, decl: &FnDecl) {
+        for arg in &decl.args {
+            self.push_arg(arg, LocalDeclKind::LValue);
+        }
+    }
+
+    pub fn lookup_var(&self, ident: &Ident) -> Option<&LocalDecl> {
         self.locals.get(&ident.val)
+    }
+
+    pub fn lookup_var_type(&self, ident: &Ident) -> Option<&Rc<Type>> {
+        self.lookup_var(ident).map(|decl| &decl.ty)
     }
 
     pub fn push_stmt(&mut self, stmt: &Stmt) {
         match &stmt.val {
-            StmtT::Decl(ident, ty) => self.push_var_decl(ident, ty.clone()),
+            StmtT::Decl(ident, ty) => self.push_var_decl(ident, ty.clone(), LocalDeclKind::LValue),
             _ => {}
         }
     }
@@ -84,7 +112,7 @@ impl Env {
 
     pub fn infer_lvalue(&self, lvalue: &LValue) -> Option<Rc<Type>> {
         match &lvalue.val {
-            LValueT::Var(ident) => Some(self.lookup_var(ident)?.clone()),
+            LValueT::Var(ident) => Some(self.lookup_var_type(ident)?.clone()),
             LValueT::Deref(x) => {
                 let x_ty = self.infer_rvalue(x)?;
                 match &x_ty.val {

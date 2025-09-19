@@ -3,7 +3,10 @@ use std::rc::Rc;
 use num_bigint::BigInt;
 use pretty::{RcDoc, Render, RenderAnnotated};
 
-use crate::{env::Env, ir::*};
+use crate::{
+    env::{Env, LocalDecl, LocalDeclKind},
+    ir::*,
+};
 
 pub type SourceRangeMap = Vec<(Location, Range)>;
 
@@ -134,10 +137,24 @@ fn emit_type(env: &Env, ty: &Type) -> Doc {
     })
 }
 
+fn emit_var(v: &Ident) -> Doc {
+    annotated(v, Doc::text(v.val.to_string()))
+}
+
 fn emit_lvalue(env: &Env, v: &LValue) -> Doc {
     annotated(v, {
         match &v.val {
-            LValueT::Var(x) => Doc::text(x.val.to_string()),
+            LValueT::Var(x) => {
+                if let Some(LocalDecl {
+                    kind: LocalDeclKind::RValue,
+                    ..
+                }) = env.lookup_var(x)
+                {
+                    panic!("illegal lvalue reference to variable {:?}", v)
+                } else {
+                    emit_var(x)
+                }
+            }
             LValueT::Deref(v) => emit_rvalue(env, v),
             LValueT::Error(_ty) => Doc::text("(admit())"),
         }
@@ -162,7 +179,18 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
                 // TODO
                 Doc::text(val.to_string())
             }
-            RValueT::LValue(v) => parens(Doc::text("!").append(emit_lvalue(env, v))),
+            RValueT::LValue(v) => {
+                if let LValueT::Var(x) = &v.val
+                    && let Some(LocalDecl {
+                        kind: LocalDeclKind::RValue,
+                        ..
+                    }) = env.lookup_var(&x)
+                {
+                    emit_var(x)
+                } else {
+                    parens(Doc::text("!").append(emit_lvalue(env, v)))
+                }
+            }
             RValueT::Ref(v) => emit_lvalue(env, v),
             RValueT::Cast { val, ty } => Doc::text("(*TODO cast*)").append(emit_rvalue(env, val)),
             RValueT::Error(_ty) => Doc::text("(admit())"),
@@ -270,7 +298,7 @@ fn emit_block(env: &Env, stmts: &Vec<Rc<Stmt>>) -> Doc {
 }
 
 fn emit_fn_decl(
-    env: &mut Env,
+    env: &Env,
     FnDecl {
         name,
         ret_type,
@@ -279,6 +307,7 @@ fn emit_fn_decl(
         ensures,
     }: &FnDecl,
 ) -> Doc {
+    let env = &mut env.clone();
     Doc::group(
         Doc::text("fn")
             .append(Doc::line())
@@ -295,7 +324,7 @@ fn emit_fn_decl(
                 .append(Doc::line())
                 .append(emit_type(env, ty)),
             ));
-            env.push_arg(arg);
+            env.push_arg(arg, LocalDeclKind::RValue);
             doc
         }))
         .nest(2),
@@ -344,30 +373,24 @@ fn emit_decl(env: &Env, decl: &Decl) -> Doc {
     annotated(decl, {
         match &decl.val {
             DeclT::FnDefn(FnDefn { decl, body }) => {
+                let decl_doc = emit_fn_decl(env, decl).nest(2).append(Doc::hardline());
+                let arg_redecl_as_mut = Doc::concat(decl.args.iter().filter_map(|(n, _)| {
+                    n.as_ref().map(|n| {
+                        Doc::line().append(annotated(
+                            n,
+                            Doc::group(
+                                Doc::text("let mut ")
+                                    .append(n.val.to_string())
+                                    .append(" = ")
+                                    .append(n.val.to_string())
+                                    .append(";"),
+                            ),
+                        ))
+                    })
+                }));
                 let env = &mut env.clone();
-                emit_fn_decl(env, decl)
-                    .nest(2)
-                    .append(Doc::hardline())
-                    .append(
-                        block(
-                            Doc::concat(decl.args.iter().filter_map(|(n, _)| {
-                                n.as_ref().map(|n| {
-                                    Doc::line().append(annotated(
-                                        n,
-                                        Doc::group(
-                                            Doc::text("let mut ")
-                                                .append(n.val.to_string())
-                                                .append(" = ")
-                                                .append(n.val.to_string())
-                                                .append(";"),
-                                        ),
-                                    ))
-                                })
-                            }))
-                            .append(emit_stmts(env, body)),
-                        )
-                        .group(),
-                    )
+                env.push_fn_decl_args_for_body(decl);
+                decl_doc.append(block(arg_redecl_as_mut.append(emit_stmts(env, body))).group())
             }
             DeclT::FnDecl(fn_decl) => emit_fn_decl(&mut env.clone(), fn_decl),
             DeclT::StructDefn(struct_defn) => todo(),

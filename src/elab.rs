@@ -1,4 +1,4 @@
-use crate::env::Env;
+use crate::env::{Env, LocalDeclKind};
 use crate::ir::*;
 use std::rc::Rc;
 
@@ -121,7 +121,7 @@ fn elab_slprops(env: &Env, slprops: &mut Vec<Rc<RValue>>) {
 }
 
 fn elab_fn_decl(
-    env: &mut Env,
+    env: &Env,
     FnDecl {
         name: _,
         ret_type,
@@ -130,10 +130,11 @@ fn elab_fn_decl(
         ensures,
     }: &mut FnDecl,
 ) {
+    let env = &mut env.clone();
     for arg in args {
         let (_, ty) = arg;
         elab_type(env, Rc::make_mut(ty));
-        env.push_arg(arg);
+        env.push_arg(arg, LocalDeclKind::RValue);
     }
     elab_type(env, Rc::make_mut(ret_type));
     elab_slprops(env, requires);
@@ -144,11 +145,12 @@ fn elab_decl(env: &Env, decl: &mut Decl) {
     // TODO: check double definition of functions
     match &mut decl.val {
         DeclT::FnDefn(FnDefn { decl, body }) => {
-            let env = &mut env.clone();
             elab_fn_decl(env, decl);
+            let env = &mut env.clone();
+            env.push_fn_decl_args_for_body(decl);
             elab_stmts(env, body);
         }
-        DeclT::FnDecl(fn_decl) => elab_fn_decl(&mut env.clone(), fn_decl),
+        DeclT::FnDecl(fn_decl) => elab_fn_decl(env, fn_decl),
         DeclT::StructDefn(StructDefn { name: _, fields }) => {
             for (_n, ty) in fields {
                 elab_type(env, Rc::make_mut(ty))
