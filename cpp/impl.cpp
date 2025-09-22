@@ -213,6 +213,7 @@ public:
         return mk_rvalue_lvalue(std::move(loc), trLValue(ic->getSubExpr()));
 
       case CK_IntegralCast:
+      case CK_IntegralToBoolean:
         return mk_rvalue_cast(std::move(loc), trRValue(ic->getSubExpr()),
                               trQualType(ic->getType(), ic->getSourceRange()));
 
