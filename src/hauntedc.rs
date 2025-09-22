@@ -354,7 +354,7 @@ where
         });
 
         let integer_constant = select! { Token { tok: CoreToken::Integer(i, suf), .. } => (i,suf)}
-            .try_map(|(i, suf), span| {
+            .try_map(|(i, _suf), span| {
                 match BigInt::from_str(i) {
                     Ok(i) => {
                         let loc = sift.resolve_source_info(&span);

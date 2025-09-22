@@ -321,10 +321,18 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
     annotated(v, {
         match &v.val {
             RValueT::BoolLit(v) => Doc::text(if *v { "true" } else { "false" }),
-            RValueT::IntLit { val, ty } => {
-                // TODO
-                Doc::text(val.to_string())
-            }
+            RValueT::IntLit { val, ty } => match ty.val {
+                TypeT::Int {
+                    signed: true,
+                    width,
+                } => Doc::text(format!("(Int{}.int_to_t {})", width, val)),
+                TypeT::Int {
+                    signed: false,
+                    width,
+                } => Doc::text(format!("(UInt{}.uint_to_t {})", width, val)),
+                TypeT::SizeT => Doc::text(format!("{}sz", val)),
+                _ => Doc::text(format!("(*unsupported integer literal*){}", val)),
+            },
             RValueT::LValue(v) => {
                 if let LValueT::Var(x) = &v.val
                     && let Some(LocalDecl {
@@ -602,7 +610,7 @@ fn emit_decl(env: &Env, decl: &Decl) -> Doc {
                 decl_doc.append(block(arg_redecl_as_mut.append(emit_stmts(env, body))).group())
             }
             DeclT::FnDecl(fn_decl) => emit_fn_decl(&mut env.clone(), fn_decl),
-            DeclT::StructDefn(struct_defn) => todo(),
+            DeclT::StructDefn(_struct_defn) => todo(),
             DeclT::IncludeDecl(include_decl) => emit_inline_code(&include_decl.code),
         }
     })
