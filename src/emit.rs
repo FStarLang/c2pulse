@@ -97,6 +97,10 @@ fn parens(doc: Doc) -> Doc {
         .group()
 }
 
+fn unaryfn(f: Doc, arg: Doc) -> Doc {
+    parens(f.append(Doc::line()).append(arg))
+}
+
 fn emit_type(env: &Env, ty: &Type) -> Doc {
     annotated(ty, {
         match &ty.val {
@@ -118,19 +122,11 @@ fn emit_type(env: &Env, ty: &Type) -> Doc {
             TypeT::Pointer {
                 to,
                 kind: PointerKind::Array,
-            } => parens(
-                Doc::text("array")
-                    .append(Doc::line())
-                    .append(emit_type(env, to)),
-            ),
+            } => unaryfn(Doc::text("array"), emit_type(env, to)),
             TypeT::Pointer {
                 to,
                 kind: PointerKind::Ref | PointerKind::Unknown,
-            } => parens(
-                Doc::text("ref")
-                    .append(Doc::line())
-                    .append(emit_type(env, to)),
-            ),
+            } => unaryfn(Doc::text("ref"), emit_type(env, to)),
             TypeT::Error => Doc::text("unit"),
             TypeT::SLProp => Doc::text("slprop"),
         }
@@ -192,9 +188,48 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
                 }
             }
             RValueT::Ref(v) => emit_lvalue(env, v),
-            RValueT::Cast { val, ty } => Doc::text("(*TODO cast*)").append(emit_rvalue(env, val)),
+            RValueT::Cast { val, ty } => {
+                let val_doc = emit_rvalue(env, val);
+                let val_ty = env.infer_rvalue(val).unwrap();
+                match (&val_ty.val, &ty.val) {
+                    (TypeT::Void, TypeT::Void) => val_doc,
+                    (TypeT::Bool, TypeT::Bool) => val_doc,
+                    // (TypeT::Bool, TypeT::Int { signed, width }) => todo!(),
+                    // (TypeT::Bool, TypeT::SizeT) => todo!(),
+                    (TypeT::Bool, TypeT::SLProp) => unaryfn(Doc::text("pure"), val_doc),
+                    // (TypeT::Int { signed, width }, TypeT::Bool) => todo!(),
+                    (
+                        TypeT::Int {
+                            signed: s1,
+                            width: w1,
+                        },
+                        TypeT::Int {
+                            signed: s2,
+                            width: w2,
+                        },
+                    ) if s1 == s2 && w1 == w2 => val_doc,
+                    // (TypeT::Int { signed:s1, width:w1 }, TypeT::Int { signed:s2, width:w2 }) => todo!(),
+                    // (TypeT::Int { signed, width }, TypeT::SizeT) => todo!(),
+                    // (TypeT::Int { signed, width }, TypeT::SLProp) => todo!(),
+                    // (TypeT::SizeT, TypeT::Bool) => todo!(),
+                    // (TypeT::SizeT, TypeT::Int { signed, width }) => todo!(),
+                    (TypeT::SizeT, TypeT::SizeT) => val_doc,
+                    // (TypeT::SizeT, TypeT::SLProp) => todo!(),
+                    // (TypeT::Pointer { to, kind }, TypeT::Bool) => todo!(),
+                    // (TypeT::Pointer { to, kind }, TypeT::SizeT) => todo!(),
+                    (TypeT::Pointer { to: t1, kind: k1 }, TypeT::Pointer { to: t2, kind: k2 })
+                        if t1 == t2 && k1 == k2 =>
+                    {
+                        val_doc
+                    }
+                    // (TypeT::Pointer { to:t1, kind:k1 }, TypeT::Pointer { to:t2, kind:k2 }) if t1 == t2 => todo!(),
+                    // (TypeT::Pointer { to, kind }, TypeT::SLProp) => todo!(),
+                    (TypeT::Error, _) | (_, TypeT::Error) => val_doc,
+                    _ => Doc::text("(*TODO unsupported cast*)").append(val_doc),
+                }
+            }
             RValueT::Error(_ty) => Doc::text("(admit())"),
-            RValueT::InlinePulse { val, ty } => parens(Doc::concat(val.tokens.iter().map(|tok| {
+            RValueT::InlinePulse { val, ty:_ } => parens(Doc::concat(val.tokens.iter().map(|tok| {
                 Doc::text(tok.before)
                     .append(annotated(&tok.text, Doc::text(tok.text.val.to_string())))
             }))),

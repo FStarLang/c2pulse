@@ -44,6 +44,24 @@ fn elab_lvalue(env: &Env, lval: &mut LValue, expected_type: Option<Rc<Type>>) {
     }
 }
 
+fn cast_to(rval: &mut Rc<RValue>, ty: Rc<Type>) {
+    *rval = RValueT::Cast {
+        val: rval.clone(),
+        ty,
+    }
+    .with_loc(rval.loc.clone())
+}
+
+fn cast_to_slprop(env: &Env, rval: &mut Rc<RValue>) {
+    if !env.is_slprop(&env.infer_rvalue(rval).unwrap()) {
+        *rval = RValueT::Cast {
+            val: rval.clone(),
+            ty: TypeT::SLProp.with_loc(rval.loc.clone()),
+        }
+        .with_loc(rval.loc.clone())
+    }
+}
+
 fn elab_rvalue(env: &Env, rval: &mut RValue, expected_type: Option<Rc<Type>>) {
     match &mut rval.val {
         RValueT::IntLit { val: _, ty } => elab_type(env, Rc::make_mut(ty)),
@@ -74,7 +92,38 @@ fn elab_rvalue(env: &Env, rval: &mut RValue, expected_type: Option<Rc<Type>>) {
         RValueT::BinOp(bin_op, lhs, rhs) => {
             elab_rvalue(env, Rc::make_mut(lhs), expected_type.clone());
             elab_rvalue(env, Rc::make_mut(rhs), expected_type);
-            // TODO: widen and insert casts
+            match (env.infer_rvalue(lhs), env.infer_rvalue(rhs)) {
+                (Some(lhs_ty), Some(rhs_ty)) => {
+                    let lhs_to_rhs = env.implicitly_converts_to(&lhs_ty, &rhs_ty);
+                    let rhs_to_lhs = env.implicitly_converts_to(&rhs_ty, &lhs_ty);
+                    match bin_op {
+                        BinOp::Eq => {
+                            match (lhs_to_rhs, rhs_to_lhs) {
+                                (true, true) => {}
+                                (true, false) => cast_to(lhs, rhs_ty),
+                                (false, true) => cast_to(rhs, lhs_ty),
+                                (false, false) => {
+                                    // TODO: produce error
+                                }
+                            }
+                        }
+                        BinOp::LogAnd => match (env.is_slprop(&lhs_ty), env.is_slprop(&rhs_ty)) {
+                            (true, true) => {}
+                            (true, false) => cast_to(rhs, lhs_ty),
+                            (false, true) => cast_to(lhs, rhs_ty),
+                            (false, false) => {
+                                if !env.is_bool(&lhs_ty) {
+                                    cast_to(lhs, TypeT::Bool.with_loc(rval.loc.clone()))
+                                }
+                                if !env.is_bool(&rhs_ty) {
+                                    cast_to(rhs, TypeT::Bool.with_loc(rval.loc.clone()))
+                                }
+                            }
+                        },
+                    }
+                }
+                (_, _) => {} // TODO: produce error
+            }
         }
         RValueT::BoolLit(_) => {}
     }
@@ -117,6 +166,7 @@ fn elab_slprops(env: &Env, slprops: &mut Vec<Rc<RValue>>) {
     for p in slprops {
         let expected_type = TypeT::SLProp.with_loc(p.loc.clone());
         elab_rvalue(env, Rc::make_mut(p), Some(expected_type));
+        cast_to_slprop(env, p);
     }
 }
 

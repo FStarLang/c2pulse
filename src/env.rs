@@ -105,7 +105,8 @@ impl Env {
             RValueT::Cast { val: _, ty } => Some(ty.clone()),
             RValueT::Error(ty) => Some(ty.clone()),
             RValueT::InlinePulse { val: _, ty } => Some(ty.clone()),
-            RValueT::BinOp(_, lhs, _) => self.infer_rvalue(lhs),
+            RValueT::BinOp(BinOp::Eq, _, _) => Some(TypeT::Bool.with_loc(rvalue.loc.clone())),
+            RValueT::BinOp(BinOp::LogAnd, lhs, _) => self.infer_rvalue(lhs),
             RValueT::BoolLit(_) => Some(TypeT::Bool.with_loc(rvalue.loc.clone())),
         }
     }
@@ -121,6 +122,44 @@ impl Env {
                 }
             }
             LValueT::Error(ty) => Some(ty.clone()),
+        }
+    }
+
+    pub fn implicitly_converts_to(&self, a: &Type, b: &Type) -> bool {
+        match (&a.val, &b.val) {
+            (TypeT::Error, _) => true,
+            (TypeT::Void, TypeT::Void) => true,
+            (TypeT::Bool, TypeT::Bool) => true,
+            (TypeT::Bool, TypeT::Int { .. }) => true,
+            (TypeT::Bool, TypeT::SizeT) => true,
+            (TypeT::Bool, TypeT::SLProp) => true,
+            (
+                TypeT::Int {
+                    signed: s1,
+                    width: w1,
+                },
+                TypeT::Int {
+                    signed: _,
+                    width: w2,
+                },
+            ) => w2 > w1 || (w1 == w2 && !s1),
+            (TypeT::Int { .. }, TypeT::SizeT) => true,
+            (TypeT::SizeT, TypeT::SizeT) => true,
+            (TypeT::Pointer { .. }, TypeT::Pointer { .. }) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_bool(&self, a: &Type) -> bool {
+        match &a.val {
+            TypeT::Bool => true,
+            _ => false,
+        }
+    }
+    pub fn is_slprop(&self, a: &Type) -> bool {
+        match &a.val {
+            TypeT::SLProp => true,
+            _ => false,
         }
     }
 }
