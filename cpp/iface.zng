@@ -18,6 +18,7 @@ use crate::ir::Type as Type;
 use crate::ir::Stmt as Stmt;
 use crate::ir::LValue as LValue;
 use crate::ir::RValue as RValue;
+use crate::ir::BinOp as BinOp;
 use crate::hauntedc::SnippetMap as SnippetMap;
 
 type Rc<str> {
@@ -73,6 +74,17 @@ mod crate::ir {
         #layout(size=8, align=8);
         fn deref(&self) -> &Ident;
         fn clone(&self) -> Rc<Ident>;
+    }
+
+    type BinOp {
+        #layout(size=1, align=1);
+        constructor Eq;
+        constructor LogAnd;
+        constructor Mul;
+        constructor Div;
+        constructor Mod;
+        constructor Add;
+        constructor Sub;
     }
 }
 
@@ -138,6 +150,7 @@ mod crate::clang {
     fn mk_rvalue_lvalue(Rc<SourceInfo>, Rc<LValue>) -> Rc<RValue>;
     fn mk_rvalue_ref(Rc<SourceInfo>, Rc<LValue>) -> Rc<RValue>;
     fn mk_rvalue_cast(Rc<SourceInfo>, Rc<RValue>, Rc<Type>) -> Rc<RValue>;
+    fn mk_rvalue_binop(Rc<SourceInfo>, BinOp, Rc<RValue>, Rc<RValue>) -> Rc<RValue>;
     fn mk_cast(Rc<SourceInfo>, Rc<RValue>, Rc<Type>) -> Rc<RValue>;
     fn mk_rvalue_err(Rc<SourceInfo>, Rc<Type>) -> Rc<RValue>;
 

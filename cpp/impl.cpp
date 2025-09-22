@@ -245,6 +245,28 @@ public:
       default:;
         // continue to error case
       }
+    } else if (auto *bo = dyn_cast<BinaryOperator>(e)) {
+      auto m = [&](ir::BinOp op) {
+        return mk_rvalue_binop(std::move(loc), std::move(op),
+                               trRValue(bo->getLHS()), trRValue(bo->getRHS()));
+      };
+      switch (bo->getOpcode()) {
+      case clang::BO_Add:
+        return m(ir::BinOp::Add());
+      case clang::BO_Sub:
+        return m(ir::BinOp::Sub());
+      case clang::BO_Mul:
+        return m(ir::BinOp::Mul());
+      case clang::BO_Div:
+        return m(ir::BinOp::Div());
+      case clang::BO_LAnd:
+        return m(ir::BinOp::LogAnd());
+      case clang::BO_EQ:
+        return m(ir::BinOp::Eq());
+
+      default:;
+        // continue to error case
+      }
     }
 
     reportUnsupported(e->getSourceRange(), loc,
