@@ -1,6 +1,5 @@
 use std::rc::Rc;
 
-use num_bigint::BigInt;
 use pretty::{RcDoc, Render, RenderAnnotated};
 
 use crate::{
@@ -167,37 +166,62 @@ fn binop(a: Doc, op: Doc, b: Doc) -> Doc {
     )
 }
 
+fn get_int_mod(signed: &bool, width: &u32) -> Option<&'static str> {
+    Some(match (signed, width) {
+        (false, 8) => "UInt8",
+        (false, 16) => "UInt16",
+        (false, 32) => "UInt32",
+        (false, 64) => "UInt64",
+
+        (true, 8) => "Int8",
+        (true, 16) => "Int16",
+        (true, 32) => "Int32",
+        (true, 64) => "Int64",
+
+        _ => return None,
+    })
+}
+
 fn emit_binop(op: BinOp, ty: &Type) -> Option<Doc> {
     Some(match (op, &ty.val) {
         (BinOp::Eq, TypeT::SLProp | TypeT::Void) => Doc::text("=="),
         (BinOp::Eq, TypeT::Bool | TypeT::Int { .. } | TypeT::SizeT | TypeT::Pointer { .. }) => {
             Doc::text("=")
         }
+
         (BinOp::LogAnd, TypeT::Bool) => Doc::text("&&"),
-        (BinOp::LogAnd, TypeT::SLProp) => Doc::text("**"),
-        (BinOp::Mul, TypeT::Bool) => Doc::text("&&"),
-        (BinOp::Mul, TypeT::Int { signed, width }) => todo!(),
-        (BinOp::Mul, TypeT::SizeT) => Doc::text("`SizeT.mul`"),
-        (BinOp::Div, TypeT::Int { signed, width }) => todo!(),
-        (BinOp::Div, TypeT::SizeT) => todo!(),
-        (BinOp::Div, TypeT::Pointer { to, kind }) => todo!(),
         (BinOp::Div, TypeT::Bool) => todo!(),
         (BinOp::Mod, TypeT::Bool) => todo!(),
-        (BinOp::Mod, TypeT::Int { signed, width }) => todo!(),
-        (BinOp::Mod, TypeT::SizeT) => Doc::text("`SizeT.mod`"),
-        (BinOp::Mod, TypeT::Pointer { to, kind }) => todo!(),
-        (BinOp::Add, TypeT::Bool) => todo!(),
-        (BinOp::Add, TypeT::Int { signed, width }) => todo!(),
-        (BinOp::Add, TypeT::SizeT) => todo!(),
-        (BinOp::Add, TypeT::Pointer { to, kind }) => todo!(),
         (BinOp::Sub, TypeT::Bool) => todo!(),
-        (BinOp::Sub, TypeT::Int { signed, width }) => todo!(),
-        (BinOp::Sub, TypeT::SizeT) => todo!(),
-        (BinOp::Sub, TypeT::Pointer { to, kind }) => todo!(),
-        (BinOp::Sub, TypeT::Error) => todo!(),
-        (_, TypeT::Void)
+        (BinOp::Add, TypeT::Bool) => todo!(),
+        (BinOp::Mul, TypeT::Bool) => Doc::text("&&"),
+
+        (BinOp::LogAnd, TypeT::SLProp) => Doc::text("**"),
+
+        (BinOp::Mul, TypeT::Int { signed, width }) => {
+            Doc::text(format!("`{}.mul`", get_int_mod(signed, width)?))
+        }
+        (BinOp::Mul, TypeT::SizeT) => Doc::text("`SizeT.mul`"),
+        (BinOp::Div, TypeT::Int { signed, width }) => {
+            Doc::text(format!("`{}.div`", get_int_mod(signed, width)?))
+        }
+        (BinOp::Div, TypeT::SizeT) => Doc::text("`SizeT.div`"),
+        (BinOp::Mod, TypeT::Int { signed, width }) => {
+            Doc::text(format!("`{}.mod`", get_int_mod(signed, width)?))
+        }
+        (BinOp::Mod, TypeT::SizeT) => Doc::text("`SizeT.mod`"),
+        (BinOp::Add, TypeT::Int { signed, width }) => {
+            Doc::text(format!("`{}.add`", get_int_mod(signed, width)?))
+        }
+        (BinOp::Add, TypeT::SizeT) => Doc::text("`SizeT.add`"),
+        (BinOp::Sub, TypeT::Int { signed, width }) => {
+            Doc::text(format!("`{}.sub`", get_int_mod(signed, width)?))
+        }
+        (BinOp::Sub, TypeT::SizeT) => Doc::text("`SizeT.sub`"),
+
+        (BinOp::Mul | BinOp::Div | BinOp::Mod | BinOp::Add | BinOp::Sub, TypeT::Pointer { .. })
+        | (_, TypeT::Void)
         | (BinOp::LogAnd, TypeT::Int { .. } | TypeT::SizeT | TypeT::Pointer { .. })
-        | (BinOp::Mul, TypeT::Pointer { .. })
         | (_, TypeT::SLProp)
         | (_, TypeT::Error) => return None,
     })
@@ -298,7 +322,7 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
                     binop(emit_rvalue(env, lhs), op, emit_rvalue(env, rhs))
                 } else {
                     // TODO: error
-                    Doc::text("(*unsupported mul*)(admit())")
+                    Doc::text("(*unsupported binop*)(admit())")
                 }
             }
             RValueT::FnCall(f, args) => parens(
