@@ -118,14 +118,12 @@ fn emit_type(env: &Env, ty: &Type) -> Doc {
             TypeT::Bool => Doc::text("bool"),
             TypeT::SizeT => Doc::text("SizeT.t"),
 
-            TypeT::Pointer {
-                to,
-                kind: PointerKind::Array,
-            } => unaryfn(Doc::text("array"), emit_type(env, to)),
-            TypeT::Pointer {
-                to,
-                kind: PointerKind::Ref | PointerKind::Unknown,
-            } => unaryfn(Doc::text("ref"), emit_type(env, to)),
+            TypeT::Pointer(to, PointerKind::Array) => {
+                unaryfn(Doc::text("array"), emit_type(env, to))
+            }
+            TypeT::Pointer(to, PointerKind::Ref | PointerKind::Unknown) => {
+                unaryfn(Doc::text("ref"), emit_type(env, to))
+            }
             TypeT::Error => Doc::text("unit"),
             TypeT::SLProp => Doc::text("slprop"),
 
@@ -152,7 +150,7 @@ fn subst_this_lvalue(lvalue: &mut LValue, this: &Rc<Ident>) {
 fn subst_this_rvalue(rvalue: &mut RValue, this: &Rc<Ident>) {
     match &mut rvalue.val {
         RValueT::BoolLit(_) => {}
-        RValueT::IntLit { .. } => {}
+        RValueT::IntLit(..) => {}
         RValueT::LValue(lv) | RValueT::Ref(lv) => subst_this_lvalue(Rc::make_mut(lv), this),
         RValueT::BinOp(_, lhs, rhs) => {
             subst_this_rvalue(Rc::make_mut(lhs), this);
@@ -163,10 +161,10 @@ fn subst_this_rvalue(rvalue: &mut RValue, this: &Rc<Ident>) {
                 subst_this_rvalue(Rc::make_mut(arg), this);
             }
         }
-        RValueT::Cast { val, ty: _ } => {
+        RValueT::Cast(val, _) => {
             subst_this_rvalue(Rc::make_mut(val), this);
         }
-        RValueT::InlinePulse { val, ty: _ } => subst_inline_code_this(Rc::make_mut(val), this),
+        RValueT::InlinePulse(val, _) => subst_inline_code_this(Rc::make_mut(val), this),
         RValueT::Error(_ty) => {}
     }
 }
@@ -189,7 +187,7 @@ fn emit_type_slprop(
 ) {
     match &ty.val {
         TypeT::Void | TypeT::Bool | TypeT::Int { .. } | TypeT::SizeT | TypeT::SLProp => {}
-        TypeT::Pointer { to: _, kind: _ } => {
+        TypeT::Pointer(..) => {
             let live = annotated(
                 ty,
                 unaryfn(Doc::text("live"), Doc::text(this.val.to_string())),
@@ -270,7 +268,7 @@ fn get_int_mod(signed: &bool, width: &u32) -> Option<&'static str> {
 fn emit_binop(op: BinOp, ty: &Type) -> Option<Doc> {
     Some(match (op, &ty.val) {
         (BinOp::Eq, TypeT::SLProp | TypeT::Void) => Doc::text("=="),
-        (BinOp::Eq, TypeT::Bool | TypeT::Int { .. } | TypeT::SizeT | TypeT::Pointer { .. }) => {
+        (BinOp::Eq, TypeT::Bool | TypeT::Int { .. } | TypeT::SizeT | TypeT::Pointer(_, _)) => {
             Doc::text("=")
         }
 
@@ -309,9 +307,9 @@ fn emit_binop(op: BinOp, ty: &Type) -> Option<Doc> {
             TypeT::Requires(ty, _) | TypeT::Ensures(ty, _) | TypeT::Consumes(ty) | TypeT::Plain(ty),
         ) => emit_binop(op, ty)?,
 
-        (BinOp::Mul | BinOp::Div | BinOp::Mod | BinOp::Add | BinOp::Sub, TypeT::Pointer { .. })
+        (BinOp::Mul | BinOp::Div | BinOp::Mod | BinOp::Add | BinOp::Sub, TypeT::Pointer(..))
         | (_, TypeT::Void)
-        | (BinOp::LogAnd, TypeT::Int { .. } | TypeT::SizeT | TypeT::Pointer { .. })
+        | (BinOp::LogAnd, TypeT::Int { .. } | TypeT::SizeT | TypeT::Pointer(..))
         | (_, TypeT::SLProp)
         | (_, TypeT::Error) => return None,
     })
@@ -321,7 +319,7 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
     annotated(v, {
         match &v.val {
             RValueT::BoolLit(v) => Doc::text(if *v { "true" } else { "false" }),
-            RValueT::IntLit { val, ty } => match ty.val {
+            RValueT::IntLit(val, ty) => match ty.val {
                 TypeT::Int {
                     signed: true,
                     width,
@@ -346,7 +344,7 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
                 }
             }
             RValueT::Ref(v) => emit_lvalue(env, v),
-            RValueT::Cast { val, ty } => {
+            RValueT::Cast(val, ty) => {
                 let val_doc = emit_rvalue(env, val);
                 let val_ty = env.infer_rvalue(val).unwrap();
                 match (&val_ty.val, &ty.val) {
@@ -375,9 +373,7 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
                     // (TypeT::SizeT, TypeT::SLProp) => todo!(),
                     // (TypeT::Pointer { to, kind }, TypeT::Bool) => todo!(),
                     // (TypeT::Pointer { to, kind }, TypeT::SizeT) => todo!(),
-                    (TypeT::Pointer { to: t1, kind: k1 }, TypeT::Pointer { to: t2, kind: k2 })
-                        if t1 == t2 && k1 == k2 =>
-                    {
+                    (TypeT::Pointer(t1, k1), TypeT::Pointer(t2, k2)) if t1 == t2 && k1 == k2 => {
                         val_doc
                     }
                     // (TypeT::Pointer { to:t1, kind:k1 }, TypeT::Pointer { to:t2, kind:k2 }) if t1 == t2 => todo!(),
@@ -387,12 +383,10 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
                 }
             }
             RValueT::Error(_ty) => Doc::text("(admit())"),
-            RValueT::InlinePulse { val, ty: _ } => {
-                parens(Doc::concat(val.tokens.iter().map(|tok| {
-                    Doc::text(tok.before)
-                        .append(annotated(&tok.text, Doc::text(tok.text.val.to_string())))
-                })))
-            }
+            RValueT::InlinePulse(val, _) => parens(Doc::concat(val.tokens.iter().map(|tok| {
+                Doc::text(tok.before)
+                    .append(annotated(&tok.text, Doc::text(tok.text.val.to_string())))
+            }))),
             RValueT::BinOp(BinOp::LogAnd, lhs, rhs) => {
                 if let Some(ty) = env.infer_rvalue(lhs) {
                     if ty.val == TypeT::SLProp {

@@ -108,7 +108,7 @@ pub enum TypeT {
     Bool,
     Int { signed: bool, width: u32 },
     SizeT,
-    Pointer { to: Rc<Type>, kind: PointerKind },
+    Pointer(Rc<Type>, PointerKind),
     SLProp,
 
     Requires(Rc<Type>, Rc<RValue>),
@@ -134,13 +134,13 @@ pub type RValue = Ast<RValueT>;
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum RValueT {
     BoolLit(bool),
-    IntLit { val: Rc<BigInt>, ty: Rc<Type> },
+    IntLit(Rc<BigInt>, Rc<Type>),
     LValue(Rc<LValue>),
     Ref(Rc<LValue>),
     BinOp(BinOp, Rc<RValue>, Rc<RValue>),
     FnCall(Rc<Ident>, Vec<Rc<RValue>>),
-    Cast { val: Rc<RValue>, ty: Rc<Type> },
-    InlinePulse { val: Rc<InlineCode>, ty: Rc<Type> },
+    Cast(Rc<RValue>, Rc<Type>),
+    InlinePulse(Rc<InlineCode>, Rc<Type>),
     Error(Rc<Type>),
 }
 

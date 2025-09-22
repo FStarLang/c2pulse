@@ -363,12 +363,7 @@ where
                             width: 32,
                         } // TODO
                         .with_loc(loc.clone());
-                        Ok(RValueT::IntLit {
-                            val: Rc::new(i),
-                            ty,
-                        }
-                        .with_loc(loc)
-                        .into())
+                        Ok(RValueT::IntLit(Rc::new(i), ty).with_loc(loc).into())
                     }
                     Err(err) => Err(Rich::custom(span, err)),
                 }
@@ -414,9 +409,9 @@ where
 
             and_then!(type_name.delimited_by(punct(Punct::LParen), punct(Punct::RParen)), {
                 InlinePulse(ty, code: Rc<InlineCode>: inline_pulse) = e =>
-                    RValueT::InlinePulse { val: code, ty }.with_loc(sift.resolve_source_info(&e.span())).into(),
+                    RValueT::InlinePulse(code, ty).with_loc(sift.resolve_source_info(&e.span())).into(),
                 Plain(ty, x: Expr: cast_expression) = e =>
-                    RValueT::Cast { val: x.to_rvalue(), ty }.with_loc(sift.resolve_source_info(&e.span())).into(),
+                    RValueT::Cast(x.to_rvalue(), ty).with_loc(sift.resolve_source_info(&e.span())).into(),
             }).or(unary_expression)
         });
 

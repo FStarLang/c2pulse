@@ -101,20 +101,19 @@ impl Env {
 
     pub fn infer_rvalue(&self, rvalue: &RValue) -> Option<Rc<Type>> {
         match &rvalue.val {
-            RValueT::IntLit { val: _, ty } => Some(ty.clone()),
+            RValueT::IntLit(_, ty) => Some(ty.clone()),
             RValueT::LValue(v) => self.infer_lvalue(v),
-            RValueT::Ref(v) => Some(Rc::new(rvalue.reuse_loc(TypeT::Pointer {
-                to: self.infer_lvalue(v)?,
+            RValueT::Ref(v) => Some(Rc::new(
                 // TODO: put kind on Ref?
-                kind: PointerKind::Unknown,
-            }))),
+                rvalue.reuse_loc(TypeT::Pointer(self.infer_lvalue(v)?, PointerKind::Unknown)),
+            )),
             RValueT::FnCall(f, _args) => match self.globals.fns.get(&f.val) {
                 Some(f_decl) => Some(f_decl.ret_type.clone()),
                 None => None,
             },
-            RValueT::Cast { val: _, ty } => Some(ty.clone()),
+            RValueT::Cast(_, ty) => Some(ty.clone()),
             RValueT::Error(ty) => Some(ty.clone()),
-            RValueT::InlinePulse { val: _, ty } => Some(ty.clone()),
+            RValueT::InlinePulse(_, ty) => Some(ty.clone()),
             RValueT::BinOp(BinOp::Eq, _, _) => Some(TypeT::Bool.with_loc(rvalue.loc.clone())),
             RValueT::BinOp(
                 BinOp::LogAnd | BinOp::Mul | BinOp::Div | BinOp::Mod | BinOp::Add | BinOp::Sub,
@@ -131,7 +130,7 @@ impl Env {
             LValueT::Deref(x) => {
                 let x_ty = self.infer_rvalue(x)?;
                 match &x_ty.val {
-                    TypeT::Pointer { to, kind: _ } => Some(to.clone()),
+                    TypeT::Pointer(to, _) => Some(to.clone()),
                     _ => None,
                 }
             }
@@ -159,7 +158,7 @@ impl Env {
             ) => w2 > w1 || (w1 == w2 && !s1),
             (TypeT::Int { .. }, TypeT::SizeT) => true,
             (TypeT::SizeT, TypeT::SizeT) => true,
-            (TypeT::Pointer { .. }, TypeT::Pointer { .. }) => true,
+            (TypeT::Pointer(..), TypeT::Pointer(..)) => true,
             _ => false,
         }
     }

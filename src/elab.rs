@@ -9,7 +9,7 @@ fn elab_type(env: &Env, ty: &mut Type) {
             width: _,
         } => {}
         TypeT::SizeT => {}
-        TypeT::Pointer { to, kind } => {
+        TypeT::Pointer(to, kind) => {
             elab_type(env, Rc::make_mut(to));
             match kind {
                 PointerKind::Unknown => *kind = PointerKind::Ref,
@@ -43,36 +43,26 @@ fn elab_lvalue(env: &Env, lval: &mut LValue) {
 }
 
 fn cast_to(rval: &mut Rc<RValue>, ty: Rc<Type>) {
-    *rval = RValueT::Cast {
-        val: rval.clone(),
-        ty,
-    }
-    .with_loc(rval.loc.clone())
+    *rval = RValueT::Cast(rval.clone(), ty).with_loc(rval.loc.clone())
 }
 
 fn cast_to_slprop(env: &Env, rval: &mut Rc<RValue>) {
     if !env.is_slprop(&env.infer_rvalue(rval).unwrap()) {
-        *rval = RValueT::Cast {
-            val: rval.clone(),
-            ty: TypeT::SLProp.with_loc(rval.loc.clone()),
-        }
-        .with_loc(rval.loc.clone())
+        *rval = RValueT::Cast(rval.clone(), TypeT::SLProp.with_loc(rval.loc.clone()))
+            .with_loc(rval.loc.clone())
     }
 }
 
 fn cast_to_bool(env: &Env, rval: &mut Rc<RValue>) {
     if !env.is_bool(&env.infer_rvalue(rval).unwrap()) {
-        *rval = RValueT::Cast {
-            val: rval.clone(),
-            ty: TypeT::Bool.with_loc(rval.loc.clone()),
-        }
-        .with_loc(rval.loc.clone())
+        *rval = RValueT::Cast(rval.clone(), TypeT::Bool.with_loc(rval.loc.clone()))
+            .with_loc(rval.loc.clone())
     }
 }
 
 fn elab_rvalue(env: &Env, rval: &mut RValue) {
     match &mut rval.val {
-        RValueT::IntLit { val: _, ty } => elab_type(env, Rc::make_mut(ty)),
+        RValueT::IntLit(_, ty) => elab_type(env, Rc::make_mut(ty)),
         RValueT::LValue(v) => elab_lvalue(env, Rc::make_mut(v)),
         RValueT::Ref(v) => elab_lvalue(env, Rc::make_mut(v)),
         RValueT::FnCall(_f, args) => {
@@ -81,7 +71,7 @@ fn elab_rvalue(env: &Env, rval: &mut RValue) {
                 elab_rvalue(env, Rc::make_mut(arg));
             }
         }
-        RValueT::Cast { val, ty } => {
+        RValueT::Cast(val, ty) => {
             let val = Rc::make_mut(val);
             elab_type(env, Rc::make_mut(ty));
             elab_rvalue(env, val);
@@ -89,7 +79,7 @@ fn elab_rvalue(env: &Env, rval: &mut RValue) {
             // TODO: check that actual_ty can be casted to ty
         }
         RValueT::Error(ty) => elab_type(env, Rc::make_mut(ty)),
-        RValueT::InlinePulse { val: _, ty } => elab_type(env, Rc::make_mut(ty)),
+        RValueT::InlinePulse(_, ty) => elab_type(env, Rc::make_mut(ty)),
         RValueT::BinOp(bin_op, lhs, rhs) => {
             elab_rvalue(env, Rc::make_mut(lhs));
             elab_rvalue(env, Rc::make_mut(rhs));

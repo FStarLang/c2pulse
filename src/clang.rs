@@ -254,13 +254,7 @@ fn mk_sizet(loc: Rc<SourceInfo>) -> Rc<Type> {
     mk_ast(loc, TypeT::SizeT)
 }
 fn mk_pointer_unknown(loc: Rc<SourceInfo>, to: Rc<Type>) -> Rc<Type> {
-    mk_ast(
-        loc,
-        TypeT::Pointer {
-            to: to,
-            kind: PointerKind::Unknown,
-        },
-    )
+    mk_ast(loc, TypeT::Pointer(to, PointerKind::Unknown))
 }
 fn mk_type_requires(loc: Rc<SourceInfo>, ty: Rc<Type>, p: Rc<RValue>) -> Rc<Type> {
     TypeT::Requires(ty, p).with_loc(loc)
@@ -286,13 +280,13 @@ fn mk_bool_lit(loc: Rc<SourceInfo>, val: bool) -> Rc<RValue> {
     mk_ast(loc, RValueT::BoolLit(val))
 }
 fn mk_int_lit(loc: Rc<SourceInfo>, val: Rc<BigInt>, ty: Rc<Type>) -> Rc<RValue> {
-    mk_ast(loc, RValueT::IntLit { val: val, ty: ty })
+    mk_ast(loc, RValueT::IntLit(val, ty))
 }
 fn mk_rvalue_lvalue(loc: Rc<SourceInfo>, lval: Rc<LValue>) -> Rc<RValue> {
     mk_ast(loc, RValueT::LValue(lval))
 }
 fn mk_rvalue_cast(loc: Rc<SourceInfo>, val: Rc<RValue>, ty: Rc<Type>) -> Rc<RValue> {
-    mk_ast(loc, RValueT::Cast { val, ty })
+    mk_ast(loc, RValueT::Cast(val, ty))
 }
 fn mk_rvalue_binop(loc: Rc<SourceInfo>, op: BinOp, lhs: Rc<RValue>, rhs: Rc<RValue>) -> Rc<RValue> {
     mk_ast(loc, RValueT::BinOp(op, lhs, rhs))
@@ -304,7 +298,7 @@ fn mk_rvalue_fncall(loc: Rc<SourceInfo>, f: Rc<Ident>, args: Vec<Rc<RValue>>) ->
     RValueT::FnCall(f, args).with_loc(loc)
 }
 fn mk_cast(loc: Rc<SourceInfo>, val: Rc<RValue>, ty: Rc<Type>) -> Rc<RValue> {
-    mk_ast(loc, RValueT::Cast { val: val, ty: ty })
+    mk_ast(loc, RValueT::Cast(val, ty))
 }
 fn mk_rvalue_err(loc: Rc<SourceInfo>, ty: Rc<Type>) -> Rc<RValue> {
     mk_ast(loc, RValueT::Error(ty))

@@ -72,7 +72,7 @@ fn scan_type(deps: &mut HashSet<DeclName>, ty: &Type) {
             width: _,
         } => {}
         TypeT::SizeT => {}
-        TypeT::Pointer { to, kind } => {
+        TypeT::Pointer(to, kind) => {
             scan_type(deps, &*to);
             match kind {
                 PointerKind::Unknown => {}
@@ -102,15 +102,15 @@ fn scan_lvalue(deps: &mut HashSet<DeclName>, lv: &LValue) {
 
 fn scan_rvalue(deps: &mut HashSet<DeclName>, rv: &RValue) {
     match &rv.val {
-        RValueT::IntLit { val: _, ty } => scan_type(deps, ty),
+        RValueT::IntLit(_, ty) => scan_type(deps, ty),
         RValueT::LValue(v) => scan_lvalue(deps, v),
         RValueT::Ref(v) => scan_lvalue(deps, v),
-        RValueT::Cast { val, ty } => {
+        RValueT::Cast(val, ty) => {
             scan_rvalue(deps, val);
             scan_type(deps, ty);
         }
         RValueT::Error(ty) => scan_type(deps, ty),
-        RValueT::InlinePulse { val: _, ty } => scan_type(deps, ty),
+        RValueT::InlinePulse(_, ty) => scan_type(deps, ty),
         RValueT::BinOp(_, lhs, rhs) => {
             scan_rvalue(deps, lhs);
             scan_rvalue(deps, rhs);
