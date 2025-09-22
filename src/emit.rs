@@ -537,10 +537,19 @@ fn emit_fn_decl(
             .append(name.val.to_string()),
     )
     .append(Doc::concat(params.into_iter().map(|p| Doc::line().append(p))).nest(2))
-    .group()
-    .append(Doc::hardline());
+    .group();
 
-    hdr.append(Doc::group(
+    hdr.append(Doc::concat(requires_props.into_iter().map(|r| {
+        Doc::hardline().append(
+            Doc::text("requires")
+                .append(Doc::line())
+                .append(r)
+                .nest(2)
+                .group(),
+        )
+    })))
+    .append(Doc::hardline())
+    .append(Doc::group(
         Doc::text("returns")
             .append(Doc::line())
             .append(return_id.val.to_string())
@@ -550,15 +559,6 @@ fn emit_fn_decl(
             .append(Doc::line())
             .append(emit_type(env, ret_type)),
     ))
-    .append(Doc::concat(requires_props.into_iter().map(|r| {
-        Doc::hardline().append(
-            Doc::text("requires")
-                .append(Doc::line())
-                .append(r)
-                .nest(2)
-                .group(),
-        )
-    })))
     .append(Doc::concat(ensures_props.into_iter().map(|r| {
         Doc::hardline().append(
             Doc::text("ensures")
