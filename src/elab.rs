@@ -88,7 +88,12 @@ fn elab_rvalue(env: &Env, rval: &mut RValue) {
                     let lhs_to_rhs = env.implicitly_converts_to(&lhs_ty, &rhs_ty);
                     let rhs_to_lhs = env.implicitly_converts_to(&rhs_ty, &lhs_ty);
                     match bin_op {
-                        BinOp::Eq => {
+                        BinOp::Eq
+                        | BinOp::Mul
+                        | BinOp::Div
+                        | BinOp::Mod
+                        | BinOp::Add
+                        | BinOp::Sub => {
                             match (lhs_to_rhs, rhs_to_lhs) {
                                 (true, true) => {}
                                 (true, false) => cast_to(lhs, rhs_ty),

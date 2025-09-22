@@ -167,6 +167,42 @@ fn binop(a: Doc, op: Doc, b: Doc) -> Doc {
     )
 }
 
+fn emit_binop(op: BinOp, ty: &Type) -> Option<Doc> {
+    Some(match (op, &ty.val) {
+        (BinOp::Eq, TypeT::SLProp | TypeT::Void) => Doc::text("=="),
+        (BinOp::Eq, TypeT::Bool | TypeT::Int { .. } | TypeT::SizeT | TypeT::Pointer { .. }) => {
+            Doc::text("=")
+        }
+        (BinOp::LogAnd, TypeT::Bool) => Doc::text("&&"),
+        (BinOp::LogAnd, TypeT::SLProp) => Doc::text("**"),
+        (BinOp::Mul, TypeT::Bool) => Doc::text("&&"),
+        (BinOp::Mul, TypeT::Int { signed, width }) => todo!(),
+        (BinOp::Mul, TypeT::SizeT) => Doc::text("`SizeT.mul`"),
+        (BinOp::Div, TypeT::Int { signed, width }) => todo!(),
+        (BinOp::Div, TypeT::SizeT) => todo!(),
+        (BinOp::Div, TypeT::Pointer { to, kind }) => todo!(),
+        (BinOp::Div, TypeT::Bool) => todo!(),
+        (BinOp::Mod, TypeT::Bool) => todo!(),
+        (BinOp::Mod, TypeT::Int { signed, width }) => todo!(),
+        (BinOp::Mod, TypeT::SizeT) => Doc::text("`SizeT.mod`"),
+        (BinOp::Mod, TypeT::Pointer { to, kind }) => todo!(),
+        (BinOp::Add, TypeT::Bool) => todo!(),
+        (BinOp::Add, TypeT::Int { signed, width }) => todo!(),
+        (BinOp::Add, TypeT::SizeT) => todo!(),
+        (BinOp::Add, TypeT::Pointer { to, kind }) => todo!(),
+        (BinOp::Sub, TypeT::Bool) => todo!(),
+        (BinOp::Sub, TypeT::Int { signed, width }) => todo!(),
+        (BinOp::Sub, TypeT::SizeT) => todo!(),
+        (BinOp::Sub, TypeT::Pointer { to, kind }) => todo!(),
+        (BinOp::Sub, TypeT::Error) => todo!(),
+        (_, TypeT::Void)
+        | (BinOp::LogAnd, TypeT::Int { .. } | TypeT::SizeT | TypeT::Pointer { .. })
+        | (BinOp::Mul, TypeT::Pointer { .. })
+        | (_, TypeT::SLProp)
+        | (_, TypeT::Error) => return None,
+    })
+}
+
 fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
     annotated(v, {
         match &v.val {
@@ -254,6 +290,16 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
             RValueT::BinOp(BinOp::Eq, lhs, rhs) => {
                 // TODO: this should be == in ghost contexts
                 binop(emit_rvalue(env, lhs), Doc::text("="), emit_rvalue(env, rhs))
+            }
+            RValueT::BinOp(op, lhs, rhs) => {
+                if let Some(ty) = env.infer_rvalue(&lhs)
+                    && let Some(op) = emit_binop(*op, &ty)
+                {
+                    binop(emit_rvalue(env, lhs), op, emit_rvalue(env, rhs))
+                } else {
+                    // TODO: error
+                    Doc::text("(*unsupported mul*)(admit())")
+                }
             }
             RValueT::FnCall(f, args) => parens(
                 Doc::text(f.val.to_string())

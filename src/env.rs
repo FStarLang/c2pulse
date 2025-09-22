@@ -106,7 +106,11 @@ impl Env {
             RValueT::Error(ty) => Some(ty.clone()),
             RValueT::InlinePulse { val: _, ty } => Some(ty.clone()),
             RValueT::BinOp(BinOp::Eq, _, _) => Some(TypeT::Bool.with_loc(rvalue.loc.clone())),
-            RValueT::BinOp(BinOp::LogAnd, lhs, _) => self.infer_rvalue(lhs),
+            RValueT::BinOp(
+                BinOp::LogAnd | BinOp::Mul | BinOp::Div | BinOp::Mod | BinOp::Add | BinOp::Sub,
+                lhs,
+                _,
+            ) => self.infer_rvalue(lhs),
             RValueT::BoolLit(_) => Some(TypeT::Bool.with_loc(rvalue.loc.clone())),
         }
     }

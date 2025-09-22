@@ -424,15 +424,20 @@ where
         });
 
         let multiplicative_expression = left_rec_binop!(cast_expression, {
-            Mul(e, punct(Punct::Star), rhs) => todo!(),
-            Div(e, punct(Punct::Slash), rhs) => todo!(),
-            Mod(e, punct(Punct::Perc), rhs) => todo!(),
+            Mul(lhs, punct(Punct::Star), rhs) = e =>
+                mk_binop(BinOp::Mul, lhs, rhs, sift.resolve_source_info(&e.span())),
+            Div(lhs, punct(Punct::Slash), rhs) = e =>
+                mk_binop(BinOp::Div, lhs, rhs, sift.resolve_source_info(&e.span())),
+            Mod(lhs, punct(Punct::Perc), rhs) = e =>
+                mk_binop(BinOp::Mod, lhs, rhs, sift.resolve_source_info(&e.span())),
         })
         .boxed();
 
         let additive_expression = left_rec_binop!(multiplicative_expression, {
-            Plus(e, punct(Punct::Plus), rhs) => todo!(),
-            Minus(e, punct(Punct::Dash), rhs) => todo!(),
+            Add(lhs, punct(Punct::Plus), rhs) = e =>
+                mk_binop(BinOp::Add, lhs, rhs, sift.resolve_source_info(&e.span())),
+            Sub(lhs, punct(Punct::Dash), rhs) = e =>
+                mk_binop(BinOp::Sub, lhs, rhs, sift.resolve_source_info(&e.span())),
         })
         .boxed();
 
