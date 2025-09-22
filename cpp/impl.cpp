@@ -178,6 +178,38 @@ public:
     return mk_type_err(std::move(loc));
   }
 
+  Rc<ir::Type> trTypeAttrs(AttrVec const &attrs, Rc<ir::Type> &&ty) {
+    for (auto it = attrs.rbegin(); it != attrs.rend(); ++it) {
+      if (auto ann = dyn_cast<AnnotateAttr>(*it)) {
+        auto loc = getRange(ann->getRange());
+        if (ann->getAnnotation() == "c2pulse-requires" &&
+            ann->args_size() == 1) {
+          if (auto ctrVal =
+                  ann->args_begin()[0]->getIntegerConstantExpr(*astCtx)) {
+            unsigned ctr = ctrVal->getZExtValue();
+            auto p = ctx.parse_rvalue(loc.clone(), ctr, snippets);
+            ty = mk_type_requires(std::move(loc), std::move(ty), std::move(p));
+          }
+        } else if (ann->getAnnotation() == "c2pulse-ensures" &&
+                   ann->args_size() == 1) {
+          if (auto ctrVal =
+                  ann->args_begin()[0]->getIntegerConstantExpr(*astCtx)) {
+            unsigned ctr = ctrVal->getZExtValue();
+            auto p = ctx.parse_rvalue(loc.clone(), ctr, snippets);
+            ty = mk_type_ensures(std::move(loc), std::move(ty), std::move(p));
+          }
+        } else if (ann->getAnnotation() == "c2pulse-plain" &&
+                   ann->args_size() == 0) {
+          ty = mk_type_plain(std::move(loc), std::move(ty));
+        } else if (ann->getAnnotation() == "c2pulse-consumes" &&
+                   ann->args_size() == 0) {
+          ty = mk_type_consumes(std::move(loc), std::move(ty));
+        }
+      }
+    }
+    return ty;
+  }
+
   bool isBoolType(QualType t) {
     return t->isUnsignedIntegerType() && astCtx->getIntWidth(t) == 1;
   }
@@ -347,6 +379,7 @@ public:
           DeclBuilder::new_(getRange(FD->getSourceRange()), ident.clone());
       for (auto param : FD->parameters()) {
         auto ty = trQualType(param->getType(), param->getSourceRange());
+        ty = trTypeAttrs(param->getAttrs(), std::move(ty));
         if (param->getDeclName().isIdentifier() &&
             param->getName().size() > 0) {
           builder.arg(ctx.mk_ident(toStr(param->getName()),

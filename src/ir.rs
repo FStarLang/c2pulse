@@ -110,6 +110,12 @@ pub enum TypeT {
     SizeT,
     Pointer { to: Rc<Type>, kind: PointerKind },
     SLProp,
+
+    Requires(Rc<Type>, Rc<RValue>),
+    Ensures(Rc<Type>, Rc<RValue>),
+    Consumes(Rc<Type>),
+    Plain(Rc<Type>),
+
     Error,
 }
 

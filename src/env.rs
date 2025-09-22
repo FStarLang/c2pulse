@@ -89,6 +89,16 @@ impl Env {
         }
     }
 
+    pub fn push_this(&mut self, ty: Rc<Type>) {
+        self.locals.insert(
+            Rc::<str>::from("this"),
+            LocalDecl {
+                ty,
+                kind: LocalDeclKind::RValue,
+            },
+        );
+    }
+
     pub fn infer_rvalue(&self, rvalue: &RValue) -> Option<Rc<Type>> {
         match &rvalue.val {
             RValueT::IntLit { val: _, ty } => Some(ty.clone()),

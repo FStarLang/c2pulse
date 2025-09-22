@@ -262,6 +262,18 @@ fn mk_pointer_unknown(loc: Rc<SourceInfo>, to: Rc<Type>) -> Rc<Type> {
         },
     )
 }
+fn mk_type_requires(loc: Rc<SourceInfo>, ty: Rc<Type>, p: Rc<RValue>) -> Rc<Type> {
+    TypeT::Requires(ty, p).with_loc(loc)
+}
+fn mk_type_ensures(loc: Rc<SourceInfo>, ty: Rc<Type>, p: Rc<RValue>) -> Rc<Type> {
+    TypeT::Ensures(ty, p).with_loc(loc)
+}
+fn mk_type_consumes(loc: Rc<SourceInfo>, ty: Rc<Type>) -> Rc<Type> {
+    TypeT::Consumes(ty).with_loc(loc)
+}
+fn mk_type_plain(loc: Rc<SourceInfo>, ty: Rc<Type>) -> Rc<Type> {
+    TypeT::Plain(ty).with_loc(loc)
+}
 fn mk_type_err(loc: Rc<SourceInfo>) -> Rc<Type> {
     mk_ast(loc, TypeT::Error)
 }

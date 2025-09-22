@@ -1,4 +1,4 @@
-use std::{fmt::Pointer, rc::Rc};
+use std::rc::Rc;
 
 use pretty::{RcDoc, Render, RenderAnnotated};
 
@@ -128,11 +128,65 @@ fn emit_type(env: &Env, ty: &Type) -> Doc {
             } => unaryfn(Doc::text("ref"), emit_type(env, to)),
             TypeT::Error => Doc::text("unit"),
             TypeT::SLProp => Doc::text("slprop"),
+
+            TypeT::Requires(ty, _)
+            | TypeT::Ensures(ty, _)
+            | TypeT::Consumes(ty)
+            | TypeT::Plain(ty) => emit_type(env, ty),
         }
     })
 }
 
-fn emit_type_slprop(env: &Env, ty: &Type, req: &mut Vec<Doc>, ens: &mut Vec<Doc>, this: &Ident) {
+fn subst_this_lvalue(lvalue: &mut LValue, this: &Rc<Ident>) {
+    match &mut lvalue.val {
+        LValueT::Var(x) => {
+            if &*x.val == "this" {
+                *x = this.clone();
+            }
+        }
+        LValueT::Deref(rv) => subst_this_rvalue(Rc::make_mut(rv), this),
+        LValueT::Error(_ty) => {}
+    }
+}
+
+fn subst_this_rvalue(rvalue: &mut RValue, this: &Rc<Ident>) {
+    match &mut rvalue.val {
+        RValueT::BoolLit(_) => {}
+        RValueT::IntLit { .. } => {}
+        RValueT::LValue(lv) | RValueT::Ref(lv) => subst_this_lvalue(Rc::make_mut(lv), this),
+        RValueT::BinOp(_, lhs, rhs) => {
+            subst_this_rvalue(Rc::make_mut(lhs), this);
+            subst_this_rvalue(Rc::make_mut(rhs), this);
+        }
+        RValueT::FnCall(_f, args) => {
+            for arg in args {
+                subst_this_rvalue(Rc::make_mut(arg), this);
+            }
+        }
+        RValueT::Cast { val, ty: _ } => {
+            subst_this_rvalue(Rc::make_mut(val), this);
+        }
+        RValueT::InlinePulse { val, ty: _ } => subst_inline_code_this(Rc::make_mut(val), this),
+        RValueT::Error(_ty) => {}
+    }
+}
+
+fn subst_inline_code_this(val: &mut InlineCode, this: &Rc<Ident>) {
+    for tok in &mut val.tokens {
+        // This is ridiculuously hacky....
+        if &*tok.text.val == "this" {
+            tok.text = (**this).clone();
+        }
+    }
+}
+
+fn emit_type_slprop(
+    env: &Env,
+    ty: &Type,
+    req: &mut Vec<Doc>,
+    ens: &mut Vec<Doc>,
+    this: &Rc<Ident>,
+) {
     match &ty.val {
         TypeT::Void | TypeT::Bool | TypeT::Int { .. } | TypeT::SizeT | TypeT::SLProp => {}
         TypeT::Pointer { to: _, kind: _ } => {
@@ -143,6 +197,22 @@ fn emit_type_slprop(env: &Env, ty: &Type, req: &mut Vec<Doc>, ens: &mut Vec<Doc>
             req.push(live.clone());
             ens.push(live);
         }
+        TypeT::Requires(ty, p) => {
+            emit_type_slprop(env, ty, req, ens, this);
+
+            let p = &mut p.clone();
+            subst_this_rvalue(Rc::make_mut(p), this);
+            req.push(emit_rvalue(env, p));
+        }
+        TypeT::Ensures(ty, p) => {
+            emit_type_slprop(env, ty, req, ens, this);
+
+            let p = &mut p.clone();
+            subst_this_rvalue(Rc::make_mut(p), this);
+            ens.push(emit_rvalue(env, p));
+        }
+        TypeT::Consumes(ty) => emit_type_slprop(env, ty, req, &mut vec![], this),
+        TypeT::Plain(_) => {}
         TypeT::Error => {}
     }
 }
@@ -233,6 +303,11 @@ fn emit_binop(op: BinOp, ty: &Type) -> Option<Doc> {
             Doc::text(format!("`{}.sub`", get_int_mod(signed, width)?))
         }
         (BinOp::Sub, TypeT::SizeT) => Doc::text("`SizeT.sub`"),
+
+        (
+            op,
+            TypeT::Requires(ty, _) | TypeT::Ensures(ty, _) | TypeT::Consumes(ty) | TypeT::Plain(ty),
+        ) => emit_binop(op, ty)?,
 
         (BinOp::Mul | BinOp::Div | BinOp::Mod | BinOp::Add | BinOp::Sub, TypeT::Pointer { .. })
         | (_, TypeT::Void)
@@ -446,9 +521,8 @@ fn emit_fn_decl(
                 .append(emit_type(env, ty)),
         ));
 
-        emit_type_slprop(env, ty, &mut requires_props, &mut ensures_props, &n);
-
         env.push_arg(arg, LocalDeclKind::RValue);
+        emit_type_slprop(env, ty, &mut requires_props, &mut ensures_props, &n);
     }
 
     let return_id = Rc::<str>::from("return").with_loc(ret_type.loc.clone());

@@ -21,6 +21,16 @@ fn elab_type(env: &Env, ty: &mut Type) {
         TypeT::Void => {}
         TypeT::SLProp => {}
         TypeT::Bool => {}
+
+        TypeT::Requires(ty, p) | TypeT::Ensures(ty, p) => {
+            elab_type(env, Rc::make_mut(ty));
+
+            let env = &mut env.clone();
+            env.push_this(ty.clone());
+            elab_rvalue(env, Rc::make_mut(p));
+            cast_to_slprop(env, p);
+        }
+        TypeT::Consumes(ty) | TypeT::Plain(ty) => elab_type(env, Rc::make_mut(ty)),
     }
 }
 

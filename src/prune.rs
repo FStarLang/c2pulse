@@ -84,6 +84,11 @@ fn scan_type(deps: &mut HashSet<DeclName>, ty: &Type) {
         TypeT::Void => {}
         TypeT::SLProp => {}
         TypeT::Bool => {}
+        TypeT::Requires(ty, p) | TypeT::Ensures(ty, p) => {
+            scan_type(deps, ty);
+            scan_rvalue(deps, p);
+        }
+        TypeT::Consumes(ty) | TypeT::Plain(ty) => scan_type(deps, ty),
     }
 }
 
