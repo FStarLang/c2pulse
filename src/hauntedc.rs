@@ -2,17 +2,14 @@ use std::{collections::HashMap, fmt::Display, rc::Rc, str::FromStr};
 
 use chumsky::{
     Parser,
-    input::{IterInput, MapExtra, ValueInput},
+    input::{IterInput, ValueInput},
     prelude::*,
 };
 use num_bigint::BigInt;
 
 use crate::{
     diag::{Diagnostic, DiagnosticLevel},
-    ir::{
-        Ast, BinOp, CodeToken, Ident, InlineCode, LValue, LValueT, Location, Position, RValue,
-        RValueT, Range, SourceInfo, TypeT, WithLoc,
-    },
+    ir::*,
 };
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
