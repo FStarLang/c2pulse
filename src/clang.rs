@@ -141,10 +141,10 @@ impl Ctx {
 }
 
 struct DeclBuilder {
-    name: Ident,
+    name: Rc<Ident>,
     loc: Rc<SourceInfo>,
     ret_type: Option<Rc<Type>>,
-    args: Vec<(Option<Ident>, Rc<Type>)>,
+    args: Vec<FnArg>,
     fields: Vec<(Ident, Rc<Type>)>,
     requires: Vec<Rc<RValue>>,
     ensures: Vec<Rc<RValue>>,
@@ -153,8 +153,8 @@ struct DeclBuilder {
 impl DeclBuilder {
     fn new(loc: Rc<SourceInfo>, name: Rc<Ident>) -> DeclBuilder {
         DeclBuilder {
-            name: (*name).clone(),
-            loc: loc,
+            name,
+            loc,
             ret_type: None,
             args: vec![],
             fields: vec![],
@@ -168,7 +168,7 @@ impl DeclBuilder {
     }
 
     fn arg(&mut self, name: Rc<Ident>, ty: Rc<Type>) {
-        self.args.push((Some((*name).clone()), ty))
+        self.args.push((Some(name), ty))
     }
     fn arg_anon(&mut self, ty: Rc<Type>) {
         self.args.push((None, ty))

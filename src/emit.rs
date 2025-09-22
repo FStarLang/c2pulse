@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{fmt::Pointer, rc::Rc};
 
 use pretty::{RcDoc, Render, RenderAnnotated};
 
@@ -130,6 +130,21 @@ fn emit_type(env: &Env, ty: &Type) -> Doc {
             TypeT::SLProp => Doc::text("slprop"),
         }
     })
+}
+
+fn emit_type_slprop(env: &Env, ty: &Type, req: &mut Vec<Doc>, ens: &mut Vec<Doc>, this: &Ident) {
+    match &ty.val {
+        TypeT::Void | TypeT::Bool | TypeT::Int { .. } | TypeT::SizeT | TypeT::SLProp => {}
+        TypeT::Pointer { to: _, kind: _ } => {
+            let live = annotated(
+                ty,
+                unaryfn(Doc::text("live"), Doc::text(this.val.to_string())),
+            );
+            req.push(live.clone());
+            ens.push(live);
+        }
+        TypeT::Error => {}
+    }
 }
 
 fn emit_var(v: &Ident) -> Doc {
@@ -415,53 +430,66 @@ fn emit_fn_decl(
     }: &FnDecl,
 ) -> Doc {
     let env = &mut env.clone();
-    Doc::group(
+
+    let mut requires_props = vec![];
+    let mut ensures_props = vec![];
+    let mut params = vec![];
+    for (i, arg @ (n0, ty)) in args.iter().enumerate() {
+        let n: Rc<Ident> = n0
+            .clone()
+            .unwrap_or_else(|| Rc::<str>::from(format!("_unnamed{}", i)).with_loc(ty.loc.clone()));
+
+        params.push(parens(
+            annotated(&n, Doc::text(n.val.to_string()))
+                .append(":")
+                .append(Doc::line())
+                .append(emit_type(env, ty)),
+        ));
+
+        emit_type_slprop(env, ty, &mut requires_props, &mut ensures_props, &n);
+
+        env.push_arg(arg, LocalDeclKind::RValue);
+    }
+
+    let return_id = Rc::<str>::from("return").with_loc(ret_type.loc.clone());
+    emit_type_slprop(env, &ret_type, &mut ensures_props, &mut vec![], &return_id);
+
+    requires_props.extend(requires.iter().map(|r| emit_rvalue(env, r)));
+    ensures_props.extend(ensures.iter().map(|r| emit_rvalue(env, r)));
+
+    let hdr = Doc::group(
         Doc::text("fn")
             .append(Doc::line())
             .append(name.val.to_string()),
     )
-    .append(
-        Doc::concat(args.iter().map(|arg @ (n, ty)| {
-            let doc = Doc::line().append(parens(
-                (match n {
-                    Some(n) => annotated(n, Doc::text(n.val.to_string())),
-                    None => Doc::text("_"),
-                })
-                .append(":")
-                .append(Doc::line())
-                .append(emit_type(env, ty)),
-            ));
-            env.push_arg(arg, LocalDeclKind::RValue);
-            doc
-        }))
-        .nest(2),
-    )
+    .append(Doc::concat(params.into_iter().map(|p| Doc::line().append(p))).nest(2))
     .group()
-    .append(Doc::hardline())
-    .append(Doc::group(
+    .append(Doc::hardline());
+
+    hdr.append(Doc::group(
         Doc::text("returns")
             .append(Doc::line())
-            .append("return")
+            .append(return_id.val.to_string())
             .append(Doc::line())
             .append(":")
             .group()
             .append(Doc::line())
             .append(emit_type(env, ret_type)),
     ))
-    .append(Doc::concat(requires.iter().map(|r| {
+    .append(Doc::concat(requires_props.into_iter().map(|r| {
         Doc::hardline().append(
             Doc::text("requires")
                 .append(Doc::line())
-                .append(emit_rvalue(env, r))
+                .append(r)
                 .nest(2)
                 .group(),
         )
     })))
-    .append(Doc::concat(ensures.iter().map(|r| {
+    .append(Doc::concat(ensures_props.into_iter().map(|r| {
         Doc::hardline().append(
             Doc::text("ensures")
                 .append(Doc::line())
-                .append(emit_rvalue(env, r))
+                .append(r)
                 .nest(2)
                 .group(),
         )
