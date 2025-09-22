@@ -24,22 +24,10 @@ fn elab_type(env: &Env, ty: &mut Type) {
     }
 }
 
-fn elab_lvalue(env: &Env, lval: &mut LValue, expected_type: Option<Rc<Type>>) {
+fn elab_lvalue(env: &Env, lval: &mut LValue) {
     match &mut lval.val {
         LValueT::Var(_) => {}
-        LValueT::Deref(v) => elab_rvalue(
-            env,
-            Rc::make_mut(v),
-            expected_type.map(|ety| {
-                Rc::new(Ast {
-                    loc: lval.loc.clone(),
-                    val: TypeT::Pointer {
-                        to: ety,
-                        kind: PointerKind::Unknown,
-                    },
-                })
-            }),
-        ),
+        LValueT::Deref(v) => elab_rvalue(env, Rc::make_mut(v)),
         LValueT::Error(ty) => elab_type(env, Rc::make_mut(ty)),
     }
 }
@@ -62,36 +50,39 @@ fn cast_to_slprop(env: &Env, rval: &mut Rc<RValue>) {
     }
 }
 
-fn elab_rvalue(env: &Env, rval: &mut RValue, expected_type: Option<Rc<Type>>) {
+fn cast_to_bool(env: &Env, rval: &mut Rc<RValue>) {
+    if !env.is_bool(&env.infer_rvalue(rval).unwrap()) {
+        *rval = RValueT::Cast {
+            val: rval.clone(),
+            ty: TypeT::Bool.with_loc(rval.loc.clone()),
+        }
+        .with_loc(rval.loc.clone())
+    }
+}
+
+fn elab_rvalue(env: &Env, rval: &mut RValue) {
     match &mut rval.val {
         RValueT::IntLit { val: _, ty } => elab_type(env, Rc::make_mut(ty)),
-        RValueT::LValue(v) => elab_lvalue(env, Rc::make_mut(v), expected_type),
-        RValueT::Ref(v) => elab_lvalue(
-            env,
-            Rc::make_mut(v),
-            expected_type.and_then(|ety| match &ety.val {
-                TypeT::Pointer { to, kind: _ } => Some(to.clone()),
-                _ => None,
-            }),
-        ),
+        RValueT::LValue(v) => elab_lvalue(env, Rc::make_mut(v)),
+        RValueT::Ref(v) => elab_lvalue(env, Rc::make_mut(v)),
         RValueT::FnCall(_f, args) => {
             // TODO: check type for f
             for arg in args {
-                elab_rvalue(env, Rc::make_mut(arg), None);
+                elab_rvalue(env, Rc::make_mut(arg));
             }
         }
         RValueT::Cast { val, ty } => {
             let val = Rc::make_mut(val);
             elab_type(env, Rc::make_mut(ty));
-            elab_rvalue(env, val, Some(ty.clone()));
+            elab_rvalue(env, val);
             let _actual_ty = env.infer_rvalue(val);
             // TODO: check that actual_ty can be casted to ty
         }
         RValueT::Error(ty) => elab_type(env, Rc::make_mut(ty)),
         RValueT::InlinePulse { val: _, ty } => elab_type(env, Rc::make_mut(ty)),
         RValueT::BinOp(bin_op, lhs, rhs) => {
-            elab_rvalue(env, Rc::make_mut(lhs), expected_type.clone());
-            elab_rvalue(env, Rc::make_mut(rhs), expected_type);
+            elab_rvalue(env, Rc::make_mut(lhs));
+            elab_rvalue(env, Rc::make_mut(rhs));
             match (env.infer_rvalue(lhs), env.infer_rvalue(rhs)) {
                 (Some(lhs_ty), Some(rhs_ty)) => {
                     let lhs_to_rhs = env.implicitly_converts_to(&lhs_ty, &rhs_ty);
@@ -131,24 +122,23 @@ fn elab_rvalue(env: &Env, rval: &mut RValue, expected_type: Option<Rc<Type>>) {
 
 fn elab_stmt(env: &Env, stmt: &mut Stmt) {
     match &mut stmt.val {
-        StmtT::Call(rval) => elab_rvalue(env, Rc::make_mut(rval), None),
+        StmtT::Call(rval) => elab_rvalue(env, Rc::make_mut(rval)),
         StmtT::Decl(_, ty) => elab_type(env, Rc::make_mut(ty)),
         StmtT::Assign(x, v) => {
-            elab_lvalue(env, Rc::make_mut(x), None);
-            let x_ty = env.infer_lvalue(x);
-            elab_rvalue(env, Rc::make_mut(v), x_ty);
+            elab_lvalue(env, Rc::make_mut(x));
+            elab_rvalue(env, Rc::make_mut(v));
+            let _x_ty = env.infer_lvalue(x);
             let _y_ty = env.infer_rvalue(v);
             // TODO: check that x_ty and y_ty are equal
         }
         StmtT::If(c, b1, b2) => {
-            let c_bool_type = None; // TODO
-            elab_rvalue(env, Rc::make_mut(c), c_bool_type);
+            elab_rvalue(env, Rc::make_mut(c));
+            cast_to_bool(env, c);
             elab_stmts(env, Rc::make_mut(b1));
             elab_stmts(env, Rc::make_mut(b2));
         }
         StmtT::Return(x) => {
-            let ret_ty = None; // TODO
-            elab_rvalue(env, Rc::make_mut(x), ret_ty);
+            elab_rvalue(env, Rc::make_mut(x));
         }
         StmtT::Error => {}
     }
@@ -164,8 +154,7 @@ fn elab_stmts(env: &Env, stmts: &mut Vec<Rc<Stmt>>) {
 
 fn elab_slprops(env: &Env, slprops: &mut Vec<Rc<RValue>>) {
     for p in slprops {
-        let expected_type = TypeT::SLProp.with_loc(p.loc.clone());
-        elab_rvalue(env, Rc::make_mut(p), Some(expected_type));
+        elab_rvalue(env, Rc::make_mut(p));
         cast_to_slprop(env, p);
     }
 }
