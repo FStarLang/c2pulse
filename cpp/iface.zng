@@ -54,6 +54,12 @@ mod crate::ir {
         fn deref(&self) -> &RValue;
     }
 
+    type Vec<Rc<RValue>> {
+        #heap_allocated;
+        fn new() -> Vec<Rc<RValue>>;
+        fn push(&mut self, Rc<RValue>);
+    }
+
     type Rc<Stmt> {
         #layout(size=8, align=8);
         fn deref(&self) -> &Stmt;
@@ -155,6 +161,7 @@ mod crate::clang {
     fn mk_rvalue_ref(Rc<SourceInfo>, Rc<LValue>) -> Rc<RValue>;
     fn mk_rvalue_cast(Rc<SourceInfo>, Rc<RValue>, Rc<Type>) -> Rc<RValue>;
     fn mk_rvalue_binop(Rc<SourceInfo>, BinOp, Rc<RValue>, Rc<RValue>) -> Rc<RValue>;
+    fn mk_rvalue_fncall(Rc<SourceInfo>, Rc<Ident>, Vec<Rc<RValue>>) -> Rc<RValue>;
     fn mk_cast(Rc<SourceInfo>, Rc<RValue>, Rc<Type>) -> Rc<RValue>;
     fn mk_rvalue_err(Rc<SourceInfo>, Rc<Type>) -> Rc<RValue>;
 
@@ -165,6 +172,8 @@ mod crate::clang {
     fn mk_var_decl(Rc<SourceInfo>, Rc<Ident>, Rc<Type>) -> Rc<Stmt>;
     fn mk_assign(Rc<SourceInfo>, Rc<LValue>, Rc<RValue>) -> Rc<Stmt>;
     fn mk_return(Rc<SourceInfo>, Rc<RValue>) -> Rc<Stmt>;
+    fn mk_call(Rc<SourceInfo>, Rc<RValue>) -> Rc<Stmt>;
+    fn mk_if(Rc<SourceInfo>, Rc<RValue>, Vec<Rc<Stmt>>, Vec<Rc<Stmt>>) -> Rc<Stmt>;
     fn mk_stmt_err(Rc<SourceInfo>) -> Rc<Stmt>;
 }
 

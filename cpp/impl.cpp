@@ -300,6 +300,16 @@ public:
       default:;
         // continue to error case
       }
+    } else if (auto *c = dyn_cast<CallExpr>(e)) {
+      if (auto fd = c->getDirectCallee()) {
+        auto fn = ctx.mk_ident(toStr(fd->getName()),
+                               getRange(c->getCallee()->getSourceRange()));
+        auto args = Vec<Rc<ir::RValue>>::new_();
+        for (auto arg : c->arguments()) {
+          args.push(trRValue(arg));
+        }
+        return mk_rvalue_fncall(std::move(loc), std::move(fn), std::move(args));
+      }
     }
 
     reportUnsupported(e->getSourceRange(), loc,
@@ -341,6 +351,8 @@ public:
         }
       }
       return rust::Unit();
+    } else if (auto *c = dyn_cast<CallExpr>(stmt)) {
+      return stmts.push(mk_call(std::move(loc), trRValue(c)));
     }
 
     reportUnsupported(stmt->getSourceRange(), loc, "unsupported statement"_rs);

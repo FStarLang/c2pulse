@@ -300,6 +300,9 @@ fn mk_rvalue_binop(loc: Rc<SourceInfo>, op: BinOp, lhs: Rc<RValue>, rhs: Rc<RVal
 fn mk_rvalue_ref(loc: Rc<SourceInfo>, lval: Rc<LValue>) -> Rc<RValue> {
     mk_ast(loc, RValueT::Ref(lval))
 }
+fn mk_rvalue_fncall(loc: Rc<SourceInfo>, f: Rc<Ident>, args: Vec<Rc<RValue>>) -> Rc<RValue> {
+    RValueT::FnCall(f, args).with_loc(loc)
+}
 fn mk_cast(loc: Rc<SourceInfo>, val: Rc<RValue>, ty: Rc<Type>) -> Rc<RValue> {
     mk_ast(loc, RValueT::Cast { val: val, ty: ty })
 }
@@ -325,6 +328,12 @@ fn mk_assign(loc: Rc<SourceInfo>, lhs: Rc<LValue>, rhs: Rc<RValue>) -> Rc<Stmt> 
 }
 fn mk_return(loc: Rc<SourceInfo>, v: Rc<RValue>) -> Rc<Stmt> {
     mk_ast(loc, StmtT::Return(v))
+}
+fn mk_call(loc: Rc<SourceInfo>, f: Rc<RValue>) -> Rc<Stmt> {
+    StmtT::Call(f).with_loc(loc)
+}
+fn mk_if(loc: Rc<SourceInfo>, cond: Rc<RValue>, a: Stmts, b: Stmts) -> Rc<Stmt> {
+    StmtT::If(cond, Rc::new(a), Rc::new(b)).with_loc(loc)
 }
 fn mk_stmt_err(loc: Rc<SourceInfo>) -> Rc<Stmt> {
     mk_ast(loc, StmtT::Error)
