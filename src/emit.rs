@@ -229,10 +229,12 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
                 }
             }
             RValueT::Error(_ty) => Doc::text("(admit())"),
-            RValueT::InlinePulse { val, ty:_ } => parens(Doc::concat(val.tokens.iter().map(|tok| {
-                Doc::text(tok.before)
-                    .append(annotated(&tok.text, Doc::text(tok.text.val.to_string())))
-            }))),
+            RValueT::InlinePulse { val, ty: _ } => {
+                parens(Doc::concat(val.tokens.iter().map(|tok| {
+                    Doc::text(tok.before)
+                        .append(annotated(&tok.text, Doc::text(tok.text.val.to_string())))
+                })))
+            }
             RValueT::BinOp(BinOp::LogAnd, lhs, rhs) => {
                 if let Some(ty) = env.infer_rvalue(lhs) {
                     if ty.val == TypeT::SLProp {
