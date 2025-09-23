@@ -10,6 +10,6 @@ num-bigint = "0.4"
 pretty = "0.12.4"
 
 [build-dependencies]
-build-rs = "0.3.1"
-cc = "1.2.36"
+build-rs = "0.3.2"
+cc = "1.2.38"
 zngur = "0.7.0"
