@@ -386,10 +386,22 @@ where
                         .collect::<Vec<_>>()
                         .delimited_by(punct(Punct::LParen), punct(Punct::RParen)),
                 )
-                .map_with(|(f, args), extra| {
-                    RValueT::FnCall(f, args.into_iter().map(|e: Expr| e.to_rvalue()).collect())
-                        .with_loc(sift.resolve_source_info(&extra.span()))
-                        .into()
+                .try_map(|(f, args), s| match &*f.val {
+                    "_old" => {
+                        let &[arg] = &args.as_slice() else {
+                            return Err(Rich::custom(s, "_old takes exactly one argument"));
+                        };
+                        let arg: &Expr = arg;
+                        Ok(RValueT::Old(arg.clone().to_rvalue())
+                            .with_loc(sift.resolve_source_info(&s))
+                            .into())
+                    }
+                    _ => Ok(RValueT::FnCall(
+                        f,
+                        args.into_iter().map(|e: Expr| e.to_rvalue()).collect(),
+                    )
+                    .with_loc(sift.resolve_source_info(&s))
+                    .into()),
                 }),
             primary_expression,
         ))

@@ -122,6 +122,7 @@ fn scan_rvalue(deps: &mut HashSet<DeclName>, rv: &RValue) {
             }
         }
         RValueT::BoolLit(_) => {}
+        RValueT::Old(v) => scan_rvalue(deps, v),
     }
 }
 

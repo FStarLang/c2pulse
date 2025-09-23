@@ -166,6 +166,7 @@ fn subst_this_rvalue(rvalue: &mut RValue, this: &Rc<Ident>) {
         }
         RValueT::InlinePulse(val, _) => subst_inline_code_this(Rc::make_mut(val), this),
         RValueT::Error(_ty) => {}
+        RValueT::Old(val) => subst_this_rvalue(Rc::make_mut(val), this),
     }
 }
 
@@ -425,6 +426,7 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
                         Doc::line(),
                     )),
             ),
+            RValueT::Old(v) => unaryfn(Doc::text("old"), emit_rvalue(env, v)),
         }
     })
 }
