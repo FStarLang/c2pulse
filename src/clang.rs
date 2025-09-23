@@ -1,7 +1,7 @@
 use num_bigint::BigInt;
 
 use crate::{
-    diag::{Diagnostic, DiagnosticLevel},
+    diag::{Diagnostic, DiagnosticLevel, Diagnostics},
     hauntedc::{SnippetMap, parse_rvalue},
     ir::*,
 };
@@ -21,7 +21,7 @@ pub struct Ctx {
     input_file_name: String,
     interned_strs: HashSet<Rc<str>>,
     translation_unit: TranslationUnit,
-    diagnostics: Vec<Diagnostic>,
+    diagnostics: Diagnostics,
 }
 
 impl Ctx {
@@ -35,7 +35,7 @@ impl Ctx {
                 main_file_name: main_file_name,
                 decls: vec![],
             },
-            diagnostics: vec![],
+            diagnostics: Diagnostics::empty(),
         }
     }
 
@@ -113,8 +113,7 @@ impl Ctx {
     fn parse_rvalue(&mut self, loc: Rc<SourceInfo>, idx: u32, snippets: &SnippetMap) -> Rc<RValue> {
         match snippets.snippets.get(&idx) {
             Some(code) => {
-                let (expr, mut diags) = parse_rvalue(code, snippets);
-                self.diagnostics.extend(diags.drain(..));
+                let expr = parse_rvalue(&mut self.diagnostics, code, snippets);
                 expr
             }
             None => {
@@ -125,7 +124,7 @@ impl Ctx {
     }
 
     fn report_diag(&mut self, loc: Rc<SourceInfo>, is_err: bool, msg: &str) {
-        self.diagnostics.push(Diagnostic {
+        self.diagnostics.report(Diagnostic {
             loc: (match &*loc {
                 SourceInfo::Original(loc) => loc.clone(),
                 _ => panic!(),
@@ -333,7 +332,7 @@ fn mk_stmt_err(loc: Rc<SourceInfo>) -> Rc<Stmt> {
     mk_ast(loc, StmtT::Error)
 }
 
-pub fn parse_file(file_name: &str) -> (TranslationUnit, Vec<Diagnostic>) {
+pub fn parse_file(file_name: &str) -> (TranslationUnit, Diagnostics) {
     let mut ctx = Ctx::new(file_name.to_string());
     generated::parse_file(&mut ctx);
     (ctx.translation_unit, ctx.diagnostics)

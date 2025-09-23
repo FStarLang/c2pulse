@@ -8,7 +8,7 @@ use chumsky::{
 use num_bigint::BigInt;
 
 use crate::{
-    diag::{Diagnostic, DiagnosticLevel},
+    diag::{Diagnostic, DiagnosticLevel, Diagnostics},
     ir::*,
 };
 
@@ -528,8 +528,11 @@ impl SourceInfoForTokens for Vec<Rc<SourceInfo>> {
     }
 }
 
-pub fn parse_rvalue(code: &InlineCode, snippets: &SnippetMap) -> (Rc<RValue>, Vec<Diagnostic>) {
-    let mut diags = vec![];
+pub fn parse_rvalue(
+    diagnostics: &mut Diagnostics,
+    code: &InlineCode,
+    snippets: &SnippetMap,
+) -> Rc<RValue> {
     let (tokens, source_infos): (Vec<(Token, SimpleSpan)>, Vec<Rc<SourceInfo>>) = code
         .tokens
         .iter()
@@ -543,11 +546,13 @@ pub fn parse_rvalue(code: &InlineCode, snippets: &SnippetMap) -> (Rc<RValue>, Ve
                 },
             )| {
                 let result = lex_core_token().parse(token);
-                diags.extend(result.errors().map(|err| Diagnostic {
-                    loc: location_of_sourceinfo(loc),
-                    level: DiagnosticLevel::Error,
-                    msg: format!("{}", err),
-                }));
+                diagnostics
+                    .diags
+                    .extend(result.errors().map(|err| Diagnostic {
+                        loc: location_of_sourceinfo(loc),
+                        level: DiagnosticLevel::Error,
+                        msg: format!("{}", err),
+                    }));
                 (
                     (
                         Token {
@@ -572,7 +577,7 @@ pub fn parse_rvalue(code: &InlineCode, snippets: &SnippetMap) -> (Rc<RValue>, Ve
             RValueT::Error(TypeT::Error.with_loc(loc.clone())).with_loc(loc)
         }
     };
-    diags.extend(result.errors().map(|err| {
+    diagnostics.diags.extend(result.errors().map(|err| {
         Diagnostic {
             loc: source_infos
                 .resolve_error_location(err.span())
@@ -581,5 +586,5 @@ pub fn parse_rvalue(code: &InlineCode, snippets: &SnippetMap) -> (Rc<RValue>, Ve
             msg: format!("{} {:?}", err, tokens), // TODO
         }
     }));
-    (output, diags)
+    output
 }
