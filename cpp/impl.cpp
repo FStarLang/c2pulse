@@ -253,7 +253,7 @@ public:
         // continue to error case
       }
     } else if (auto ec = dyn_cast<ExplicitCastExpr>(e)) {
-      switch (ic->getCastKind()) {
+      switch (ec->getCastKind()) {
       case CK_IntegralCast:
         return mk_rvalue_cast(
             std::move(loc), trRValue(ec->getSubExpr()),
