@@ -550,21 +550,21 @@ static void parse_file(RefMut<Ctx> ctx) {
     compDB = std::make_unique<FixedCompilationDatabase>(".", argsForCompDB);
   }
 
-  auto Tool = std::make_unique<ClangTool>(*compDB, sourcePathList);
+  ClangTool Tool(*compDB, sourcePathList);
 
   RangeMap rangeMap(ctx);
   C2PulseDiagnosticConsumer consumer(ctx, rangeMap);
-  Tool->setDiagnosticConsumer(&consumer);
+  Tool.setDiagnosticConsumer(&consumer);
 
-  // Tool->appendArgumentsAdjuster(OptionsParser->getArgumentsAdjuster());
+  // Tool.appendArgumentsAdjuster(OptionsParser->getArgumentsAdjuster());
 
-  Tool->appendArgumentsAdjuster(getInsertArgumentAdjuster(
+  Tool.appendArgumentsAdjuster(getInsertArgumentAdjuster(
       {"-DC2PULSE", "-fno-builtin"}, ArgumentInsertPosition::BEGIN));
-  Tool->appendArgumentsAdjuster(getInsertArgumentAdjuster(
+  Tool.appendArgumentsAdjuster(getInsertArgumentAdjuster(
       {"-resource-dir", getResourcesPath()}, ArgumentInsertPosition::BEGIN));
 
-  auto factory = std::make_unique<C2PulseActionFactory>(ctx, rangeMap);
-  Tool->run(factory.get());
+  C2PulseActionFactory factory(ctx, rangeMap);
+  Tool.run(&factory);
 }
 
 namespace rust::exported_functions {
