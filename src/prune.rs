@@ -59,10 +59,7 @@ enum DeclName {
 }
 
 fn in_main_file(mf: &Rc<str>, loc: &SourceInfo) -> bool {
-    match loc {
-        SourceInfo::None => false,
-        SourceInfo::Original(location) => location.file_name == *mf,
-    }
+    loc.location().file_name == *mf
 }
 
 fn scan_type(deps: &mut HashSet<DeclName>, ty: &Type) {

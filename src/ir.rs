@@ -47,15 +47,24 @@ impl Debug for Location {
 
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub enum SourceInfo {
-    None,
     Original(Location),
+    Fallback(Location),
+}
+
+impl SourceInfo {
+    pub fn location(&self) -> &Location {
+        match self {
+            SourceInfo::Original(location) => location,
+            SourceInfo::Fallback(location) => location,
+        }
+    }
 }
 
 impl Debug for SourceInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Self::None => write!(f, "None"),
             Self::Original(loc) => write!(f, "Original({:#?})", loc),
+            Self::Fallback(loc) => write!(f, "Fallback({:#?})", loc),
         }
     }
 }

@@ -9,7 +9,7 @@ use crate::{
 
 pub type SourceRangeMap = Vec<(Location, Range)>;
 
-type Annotation = Location;
+type Annotation = Rc<SourceInfo>;
 type Doc = RcDoc<'static, Annotation>;
 
 struct StrWriter {
@@ -71,7 +71,7 @@ impl<'a> RenderAnnotated<'a, Annotation> for StrWriter {
     fn pop_annotation(&mut self) -> Result<(), Self::Error> {
         let (loc, start) = self.annotation_stack.pop().unwrap();
         self.source_range_map.push((
-            loc,
+            loc.location().clone(),
             Range {
                 start,
                 end: self.cur_pos(),
@@ -82,10 +82,7 @@ impl<'a> RenderAnnotated<'a, Annotation> for StrWriter {
 }
 
 fn annotated<T>(ast: &Ast<T>, doc: Doc) -> Doc {
-    match &*ast.loc {
-        SourceInfo::None => doc,
-        SourceInfo::Original(location) => doc.annotate(location.clone()),
-    }
+    doc.annotate(ast.loc.clone())
 }
 
 fn parens(doc: Doc) -> Doc {

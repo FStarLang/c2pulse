@@ -47,7 +47,9 @@ struct RangeMap {
     if (auto result = files.find(id); result != files.end()) {
       return result->second.clone();
     } else {
-      auto res = ctx.intern_str(toStr(sm.getFileEntryRefForID(id)->getName()));
+      auto res = ctx.intern_str(
+          id.isValid() ? toStr(sm.getFileEntryRefForID(id)->getName())
+                       : "<unknown>"_rs);
       files[id] = res.clone();
       return res;
     }
@@ -85,17 +87,32 @@ public:
         for (unsigned j = 0; j < numTokens; ++j) {
           auto &tok = argTokens[j];
           std::string spelling = Lexer::getSpelling(tok, sm, langOpts);
+
+          Rc<ir::SourceInfo> loc;
           SourceLocation tokLoc = sm.getSpellingLoc(tok.getLocation());
-          unsigned beginLine = sm.getSpellingLineNumber(tokLoc);
-          unsigned beginChar = sm.getSpellingColumnNumber(tokLoc);
-          unsigned endLine = beginLine;
-          unsigned endChar = beginChar + spelling.length();
-          auto fileName = sm.getFilename(tokLoc);
-          auto loc = fileName.data()
-                         ? mk_original_location(
-                               rangeMap.getFileName(sm, sm.getFileID(tokLoc)),
-                               beginLine, beginChar, endLine, endChar)
-                         : mk_none_sourceinfo();
+          if (auto fileID = sm.getFileID(tokLoc); fileID.isValid()) {
+            unsigned beginLine = sm.getSpellingLineNumber(tokLoc);
+            unsigned beginChar = sm.getSpellingColumnNumber(tokLoc);
+            unsigned endLine = beginLine;
+            unsigned endChar = beginChar + spelling.length();
+            loc = mk_original_location(rangeMap.getFileName(sm, fileID),
+                                       beginLine, beginChar, endLine, endChar);
+          } else {
+            auto expansionRange = sm.getExpansionRange(
+                SourceRange(tok.getLocation(), tok.getEndLoc()));
+            unsigned beginLine =
+                sm.getExpansionLineNumber(expansionRange.getBegin());
+            unsigned beginChar =
+                sm.getExpansionColumnNumber(expansionRange.getBegin());
+            unsigned endLine =
+                sm.getExpansionLineNumber(expansionRange.getEnd());
+            unsigned endChar =
+                sm.getExpansionColumnNumber(expansionRange.getEnd());
+            loc = mk_fallback_sourceinfo(mk_original_location(
+                rangeMap.getFileName(sm,
+                                     sm.getFileID(expansionRange.getBegin())),
+                beginLine, beginChar, endLine, endChar));
+          }
 
           Ref<rust::Str> before = tok.isAtStartOfLine()   ? "\n"_rs
                                   : tok.hasLeadingSpace() ? " "_rs
@@ -137,7 +154,9 @@ public:
   }
 
   Rc<ir::Ident> getDeclName(NamedDecl *d) {
-    return ctx.mk_ident(toStr(d->getName()), mk_none_sourceinfo());
+    auto loc = mk_fallback_sourceinfo(
+        getRange(d->getSourceRange())); // TODO: get range of name token
+    return ctx.mk_ident(toStr(d->getName()), std::move(loc));
   }
 
   Rc<ir::SourceInfo> getRange(SourceRange const &range) {

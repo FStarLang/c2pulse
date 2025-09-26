@@ -112,10 +112,7 @@ impl Ctx {
 
     fn parse_rvalue(&mut self, loc: Rc<SourceInfo>, idx: u32, snippets: &SnippetMap) -> Rc<RValue> {
         match snippets.snippets.get(&idx) {
-            Some(code) => {
-                let expr = parse_rvalue(&mut self.diagnostics, code, snippets);
-                expr
-            }
+            Some(code) => parse_rvalue(&mut self.diagnostics, &loc, code, snippets),
             None => {
                 self.report_diag(loc.clone(), true, "internal error: invalid code snippet");
                 RValueT::Error(TypeT::Error.with_loc(loc.clone())).with_loc(loc)
@@ -226,8 +223,11 @@ fn mk_original_location(
         },
     }))
 }
-fn mk_none_sourceinfo() -> Rc<SourceInfo> {
-    Rc::new(SourceInfo::None)
+fn mk_fallback_sourceinfo(loc: &Rc<SourceInfo>) -> Rc<SourceInfo> {
+    match &**loc {
+        SourceInfo::Original(location) => Rc::new(SourceInfo::Fallback(location.clone())),
+        SourceInfo::Fallback(_) => loc.clone(),
+    }
 }
 
 fn mk_ast<T>(loc: Rc<SourceInfo>, val: T) -> Rc<Ast<T>> {

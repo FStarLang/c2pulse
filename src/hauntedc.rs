@@ -229,7 +229,7 @@ pub struct SnippetMap {
 
 trait SourceInfoForTokens {
     fn resolve_source_info(&self, span: &SimpleSpan) -> Rc<SourceInfo>;
-    fn resolve_error_location(&self, span: &SimpleSpan) -> Option<Location>;
+    fn resolve_error_location(&self, span: &SimpleSpan) -> Location;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -476,30 +476,6 @@ where
     })
 }
 
-fn default_location() -> Location {
-    // FIXME TODO
-    Location {
-        file_name: Rc::from(""),
-        range: Range {
-            start: Position {
-                line: 1,
-                character: 1,
-            },
-            end: Position {
-                line: 1,
-                character: 1,
-            },
-        },
-    }
-}
-
-fn location_of_sourceinfo(source_info: &SourceInfo) -> Location {
-    match source_info {
-        SourceInfo::None => default_location(),
-        SourceInfo::Original(location) => location.clone(),
-    }
-}
-
 fn location_of_source_infos(infos: &[Rc<SourceInfo>]) -> Option<Location> {
     let mut span_loc = None;
     for info in infos {
@@ -517,31 +493,37 @@ fn location_of_source_infos(infos: &[Rc<SourceInfo>]) -> Option<Location> {
     span_loc
 }
 
-impl SourceInfoForTokens for Vec<Rc<SourceInfo>> {
+struct TokenSI {
+    source_infos: Vec<Rc<SourceInfo>>,
+    fallback: Rc<SourceInfo>,
+}
+
+impl SourceInfoForTokens for TokenSI {
     fn resolve_source_info(&self, span: &SimpleSpan) -> Rc<SourceInfo> {
-        let infos = &self[span.start..span.end];
+        let infos = &self.source_infos[span.start..span.end];
         if let [info] = infos {
             return info.clone();
         }
         match location_of_source_infos(infos) {
             Some(span_loc) => Rc::new(SourceInfo::Original(span_loc)),
-            None => Rc::new(SourceInfo::None),
+            None => self.fallback.clone(),
         }
     }
 
-    fn resolve_error_location(&self, span: &SimpleSpan) -> Option<Location> {
-        let infos = &self[span.start..span.end];
+    fn resolve_error_location(&self, span: &SimpleSpan) -> Location {
+        let infos = &self.source_infos[span.start..span.end];
         if let [info] = infos {
             if let SourceInfo::Original(loc) = &**info {
-                return Some(loc.clone());
+                return loc.clone();
             }
         }
-        location_of_source_infos(infos)
+        location_of_source_infos(infos).unwrap_or_else(|| self.fallback.location().clone())
     }
 }
 
 pub fn parse_rvalue(
     diagnostics: &mut Diagnostics,
+    fallback_loc: &Rc<SourceInfo>,
     code: &InlineCode,
     snippets: &SnippetMap,
 ) -> Rc<RValue> {
@@ -561,7 +543,7 @@ pub fn parse_rvalue(
                 diagnostics
                     .diags
                     .extend(result.errors().map(|err| Diagnostic {
-                        loc: location_of_sourceinfo(loc),
+                        loc: loc.location().clone(),
                         level: DiagnosticLevel::Error,
                         msg: format!("{}", err),
                     }));
@@ -578,22 +560,22 @@ pub fn parse_rvalue(
             },
         )
         .unzip();
+    let source_infos = TokenSI {
+        source_infos,
+        fallback: fallback_loc.clone(),
+    };
     let result = expr_parser(snippets, &source_infos).parse(IterInput::new(
         tokens.iter().map(Clone::clone),
         (tokens.len()..tokens.len()).into(),
     ));
     let output = match result.output() {
         Some(output) => output.clone().to_rvalue(),
-        None => {
-            let loc = Rc::new(SourceInfo::None);
-            RValueT::Error(TypeT::Error.with_loc(loc.clone())).with_loc(loc)
-        }
+        None => RValueT::Error(TypeT::Error.with_loc(fallback_loc.clone()))
+            .with_loc(fallback_loc.clone()),
     };
     diagnostics.diags.extend(result.errors().map(|err| {
         Diagnostic {
-            loc: source_infos
-                .resolve_error_location(err.span())
-                .unwrap_or_else(default_location),
+            loc: source_infos.resolve_error_location(err.span()),
             level: DiagnosticLevel::Error,
             msg: format!("{} {:?}", err, tokens), // TODO
         }
