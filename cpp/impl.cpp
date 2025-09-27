@@ -591,7 +591,6 @@ public:
 
   llvm::ErrorOr<llvm::vfs::Status> status(const Twine &Path) override {
     auto res = ctx.read_vfs_file(toStr(Path.str()));
-    llvm::errs() << "status: " << Path << " " << res.is_ok() << "\n";
     if (!res.is_ok()) {
       // TODO: fallback for directories
       return realFS->status(Path);
@@ -629,7 +628,6 @@ public:
 
   bool exists(const Twine &Path) override {
     auto res = ctx.read_vfs_file(toStr(Path.str()));
-    llvm::errs() << "exists: " << Path << " " << res.is_ok() << "\n";
     if (res.is_ok())
       return true;
 
