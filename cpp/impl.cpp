@@ -521,7 +521,6 @@ public:
       ctx.report_diag(std::move(loc),
                       DiagLevel >= DiagnosticsEngine::Level::Error, toStr(out));
     }
-    return DiagnosticConsumer::HandleDiagnostic(DiagLevel, Info);
   }
 };
 
