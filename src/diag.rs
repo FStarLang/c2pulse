@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use crate::ir::{Location, Position};
+use crate::{
+    ir::{Location, Position},
+    vfs::VFS,
+};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum DiagnosticLevel {
@@ -41,7 +44,7 @@ impl Diagnostics {
         self.diags.iter().any(|d| d.level.is_error())
     }
 
-    pub fn print_to_stderr<'a>(&'a self) {
+    pub fn print_to_stderr<'a>(&'a self, vfs: &mut dyn VFS) {
         use codespan_reporting::diagnostic::*;
         use codespan_reporting::term::termcolor::StandardStream;
         use codespan_reporting::{files::Files, term};
@@ -61,8 +64,10 @@ impl Diagnostics {
             let file_id = *file_ids.entry(file_name).or_insert_with(|| {
                 files.add(
                     file_name,
-                    String::from_utf8(std::fs::read(file_name).unwrap_or_else(|_| vec![]))
-                        .unwrap_or("".to_string()),
+                    match vfs.read_vfs_file(file_name) {
+                        Ok(entry) => entry.contents.clone(),
+                        Err(_) => "".to_string(),
+                    },
                 )
             });
             let pos_to_byte = |pos: Position| {

@@ -4,11 +4,13 @@ use crate::{
     diag::{Diagnostic, DiagnosticLevel, Diagnostics},
     hauntedc::{SnippetMap, parse_rvalue},
     ir::*,
+    vfs::VFS,
 };
 use core::slice;
 use std::{collections::HashSet, rc::Rc, str::FromStr};
 
 mod generated {
+    use crate::vfs::VFS;
     use std::ops::Deref;
     include!(concat!(env!("OUT_DIR"), "/generated.rs"));
 }
@@ -17,18 +19,20 @@ unsafe fn str_from_parts<'a>(ptr: *const u8, sz: usize) -> &'a str {
     str::from_utf8(unsafe { slice::from_raw_parts(ptr, sz) }).unwrap()
 }
 
-pub struct Ctx {
+pub struct Ctx<'a> {
+    vfs: &'a mut dyn VFS,
     input_file_name: String,
     interned_strs: HashSet<Rc<str>>,
     translation_unit: TranslationUnit,
     diagnostics: Diagnostics,
 }
 
-impl Ctx {
-    fn new(input_file_name: String) -> Ctx {
+impl<'a> Ctx<'a> {
+    fn new(input_file_name: String, vfs: &'a mut dyn VFS) -> Ctx<'a> {
         let input_fn: &str = &input_file_name;
         let main_file_name: Rc<str> = Rc::from(input_fn);
         Ctx {
+            vfs,
             input_file_name,
             interned_strs: HashSet::new(),
             translation_unit: TranslationUnit {
@@ -133,6 +137,12 @@ impl Ctx {
             }),
             msg: msg.into(),
         })
+    }
+}
+
+impl<'a> VFS for Ctx<'a> {
+    fn read_vfs_file(&mut self, file_name: &str) -> crate::vfs::VFSResult {
+        self.vfs.read_vfs_file(file_name)
     }
 }
 
@@ -332,8 +342,8 @@ fn mk_stmt_err(loc: Rc<SourceInfo>) -> Rc<Stmt> {
     mk_ast(loc, StmtT::Error)
 }
 
-pub fn parse_file(file_name: &str) -> (TranslationUnit, Diagnostics) {
-    let mut ctx = Ctx::new(file_name.to_string());
+pub fn parse_file(file_name: &str, vfs: &mut impl VFS) -> (TranslationUnit, Diagnostics) {
+    let mut ctx = Ctx::new(file_name.to_string(), vfs);
     generated::parse_file(&mut ctx);
     (ctx.translation_unit, ctx.diagnostics)
 }

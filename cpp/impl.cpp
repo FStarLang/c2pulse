@@ -15,7 +15,7 @@ using rust::std::vec::Vec;
 using namespace rust::crate::clang;
 namespace ir = rust::crate::ir;
 
-llvm::StringRef toStringRef(rust::Str const &str) {
+llvm::StringRef toStringRef(Ref<rust::Str> str) {
   return llvm::StringRef((char const *)str.as_ptr(), str.len());
 }
 
@@ -538,6 +538,116 @@ std::string getResourcesPath() {
   return clang::driver::Driver::GetResourcesPath(getBinaryForResourcesPath());
 }
 
+llvm::vfs::Status mkStatus(Ref<rust::crate::vfs::VFSEntry> entry) {
+  auto fileName = entry.get_file_name();
+  llvm::sys::fs::UniqueID unique(0, (uint64_t)fileName.as_ptr());
+  llvm::sys::TimePoint<> time;
+  return llvm::vfs::Status(
+      toStringRef(fileName), unique, time, 0, 0, entry.get_contents().len(),
+      llvm::sys::fs::file_type::regular_file, llvm::sys::fs::perms::all_all);
+}
+
+class CtxVFSFile : public llvm::vfs::File {
+  Rc<rust::crate::vfs::VFSEntry> entry;
+
+public:
+  CtxVFSFile(Rc<rust::crate::vfs::VFSEntry> &&e) : entry(std::move(e)) {}
+
+  llvm::ErrorOr<llvm::vfs::Status> status() override {
+    return mkStatus(entry.deref());
+  }
+
+  llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>>
+  getBuffer(const Twine &Name, int64_t FileSize = -1,
+            bool RequiresNullTerminator = true,
+            bool IsVolatile = false) override {
+    if (!RequiresNullTerminator)
+      return llvm::MemoryBuffer::getMemBuffer(
+          toStringRef(entry.deref().get_contents()),
+          toStringRef(entry.deref().get_file_name()));
+
+    return llvm::MemoryBuffer::getMemBufferCopy(
+        toStringRef(entry.deref().get_contents()),
+        toStringRef(entry.deref().get_file_name()));
+  };
+
+  std::error_code close() override { return {}; }
+
+  llvm::ErrorOr<std::string> getName() override {
+    return toString(entry.deref().get_file_name());
+  }
+};
+
+class CtxVFS : public llvm::vfs::FileSystem {
+  RefMut<Ctx> ctx;
+  IntrusiveRefCntPtr<llvm::vfs::FileSystem> realFS;
+
+public:
+  CtxVFS(RefMut<Ctx> c) : ctx(c), realFS(llvm::vfs::getRealFileSystem()) {}
+
+  static IntrusiveRefCntPtr<llvm::vfs::FileSystem> make(RefMut<Ctx> ctx) {
+    return llvm::makeIntrusiveRefCnt<CtxVFS>(ctx);
+  }
+
+  llvm::ErrorOr<llvm::vfs::Status> status(const Twine &Path) override {
+    auto res = ctx.read_vfs_file(toStr(Path.str()));
+    llvm::errs() << "status: " << Path << " " << res.is_ok() << "\n";
+    if (!res.is_ok()) {
+      // TODO: fallback for directories
+      return realFS->status(Path);
+    }
+    return mkStatus(res.unwrap().deref());
+  };
+
+  llvm::ErrorOr<std::unique_ptr<llvm::vfs::File>>
+  openFileForRead(const Twine &Path) override {
+    auto res = ctx.read_vfs_file(toStr(Path.str()));
+    if (!res.is_ok()) {
+      return llvm::errc::no_such_file_or_directory;
+    }
+    return std::make_unique<CtxVFSFile>(res.unwrap());
+  }
+
+  llvm::vfs::directory_iterator dir_begin(const Twine &Dir,
+                                          std::error_code &EC) override {
+    return realFS->dir_begin(Dir, EC);
+  }
+
+  std::error_code setCurrentWorkingDirectory(const Twine &Path) override {
+    return realFS->setCurrentWorkingDirectory(Path);
+  }
+
+  llvm::ErrorOr<std::string> getCurrentWorkingDirectory() const override {
+    return realFS->getCurrentWorkingDirectory();
+  }
+
+  std::error_code getRealPath(const Twine &Path,
+                              SmallVectorImpl<char> &Output) override {
+    // TODO: implement using VFS
+    return realFS->getRealPath(Path, Output);
+  }
+
+  bool exists(const Twine &Path) override {
+    auto res = ctx.read_vfs_file(toStr(Path.str()));
+    llvm::errs() << "exists: " << Path << " " << res.is_ok() << "\n";
+    if (res.is_ok())
+      return true;
+
+    // TODO: fallback for directories
+    return realFS->exists(Path);
+  }
+
+  std::error_code isLocal(const Twine &Path, bool &Result) override {
+    Result = true;
+    return {};
+  }
+
+  std::error_code makeAbsolute(SmallVectorImpl<char> &Path) const override {
+    // TODO: implement using VFS
+    return realFS->makeAbsolute(Path);
+  }
+};
+
 static void parse_file(RefMut<Ctx> ctx) {
   std::string fileName = toString(ctx.get_input_file_name());
   std::vector<std::string> sourcePathList{fileName};
@@ -550,7 +660,8 @@ static void parse_file(RefMut<Ctx> ctx) {
     compDB = std::make_unique<FixedCompilationDatabase>(".", argsForCompDB);
   }
 
-  ClangTool Tool(*compDB, sourcePathList);
+  ClangTool Tool(*compDB, sourcePathList,
+                 std::make_shared<PCHContainerOperations>(), CtxVFS::make(ctx));
 
   RangeMap rangeMap(ctx);
   C2PulseDiagnosticConsumer consumer(ctx, rangeMap);

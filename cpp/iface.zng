@@ -4,6 +4,12 @@ type str {
     fn len(&self) -> usize;
 }
 
+use ::std::string::String as String;
+type String {
+    #only_by_ref;
+    fn deref(&self) -> &str;
+}
+
 type bool {
     #layout(size=1, align=1);
     wellknown_traits(Copy);
@@ -11,6 +17,7 @@ type bool {
 
 use ::num_bigint::BigInt as BigInt;
 use ::std::rc::Rc as Rc;
+use ::core::result::Result as Result;
 use ::std::vec::Vec as Vec;
 use crate::ir::Ident as Ident;
 use crate::ir::SourceInfo as SourceInfo;
@@ -99,6 +106,25 @@ type SnippetMap {
     fn default() -> SnippetMap;
 }
 
+use crate::vfs::VFSEntry as VFSEntry;
+mod crate::vfs {
+    type VFSEntry {
+        #only_by_ref;
+        fn get_file_name(&self) -> &str;
+        fn get_contents(&self) -> &str;
+    }
+    type Rc<VFSEntry> {
+        #layout(size=8, align=8);
+        fn deref(&self) -> &VFSEntry;
+        fn clone(&self) -> Rc<VFSEntry>;
+    }
+    type Result<Rc<VFSEntry>, String> {
+        #heap_allocated;
+        fn is_ok(&self) -> bool;
+        fn unwrap(self) -> Rc<VFSEntry>;
+    }
+}
+
 mod crate::clang {
     type Ctx {
         #only_by_ref;
@@ -117,6 +143,8 @@ mod crate::clang {
         fn parse_rvalue(&mut self, Rc<SourceInfo>, u32, &SnippetMap) -> Rc<RValue>;
 
         fn report_diag(&mut self, Rc<SourceInfo>, bool, &str);
+
+        fn read_vfs_file(&mut self, &str) -> Result<Rc<VFSEntry>, String>;
     }
 
     type DeclBuilder {
