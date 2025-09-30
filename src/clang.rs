@@ -342,7 +342,7 @@ fn mk_stmt_err(loc: Rc<SourceInfo>) -> Rc<Stmt> {
     mk_ast(loc, StmtT::Error)
 }
 
-pub fn parse_file(file_name: &str, vfs: &mut impl VFS) -> (TranslationUnit, Diagnostics) {
+pub fn parse_file(file_name: &str, vfs: &mut dyn VFS) -> (TranslationUnit, Diagnostics) {
     let mut ctx = Ctx::new(file_name.to_string(), vfs);
     generated::parse_file(&mut ctx);
     (ctx.translation_unit, ctx.diagnostics)

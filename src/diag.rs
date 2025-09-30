@@ -1,9 +1,27 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, str::FromStr};
 
 use crate::{
-    ir::{Location, Position},
+    ir::{Location, Position, Range},
     vfs::VFS,
 };
+
+impl Position {
+    pub fn to_lsp(&self) -> lsp_types::Position {
+        lsp_types::Position {
+            line: self.line - 1,
+            character: self.character - 1,
+        }
+    }
+}
+
+impl Range {
+    pub fn to_lsp(&self) -> lsp_types::Range {
+        lsp_types::Range {
+            start: self.start.to_lsp(),
+            end: self.end.to_lsp(),
+        }
+    }
+}
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum DiagnosticLevel {
@@ -19,11 +37,36 @@ impl DiagnosticLevel {
     }
 }
 
+impl DiagnosticLevel {
+    pub fn to_lsp(self) -> lsp_types::DiagnosticSeverity {
+        match self {
+            DiagnosticLevel::Warning => lsp_types::DiagnosticSeverity::WARNING,
+            DiagnosticLevel::Error => lsp_types::DiagnosticSeverity::ERROR,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Diagnostic {
     pub loc: Location,
     pub level: DiagnosticLevel,
     pub msg: String,
+}
+
+impl Diagnostic {
+    pub fn to_lsp(&self) -> lsp_types::Diagnostic {
+        lsp_types::Diagnostic {
+            range: self.loc.range.to_lsp(),
+            severity: Some(self.level.to_lsp()),
+            code: None,
+            code_description: None,
+            source: None,
+            message: self.msg.clone(),
+            related_information: None,
+            tags: None,
+            data: None,
+        }
+    }
 }
 
 #[derive(Debug)]

@@ -609,10 +609,13 @@ fn emit_decl(env: &Env, decl: &Decl) -> Doc {
     })
 }
 
-pub fn emit(tu: &TranslationUnit) -> (String, SourceRangeMap) {
+pub fn emit(module_name: &str, tu: &TranslationUnit) -> (String, SourceRangeMap) {
     let mut env = Env::new();
     let mut output: Vec<Doc> = vec![];
-    output.push(Doc::text("module TODO\nopen Pulse\n#lang-pulse"));
+    output.push(Doc::text(format!(
+        "module {}\nopen Pulse\n#lang-pulse",
+        module_name
+    )));
     for decl in &tu.decls {
         output.push(emit_decl(&env, decl));
         env.push_decl(decl);

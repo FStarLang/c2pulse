@@ -1,0 +1,11 @@
+{
+  "fstar_exe": "fstar.exe",
+  "options": [
+    "--query_cache",
+    "--ext", "optimize_let_vc"
+  ],
+  "include_dirs": [
+    "${PULSE_HOME}/lib/pulse",
+    "include/pulse"
+  ]
+}
