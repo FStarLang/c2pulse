@@ -11,6 +11,8 @@
 #define _ensures(p) __attribute__((annotate("c2pulse-ensures", __capture_args(p))))
 #define _invariant(p) __attribute__((annotate("c2pulse-invariant", __capture_args(p))))
 
+#define _assert(p) ({ __attribute__((annotate("c2pulse-assert", __capture_args(p)))) {} })
+
 #define _plain [[clang::annotate("c2pulse-plain")]]
 #define _consumes [[clang::annotate("c2pulse-consumes")]]
 
@@ -22,6 +24,8 @@
 #define _requires(p)
 #define _ensures(p)
 #define _invariant(p)
+
+#define _assert(p)
 
 #define _plain
 #define _consumes
