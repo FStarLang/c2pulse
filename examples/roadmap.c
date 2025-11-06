@@ -15,8 +15,10 @@ typedef struct {
   uint32_t second;
 } u32_pair;
 
-u32_pair *new_u32_pair()
-  _ensures(freeable(return))
+_preserves(_freeable(this))
+typedef u32_pair* freeable_u32_pair_ptr;
+
+freeable_u32_pair_ptr new_u32_pair()
   _ensures(return->first == 0ul)
   _ensures(return->second == 1ul)
 {
@@ -39,7 +41,7 @@ _ensures(x->first == _old(x->second) && x->second == _old(x->first))
 void swap_fields_alt(u32_pair *x) { swap(&x->first, &x->second); }
 
 int test_swaps()
-    _ensures(return == EXIT_SUCCESS)
+  _ensures(return == EXIT_SUCCESS)
 {
   u32_pair *x = new_u32_pair();
   swap_fields(x);
