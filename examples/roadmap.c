@@ -2,8 +2,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-void swap(int *x, int *y)
-    _ensures(*y == _old(*x) && *x == _old(*y))
+void swap(uint32_t *x, uint32_t *y)
+  _ensures(*y == _old(*x) && *x == _old(*y))
 {
   int tmp = *y;
   *y = *x;
@@ -36,7 +36,7 @@ void swap_fields(u32_pair *x)
 }
 
 _ensures(x->first == _old(x->second) && x->second == _old(x->first))
-void swap_fields_alt(u32_pair *x) { swap_refs(&x->first, &x->second); }
+void swap_fields_alt(u32_pair *x) { swap(&x->first, &x->second); }
 
 int test_swaps()
     _ensures(return == EXIT_SUCCESS)
