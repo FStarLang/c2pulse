@@ -21,6 +21,7 @@ fn elab_type(diags: &mut Diagnostics, env: &Env, ty: &mut Type) {
         TypeT::Error => {}
         TypeT::Void => {}
         TypeT::SLProp => {}
+        TypeT::SpecInt => {}
         TypeT::Bool => {}
 
         TypeT::Requires(ty, p) | TypeT::Ensures(ty, p) => {

@@ -86,6 +86,7 @@ fn scan_type(deps: &mut HashSet<DeclName>, ty: &Type) {
             scan_rvalue(deps, p);
         }
         TypeT::Consumes(ty) | TypeT::Plain(ty) => scan_type(deps, ty),
+        TypeT::SpecInt => {}
     }
 }
 

@@ -118,6 +118,8 @@ pub enum TypeT {
     Int { signed: bool, width: u32 },
     SizeT,
     Pointer(Rc<Type>, PointerKind),
+
+    SpecInt,
     SLProp,
 
     Requires(Rc<Type>, Rc<RValue>),

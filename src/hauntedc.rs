@@ -325,8 +325,11 @@ where
 
         // let expression = assignment_expression;
 
-        let type_name = select! { Token { tok: CoreToken::Ident("_slprop"), .. } => TypeT::SLProp }
-            .map_with(|ty, e| ty.with_loc(sift.resolve_source_info(&e.span())));
+        let type_name = select! {
+            Token { tok: CoreToken::Ident("_slprop"), .. } => TypeT::SLProp,
+            Token { tok: CoreToken::Ident("_specint"), .. } => TypeT::SpecInt,
+        }
+        .map_with(|ty, e| ty.with_loc(sift.resolve_source_info(&e.span())));
 
         let inline_pulse = select! { Token { tok: CoreToken::Ident("_inline_pulse"), .. } => () }
             .ignore_then(

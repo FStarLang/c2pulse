@@ -52,7 +52,7 @@ int test_swaps()
 }
 
 uint32_t multiply_by_repeated_addition(uint32_t x, uint32_t y)
-  _requires(((_int) x) * y <= UINT32_MAX)
+  _requires(((_specint) x) * y <= UINT32_MAX)
   _ensures(return == x * y)
 {
   uint32_t ctr = 0;

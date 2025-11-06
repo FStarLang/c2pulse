@@ -122,7 +122,9 @@ fn emit_type(env: &Env, ty: &Type) -> Doc {
                 unaryfn(Doc::text("ref"), emit_type(env, to))
             }
             TypeT::Error => Doc::text("unit"),
+
             TypeT::SLProp => Doc::text("slprop"),
+            TypeT::SpecInt => Doc::text("int"),
 
             TypeT::Requires(ty, _)
             | TypeT::Ensures(ty, _)
@@ -184,7 +186,12 @@ fn emit_type_slprop(
     this: &Rc<Ident>,
 ) {
     match &ty.val {
-        TypeT::Void | TypeT::Bool | TypeT::Int { .. } | TypeT::SizeT | TypeT::SLProp => {}
+        TypeT::Void
+        | TypeT::Bool
+        | TypeT::Int { .. }
+        | TypeT::SizeT
+        | TypeT::SpecInt
+        | TypeT::SLProp => {}
         TypeT::Pointer(..) => {
             let live = annotated(
                 ty,
@@ -266,9 +273,10 @@ fn get_int_mod(signed: &bool, width: &u32) -> Option<&'static str> {
 fn emit_binop(op: BinOp, ty: &Type) -> Option<Doc> {
     Some(match (op, &ty.val) {
         (BinOp::Eq, TypeT::SLProp | TypeT::Void) => Doc::text("=="),
-        (BinOp::Eq, TypeT::Bool | TypeT::Int { .. } | TypeT::SizeT | TypeT::Pointer(_, _)) => {
-            Doc::text("=")
-        }
+        (
+            BinOp::Eq,
+            TypeT::SpecInt | TypeT::Bool | TypeT::Int { .. } | TypeT::SizeT | TypeT::Pointer(_, _),
+        ) => Doc::text("="),
 
         (BinOp::LogAnd, TypeT::Bool) => Doc::text("&&"),
         (BinOp::Div, TypeT::Bool) => todo!(),
@@ -299,6 +307,13 @@ fn emit_binop(op: BinOp, ty: &Type) -> Option<Doc> {
             Doc::text(format!("`{}.sub`", get_int_mod(signed, width)?))
         }
         (BinOp::Sub, TypeT::SizeT) => Doc::text("`SizeT.sub`"),
+
+        (BinOp::Mul, TypeT::SpecInt) => Doc::text("`op_Multiply`"),
+        (BinOp::Div, TypeT::SpecInt) => Doc::text("/"),
+        (BinOp::Mod, TypeT::SpecInt) => Doc::text("%"),
+        (BinOp::Add, TypeT::SpecInt) => Doc::text("+"),
+        (BinOp::Sub, TypeT::SpecInt) => Doc::text("-"),
+        (BinOp::LogAnd, TypeT::SpecInt) => todo!(),
 
         (
             op,
