@@ -344,8 +344,12 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
             RValueT::Ref(v) => emit_lvalue(env, v),
             RValueT::Cast(val, ty) => {
                 let val_doc = emit_rvalue(env, val);
-                let val_ty = env.infer_rvalue(val).unwrap();
-                match (&val_ty.val, &ty.val) {
+                let val_ty = env.infer_rvalue(val);
+                let val_ty = match &val_ty {
+                    Some(ty) => &ty.val,
+                    None => &TypeT::Error,
+                };
+                match (val_ty, &ty.val) {
                     (TypeT::Void, TypeT::Void) => val_doc,
                     (TypeT::Bool, TypeT::Bool) => val_doc,
                     // (TypeT::Bool, TypeT::Int { signed, width }) => todo!(),

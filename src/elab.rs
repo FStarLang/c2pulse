@@ -48,14 +48,18 @@ fn cast_to(rval: &mut Rc<RValue>, ty: Rc<Type>) {
 }
 
 fn cast_to_slprop(diags: &mut Diagnostics, env: &Env, rval: &mut Rc<RValue>) {
-    if !env.is_slprop(&env.infer_rvalue(rval).unwrap()) {
+    if env
+        .infer_rvalue(rval)
+        .filter(|p| env.is_slprop(p))
+        .is_none()
+    {
         *rval = RValueT::Cast(rval.clone(), TypeT::SLProp.with_loc(rval.loc.clone()))
             .with_loc(rval.loc.clone())
     }
 }
 
 fn cast_to_bool(diags: &mut Diagnostics, env: &Env, rval: &mut Rc<RValue>) {
-    if !env.is_bool(&env.infer_rvalue(rval).unwrap()) {
+    if env.infer_rvalue(rval).filter(|p| env.is_bool(p)).is_none() {
         *rval = RValueT::Cast(rval.clone(), TypeT::Bool.with_loc(rval.loc.clone()))
             .with_loc(rval.loc.clone())
     }

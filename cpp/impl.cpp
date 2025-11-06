@@ -509,16 +509,21 @@ public:
     auto &sm = Info.getSourceManager();
     if (Info.getNumRanges() > 0) {
       auto range = Info.getRange(0);
-      auto loc = mk_original_location(
-          rangeMap.getFileName(
-              sm, sm.getFileID(sm.getExpansionLoc(range.getBegin()))),
-          sm.getExpansionLineNumber(range.getBegin()),
-          sm.getExpansionColumnNumber(range.getBegin()),
-          sm.getExpansionLineNumber(range.getEnd()),
-          sm.getExpansionColumnNumber(range.getEnd()));
+      auto file_name = rangeMap.getFileName(
+          sm, sm.getFileID(sm.getExpansionLoc(range.getBegin())));
+      unsigned begin_line = sm.getExpansionLineNumber(range.getBegin());
+      unsigned begin_col = sm.getExpansionColumnNumber(range.getBegin());
+      unsigned end_line = sm.getExpansionLineNumber(range.getEnd());
+      unsigned end_col = sm.getExpansionColumnNumber(range.getEnd());
+      if (end_line == 0 || end_col == 0) {
+        // unknown end position
+        end_line = begin_line;
+        end_col = begin_col;
+      }
       llvm::SmallString<0> out;
       Info.FormatDiagnostic(out);
-      ctx.report_diag(std::move(loc),
+      ctx.report_diag(mk_original_location(std::move(file_name), begin_line,
+                                           begin_col, end_line, end_col),
                       DiagLevel >= DiagnosticsEngine::Level::Error, toStr(out));
     }
   }

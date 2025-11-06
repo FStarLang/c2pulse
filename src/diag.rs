@@ -7,9 +7,10 @@ use crate::{
 
 impl Position {
     pub fn to_lsp(&self) -> lsp_types::Position {
+        // TODO: it's unclear where we get the zero positions from
         lsp_types::Position {
-            line: self.line - 1,
-            character: self.character - 1,
+            line: self.line.saturating_sub(1),
+            character: self.character.saturating_sub(1),
         }
     }
 }
@@ -115,10 +116,10 @@ impl Diagnostics {
             });
             let pos_to_byte = |pos: Position| {
                 files
-                    .line_range(file_id, (pos.line - 1) as usize)
+                    .line_range(file_id, pos.line.saturating_sub(1) as usize)
                     .expect("invalid position")
                     .start
-                    + ((pos.character - 1) as usize)
+                    + (pos.character.saturating_sub(1) as usize)
             };
             d = d.with_label(Label::primary(
                 file_id,

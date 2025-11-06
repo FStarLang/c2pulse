@@ -1,7 +1,4 @@
-use std::{
-    path::Path,
-    rc::Rc,
-};
+use std::{path::Path, rc::Rc};
 
 use crate::{
     diag::{Diagnostic, Diagnostics},
