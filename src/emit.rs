@@ -530,10 +530,13 @@ fn emit_fn_decl(
         emit_type_slprop(env, ty, &mut requires_props, &mut ensures_props, &n);
     }
 
+    requires_props.extend(requires.iter().map(|r| emit_rvalue(env, r)));
+
     let return_id = Rc::<str>::from("return").with_loc(ret_type.loc.clone());
     emit_type_slprop(env, &ret_type, &mut ensures_props, &mut vec![], &return_id);
+    let ret_type_doc = emit_type(env, ret_type);
 
-    requires_props.extend(requires.iter().map(|r| emit_rvalue(env, r)));
+    env.push_return(ret_type.clone());
     ensures_props.extend(ensures.iter().map(|r| emit_rvalue(env, r)));
 
     let hdr = Doc::group(
@@ -562,7 +565,7 @@ fn emit_fn_decl(
             .append(":")
             .group()
             .append(Doc::line())
-            .append(emit_type(env, ret_type)),
+            .append(ret_type_doc),
     ))
     .append(Doc::concat(ensures_props.into_iter().map(|r| {
         Doc::hardline().append(

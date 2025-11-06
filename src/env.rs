@@ -99,6 +99,16 @@ impl Env {
         );
     }
 
+    pub fn push_return(&mut self, ty: Rc<Type>) {
+        self.locals.insert(
+            Rc::<str>::from("return"),
+            LocalDecl {
+                ty,
+                kind: LocalDeclKind::RValue,
+            },
+        );
+    }
+
     pub fn infer_rvalue(&self, rvalue: &RValue) -> Option<Rc<Type>> {
         match &rvalue.val {
             RValueT::IntLit(_, ty) => Some(ty.clone()),

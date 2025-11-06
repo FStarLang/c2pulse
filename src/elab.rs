@@ -187,8 +187,9 @@ fn elab_fn_decl(
         elab_type(diags, env, Rc::make_mut(ty));
         env.push_arg(arg, LocalDeclKind::RValue);
     }
-    elab_type(diags, env, Rc::make_mut(ret_type));
     elab_slprops(diags, env, requires);
+    elab_type(diags, env, Rc::make_mut(ret_type));
+    env.push_return(ret_type.clone());
     elab_slprops(diags, env, ensures);
 }
 

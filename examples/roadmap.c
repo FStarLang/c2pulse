@@ -38,13 +38,13 @@ void swap_fields(u32_pair *x)
 _ensures(x->first == _old(x->second) && x->second == _old(x->first))
 void swap_fields_alt(u32_pair *x) { swap_refs(&x->first, &x->second); }
 
-int test_swaps() {
+int test_swaps()
+    _ensures(return == EXIT_SUCCESS)
+{
   u32_pair *x = new_u32_pair();
   swap_fields(x);
   swap_fields_alt(x);
-  _assert(
-    x->first == 0ul && x->second == 1ul
-  );
+  _assert(x->first == 0ul && x->second == 1ul);
   free(x);
   return EXIT_SUCCESS;
 }
