@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+cd "$(dirname "${BASH_SOURCE[0]}")"
+SED=$(which gsed >/dev/null 2>&1 && echo gsed || echo sed)
+set -eo pipefail
+
+add_to_path() {
+    echo "export PATH:=$1:\$(PATH)" >&5
+    echo "export PATH=\"$1:\$PATH\"" >&6
+}
+
+export_env() {
+    echo "export $1:=$2" >&5
+    echo "export $1=\"$2\"" >&6
+}
+
+exec 5>env.mk
+exec 6>env.sh
+
+if [ "$C2PULSE_OPT" = 0 ]; then
+    OPAMROOT=$(opam var root)
+else
+    OPTDIR="$(realpath "$PWD")"
+    OPAMROOT=$OPTDIR/opam
+    C2PULSE_OPT=1
+fi
+
+echo C2PULSE_OPT := ${C2PULSE_OPT} >&5
+
+opam env --root=$OPAMROOT --set-root --shell=sh \
+    | grep -v PATH \
+    | $SED 's!^\([^=]*\)='"'"'\(.*\)'"'"'; export [^;]*;$!export \1 := \2!' \
+    >&5
+
+opam env --root=$OPAMROOT --set-root --shell=sh \
+    | grep -v PATH \
+    >&6
+
+add_to_path "$OPAMROOT/$(opam switch --root=$OPAMROOT show | $SED -z 's/[[:space:]]//g')/bin"
+
+if [ "$C2PULSE_OPT" = 0 ]; then
+    add_to_path $(dirname $(which fstar.exe))
+else
+    add_to_path $OPTDIR/fstar/bin
+    PULSE_HOME=$OPTDIR/pulse/out
+    export_env OPAMYES 1
+fi
+
+export_env PULSE_HOME "$PULSE_HOME"

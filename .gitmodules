@@ -1,0 +1,6 @@
+[submodule "opt/fstar"]
+	path = opt/fstar
+	url = https://github.com/fstarlang/fstar
+[submodule "opt/pulse"]
+	path = opt/pulse
+	url = https://github.com/fstarlang/pulse
