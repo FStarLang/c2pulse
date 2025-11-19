@@ -53,3 +53,4 @@ endif
 
 .PHONY: lib
 lib: build-pulse
+	$(MAKE) -C pulse

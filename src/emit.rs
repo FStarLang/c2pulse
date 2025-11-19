@@ -635,7 +635,7 @@ pub fn emit(module_name: &str, tu: &TranslationUnit) -> (String, SourceRangeMap)
     let mut env = Env::new();
     let mut output: Vec<Doc> = vec![];
     output.push(Doc::text(format!(
-        "module {}\nopen Pulse\n#lang-pulse",
+        "module {}\nopen Pulse\nopen Pulse.Lib.C\n#lang-pulse",
         module_name
     )));
     for decl in &tu.decls {
