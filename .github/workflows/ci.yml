@@ -19,7 +19,7 @@ jobs:
       run: |
         sudo apt update
         sudo apt install -y opam
-        opam init
+        opam init --bare
 
     - name: Install Z3
       run: |
