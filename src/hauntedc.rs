@@ -135,7 +135,9 @@ mk_punct_table! {
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
-enum CoreToken<'src> {
+enum Token<'src> {
+    Whitespace,
+
     String(&'src str),
     Integer(&'src str, IntegerSuffix),
     Ident(&'src str),
@@ -145,31 +147,20 @@ enum CoreToken<'src> {
     Error,
 }
 
-impl<'src> Display for CoreToken<'src> {
+impl<'src> Display for Token<'src> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            CoreToken::String(tok) => write!(f, "{}", tok),
-            CoreToken::Integer(i, suffix) => write!(f, "{}{}", i, suffix),
-            CoreToken::Ident(id) => write!(f, "{}", id),
-            CoreToken::Punct(punct) => write!(f, "{}", punct.to_str()),
-            CoreToken::Error => write!(f, "(LEXING ERROR)"),
+            Token::Whitespace => write!(f, " "),
+            Token::String(tok) => write!(f, "{}", tok),
+            Token::Integer(i, suffix) => write!(f, "{}{}", i, suffix),
+            Token::Ident(id) => write!(f, "{}", id),
+            Token::Punct(punct) => write!(f, "{}", punct.to_str()),
+            Token::Error => write!(f, "(LEXING ERROR)"),
         }
     }
 }
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-struct Token<'src> {
-    ws_before: bool,
-    tok: CoreToken<'src>,
-}
-
-impl<'src> Display for Token<'src> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.tok)
-    }
-}
-
-fn lex_core_token<'src>() -> impl Parser<'src, &'src str, CoreToken<'src>> {
+fn lex_core_token<'src>() -> impl Parser<'src, &'src str, Token<'src>> {
     let integer_suffix_l = Parser::or(
         one_of("lL").ignore_then(
             one_of("lL")
@@ -190,11 +181,11 @@ fn lex_core_token<'src>() -> impl Parser<'src, &'src str, CoreToken<'src>> {
 
     let integer_literal = decimal_literal
         .then(integer_suffix)
-        .map(|(i, s)| CoreToken::Integer(i, s));
+        .map(|(i, s)| Token::Integer(i, s));
 
-    let op = Punct::lexer().map(CoreToken::Punct);
+    let op = Punct::lexer().map(Token::Punct);
 
-    let ident = text::ident().map(CoreToken::Ident); // as C demands: XID_Start XID_Continue*
+    let ident = text::ident().map(Token::Ident); // as C demands: XID_Start XID_Continue*
 
     // TODO FIXME
     let string = just('"')
@@ -202,24 +193,32 @@ fn lex_core_token<'src>() -> impl Parser<'src, &'src str, CoreToken<'src>> {
         .repeated()
         .to_slice()
         .delimited_by(just('"'), just('"'))
-        .map(CoreToken::String);
+        .map(Token::String);
 
     let fallback = text::whitespace()
         .not()
         .repeated()
         .at_least(1)
-        .to(CoreToken::Error);
+        .to(Token::Error);
 
     integer_literal.or(op).or(ident).or(string).or(fallback)
 }
 
-fn punct<'tokens, 'src: 'tokens, I, Span>(
-    op: Punct,
-) -> impl Parser<'tokens, I, (), extra::Err<Rich<'tokens, Token<'src>, Span>>> + Clone
+fn ws<'tokens, 'src: 'tokens, I, Span>()
+-> impl Parser<'tokens, I, (), extra::Err<Rich<'tokens, Token<'src>, Span>>> + Clone
 where
     I: ValueInput<'tokens, Token = Token<'src>, Span = Span>,
 {
-    select! {Token{tok: CoreToken::Punct(o), ..} if op == o => ()}
+    select! { Token::Whitespace => () }.repeated()
+}
+
+fn punct<'tokens, 'src: 'tokens, I, Span>(
+    op: Punct,
+) -> impl Parser<'tokens, I, Token<'src>, extra::Err<Rich<'tokens, Token<'src>, Span>>> + Clone
+where
+    I: ValueInput<'tokens, Token = Token<'src>, Span = Span>,
+{
+    just(Token::Punct(op)).padded_by(ws())
 }
 
 #[derive(Debug, Default, Clone)]
@@ -326,14 +325,14 @@ where
         // let expression = assignment_expression;
 
         let type_name = select! {
-            Token { tok: CoreToken::Ident("_slprop"), .. } => TypeT::SLProp,
-            Token { tok: CoreToken::Ident("_specint"), .. } => TypeT::SpecInt,
+            Token::Ident("_slprop") => TypeT::SLProp,
+            Token::Ident("_specint") => TypeT::SpecInt,
         }
         .map_with(|ty, e| ty.with_loc(sift.resolve_source_info(&e.span())));
 
-        let inline_pulse = select! { Token { tok: CoreToken::Ident("_inline_pulse"), .. } => () }
+        let inline_pulse = select! { Token::Ident("_inline_pulse") => () }
             .ignore_then(
-                select! { Token { tok: CoreToken::Integer(i, _), .. } => i }
+                select! { Token::Integer(i, _) => i }
                     .delimited_by(punct(Punct::LParen), punct(Punct::RParen)),
             )
             .try_map(|i, span| {
@@ -347,17 +346,18 @@ where
             })
             .boxed();
 
-        let ident =
-            select! { Token { tok: CoreToken::Ident(ident), .. } => ident}.map_with(|ident, e| {
+        let ident = select! { Token::Ident(ident) => ident }
+            .map_with(|ident, e| {
                 Rc::<str>::from(ident).with_loc(sift.resolve_source_info(&e.span()))
-            });
-        let identifier = ident.map(|i| {
+            })
+            .padded_by(ws());
+        let identifier = ident.clone().map(|i| {
             let loc = i.loc.clone();
             LValueT::Var(i).with_loc(loc).into()
         });
 
-        let integer_constant = select! { Token { tok: CoreToken::Integer(i, suf), .. } => (i,suf)}
-            .try_map(|(i, _suf), span| {
+        let integer_constant =
+            select! { Token::Integer(i, suf) => (i,suf) }.try_map(|(i, _suf), span| {
                 match BigInt::from_str(i) {
                     Ok(i) => {
                         let loc = sift.resolve_source_info(&span);
@@ -475,7 +475,7 @@ where
 
         let expr = constant_expression;
 
-        expr
+        expr.padded_by(ws())
     })
 }
 
@@ -503,6 +503,9 @@ struct TokenSI {
 
 impl SourceInfoForTokens for TokenSI {
     fn resolve_source_info(&self, span: &SimpleSpan) -> Rc<SourceInfo> {
+        if span.start == span.end {
+            return self.source_infos[span.start].clone();
+        }
         let infos = &self.source_infos[span.start..span.end];
         if let [info] = infos {
             return info.clone();
@@ -514,6 +517,11 @@ impl SourceInfoForTokens for TokenSI {
     }
 
     fn resolve_error_location(&self, span: &SimpleSpan) -> Location {
+        if span.start == span.end {
+            if let SourceInfo::Original(loc) = &*self.source_infos[span.start] {
+                return loc.clone();
+            }
+        }
         let infos = &self.source_infos[span.start..span.end];
         if let [info] = infos {
             if let SourceInfo::Original(loc) = &**info {
@@ -530,39 +538,33 @@ pub fn parse_rvalue(
     code: &InlineCode,
     snippets: &SnippetMap,
 ) -> Rc<RValue> {
-    let (tokens, source_infos): (Vec<(Token, SimpleSpan)>, Vec<Rc<SourceInfo>>) = code
-        .tokens
-        .iter()
-        .enumerate()
-        .map(
-            |(
-                i,
-                CodeToken {
-                    before,
-                    text: Ast { loc, val: token },
-                },
-            )| {
-                let result = lex_core_token().parse(token);
-                diagnostics
-                    .diags
-                    .extend(result.errors().map(|err| Diagnostic {
-                        loc: loc.location().clone(),
-                        level: DiagnosticLevel::Error,
-                        msg: format!("{}", err),
-                    }));
-                (
-                    (
-                        Token {
-                            ws_before: !before.is_empty(),
-                            tok: *result.output().unwrap_or(&CoreToken::Error),
-                        },
-                        (i..(i + 1)).into(),
-                    ),
-                    loc.clone(),
-                )
-            },
-        )
-        .unzip();
+    let mut tokens: Vec<(Token, SimpleSpan)> = vec![];
+    let mut source_infos: Vec<Rc<SourceInfo>> = vec![];
+    for (
+        i,
+        CodeToken {
+            before,
+            text: Ast { loc, val: token },
+        },
+    ) in code.tokens.iter().enumerate()
+    {
+        let result = lex_core_token().parse(token);
+        diagnostics
+            .diags
+            .extend(result.errors().map(|err| Diagnostic {
+                loc: loc.location().clone(),
+                level: DiagnosticLevel::Error,
+                msg: format!("{}", err),
+            }));
+        if !before.is_empty() {
+            tokens.push((Token::Whitespace, (i..i).into()))
+        }
+        tokens.push((
+            *result.output().unwrap_or(&Token::Error),
+            (i..(i + 1)).into(),
+        ));
+        source_infos.push(loc.clone());
+    }
     let source_infos = TokenSI {
         source_infos,
         fallback: fallback_loc.clone(),
@@ -576,12 +578,12 @@ pub fn parse_rvalue(
         None => RValueT::Error(TypeT::Error.with_loc(fallback_loc.clone()))
             .with_loc(fallback_loc.clone()),
     };
-    diagnostics.diags.extend(result.errors().map(|err| {
-        Diagnostic {
+    diagnostics
+        .diags
+        .extend(result.errors().map(|err| Diagnostic {
             loc: source_infos.resolve_error_location(err.span()),
             level: DiagnosticLevel::Error,
-            msg: format!("{} {:?}", err, tokens), // TODO
-        }
-    }));
+            msg: format!("{}", err),
+        }));
     output
 }
