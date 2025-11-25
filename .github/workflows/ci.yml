@@ -19,6 +19,12 @@ jobs:
       run: |
         sudo apt update
         sudo apt install -y opam
+        opam init
+
+    - name: Install Z3
+      run: |
+        echo "PATH=/usr/local/bin/:$PATH" >> $GITHUB_ENV
+        sudo ./opt/fstar/.scripts/get_fstar_z3.sh /usr/local/bin/
 
     - name: Compute cache key
       id: cachekey
