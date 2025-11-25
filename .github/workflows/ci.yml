@@ -12,6 +12,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+
+    - name: Compute cache key
+      id: cachekey
+      run: |
+        echo "cachekey=$(./opt/ci-deps-hash)" >> "$GITHUB_OUTPUT"
+
+    - name: Get cache
+      id: getcache
+      uses: actions/cache/restore@v4
+      with:
+        path: opt
+        key: ${{ steps.cachekey.outputs.cachekey }}
+
+    - name: Restore changes to files in opt
+      run: |
+        git reset --hard
+
+    - name: Build dependencies
+      run: |
+        make -j$(nproc) build-pulse
+
+    - name: Save cache
+      if: ${{ steps.getcache.outputs.cache-hit != 'true' }}
+      uses: actions/cache/save@v4
+      with:
+        path: opt
+        key: ${{ steps.cachekey.outputs.cachekey }}
 
     - name: Install clang
       run: |
@@ -23,7 +52,7 @@ jobs:
 
     - name: Build c2pulse
       run: |
-        cargo build
+        make -j$(nproc)
 
     - name: Checking that code is correctly formatted
       if: always()

@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+cd "$(dirname "${BASH_SOURCE[0]}")"
+
+(
+  # bump number to force rebuild
+  echo 0
+  # current working directory (opam switches cannot be relocated)
+  pwd
+  # revisions of submodules
+  git submodule status 2>&1 | cut -c 2- | cut -d' ' -f1,2
+) | sha256sum | cut -c -16
