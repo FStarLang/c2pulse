@@ -125,7 +125,7 @@ impl Diagnostics {
                 file_id,
                 pos_to_byte(diag.loc.range.start)..(pos_to_byte(diag.loc.range.end) + 1),
             ));
-            term::emit(&mut writer.lock(), &config, &files, &d).expect("printing diag");
+            term::emit_to_io_write(&mut writer.lock(), &config, &files, &d).expect("printing diag");
         }
     }
 }
