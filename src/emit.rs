@@ -278,6 +278,12 @@ fn emit_binop(op: BinOp, ty: &Type) -> Option<Doc> {
             TypeT::SpecInt | TypeT::Bool | TypeT::Int { .. } | TypeT::SizeT | TypeT::Pointer(_, _),
         ) => Doc::text("="),
 
+        (BinOp::LEq, TypeT::Int { signed, width }) => {
+            Doc::text(format!("`{}.lte`", get_int_mod(signed, width)?))
+        }
+        (BinOp::LEq, TypeT::SizeT) => Doc::text("`SizeT.lte`"),
+
+        (BinOp::LEq, TypeT::Bool) => todo!(),
         (BinOp::LogAnd, TypeT::Bool) => Doc::text("&&"),
         (BinOp::Div, TypeT::Bool) => todo!(),
         (BinOp::Mod, TypeT::Bool) => todo!(),
@@ -308,6 +314,7 @@ fn emit_binop(op: BinOp, ty: &Type) -> Option<Doc> {
         }
         (BinOp::Sub, TypeT::SizeT) => Doc::text("`SizeT.sub`"),
 
+        (BinOp::LEq, TypeT::SpecInt) => Doc::text("<="),
         (BinOp::Mul, TypeT::SpecInt) => Doc::text("`op_Multiply`"),
         (BinOp::Div, TypeT::SpecInt) => Doc::text("/"),
         (BinOp::Mod, TypeT::SpecInt) => Doc::text("%"),
@@ -320,7 +327,10 @@ fn emit_binop(op: BinOp, ty: &Type) -> Option<Doc> {
             TypeT::Requires(ty, _) | TypeT::Ensures(ty, _) | TypeT::Consumes(ty) | TypeT::Plain(ty),
         ) => emit_binop(op, ty)?,
 
-        (BinOp::Mul | BinOp::Div | BinOp::Mod | BinOp::Add | BinOp::Sub, TypeT::Pointer(..))
+        (
+            BinOp::LEq | BinOp::Mul | BinOp::Div | BinOp::Mod | BinOp::Add | BinOp::Sub,
+            TypeT::Pointer(..),
+        )
         | (_, TypeT::Void)
         | (BinOp::LogAnd, TypeT::Int { .. } | TypeT::SizeT | TypeT::Pointer(..))
         | (_, TypeT::SLProp)

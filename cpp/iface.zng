@@ -92,6 +92,7 @@ mod crate::ir {
     type BinOp {
         #layout(size=1, align=1);
         constructor Eq;
+        constructor LEq;
         constructor LogAnd;
         constructor Mul;
         constructor Div;

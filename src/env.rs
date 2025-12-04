@@ -124,7 +124,9 @@ impl Env {
             RValueT::Cast(_, ty) => Some(ty.clone()),
             RValueT::Error(ty) => Some(ty.clone()),
             RValueT::InlinePulse(_, ty) => Some(ty.clone()),
-            RValueT::BinOp(BinOp::Eq, _, _) => Some(TypeT::Bool.with_loc(rvalue.loc.clone())),
+            RValueT::BinOp(BinOp::Eq | BinOp::LEq, _, _) => {
+                Some(TypeT::Bool.with_loc(rvalue.loc.clone()))
+            }
             RValueT::BinOp(
                 BinOp::LogAnd | BinOp::Mul | BinOp::Div | BinOp::Mod | BinOp::Add | BinOp::Sub,
                 lhs,

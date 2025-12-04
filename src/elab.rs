@@ -95,6 +95,7 @@ fn elab_rvalue(diags: &mut Diagnostics, env: &Env, rval: &mut RValue) {
                     let rhs_to_lhs = env.implicitly_converts_to(&rhs_ty, &lhs_ty);
                     match bin_op {
                         BinOp::Eq
+                        | BinOp::LEq
                         | BinOp::Mul
                         | BinOp::Div
                         | BinOp::Mod

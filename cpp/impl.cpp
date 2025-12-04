@@ -239,6 +239,8 @@ public:
     if (auto dre = dyn_cast<DeclRefExpr>(e)) {
       auto id = ctx.mk_ident(toStr(dre->getDecl()->getName()), loc.clone());
       return mk_lvalue_var(std::move(loc), std::move(id));
+    } else if (auto p = dyn_cast<ParenExpr>(e)) {
+      return trLValue(p->getSubExpr());
     } else if (auto uo = dyn_cast<UnaryOperator>(e)) {
       switch (uo->getOpcode()) {
       case UO_Deref:
@@ -258,11 +260,12 @@ public:
   Rc<ir::RValue> trRValue(Expr *e) {
     auto loc = getRange(e->getSourceRange());
 
-    if (auto ic = dyn_cast<ImplicitCastExpr>(e)) {
+    if (auto ic = dyn_cast<CastExpr>(e)) {
       switch (ic->getCastKind()) {
       case CK_LValueToRValue:
         return mk_rvalue_lvalue(std::move(loc), trLValue(ic->getSubExpr()));
 
+      case CK_NoOp:
       case CK_IntegralCast:
       case CK_IntegralToBoolean:
         return mk_rvalue_cast(std::move(loc), trRValue(ic->getSubExpr()),
@@ -271,17 +274,8 @@ public:
       default:;
         // continue to error case
       }
-    } else if (auto ec = dyn_cast<ExplicitCastExpr>(e)) {
-      switch (ec->getCastKind()) {
-      case CK_NoOp:
-      case CK_IntegralCast:
-        return mk_rvalue_cast(
-            std::move(loc), trRValue(ec->getSubExpr()),
-            trQualType(ec->getType(), /*FIXME*/ ec->getSourceRange()));
-
-      default:;
-        // continue to error case
-      }
+    } else if (auto p = dyn_cast<ParenExpr>(e)) {
+      return trRValue(p->getSubExpr());
     } else if (auto il = dyn_cast<IntegerLiteral>(e)) {
       if (isBoolType(il->getType())) {
         return mk_bool_lit(std::move(loc), !il->getValue().isZero());
@@ -316,6 +310,8 @@ public:
         return m(ir::BinOp::LogAnd());
       case clang::BO_EQ:
         return m(ir::BinOp::Eq());
+      case clang::BO_LE:
+        return m(ir::BinOp::LEq());
 
       default:;
         // continue to error case

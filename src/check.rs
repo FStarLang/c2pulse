@@ -123,7 +123,7 @@ impl<'a> Checker<'a> {
                         (self.infer_rvalue(env, lhs), self.infer_rvalue(env, rhs))
                 {
                     match bin_op {
-                        BinOp::Eq => {} // TODO
+                        BinOp::Eq | BinOp::LEq => {} // TODO
                         BinOp::LogAnd
                         | BinOp::Mul
                         | BinOp::Div

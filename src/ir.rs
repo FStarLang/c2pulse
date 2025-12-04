@@ -133,6 +133,7 @@ pub enum TypeT {
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum BinOp {
     Eq,
+    LEq,
     LogAnd,
     Mul,
     Div,

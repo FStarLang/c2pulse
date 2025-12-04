@@ -450,7 +450,11 @@ where
 
         let shift_expression = additive_expression;
 
-        let relational_expression = shift_expression;
+        let relational_expression = left_rec_binop!(shift_expression, {
+            LEq(lhs, punct(Punct::LtEq), rhs) = e =>
+                mk_binop(BinOp::LEq, lhs, rhs, sift.resolve_source_info(&e.span())),
+        })
+        .boxed();
 
         let equality_expression = left_rec_binop!(relational_expression, {
             Eq(lhs, punct(Punct::EqEq), rhs) = e =>
