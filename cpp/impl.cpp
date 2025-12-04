@@ -334,6 +334,13 @@ public:
                          trQualType(e->getType(), e->getSourceRange()));
   }
 
+  Vec<Rc<ir::Stmt>> trStmts(Stmt *stmt) {
+    auto stmts = Vec<Rc<ir::Stmt>>::new_();
+    if (stmt)
+      trStmt(stmts, stmt);
+    return stmts;
+  }
+
   rust::Unit trStmt(Vec<Rc<ir::Stmt>> &stmts, Stmt *stmt) {
     auto loc = getRange(stmt->getSourceRange());
 
@@ -346,6 +353,9 @@ public:
       default:;
         // continue to error case
       }
+    } else if (auto *i = dyn_cast<IfStmt>(stmt)) {
+      return stmts.push(mk_if(loc.clone(), trRValue(i->getCond()),
+                              trStmts(i->getThen()), trStmts(i->getElse())));
     } else if (auto *r = dyn_cast<ReturnStmt>(stmt)) {
       return stmts.push(mk_return(std::move(loc), trRValue(r->getRetValue())));
     } else if (auto *ds = dyn_cast<DeclStmt>(stmt)) {
@@ -366,6 +376,11 @@ public:
           stmts.push(mk_stmt_err(dloc.clone()));
         }
       }
+      return rust::Unit();
+    } else if (auto *comp = dyn_cast<CompoundStmt>(stmt)) {
+      // TODO: scope
+      for (auto stmt : comp->body())
+        trStmt(stmts, stmt);
       return rust::Unit();
     } else if (auto *c = dyn_cast<CallExpr>(stmt)) {
       return stmts.push(mk_call(std::move(loc), trRValue(c)));
@@ -441,17 +456,7 @@ public:
         }
       }
       if (FD->hasBody()) {
-        auto stmts = Vec<Rc<ir::Stmt>>::new_();
-        if (auto *body = dyn_cast<CompoundStmt>(FD->getBody())) {
-          for (auto stmt : body->body())
-            trStmt(stmts, stmt);
-        } else {
-          auto bodyloc = getRange(FD->getBody()->getSourceRange());
-          reportUnsupported(FD->getBody()->getSourceRange(), bodyloc,
-                            "unsupported function body"_rs);
-          stmts.push(mk_stmt_err(std::move(bodyloc)));
-        }
-        ctx.add_fn_defn(std::move(builder), std::move(stmts));
+        ctx.add_fn_defn(std::move(builder), trStmts(FD->getBody()));
       } else {
         ctx.add_fn_decl(std::move(builder));
       }
