@@ -16,6 +16,7 @@ mod ir;
 mod prune;
 mod source_range_info;
 mod vfs;
+mod check;
 
 #[derive(Parser)]
 struct Cli {
@@ -86,8 +87,11 @@ fn main() {
     let module_name = derive_module_name(&file_name);
 
     let (mut tu, mut diags) = clang::parse_file(&file_name, &mut *vfs);
+    check::check(&mut diags, &mut tu, "clang", false);
     prune::prune(&mut tu);
+    check::check(&mut diags, &mut tu, "prune", false);
     elab::elab(&mut diags, &mut tu);
+    check::check(&mut diags, &mut tu, "elab", true);
     let (pulse_code, range_map) = emit::emit(&module_name, &tu);
 
     let outdir = match &cli.tmpdir {
