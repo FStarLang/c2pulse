@@ -6,6 +6,7 @@ use crate::{
 };
 use clap::Parser;
 
+mod check;
 mod clang;
 mod diag;
 mod elab;
@@ -16,7 +17,6 @@ mod ir;
 mod prune;
 mod source_range_info;
 mod vfs;
-mod check;
 
 #[derive(Parser)]
 struct Cli {
