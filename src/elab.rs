@@ -150,6 +150,12 @@ fn elab_stmt(diags: &mut Diagnostics, env: &Env, stmt: &mut Stmt) {
             elab_stmts(diags, env, Rc::make_mut(b1));
             elab_stmts(diags, env, Rc::make_mut(b2));
         }
+        StmtT::While(cond, invs, body) => {
+            elab_rvalue(diags, env, Rc::make_mut(cond));
+            cast_to_bool(diags, env, cond);
+            elab_slprops(diags, env, Rc::make_mut(invs));
+            elab_stmts(diags, env, Rc::make_mut(body));
+        }
         StmtT::Return(x) => {
             elab_rvalue(diags, env, Rc::make_mut(x));
         }

@@ -61,6 +61,18 @@ impl<'a> Checker<'a> {
         );
     }
 
+    fn check_bool(&mut self, env: &Env, p: &RValue) {
+        self.check_rvalue(env, p);
+        self.check_has_type(
+            env,
+            p,
+            &Ast {
+                val: TypeT::Bool,
+                loc: p.loc.clone(),
+            },
+        );
+    }
+
     fn check_type(&mut self, env: &Env, ty: &Type) {
         match &ty.val {
             TypeT::Void => {}
@@ -206,19 +218,16 @@ impl<'a> Checker<'a> {
                 }
             }
             StmtT::If(c, b1, b2) => {
-                self.check_rvalue(env, c);
-                if self.check_types {
-                    self.check_has_type(
-                        env,
-                        c,
-                        &Ast {
-                            val: TypeT::Bool,
-                            loc: c.loc.clone(),
-                        },
-                    );
-                }
+                self.check_bool(env, c);
                 self.check_stmts(env, b1);
                 self.check_stmts(env, b2);
+            }
+            StmtT::While(cond, invs, body) => {
+                self.check_bool(env, cond);
+                for inv in &**invs {
+                    self.check_slprop(env, inv)
+                }
+                self.check_stmts(env, body);
             }
             StmtT::Return(v) => {
                 self.check_rvalue(env, v);

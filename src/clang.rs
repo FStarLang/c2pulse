@@ -338,6 +338,9 @@ fn mk_call(loc: Rc<SourceInfo>, f: Rc<RValue>) -> Rc<Stmt> {
 fn mk_if(loc: Rc<SourceInfo>, cond: Rc<RValue>, a: Stmts, b: Stmts) -> Rc<Stmt> {
     StmtT::If(cond, Rc::new(a), Rc::new(b)).with_loc(loc)
 }
+fn mk_while(loc: Rc<SourceInfo>, cond: Rc<RValue>, invs: RValues, body: Stmts) -> Rc<Stmt> {
+    StmtT::While(cond, Rc::new(invs), Rc::new(body)).with_loc(loc)
+}
 fn mk_stmt_err(loc: Rc<SourceInfo>) -> Rc<Stmt> {
     mk_ast(loc, StmtT::Error)
 }

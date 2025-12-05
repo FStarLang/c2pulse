@@ -203,6 +203,7 @@ mod crate::clang {
     fn mk_return(Rc<SourceInfo>, Rc<RValue>) -> Rc<Stmt>;
     fn mk_call(Rc<SourceInfo>, Rc<RValue>) -> Rc<Stmt>;
     fn mk_if(Rc<SourceInfo>, Rc<RValue>, Vec<Rc<Stmt>>, Vec<Rc<Stmt>>) -> Rc<Stmt>;
+    fn mk_while(Rc<SourceInfo>, Rc<RValue>, Vec<Rc<RValue>>, Vec<Rc<Stmt>>) -> Rc<Stmt>;
     fn mk_stmt_err(Rc<SourceInfo>) -> Rc<Stmt>;
 }
 

@@ -143,6 +143,7 @@ pub enum BinOp {
 }
 
 pub type RValue = Ast<RValueT>;
+pub type RValues = Vec<Rc<RValue>>;
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum RValueT {
     BoolLit(bool),
@@ -150,7 +151,7 @@ pub enum RValueT {
     LValue(Rc<LValue>),
     Ref(Rc<LValue>),
     BinOp(BinOp, Rc<RValue>, Rc<RValue>),
-    FnCall(Rc<Ident>, Vec<Rc<RValue>>),
+    FnCall(Rc<Ident>, RValues),
     Cast(Rc<RValue>, Rc<Type>),
     InlinePulse(Rc<InlineCode>, Rc<Type>),
     Old(Rc<RValue>),
@@ -176,6 +177,7 @@ pub enum StmtT {
     Decl(Rc<Ident>, Rc<Type>),
     Assign(Rc<LValue>, Rc<RValue>),
     If(Rc<RValue>, Rc<Stmts>, Rc<Stmts>),
+    While(Rc<RValue>, Rc<RValues>, Rc<Stmts>),
     Return(Rc<RValue>),
     Error,
 }
@@ -193,8 +195,8 @@ pub struct FnDecl {
     pub name: Rc<Ident>,
     pub ret_type: Rc<Type>,
     pub args: Vec<FnArg>,
-    pub requires: Vec<Rc<RValue>>,
-    pub ensures: Vec<Rc<RValue>>,
+    pub requires: RValues,
+    pub ensures: RValues,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]

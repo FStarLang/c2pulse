@@ -201,22 +201,12 @@ public:
     for (auto it = attrs.rbegin(); it != attrs.rend(); ++it) {
       if (auto ann = dyn_cast<AnnotateAttr>(*it)) {
         auto loc = getRange(ann->getRange());
-        if (ann->getAnnotation() == "c2pulse-requires" &&
-            ann->args_size() == 1) {
-          if (auto ctrVal =
-                  ann->args_begin()[0]->getIntegerConstantExpr(*astCtx)) {
-            unsigned ctr = ctrVal->getZExtValue();
-            auto p = ctx.parse_rvalue(loc.clone(), ctr, snippets);
-            ty = mk_type_requires(std::move(loc), std::move(ty), std::move(p));
-          }
-        } else if (ann->getAnnotation() == "c2pulse-ensures" &&
-                   ann->args_size() == 1) {
-          if (auto ctrVal =
-                  ann->args_begin()[0]->getIntegerConstantExpr(*astCtx)) {
-            unsigned ctr = ctrVal->getZExtValue();
-            auto p = ctx.parse_rvalue(loc.clone(), ctr, snippets);
-            ty = mk_type_ensures(std::move(loc), std::move(ty), std::move(p));
-          }
+        if (auto req = isUnaryAttrOf(ann, "c2pulse-requires")) {
+          ty = mk_type_requires(std::move(loc), std::move(ty),
+                                std::move(req.value()));
+        } else if (auto ens = isUnaryAttrOf(ann, "c2pulse-ensures")) {
+          ty = mk_type_ensures(std::move(loc), std::move(ty),
+                               std::move(ens.value()));
         } else if (ann->getAnnotation() == "c2pulse-plain" &&
                    ann->args_size() == 0) {
           ty = mk_type_plain(std::move(loc), std::move(ty));
@@ -356,6 +346,19 @@ public:
     } else if (auto *i = dyn_cast<IfStmt>(stmt)) {
       return stmts.push(mk_if(loc.clone(), trRValue(i->getCond()),
                               trStmts(i->getThen()), trStmts(i->getElse())));
+    } else if (auto *w = dyn_cast<WhileStmt>(stmt)) {
+      auto body = w->getBody();
+      auto invs = Vec<Rc<ir::RValue>>::new_();
+      if (auto attrBody = dyn_cast<AttributedStmt>(body)) {
+        for (auto attr : attrBody->getAttrs()) {
+          if (auto inv = isUnaryAttrOf(attr, "c2pulse-invariant")) {
+            invs.push(std::move(inv.value()));
+          }
+        }
+        body = attrBody->getSubStmt();
+      }
+      return stmts.push(mk_while(loc.clone(), trRValue(w->getCond()),
+                                 std::move(invs), trStmts(body)));
     } else if (auto *r = dyn_cast<ReturnStmt>(stmt)) {
       return stmts.push(mk_return(std::move(loc), trRValue(r->getRetValue())));
     } else if (auto *ds = dyn_cast<DeclStmt>(stmt)) {
@@ -388,6 +391,18 @@ public:
 
     reportUnsupported(stmt->getSourceRange(), loc, "unsupported statement"_rs);
     return stmts.push(mk_stmt_err(std::move(loc)));
+  }
+
+  std::optional<Rc<ir::RValue>> isUnaryAttrOf(Attr const *attr,
+                                              char const *name) {
+    if (auto ann = dyn_cast<AnnotateAttr>(attr);
+        ann && ann->args_size() == 1 && ann->getAnnotation() == name) {
+      if (auto ctrVal = ann->args_begin()[0]->getIntegerConstantExpr(*astCtx)) {
+        unsigned ctr = ctrVal->getZExtValue();
+        return {ctx.parse_rvalue(getRange(attr->getRange()), ctr, snippets)};
+      }
+    }
+    return {};
   }
 
   void HandleDecl(Decl *D) {
@@ -435,24 +450,11 @@ public:
       builder.return_type(
           trQualType(FD->getReturnType(), FD->getReturnTypeSourceRange()));
       for (auto attr : FD->getAttrs()) {
-        if (auto ann = dyn_cast<AnnotateAttr>(attr);
-            ann && ann->args_size() == 1) {
-          if (ann->getAnnotation() == "c2pulse-requires") {
-            if (auto ctrVal =
-                    ann->args_begin()[0]->getIntegerConstantExpr(*astCtx)) {
-              unsigned ctr = ctrVal->getZExtValue();
-              builder.requires(
-                  ctx.parse_rvalue(getRange(attr->getRange()), ctr, snippets));
-            }
-          }
-          if (ann->getAnnotation() == "c2pulse-ensures") {
-            if (auto ctrVal =
-                    ann->args_begin()[0]->getIntegerConstantExpr(*astCtx)) {
-              unsigned ctr = ctrVal->getZExtValue();
-              builder.ensures(
-                  ctx.parse_rvalue(getRange(attr->getRange()), ctr, snippets));
-            }
-          }
+        if (auto req = isUnaryAttrOf(attr, "c2pulse-requires")) {
+          builder.requires(std::move(req.value()));
+        }
+        if (auto ens = isUnaryAttrOf(attr, "c2pulse-ensures")) {
+          builder.ensures(std::move(ens.value()));
         }
       }
       if (FD->hasBody()) {

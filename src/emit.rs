@@ -494,6 +494,20 @@ fn emit_stmt(env: &Env, stmt: &Stmt) -> Doc {
                 .append(";")
                 .group()
                 .nest(2),
+            StmtT::While(cond, invs, body) => Doc::text("while ")
+                .append(parens(emit_rvalue(env, cond)))
+                .append(Doc::line())
+                .append(Doc::concat(invs.iter().map(|inv| {
+                    Doc::text("invariant ")
+                        .append(emit_rvalue(env, inv))
+                        .group()
+                        .nest(2)
+                        .append(Doc::line())
+                })))
+                .append(emit_block(env, body))
+                .append(";")
+                .group()
+                .nest(2),
             StmtT::Return(t) => emit_rvalue(env, t).append(";").group().nest(2),
             StmtT::Error => Doc::text("(admit());"),
         }

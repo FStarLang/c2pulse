@@ -98,6 +98,12 @@ fn scan_lvalue(deps: &mut HashSet<DeclName>, lv: &LValue) {
     }
 }
 
+fn scan_rvalues(deps: &mut HashSet<DeclName>, rvs: &RValues) {
+    for rv in rvs {
+        scan_rvalue(deps, rv);
+    }
+}
+
 fn scan_rvalue(deps: &mut HashSet<DeclName>, rv: &RValue) {
     match &rv.val {
         RValueT::IntLit(_, ty) => scan_type(deps, ty),
@@ -115,9 +121,7 @@ fn scan_rvalue(deps: &mut HashSet<DeclName>, rv: &RValue) {
         }
         RValueT::FnCall(f, args) => {
             deps.insert(DeclName::Fn(f.val.clone()));
-            for arg in args {
-                scan_rvalue(deps, arg)
-            }
+            scan_rvalues(deps, args);
         }
         RValueT::BoolLit(_) => {}
         RValueT::Old(v) => scan_rvalue(deps, v),
@@ -133,6 +137,11 @@ fn scan_stmt(deps: &mut HashSet<DeclName>, stmt: &Stmt) {
             scan_rvalue(deps, c);
             scan_stmts(deps, b1);
             scan_stmts(deps, b2)
+        }
+        StmtT::While(cond, invs, body) => {
+            scan_rvalue(deps, cond);
+            scan_rvalues(deps, invs);
+            scan_stmts(deps, body);
         }
         StmtT::Return(v) => scan_rvalue(deps, v),
         StmtT::Error => {}
