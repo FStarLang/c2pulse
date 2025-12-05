@@ -172,6 +172,7 @@ impl Env {
             (TypeT::Int { .. }, TypeT::SizeT) => true,
             (TypeT::SizeT, TypeT::SizeT) => true,
             (TypeT::Pointer(..), TypeT::Pointer(..)) => true,
+            (TypeT::SpecInt, TypeT::SpecInt) => true,
             _ => false,
         }
     }

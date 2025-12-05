@@ -374,6 +374,10 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
                     Some(ty) => &ty.val,
                     None => &TypeT::Error,
                 };
+                let default = {
+                    let val_doc = val_doc.clone();
+                    || Doc::text("(*TODO unsupported cast*)").append(val_doc)
+                };
                 match (val_ty, &ty.val) {
                     (TypeT::Void, TypeT::Void) => val_doc,
                     (TypeT::Bool, TypeT::Bool) => val_doc,
@@ -391,6 +395,14 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
                             width: w2,
                         },
                     ) if s1 == s2 && w1 == w2 => val_doc,
+                    (TypeT::Int { signed, width }, TypeT::SpecInt) => {
+                        if let Some(m) = get_int_mod(signed, width) {
+                            unaryfn(Doc::text(format!("{}.v", m)), val_doc)
+                        } else {
+                            default()
+                        }
+                    }
+                    (TypeT::SizeT, TypeT::SpecInt) => unaryfn(Doc::text("SizeT.v"), val_doc),
                     // (TypeT::Int { signed:s1, width:w1 }, TypeT::Int { signed:s2, width:w2 }) => todo!(),
                     // (TypeT::Int { signed, width }, TypeT::SizeT) => todo!(),
                     // (TypeT::Int { signed, width }, TypeT::SLProp) => todo!(),
@@ -406,7 +418,7 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
                     // (TypeT::Pointer { to:t1, kind:k1 }, TypeT::Pointer { to:t2, kind:k2 }) if t1 == t2 => todo!(),
                     // (TypeT::Pointer { to, kind }, TypeT::SLProp) => todo!(),
                     (TypeT::Error, _) | (_, TypeT::Error) => val_doc,
-                    _ => Doc::text("(*TODO unsupported cast*)").append(val_doc),
+                    _ => default(),
                 }
             }
             RValueT::Error(_ty) => Doc::text("(admit())"),
