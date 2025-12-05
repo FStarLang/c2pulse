@@ -399,6 +399,17 @@ where
                             .with_loc(sift.resolve_source_info(&s))
                             .into())
                     }
+                    "_live" => {
+                        let &[arg] = &args.as_slice() else {
+                            return Err(Rich::custom(s, "_live takes exactly one argument"));
+                        };
+                        let Expr::LValue(arg) = arg else {
+                            return Err(Rich::custom(s, "_live requires an lvalue argument"));
+                        };
+                        Ok(RValueT::Live(arg.clone())
+                            .with_loc(sift.resolve_source_info(&s))
+                            .into())
+                    }
                     _ => Ok(RValueT::FnCall(
                         f,
                         args.into_iter().map(|e: Expr| e.to_rvalue()).collect(),

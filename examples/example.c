@@ -28,7 +28,7 @@ uint32_t multiply_by_repeated_addition(uint32_t x, uint32_t y)
   uint32_t ctr = 0;
   uint32_t acc = 0;
   while (ctr + 1 <= x)
-    // _invariant(_live(&ctr) && _live(&acc))
+    _invariant(_live(ctr) && _live(acc))
     _invariant(ctr <= x && acc == ctr * y)
   {
       ctr = ctr + 1;

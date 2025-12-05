@@ -129,6 +129,7 @@ fn elab_rvalue(diags: &mut Diagnostics, env: &Env, rval: &mut RValue) {
             }
         }
         RValueT::BoolLit(_) => {}
+        RValueT::Live(val) => elab_lvalue(diags, env, Rc::make_mut(val)),
         RValueT::Old(val) => elab_rvalue(diags, env, Rc::make_mut(val)),
     }
 }

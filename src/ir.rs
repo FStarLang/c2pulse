@@ -154,6 +154,7 @@ pub enum RValueT {
     FnCall(Rc<Ident>, RValues),
     Cast(Rc<RValue>, Rc<Type>),
     InlinePulse(Rc<InlineCode>, Rc<Type>),
+    Live(Rc<LValue>),
     Old(Rc<RValue>),
     Error(Rc<Type>),
 }

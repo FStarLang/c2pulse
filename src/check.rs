@@ -156,6 +156,7 @@ impl<'a> Checker<'a> {
                 self.check_type(env, ty);
             }
             RValueT::InlinePulse(_inline_code, ty) => self.check_type(env, ty),
+            RValueT::Live(lval) => self.check_lvalue(env, lval),
             RValueT::Old(rval) => self.check_rvalue(env, rval),
             RValueT::Error(ty) => self.check_type(env, ty),
         }

@@ -124,6 +124,7 @@ fn scan_rvalue(deps: &mut HashSet<DeclName>, rv: &RValue) {
             scan_rvalues(deps, args);
         }
         RValueT::BoolLit(_) => {}
+        RValueT::Live(v) => scan_lvalue(deps, v),
         RValueT::Old(v) => scan_rvalue(deps, v),
     }
 }

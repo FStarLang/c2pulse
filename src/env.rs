@@ -133,6 +133,7 @@ impl Env {
                 _,
             ) => self.infer_rvalue(lhs),
             RValueT::BoolLit(_) => Some(TypeT::Bool.with_loc(rvalue.loc.clone())),
+            RValueT::Live(_) => Some(TypeT::SLProp.with_loc(rvalue.loc.clone())),
             RValueT::Old(v) => self.infer_rvalue(v),
         }
     }
