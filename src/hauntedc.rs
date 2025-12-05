@@ -170,7 +170,12 @@ fn lex_core_token<'src>() -> impl Parser<'src, &'src str, Token<'src>> {
         one_of("zZ").to(IntegerSuffix::Z),
     );
     let integer_suffix = choice((
-        one_of("uU").ignore_then(integer_suffix_l.map(IntegerSuffix::make_unsigned)),
+        one_of("uU").ignore_then(
+            integer_suffix_l
+                .or_not()
+                .map(|s| s.unwrap_or(IntegerSuffix::None))
+                .map(IntegerSuffix::make_unsigned),
+        ),
         integer_suffix_l
             .then(one_of("uU").or_not())
             .map(|(s, u)| if u.is_some() { s.make_unsigned() } else { s }),
