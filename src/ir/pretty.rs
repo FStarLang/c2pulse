@@ -194,9 +194,10 @@ impl PrettyIR for StmtT {
             StmtT::Return(v) => RcDoc::text("return")
                 .append(RcDoc::line())
                 .append(v.to_doc())
+                .append(";")
                 .nest(2)
                 .group(),
-            StmtT::Error => todo!(),
+            StmtT::Error => RcDoc::text("???;"),
         }
     }
 }
