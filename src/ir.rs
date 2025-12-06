@@ -1,6 +1,7 @@
 use num_bigint::BigInt;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::rc::Rc;
+mod pretty;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, PartialOrd, Ord)]
 pub struct Position {
@@ -23,7 +24,7 @@ impl Range {
     }
 }
 
-impl Debug for Range {
+impl Display for Range {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
@@ -33,15 +34,27 @@ impl Debug for Range {
     }
 }
 
+impl Debug for Range {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        Display::fmt(&self, f)
+    }
+}
+
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub struct Location {
     pub file_name: Rc<str>,
     pub range: Range,
 }
 
-impl Debug for Location {
+impl Display for Location {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}:{:#?}", self.file_name, self.range)
+    }
+}
+
+impl Debug for Location {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        Display::fmt(&self, f)
     }
 }
 
@@ -103,6 +116,15 @@ where
     }
 }
 
+impl<T> Display for Ast<T>
+where
+    T: Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        self.val.fmt(f)
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum PointerKind {
     Unknown,
@@ -140,6 +162,21 @@ pub enum BinOp {
     Mod,
     Add,
     Sub,
+}
+
+impl BinOp {
+    pub fn to_str(self) -> &'static str {
+        match self {
+            BinOp::Eq => "==",
+            BinOp::LEq => "<=",
+            BinOp::LogAnd => "&&",
+            BinOp::Mul => "*",
+            BinOp::Div => "/",
+            BinOp::Mod => "%",
+            BinOp::Add => "+",
+            BinOp::Sub => "-",
+        }
+    }
 }
 
 pub type RValue = Ast<RValueT>;
@@ -215,6 +252,17 @@ pub struct CodeToken {
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct InlineCode {
     pub tokens: Vec<CodeToken>,
+}
+
+impl InlineCode {
+    pub fn to_string(&self) -> String {
+        let mut result = String::new();
+        for tok in &self.tokens {
+            result.push_str(tok.before);
+            result.push_str(&*tok.text.val);
+        }
+        result
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]

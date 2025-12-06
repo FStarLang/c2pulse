@@ -74,6 +74,10 @@ impl Env {
         }
     }
 
+    pub fn lookup_fn(&self, ident: &Ident) -> Option<&FnDecl> {
+        self.globals.fns.get(&ident.val)
+    }
+
     pub fn lookup_var(&self, ident: &Ident) -> Option<&LocalDecl> {
         self.locals.get(&ident.val)
     }
@@ -174,6 +178,47 @@ impl Env {
             (TypeT::SizeT, TypeT::SizeT) => true,
             (TypeT::Pointer(..), TypeT::Pointer(..)) => true,
             (TypeT::SpecInt, TypeT::SpecInt) => true,
+            _ => false,
+        }
+    }
+
+    pub fn vtype_whnf(&self, a: &Rc<Type>) -> Rc<Type> {
+        match &a.val {
+            TypeT::Void
+            | TypeT::Bool
+            | TypeT::Int { .. }
+            | TypeT::SizeT
+            | TypeT::Pointer(_, _)
+            | TypeT::SpecInt
+            | TypeT::SLProp
+            | TypeT::Error => a.clone(),
+
+            TypeT::Requires(ty, _)
+            | TypeT::Ensures(ty, _)
+            | TypeT::Consumes(ty)
+            | TypeT::Plain(ty) => self.vtype_whnf(ty),
+        }
+    }
+
+    pub fn vtype_eq(&self, a: &Rc<Type>, b: &Rc<Type>) -> bool {
+        match (&self.vtype_whnf(a).val, &self.vtype_whnf(b).val) {
+            (TypeT::Void, TypeT::Void) => true,
+            (TypeT::Bool, TypeT::Bool) => true,
+            (
+                TypeT::Int {
+                    signed: s1,
+                    width: w1,
+                },
+                TypeT::Int {
+                    signed: s2,
+                    width: w2,
+                },
+            ) => s1 == s2 && w1 == w2,
+            (TypeT::SizeT, TypeT::SizeT) => true,
+            (TypeT::Pointer(t1, k1), TypeT::Pointer(t2, k2)) => k1 == k2 && self.vtype_eq(t1, t2),
+            (TypeT::SpecInt, TypeT::SpecInt) => true,
+            (TypeT::SLProp, TypeT::SLProp) => true,
+            (TypeT::Error, _) | (_, TypeT::Error) => true,
             _ => false,
         }
     }

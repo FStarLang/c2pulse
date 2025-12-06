@@ -23,54 +23,50 @@ impl<'a> Checker<'a> {
 
     fn infer_rvalue(&mut self, env: &Env, rval: &RValue) -> Option<Rc<Type>> {
         env.infer_rvalue(rval).or_else(|| {
-            self.report(format!("cannot infer type of\n{:?}", rval), &rval.loc);
+            self.report(format!("cannot infer type of {}", rval), &rval.loc);
             None
         })
     }
 
     fn infer_lvalue(&mut self, env: &Env, lval: &LValue) -> Option<Rc<Type>> {
         env.infer_lvalue(lval).or_else(|| {
-            self.report(format!("cannot infer type of\n{:?}", lval), &lval.loc);
+            self.report(format!("cannot infer type of {}", lval), &lval.loc);
             None
         })
     }
 
-    fn check_type_eq(&mut self, env: &Env, actual: &Type, expected: &Type) {
-        if self.check_types {
-            // TODO
+    fn check_type_eq(&mut self, env: &Env, actual: &Rc<Type>, expected: &Rc<Type>) {
+        if self.check_types && !env.vtype_eq(actual, expected) {
+            self.report(
+                format!("expected type {} got {}", expected, actual),
+                &actual.loc,
+            )
         }
     }
 
-    fn check_has_type(&mut self, env: &Env, rval: &RValue, expected: &Type) {
+    fn check_has_type(&mut self, env: &Env, rval: &RValue, expected: &Rc<Type>) {
         if self.check_types
             && let Some(ty) = self.infer_rvalue(env, rval)
+            && !env.vtype_eq(&ty, expected)
         {
-            // TODO
+            self.report(
+                format!(
+                    "expected type {}, but got {} with type {}",
+                    expected, rval, ty
+                ),
+                &rval.loc,
+            )
         }
     }
 
     fn check_slprop(&mut self, env: &Env, p: &RValue) {
         self.check_rvalue(env, p);
-        self.check_has_type(
-            env,
-            p,
-            &Ast {
-                val: TypeT::SLProp,
-                loc: p.loc.clone(),
-            },
-        );
+        self.check_has_type(env, p, &TypeT::SLProp.with_loc(p.loc.clone()));
     }
 
     fn check_bool(&mut self, env: &Env, p: &RValue) {
         self.check_rvalue(env, p);
-        self.check_has_type(
-            env,
-            p,
-            &Ast {
-                val: TypeT::Bool,
-                loc: p.loc.clone(),
-            },
-        );
+        self.check_has_type(env, p, &TypeT::Bool.with_loc(p.loc.clone()));
     }
 
     fn check_type(&mut self, env: &Env, ty: &Type) {
@@ -119,7 +115,7 @@ impl<'a> Checker<'a> {
             RValueT::IntLit(_n, ty) => {
                 self.check_type(env, ty);
                 if self.check_types && !self.is_valid_int_type(ty) {
-                    self.report(format!("invalid integer type: {:?}", ty), &rval.loc);
+                    self.report(format!("invalid integer type: {}", ty), &rval.loc);
                 }
             }
             RValueT::LValue(lval) => match &lval.val {
@@ -134,14 +130,42 @@ impl<'a> Checker<'a> {
                     && let (Some(lhs_ty), Some(rhs_ty)) =
                         (self.infer_rvalue(env, lhs), self.infer_rvalue(env, rhs))
                 {
+                    let check_eq = {
+                        let lhs_ty = lhs_ty.clone();
+                        let rhs_ty = rhs_ty.clone();
+                        move |this: &mut Checker| {
+                            if !env.vtype_eq(&lhs_ty, &rhs_ty) {
+                                this.report(
+                                    format!(
+                                        "binop applied to mismatching types {} and {}",
+                                        lhs_ty, rhs_ty
+                                    ),
+                                    &rval.loc,
+                                )
+                            }
+                        }
+                    };
                     match bin_op {
-                        BinOp::Eq | BinOp::LEq => {} // TODO
-                        BinOp::LogAnd
+                        BinOp::Eq => check_eq(self),
+                        BinOp::LogAnd => {
+                            check_eq(self);
+                            match &env.vtype_whnf(&lhs_ty).val {
+                                TypeT::Bool | TypeT::SLProp | TypeT::Error => {}
+                                _ => self.report(
+                                    format!(
+                                        "&& needs to be applied to bool/slprop, not {}",
+                                        lhs_ty
+                                    ),
+                                    &rval.loc,
+                                ),
+                            }
+                        }
+                        BinOp::LEq
                         | BinOp::Mul
                         | BinOp::Div
                         | BinOp::Mod
                         | BinOp::Add
-                        | BinOp::Sub => {} // TODO
+                        | BinOp::Sub => check_eq(self),
                     }
                 }
             }
@@ -149,7 +173,16 @@ impl<'a> Checker<'a> {
                 for arg in args {
                     self.check_rvalue(env, arg)
                 }
-                // TODO: check function call
+                let Some(fn_decl) = env.lookup_fn(f) else {
+                    self.report(format!("unknown function {}", f.val), &rval.loc);
+                    return;
+                };
+                if fn_decl.args.len() != args.len() {
+                    self.report(format!("incorrect number of arguments, expected {}, got {}", fn_decl.args.len(), args.len()), &rval.loc);
+                                    }
+                for (decl_arg, arg) in fn_decl.args.iter().zip(args.iter()) {
+                    self.check_has_type(env, arg, &decl_arg.1);
+                }
             }
             RValueT::Cast(rval, ty) => {
                 self.check_rvalue(env, rval);
@@ -186,7 +219,7 @@ impl<'a> Checker<'a> {
                     && let Some(rval_ty) = self.infer_rvalue(env, rval)
                     && !self.is_pointer_type(env, &rval_ty)
                 {
-                    self.report(format!("not a pointer type: {:?}", rval_ty), &rval.loc)
+                    self.report(format!("not a pointer type: {}", rval_ty), &rval.loc)
                 }
             }
             LValueT::Error(ty) => self.check_type(env, ty),
