@@ -1,16 +1,17 @@
 use std::{path::Path, rc::Rc};
 
 use crate::{
-    diag::{Diagnostic, Diagnostics}, vfs::{OverlayFS, RealFS, VFS}
+    diag::{Diagnostic, Diagnostics},
+    vfs::{OverlayFS, RealFS, VFS},
 };
 use clap::Parser;
 
-mod pass;
 mod clang;
 mod diag;
 mod env;
 mod hauntedc;
 mod ir;
+mod pass;
 mod source_range_info;
 mod vfs;
 

@@ -178,8 +178,15 @@ impl<'a> Checker<'a> {
                     return;
                 };
                 if fn_decl.args.len() != args.len() {
-                    self.report(format!("incorrect number of arguments, expected {}, got {}", fn_decl.args.len(), args.len()), &rval.loc);
-                                    }
+                    self.report(
+                        format!(
+                            "incorrect number of arguments, expected {}, got {}",
+                            fn_decl.args.len(),
+                            args.len()
+                        ),
+                        &rval.loc,
+                    );
+                }
                 for (decl_arg, arg) in fn_decl.args.iter().zip(args.iter()) {
                     self.check_has_type(env, arg, &decl_arg.1);
                 }

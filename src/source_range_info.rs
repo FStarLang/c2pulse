@@ -5,7 +5,8 @@ use std::rc::Rc;
 use serde::Serialize;
 
 use crate::{
-    ir::{Location, Position, Range}, pass::emit,
+    ir::{Location, Position, Range},
+    pass::emit,
 };
 
 #[derive(Serialize)]
