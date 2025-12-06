@@ -1,20 +1,16 @@
 use std::{path::Path, rc::Rc};
 
 use crate::{
-    diag::{Diagnostic, Diagnostics},
-    vfs::{OverlayFS, RealFS, VFS},
+    diag::{Diagnostic, Diagnostics}, vfs::{OverlayFS, RealFS, VFS}
 };
 use clap::Parser;
 
-mod check;
+mod pass;
 mod clang;
 mod diag;
-mod elab;
-mod emit;
 mod env;
 mod hauntedc;
 mod ir;
-mod prune;
 mod source_range_info;
 mod vfs;
 
@@ -87,12 +83,12 @@ fn main() {
     let module_name = derive_module_name(&file_name);
 
     let (mut tu, mut diags) = clang::parse_file(&file_name, &mut *vfs);
-    check::check(&mut diags, &mut tu, "clang", false);
-    prune::prune(&mut tu);
-    check::check(&mut diags, &mut tu, "prune", false);
-    elab::elab(&mut diags, &mut tu);
-    check::check(&mut diags, &mut tu, "elab", true);
-    let (pulse_code, range_map) = emit::emit(&module_name, &tu);
+    pass::check::check(&mut diags, &mut tu, "clang", false);
+    pass::prune::prune(&mut tu);
+    pass::check::check(&mut diags, &mut tu, "prune", false);
+    pass::elab::elab(&mut diags, &mut tu);
+    pass::check::check(&mut diags, &mut tu, "elab", true);
+    let (pulse_code, range_map) = pass::emit::emit(&module_name, &tu);
 
     let outdir = match &cli.tmpdir {
         Some(tmpdir) => Path::new(tmpdir),
