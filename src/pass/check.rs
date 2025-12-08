@@ -4,6 +4,7 @@ use crate::{
     diag::{Diagnostic, DiagnosticLevel, Diagnostics},
     env::{Env, LocalDeclKind},
     ir::*,
+    mayberc::MaybeRc,
 };
 
 struct Checker<'a> {
@@ -21,22 +22,22 @@ impl<'a> Checker<'a> {
         });
     }
 
-    fn infer_rvalue(&mut self, env: &Env, rval: &RValue) -> Option<Rc<Type>> {
+    fn infer_rvalue(&mut self, env: &Env, rval: &RValue) -> Option<MaybeRc<Type>> {
         env.infer_rvalue(rval).or_else(|| {
             self.report(format!("cannot infer type of {}", rval), &rval.loc);
             None
         })
     }
 
-    fn infer_lvalue(&mut self, env: &Env, lval: &LValue) -> Option<Rc<Type>> {
+    fn infer_lvalue(&mut self, env: &Env, lval: &LValue) -> Option<MaybeRc<Type>> {
         env.infer_lvalue(lval).or_else(|| {
             self.report(format!("cannot infer type of {}", lval), &lval.loc);
             None
         })
     }
 
-    fn check_type_eq(&mut self, env: &Env, actual: &Rc<Type>, expected: &Rc<Type>) {
-        if self.check_types && !env.vtype_eq(actual, expected) {
+    fn check_type_eq(&mut self, env: &Env, actual: MaybeRc<Type>, expected: MaybeRc<Type>) {
+        if self.check_types && !env.vtype_eq(actual.clone(), expected.clone()) {
             self.report(
                 format!("expected type {} got {}", expected, actual),
                 &actual.loc,
@@ -44,10 +45,10 @@ impl<'a> Checker<'a> {
         }
     }
 
-    fn check_has_type(&mut self, env: &Env, rval: &RValue, expected: &Rc<Type>) {
+    fn check_has_type(&mut self, env: &Env, rval: &RValue, expected: MaybeRc<Type>) {
         if self.check_types
             && let Some(ty) = self.infer_rvalue(env, rval)
-            && !env.vtype_eq(&ty, expected)
+            && !env.vtype_eq(ty.clone().into(), expected.clone())
         {
             self.report(
                 format!(
@@ -61,12 +62,12 @@ impl<'a> Checker<'a> {
 
     fn check_slprop(&mut self, env: &Env, p: &RValue) {
         self.check_rvalue(env, p);
-        self.check_has_type(env, p, &TypeT::SLProp.with_loc(p.loc.clone()));
+        self.check_has_type(env, p, TypeT::SLProp.with_loc_core(p.loc.clone()).into());
     }
 
     fn check_bool(&mut self, env: &Env, p: &RValue) {
         self.check_rvalue(env, p);
-        self.check_has_type(env, p, &TypeT::Bool.with_loc(p.loc.clone()));
+        self.check_has_type(env, p, TypeT::Bool.with_loc_core(p.loc.clone()).into());
     }
 
     fn check_type(&mut self, env: &Env, ty: &Type) {
@@ -134,7 +135,7 @@ impl<'a> Checker<'a> {
                         let lhs_ty = lhs_ty.clone();
                         let rhs_ty = rhs_ty.clone();
                         move |this: &mut Checker| {
-                            if !env.vtype_eq(&lhs_ty, &rhs_ty) {
+                            if !env.vtype_eq(lhs_ty.clone().into(), rhs_ty.clone().into()) {
                                 this.report(
                                     format!(
                                         "binop applied to mismatching types {} and {}",
@@ -149,7 +150,7 @@ impl<'a> Checker<'a> {
                         BinOp::Eq => check_eq(self),
                         BinOp::LogAnd => {
                             check_eq(self);
-                            match &env.vtype_whnf(&lhs_ty).val {
+                            match &env.vtype_whnf(lhs_ty.clone().into()).val {
                                 TypeT::Bool | TypeT::SLProp | TypeT::Error => {}
                                 _ => self.report(
                                     format!(
@@ -188,7 +189,7 @@ impl<'a> Checker<'a> {
                     );
                 }
                 for (decl_arg, arg) in fn_decl.args.iter().zip(args.iter()) {
-                    self.check_has_type(env, arg, &decl_arg.1);
+                    self.check_has_type(env, arg, decl_arg.1.clone().into());
                 }
             }
             RValueT::Cast(rval, ty) => {
@@ -255,7 +256,7 @@ impl<'a> Checker<'a> {
                     && let (Some(x_ty), Some(v_ty)) =
                         (self.infer_lvalue(env, x), self.infer_rvalue(env, v))
                 {
-                    self.check_type_eq(env, &v_ty, &x_ty);
+                    self.check_type_eq(env, v_ty.into(), x_ty.into());
                 }
             }
             StmtT::If(c, b1, b2) => {

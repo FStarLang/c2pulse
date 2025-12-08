@@ -98,12 +98,16 @@ impl<T> Ast<T> {
 }
 
 pub trait WithLoc: Sized {
-    fn with_loc(self, loc: Rc<SourceInfo>) -> Rc<Ast<Self>>;
+    fn with_loc(self, loc: Rc<SourceInfo>) -> Rc<Ast<Self>> {
+        Rc::new(self.with_loc_core(loc))
+    }
+    fn with_loc_core(self, loc: Rc<SourceInfo>) -> Ast<Self>;
 }
 
 impl<T> WithLoc for T {
-    fn with_loc(self, loc: Rc<SourceInfo>) -> Rc<Ast<Self>> {
-        Rc::new(Ast { val: self, loc })
+    #[inline]
+    fn with_loc_core(self, loc: Rc<SourceInfo>) -> Ast<Self> {
+        Ast { val: self, loc }
     }
 }
 

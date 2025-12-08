@@ -11,6 +11,7 @@ mod diag;
 mod env;
 mod hauntedc;
 mod ir;
+mod mayberc;
 mod pass;
 mod source_range_info;
 mod vfs;

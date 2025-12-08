@@ -103,8 +103,8 @@ fn elab_rvalue(diags: &mut Diagnostics, env: &Env, rval: &mut RValue) {
                         | BinOp::Sub => {
                             match (lhs_to_rhs, rhs_to_lhs) {
                                 (true, true) => {}
-                                (true, false) => cast_to(lhs, rhs_ty),
-                                (false, true) => cast_to(rhs, lhs_ty),
+                                (true, false) => cast_to(lhs, rhs_ty.to_rc()),
+                                (false, true) => cast_to(rhs, lhs_ty.to_rc()),
                                 (false, false) => {
                                     // TODO: produce error
                                 }
@@ -112,8 +112,8 @@ fn elab_rvalue(diags: &mut Diagnostics, env: &Env, rval: &mut RValue) {
                         }
                         BinOp::LogAnd => match (env.is_slprop(&lhs_ty), env.is_slprop(&rhs_ty)) {
                             (true, true) => {}
-                            (true, false) => cast_to(rhs, lhs_ty),
-                            (false, true) => cast_to(lhs, rhs_ty),
+                            (true, false) => cast_to(rhs, lhs_ty.to_rc()),
+                            (false, true) => cast_to(lhs, rhs_ty.to_rc()),
                             (false, false) => {
                                 if !env.is_bool(&lhs_ty) {
                                     cast_to(lhs, TypeT::Bool.with_loc(rval.loc.clone()))

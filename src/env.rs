@@ -1,4 +1,4 @@
-use crate::ir::*;
+use crate::{ir::*, mayberc::MaybeRc};
 use std::{collections::HashMap, rc::Rc};
 
 #[derive(Clone, Debug, Default)]
@@ -113,46 +113,51 @@ impl Env {
         );
     }
 
-    pub fn infer_rvalue(&self, rvalue: &RValue) -> Option<Rc<Type>> {
+    pub fn infer_rvalue(&self, rvalue: &RValue) -> Option<MaybeRc<Type>> {
         match &rvalue.val {
-            RValueT::IntLit(_, ty) => Some(ty.clone()),
+            RValueT::IntLit(_, ty) => Some(ty.clone().into()),
             RValueT::LValue(v) => self.infer_lvalue(v),
-            RValueT::Ref(v) => Some(Rc::new(
+            RValueT::Ref(v) => Some(
                 // TODO: put kind on Ref?
-                rvalue.reuse_loc(TypeT::Pointer(self.infer_lvalue(v)?, PointerKind::Unknown)),
-            )),
+                rvalue
+                    .reuse_loc(TypeT::Pointer(
+                        self.infer_lvalue(v)?.to_rc(),
+                        PointerKind::Unknown,
+                    ))
+                    .into(),
+            ),
             RValueT::FnCall(f, _args) => match self.globals.fns.get(&f.val) {
-                Some(f_decl) => Some(f_decl.ret_type.clone()),
+                Some(f_decl) => Some(f_decl.ret_type.clone().into()),
                 None => None,
             },
-            RValueT::Cast(_, ty) => Some(ty.clone()),
-            RValueT::Error(ty) => Some(ty.clone()),
-            RValueT::InlinePulse(_, ty) => Some(ty.clone()),
+            RValueT::Cast(_, ty) => Some(ty.clone().into()),
+            RValueT::Error(ty) => Some(ty.clone().into()),
+            RValueT::InlinePulse(_, ty) => Some(ty.clone().into()),
             RValueT::BinOp(BinOp::Eq | BinOp::LEq, _, _) => {
-                Some(TypeT::Bool.with_loc(rvalue.loc.clone()))
+                Some(TypeT::Bool.with_loc_core(rvalue.loc.clone()).into())
             }
             RValueT::BinOp(
                 BinOp::LogAnd | BinOp::Mul | BinOp::Div | BinOp::Mod | BinOp::Add | BinOp::Sub,
                 lhs,
                 _,
             ) => self.infer_rvalue(lhs),
-            RValueT::BoolLit(_) => Some(TypeT::Bool.with_loc(rvalue.loc.clone())),
-            RValueT::Live(_) => Some(TypeT::SLProp.with_loc(rvalue.loc.clone())),
+            RValueT::BoolLit(_) => Some(TypeT::Bool.with_loc_core(rvalue.loc.clone()).into()),
+            RValueT::Live(_) => Some(TypeT::SLProp.with_loc_core(rvalue.loc.clone()).into()),
             RValueT::Old(v) => self.infer_rvalue(v),
         }
     }
 
-    pub fn infer_lvalue(&self, lvalue: &LValue) -> Option<Rc<Type>> {
+    pub fn infer_lvalue(&self, lvalue: &LValue) -> Option<MaybeRc<Type>> {
         match &lvalue.val {
-            LValueT::Var(ident) => Some(self.lookup_var_type(ident)?.clone()),
+            LValueT::Var(ident) => Some(self.lookup_var_type(ident)?.clone().into()),
             LValueT::Deref(x) => {
                 let x_ty = self.infer_rvalue(x)?;
                 match &x_ty.val {
-                    TypeT::Pointer(to, _) => Some(to.clone()),
+                    TypeT::Pointer(to, _) => Some(to.clone().into()),
                     _ => None,
                 }
             }
-            LValueT::Error(ty) => Some(ty.clone()),
+            LValueT::Error(ty) => Some(ty.clone().into()),
         }
     }
 
@@ -182,7 +187,7 @@ impl Env {
         }
     }
 
-    pub fn vtype_whnf(&self, a: &Rc<Type>) -> Rc<Type> {
+    pub fn vtype_whnf(&self, a: MaybeRc<Type>) -> MaybeRc<Type> {
         match &a.val {
             TypeT::Void
             | TypeT::Bool
@@ -191,16 +196,16 @@ impl Env {
             | TypeT::Pointer(_, _)
             | TypeT::SpecInt
             | TypeT::SLProp
-            | TypeT::Error => a.clone(),
+            | TypeT::Error => a,
 
             TypeT::Requires(ty, _)
             | TypeT::Ensures(ty, _)
             | TypeT::Consumes(ty)
-            | TypeT::Plain(ty) => self.vtype_whnf(ty),
+            | TypeT::Plain(ty) => self.vtype_whnf(ty.clone().into()),
         }
     }
 
-    pub fn vtype_eq(&self, a: &Rc<Type>, b: &Rc<Type>) -> bool {
+    pub fn vtype_eq(&self, a: MaybeRc<Type>, b: MaybeRc<Type>) -> bool {
         match (&self.vtype_whnf(a).val, &self.vtype_whnf(b).val) {
             (TypeT::Void, TypeT::Void) => true,
             (TypeT::Bool, TypeT::Bool) => true,
@@ -215,7 +220,9 @@ impl Env {
                 },
             ) => s1 == s2 && w1 == w2,
             (TypeT::SizeT, TypeT::SizeT) => true,
-            (TypeT::Pointer(t1, k1), TypeT::Pointer(t2, k2)) => k1 == k2 && self.vtype_eq(t1, t2),
+            (TypeT::Pointer(t1, k1), TypeT::Pointer(t2, k2)) => {
+                k1 == k2 && self.vtype_eq(t1.clone().into(), t2.clone().into())
+            }
             (TypeT::SpecInt, TypeT::SpecInt) => true,
             (TypeT::SLProp, TypeT::SLProp) => true,
             (TypeT::Error, _) | (_, TypeT::Error) => true,
