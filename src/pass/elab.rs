@@ -1,6 +1,7 @@
-use crate::diag::Diagnostics;
+use crate::diag::{Diagnostic, DiagnosticLevel, Diagnostics};
 use crate::env::{Env, LocalDeclKind};
 use crate::ir::*;
+use crate::mayberc::MaybeRc;
 use std::rc::Rc;
 
 struct Elaborator<'a> {
@@ -12,6 +13,21 @@ fn cast_to(rval: &mut Rc<RValue>, ty: Rc<Type>) {
 }
 
 impl<'a> Elaborator<'a> {
+    fn report(&mut self, msg: String, loc: &SourceInfo) {
+        self.diags.report(Diagnostic {
+            loc: loc.location().clone(),
+            level: DiagnosticLevel::Error,
+            msg: msg,
+        });
+    }
+
+    fn infer_rvalue(&mut self, env: &Env, rval: &RValue) -> Option<MaybeRc<Type>> {
+        env.infer_rvalue(rval).or_else(|| {
+            self.report(format!("cannot infer type of {}", rval), &rval.loc);
+            None
+        })
+    }
+
     fn elab_type(&mut self, env: &Env, ty: &mut Type) {
         match &mut ty.val {
             TypeT::Int {
@@ -94,44 +110,38 @@ impl<'a> Elaborator<'a> {
             RValueT::BinOp(bin_op, lhs, rhs) => {
                 self.elab_rvalue(env, Rc::make_mut(lhs));
                 self.elab_rvalue(env, Rc::make_mut(rhs));
-                match (env.infer_rvalue(lhs), env.infer_rvalue(rhs)) {
-                    (Some(lhs_ty), Some(rhs_ty)) => {
-                        let lhs_to_rhs = env.implicitly_converts_to(&lhs_ty, &rhs_ty);
-                        let rhs_to_lhs = env.implicitly_converts_to(&rhs_ty, &lhs_ty);
-                        match bin_op {
-                            BinOp::Eq
-                            | BinOp::LEq
-                            | BinOp::Mul
-                            | BinOp::Div
-                            | BinOp::Mod
-                            | BinOp::Add
-                            | BinOp::Sub => {
-                                match (lhs_to_rhs, rhs_to_lhs) {
-                                    (true, true) => {}
-                                    (true, false) => cast_to(lhs, rhs_ty.to_rc()),
-                                    (false, true) => cast_to(rhs, lhs_ty.to_rc()),
-                                    (false, false) => {
-                                        // TODO: produce error
-                                    }
-                                }
+                let Some(lhs_ty) = self.infer_rvalue(env, lhs) else {
+                    return;
+                };
+                let Some(rhs_ty) = self.infer_rvalue(env, rhs) else {
+                    return;
+                };
+                match bin_op {
+                    BinOp::Eq
+                    | BinOp::LEq
+                    | BinOp::Mul
+                    | BinOp::Div
+                    | BinOp::Mod
+                    | BinOp::Add
+                    | BinOp::Sub
+                    | BinOp::LogAnd => {
+                        if let Some(meet_type) = env.meet_type(lhs_ty.clone(), rhs_ty.clone()) {
+                            if !env.vtype_eq(lhs_ty, meet_type.clone()) {
+                                cast_to(lhs, meet_type.clone().to_rc())
                             }
-                            BinOp::LogAnd => match (env.is_slprop(&lhs_ty), env.is_slprop(&rhs_ty))
-                            {
-                                (true, true) => {}
-                                (true, false) => cast_to(rhs, lhs_ty.to_rc()),
-                                (false, true) => cast_to(lhs, rhs_ty.to_rc()),
-                                (false, false) => {
-                                    if !env.is_bool(&lhs_ty) {
-                                        cast_to(lhs, TypeT::Bool.with_loc(rval.loc.clone()))
-                                    }
-                                    if !env.is_bool(&rhs_ty) {
-                                        cast_to(rhs, TypeT::Bool.with_loc(rval.loc.clone()))
-                                    }
-                                }
-                            },
+                            if !env.vtype_eq(rhs_ty, meet_type.clone()) {
+                                cast_to(rhs, meet_type.to_rc())
+                            }
+                        } else {
+                            self.report(
+                                format!(
+                                    "cannot apply {} to arguments of type {} and {}",
+                                    bin_op, lhs_ty, rhs_ty
+                                ),
+                                &rval.loc,
+                            );
                         }
                     }
-                    (_, _) => {} // TODO: produce error
                 }
             }
             RValueT::BoolLit(_) => {}
@@ -147,9 +157,15 @@ impl<'a> Elaborator<'a> {
             StmtT::Assign(x, v) => {
                 self.elab_lvalue(env, Rc::make_mut(x));
                 self.elab_rvalue(env, Rc::make_mut(v));
-                let _x_ty = env.infer_lvalue(x);
-                let _y_ty = env.infer_rvalue(v);
-                // TODO: check that x_ty and y_ty are equal
+                let Some(x_ty) = env.infer_lvalue(x) else {
+                    return;
+                };
+                let Some(v_ty) = env.infer_rvalue(v) else {
+                    return;
+                };
+                if !env.vtype_eq(x_ty.clone(), v_ty) {
+                    cast_to(v, x_ty.to_rc());
+                }
             }
             StmtT::If(c, b1, b2) => {
                 self.elab_rvalue(env, Rc::make_mut(c));

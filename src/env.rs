@@ -25,6 +25,17 @@ pub struct Env {
     locals: HashMap<Rc<str>, LocalDecl>,
 }
 
+macro_rules! either_side {
+    ($t:pat) => {
+        ($t, _) | (_, $t)
+    };
+}
+macro_rules! both_sides {
+    ($t:pat) => {
+        ($t, $t)
+    };
+}
+
 impl Env {
     pub fn new() -> Env {
         Env::default()
@@ -161,33 +172,58 @@ impl Env {
         }
     }
 
-    pub fn implicitly_converts_to(&self, a: &Type, b: &Type) -> bool {
+    pub fn meet_type(&self, a: MaybeRc<Type>, b: MaybeRc<Type>) -> Option<MaybeRc<Type>> {
+        let a0 = a.clone();
+        let b0 = b.clone();
+        let a = self.vtype_whnf(a);
+        let b = self.vtype_whnf(b);
+        if self.vtype_eq(a.clone(), b.clone()) {
+            return Some(a0);
+        }
         match (&a.val, &b.val) {
-            (TypeT::Error, _) => true,
-            (TypeT::Void, TypeT::Void) => true,
-            (TypeT::Bool, TypeT::Bool) => true,
-            (TypeT::Bool, TypeT::Int { .. }) => true,
-            (TypeT::Bool, TypeT::SizeT) => true,
-            (TypeT::Bool, TypeT::SLProp) => true,
-            (
-                TypeT::Int {
-                    signed: s1,
-                    width: w1,
-                },
-                TypeT::Int {
-                    signed: _,
-                    width: w2,
-                },
-            ) => w2 > w1 || (w1 == w2 && !s1),
-            (TypeT::Int { .. }, TypeT::SizeT) => true,
-            (TypeT::SizeT, TypeT::SizeT) => true,
-            (TypeT::Pointer(..), TypeT::Pointer(..)) => true,
-            (TypeT::SpecInt, TypeT::SpecInt) => true,
-            _ => false,
+            (_, TypeT::Error) => Some(b0),
+            (TypeT::Error, _) => Some(a0),
+
+            (TypeT::SpecInt, TypeT::Bool | TypeT::Int { .. } | TypeT::SizeT) => Some(a0),
+            (TypeT::Bool | TypeT::Int { .. } | TypeT::SizeT, TypeT::SpecInt) => Some(b0),
+
+            (TypeT::SizeT, TypeT::Bool | TypeT::Int { .. }) => Some(a0),
+            (TypeT::Bool | TypeT::Int { .. }, TypeT::SizeT) => Some(b0),
+
+            (TypeT::Int { .. }, TypeT::Bool) => Some(a0),
+            (TypeT::Bool, TypeT::Int { .. }) => Some(b0),
+
+            (TypeT::SLProp, TypeT::Bool | TypeT::Int { .. } | TypeT::SizeT | TypeT::SpecInt) => {
+                Some(a0)
+            }
+            (TypeT::Bool | TypeT::Int { .. } | TypeT::SizeT | TypeT::SpecInt, TypeT::SLProp) => {
+                Some(b0)
+            }
+
+            both_sides!(TypeT::Bool) => None,
+            both_sides!(TypeT::Int { .. }) => None,
+            both_sides!(TypeT::SLProp) => None,
+            both_sides!(TypeT::SizeT) => None,
+            both_sides!(TypeT::SpecInt) => None,
+
+            either_side!(TypeT::Void) => None,
+            either_side!(TypeT::Pointer(_, _)) => None,
+
+            either_side!(
+                TypeT::Requires(..) | TypeT::Ensures(..) | TypeT::Consumes(..) | TypeT::Plain(..)
+            ) => None,
         }
     }
 
     pub fn vtype_whnf(&self, a: MaybeRc<Type>) -> MaybeRc<Type> {
+        let mut a = a;
+        while let Some(a_next) = self.vtype_whnf_step(&*a) {
+            a = a_next
+        }
+        a
+    }
+
+    pub fn vtype_whnf_step(&self, a: &Type) -> Option<MaybeRc<Type>> {
         match &a.val {
             TypeT::Void
             | TypeT::Bool
@@ -196,12 +232,12 @@ impl Env {
             | TypeT::Pointer(_, _)
             | TypeT::SpecInt
             | TypeT::SLProp
-            | TypeT::Error => a,
+            | TypeT::Error => None,
 
             TypeT::Requires(ty, _)
             | TypeT::Ensures(ty, _)
             | TypeT::Consumes(ty)
-            | TypeT::Plain(ty) => self.vtype_whnf(ty.clone().into()),
+            | TypeT::Plain(ty) => Some(ty.clone().into()),
         }
     }
 

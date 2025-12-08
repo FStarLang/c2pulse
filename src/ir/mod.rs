@@ -177,6 +177,12 @@ impl BinOp {
     }
 }
 
+impl Display for BinOp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.to_str())
+    }
+}
+
 pub type RValue = Ast<RValueT>;
 pub type RValues = Vec<Rc<RValue>>;
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
