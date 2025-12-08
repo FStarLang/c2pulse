@@ -72,7 +72,7 @@ impl<'a> Elaborator<'a> {
     fn cast_to_slprop(&mut self, env: &Env, rval: &mut Rc<RValue>) {
         if env
             .infer_rvalue(rval)
-            .filter(|p| env.is_slprop(p))
+            .filter(|p| env.is_slprop(p.clone()))
             .is_none()
         {
             *rval = RValueT::Cast(rval.clone(), TypeT::SLProp.with_loc(rval.loc.clone()))
@@ -81,7 +81,11 @@ impl<'a> Elaborator<'a> {
     }
 
     fn cast_to_bool(&mut self, env: &Env, rval: &mut Rc<RValue>) {
-        if env.infer_rvalue(rval).filter(|p| env.is_bool(p)).is_none() {
+        if env
+            .infer_rvalue(rval)
+            .filter(|p| env.is_bool(p.clone()))
+            .is_none()
+        {
             *rval = RValueT::Cast(rval.clone(), TypeT::Bool.with_loc(rval.loc.clone()))
                 .with_loc(rval.loc.clone())
         }

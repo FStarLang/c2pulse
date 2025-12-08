@@ -5,6 +5,7 @@ use pretty::{RcDoc, Render, RenderAnnotated};
 use crate::{
     env::{Env, LocalDecl, LocalDeclKind},
     ir::*,
+    mayberc::MaybeRc,
 };
 
 pub type SourceRangeMap = Vec<(Location, Range)>;
@@ -271,8 +272,8 @@ fn get_int_mod(signed: &bool, width: &u32) -> Option<&'static str> {
     })
 }
 
-fn emit_binop(op: BinOp, ty: &Type) -> Option<Doc> {
-    Some(match (op, &ty.val) {
+fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
+    Some(match (op, &env.vtype_whnf(ty).val) {
         (BinOp::Eq, TypeT::SLProp | TypeT::Void) => Doc::text("=="),
         (
             BinOp::Eq,
@@ -326,7 +327,7 @@ fn emit_binop(op: BinOp, ty: &Type) -> Option<Doc> {
         (
             op,
             TypeT::Requires(ty, _) | TypeT::Ensures(ty, _) | TypeT::Consumes(ty) | TypeT::Plain(ty),
-        ) => emit_binop(op, ty)?,
+        ) => emit_binop(env, op, ty.clone().into())?,
 
         (
             BinOp::LEq | BinOp::Mul | BinOp::Div | BinOp::Mod | BinOp::Add | BinOp::Sub,
@@ -449,7 +450,7 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
             }
             RValueT::BinOp(op, lhs, rhs) => {
                 if let Some(ty) = env.infer_rvalue(&lhs)
-                    && let Some(op) = emit_binop(*op, &ty)
+                    && let Some(op) = emit_binop(env, *op, ty)
                 {
                     binop(emit_rvalue(env, lhs), op, emit_rvalue(env, rhs))
                 } else {

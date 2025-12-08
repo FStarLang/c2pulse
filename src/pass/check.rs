@@ -95,8 +95,8 @@ impl<'a> Checker<'a> {
         }
     }
 
-    fn is_valid_int_type(&self, ty: &Type) -> bool {
-        match &ty.val {
+    fn is_valid_int_type(&self, env: &Env, ty: MaybeRc<Type>) -> bool {
+        match &env.vtype_whnf(ty).val {
             TypeT::Void => false, // ?
             TypeT::Bool => true,
             TypeT::Int { .. } => true,
@@ -104,8 +104,9 @@ impl<'a> Checker<'a> {
             TypeT::Pointer(_, _) => true, // == 0 ?
             TypeT::SpecInt => true,
             TypeT::SLProp => true, // true/false
-            TypeT::Requires(ty, _p) | TypeT::Ensures(ty, _p) => self.is_valid_int_type(ty),
-            TypeT::Consumes(ty) | TypeT::Plain(ty) => self.is_valid_int_type(ty),
+            TypeT::Requires(..) | TypeT::Ensures(..) | TypeT::Consumes(..) | TypeT::Plain(..) => {
+                false
+            }
             TypeT::Error => true,
         }
     }
@@ -115,7 +116,7 @@ impl<'a> Checker<'a> {
             RValueT::BoolLit(_) => {}
             RValueT::IntLit(_n, ty) => {
                 self.check_type(env, ty);
-                if self.check_types && !self.is_valid_int_type(ty) {
+                if self.check_types && !self.is_valid_int_type(env, ty.clone().into()) {
                     self.report(format!("invalid integer type: {}", ty), &rval.loc);
                 }
             }
@@ -203,18 +204,11 @@ impl<'a> Checker<'a> {
         }
     }
 
-    fn is_pointer_type(&mut self, env: &Env, ty: &Type) -> bool {
-        match &ty.val {
-            TypeT::Void => false,
-            TypeT::Bool => false,
-            TypeT::Int { .. } => false,
-            TypeT::SizeT => false,
+    fn is_pointer_type(&mut self, env: &Env, ty: MaybeRc<Type>) -> bool {
+        match &env.vtype_whnf(ty).val {
             TypeT::Pointer(_ty, _kind) => true,
-            TypeT::SpecInt => false,
-            TypeT::SLProp => false,
-            TypeT::Requires(ty, _p) | TypeT::Ensures(ty, _p) => self.is_pointer_type(env, ty),
-            TypeT::Consumes(ty) | TypeT::Plain(ty) => self.is_pointer_type(env, ty),
             TypeT::Error => true,
+            _ => false,
         }
     }
 
@@ -225,7 +219,7 @@ impl<'a> Checker<'a> {
                 self.check_rvalue(env, rval);
                 if self.check_types
                     && let Some(rval_ty) = self.infer_rvalue(env, rval)
-                    && !self.is_pointer_type(env, &rval_ty)
+                    && !self.is_pointer_type(env, rval_ty.clone())
                 {
                     self.report(format!("not a pointer type: {}", rval_ty), &rval.loc)
                 }
