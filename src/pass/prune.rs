@@ -11,10 +11,7 @@ struct Deps<T> {
     deps: HashMap<T, HashSet<T>>,
 }
 
-impl<T> Deps<T>
-where
-    T: Eq + Hash,
-{
+impl<T: Eq + Hash> Deps<T> {
     fn new() -> Deps<T> {
         Deps {
             roots: HashSet::new(),

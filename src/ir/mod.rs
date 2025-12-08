@@ -111,19 +111,13 @@ impl<T> WithLoc for T {
     }
 }
 
-impl<T> Debug for Ast<T>
-where
-    T: Debug,
-{
+impl<T: Debug> Debug for Ast<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{:#?} @ {:#?}", self.val, self.loc)
     }
 }
 
-impl<T> Display for Ast<T>
-where
-    T: Display,
-{
+impl<T: Display> Display for Ast<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         self.val.fmt(f)
     }

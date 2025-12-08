@@ -209,20 +209,14 @@ fn lex_core_token<'src>() -> impl Parser<'src, &'src str, Token<'src>> {
     integer_literal.or(op).or(ident).or(string).or(fallback)
 }
 
-fn ws<'tokens, 'src: 'tokens, I, Span>()
--> impl Parser<'tokens, I, (), extra::Err<Rich<'tokens, Token<'src>, Span>>> + Clone
-where
-    I: ValueInput<'tokens, Token = Token<'src>, Span = Span>,
-{
+fn ws<'tokens, 'src: 'tokens, I: ValueInput<'tokens, Token = Token<'src>, Span = Span>, Span>()
+-> impl Parser<'tokens, I, (), extra::Err<Rich<'tokens, Token<'src>, Span>>> + Clone {
     select! { Token::Whitespace => () }.repeated()
 }
 
-fn punct<'tokens, 'src: 'tokens, I, Span>(
+fn punct<'tokens, 'src: 'tokens, I: ValueInput<'tokens, Token = Token<'src>, Span = Span>, Span>(
     op: Punct,
-) -> impl Parser<'tokens, I, Token<'src>, extra::Err<Rich<'tokens, Token<'src>, Span>>> + Clone
-where
-    I: ValueInput<'tokens, Token = Token<'src>, Span = Span>,
-{
+) -> impl Parser<'tokens, I, Token<'src>, extra::Err<Rich<'tokens, Token<'src>, Span>>> + Clone {
     just(Token::Punct(op)).padded_by(ws())
 }
 
@@ -316,14 +310,15 @@ fn mk_binop(binop: BinOp, lhs: Expr, rhs: Expr, loc: Rc<SourceInfo>) -> Expr {
 
 type Extra<'tokens, 'src> = extra::Err<Rich<'tokens, Token<'src>, SimpleSpan>>;
 
-fn expr_parser<'tokens, 'src: 'tokens, I, SIFT>(
-    snip_map: &'src SnippetMap,
-    sift: &'src SIFT,
-) -> impl Parser<'tokens, I, Expr, Extra<'tokens, 'src>> + Clone
-where
+fn expr_parser<
+    'tokens,
+    'src: 'tokens,
     I: ValueInput<'tokens, Token = Token<'src>, Span = SimpleSpan>,
     SIFT: SourceInfoForTokens,
-{
+>(
+    snip_map: &'src SnippetMap,
+    sift: &'src SIFT,
+) -> impl Parser<'tokens, I, Expr, Extra<'tokens, 'src>> + Clone {
     recursive(|expr| {
         let assignment_expression = expr.clone();
 

@@ -25,10 +25,7 @@ type PulseSourceRange = SourceMapRange;
 
 struct RcStr(Rc<str>);
 impl Serialize for RcStr {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         self.0.serialize(serializer)
     }
 }

@@ -75,10 +75,7 @@ impl<BaseFS> OverlayFS<BaseFS> {
     }
 }
 
-impl<BaseFS> VFS for OverlayFS<BaseFS>
-where
-    BaseFS: VFS,
-{
+impl<BaseFS: VFS> VFS for OverlayFS<BaseFS> {
     fn read_vfs_file(&mut self, file_name: &str) -> VFSResult {
         match self.overlays.get(file_name) {
             Some(entry) => Ok(entry.clone()),

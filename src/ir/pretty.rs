@@ -5,10 +5,7 @@ pub trait PrettyIR {
     fn to_doc(&self) -> RcDoc<'_, ()>;
 }
 
-impl<A> PrettyIR for Ast<A>
-where
-    A: PrettyIR,
-{
+impl<A: PrettyIR> PrettyIR for Ast<A> {
     fn to_doc(&self) -> RcDoc<'_, ()> {
         self.val.to_doc()
     }
