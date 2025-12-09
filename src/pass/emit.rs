@@ -148,6 +148,7 @@ fn subst_this_lvalue(lvalue: &mut LValue, this: &Rc<Ident>) {
             }
         }
         LValueT::Deref(rv) => subst_this_rvalue(Rc::make_mut(rv), this),
+        LValueT::Member(x, _a) => subst_this_lvalue(Rc::make_mut(x), this),
         LValueT::Error(_ty) => {}
     }
 }
@@ -262,6 +263,9 @@ fn emit_lvalue(env: &Env, v: &LValue) -> Doc {
                 }
             }
             LValueT::Deref(v) => emit_rvalue(env, v),
+            LValueT::Member(x, a) => {
+                Doc::text(format!("(*TODO field access {}*)", a)).append(emit_lvalue(env, x))
+            }
             LValueT::Error(_ty) => Doc::text("(admit())"),
         }
     })

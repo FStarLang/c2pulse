@@ -246,6 +246,14 @@ impl Expr {
         }
     }
 }
+impl Expr {
+    fn to_lvalue<'a, T, S>(self, span: S) -> Result<Rc<LValue>, Rich<'a, T, S>> {
+        match self {
+            Expr::LValue(e) => Ok(e),
+            Expr::RValue(_) => Err(Rich::custom(span, "lvalue required")),
+        }
+    }
+}
 impl From<Rc<LValue>> for Expr {
     fn from(value: Rc<LValue>) -> Self {
         Expr::LValue(value)
@@ -265,7 +273,7 @@ macro_rules! left_recursion {
         let rhs = choice((
             $(($p).map(Rhs::$n),)*
         ));
-        ($base).foldl_with(rhs.repeated(), |acc, rhs, _extra| match rhs {
+        ($base).try_foldl(rhs.repeated(), |acc, rhs, _extra| match rhs {
             $(Rhs::$n($x) => {
                 let $acc = acc;
                 $(let $extra = _extra;)?
@@ -278,7 +286,7 @@ macro_rules! left_recursion {
 macro_rules! left_rec_binop {
     ($base:expr, { $($n:ident($acc:ident, $p:expr, $x:ident) $(= $extra:ident)? => $cb:expr,)* }) => {{
         let base = $base;
-        left_recursion!(base, {$($n($acc, $x: Expr: $p.ignore_then(base.clone())) $(= $extra)? => $cb,)*})
+        left_recursion!(base, {$($n($acc, $x: Expr: $p.ignore_then(base.clone())) $(= $extra)? => Ok($cb),)*})
     }}
 }
 
@@ -380,8 +388,9 @@ fn expr_parser<
 
         let primary_expression = identifier.or(constant).or(parenthesized);
 
-        let postfix_expression = choice((
-            ident // TODO: function should be postfix_expression
+        let postfix_expression_nonrec = choice((
+            ident
+                .clone() // TODO: function should be postfix_expression
                 .then(
                     assignment_expression
                         .clone()
@@ -403,9 +412,10 @@ fn expr_parser<
                         let &[arg] = &args.as_slice() else {
                             return Err(Rich::custom(s, "_live takes exactly one argument"));
                         };
-                        let Expr::LValue(arg) = arg else {
-                            return Err(Rich::custom(s, "_live requires an lvalue argument"));
-                        };
+                        let arg = arg.clone().to_lvalue(s)?;
+                        // let Expr::LValue(arg) = arg else {
+                        //     return Err(Rich::custom(s, "_live requires an lvalue argument"));
+                        // };
                         Ok(RValueT::Live(arg.clone())
                             .with_loc(sift.resolve_source_info(&s))
                             .into())
@@ -420,6 +430,14 @@ fn expr_parser<
             primary_expression,
         ))
         .boxed();
+        let postfix_expression = left_recursion!(postfix_expression_nonrec, {
+            Dot(lhs, id: Rc<Ident>: punct(Punct::Dot).ignore_then(ident.clone())) = e =>
+                Ok(LValueT::Member(lhs.to_lvalue(e.span())?, id).with_loc(sift.resolve_source_info(&e.span())).into()),
+            Arrow(lhs, id: Rc<Ident>: punct(Punct::DashGt).ignore_then(ident.clone())) = e => {
+                let loc = sift.resolve_source_info(&e.span());
+                Ok(LValueT::Member(LValueT::Deref(lhs.to_rvalue()).with_loc(loc.clone()), id).with_loc(loc).into())
+            },
+        }).boxed();
 
         let cast_expression = recursive(|cast_expression| {
             let unary_expression = choice((
@@ -430,6 +448,13 @@ fn expr_parser<
                         LValueT::Deref(e.to_rvalue())
                             .with_loc(sift.resolve_source_info(&extra.span()))
                             .into()
+                    }),
+                punct(Punct::Amp)
+                    .ignore_then(cast_expression.clone())
+                    .try_map_with(|e: Expr, extra| {
+                        Ok(RValueT::Ref(e.to_lvalue(extra.span())?)
+                            .with_loc(sift.resolve_source_info(&extra.span()))
+                            .into())
                     }),
             ));
 

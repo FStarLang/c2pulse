@@ -316,6 +316,11 @@ public:
       default:;
         // continue to error case
       }
+    } else if (auto m = dyn_cast<MemberExpr>(e)) {
+      auto id = ctx.mk_ident(toStr(m->getMemberDecl()->getName()), loc.clone());
+      auto base = m->isArrow() ? mk_deref(loc.clone(), trRValue(m->getBase()))
+                               : trLValue(m->getBase());
+      return mk_lvalue_member(std::move(loc), std::move(base), std::move(id));
     }
 
     reportUnsupported(e->getSourceRange(), loc,

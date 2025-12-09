@@ -98,6 +98,7 @@ fn scan_lvalue(deps: &mut HashSet<DeclName>, lv: &LValue) {
     match &lv.val {
         LValueT::Var(_) => {}
         LValueT::Deref(v) => scan_rvalue(deps, v),
+        LValueT::Member(x, _a) => scan_lvalue(deps, x),
         LValueT::Error(ty) => scan_type(deps, ty),
     }
 }

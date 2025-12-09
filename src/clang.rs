@@ -332,6 +332,9 @@ fn mk_lvalue_var(loc: Rc<SourceInfo>, name: Rc<Ident>) -> Rc<LValue> {
 fn mk_deref(loc: Rc<SourceInfo>, v: Rc<RValue>) -> Rc<LValue> {
     mk_ast(loc, LValueT::Deref(v))
 }
+fn mk_lvalue_member(loc: Rc<SourceInfo>, v: Rc<LValue>, a: Rc<Ident>) -> Rc<LValue> {
+    mk_ast(loc, LValueT::Member(v, a))
+}
 fn mk_lvalue_err(loc: Rc<SourceInfo>, ty: Rc<Type>) -> Rc<LValue> {
     mk_ast(loc, LValueT::Error(ty))
 }

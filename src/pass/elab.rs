@@ -67,6 +67,22 @@ impl<'a> Elaborator<'a> {
         match &mut lval.val {
             LValueT::Var(_) => {}
             LValueT::Deref(v) => self.elab_rvalue(env, Rc::make_mut(v)),
+            LValueT::Member(x, a) => {
+                self.elab_lvalue(env, Rc::make_mut(x));
+                if let Some(t) = env.infer_lvalue(x) {
+                    let t = env.vtype_whnf(t);
+                    let TypeT::TypeRef(TypeRefKind::Struct(n)) = &t.val else {
+                        return self.report(format!("not a structure type: {}", t), &lval.loc);
+                    };
+                    let Some(s) = env.lookup_struct(n) else {
+                        return self.report(format!("unknown structure {}", n), &lval.loc);
+                    };
+                    let Some(_f) = s.get_field(a) else {
+                        return self
+                            .report(format!("no field {} in structure {}", a, n), &lval.loc);
+                    };
+                }
+            }
             LValueT::Error(ty) => self.elab_type(env, Rc::make_mut(ty)),
         }
     }

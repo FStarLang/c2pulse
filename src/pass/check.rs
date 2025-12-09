@@ -235,6 +235,24 @@ impl<'a> Checker<'a> {
                     self.report(format!("not a pointer type: {}", rval_ty), &rval.loc)
                 }
             }
+            LValueT::Member(x, a) => {
+                self.check_lvalue(env, x);
+                if self.check_types
+                    && let Some(t) = self.infer_lvalue(env, x)
+                {
+                    let t = env.vtype_whnf(t);
+                    let TypeT::TypeRef(TypeRefKind::Struct(n)) = &t.val else {
+                        return self.report(format!("not a structure type: {}", t), &lval.loc);
+                    };
+                    let Some(s) = env.lookup_struct(n) else {
+                        return self.report(format!("unknown structure {}", n), &lval.loc);
+                    };
+                    let Some(_f) = s.get_field(a) else {
+                        return self
+                            .report(format!("no field {} in structure {}", a, n), &lval.loc);
+                    };
+                }
+            }
             LValueT::Error(ty) => self.check_type(env, ty),
         }
     }

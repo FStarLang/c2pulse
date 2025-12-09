@@ -178,11 +178,18 @@ impl Env {
         match &lvalue.val {
             LValueT::Var(ident) => Some(self.lookup_var_type(ident)?.clone().into()),
             LValueT::Deref(x) => {
-                let x_ty = self.infer_rvalue(x)?;
+                let x_ty = self.vtype_whnf(self.infer_rvalue(x)?);
                 match &x_ty.val {
                     TypeT::Pointer(to, _) => Some(to.clone().into()),
                     _ => None,
                 }
+            }
+            LValueT::Member(x, a) => {
+                let x_ty = self.vtype_whnf(self.infer_lvalue(x)?);
+                let TypeT::TypeRef(TypeRefKind::Struct(s)) = &x_ty.val else {
+                    return None;
+                };
+                Some(self.lookup_struct(s)?.get_field(a)?.clone().into())
             }
             LValueT::Error(ty) => Some(ty.clone().into()),
         }

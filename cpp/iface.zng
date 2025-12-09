@@ -198,6 +198,7 @@ mod crate::clang {
     fn mk_rvalue_err(Rc<SourceInfo>, Rc<Type>) -> Rc<RValue>;
 
     fn mk_lvalue_var(Rc<SourceInfo>, Rc<Ident>) -> Rc<LValue>;
+    fn mk_lvalue_member(Rc<SourceInfo>, Rc<LValue>, Rc<Ident>) -> Rc<LValue>;
     fn mk_deref(Rc<SourceInfo>, Rc<RValue>) -> Rc<LValue>;
     fn mk_lvalue_err(Rc<SourceInfo>, Rc<Type>) -> Rc<LValue>;
 

@@ -11,6 +11,24 @@ impl<A: PrettyIR> PrettyIR for Ast<A> {
     }
 }
 
+impl<A: PrettyIR + ?Sized> PrettyIR for Rc<A> {
+    fn to_doc(&self) -> RcDoc<'_, ()> {
+        A::to_doc(self)
+    }
+}
+
+impl<'a, A: PrettyIR> PrettyIR for &'a A {
+    fn to_doc(&self) -> RcDoc<'_, ()> {
+        A::to_doc(self)
+    }
+}
+
+impl PrettyIR for str {
+    fn to_doc(&self) -> RcDoc<'_, ()> {
+        RcDoc::text(self)
+    }
+}
+
 impl Display for TypeRefKind {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.to_doc().pretty(80))
@@ -20,10 +38,10 @@ impl Display for TypeRefKind {
 impl PrettyIR for TypeRefKind {
     fn to_doc(&self) -> RcDoc<'_, ()> {
         match self {
-            TypeRefKind::Typedef(n) => RcDoc::text(&*n.val),
+            TypeRefKind::Typedef(n) => n.to_doc(),
             TypeRefKind::Struct(n) => RcDoc::text("struct")
                 .append(RcDoc::line())
-                .append(&*n.val)
+                .append(n.to_doc())
                 .group()
                 .nest(2),
         }
@@ -101,7 +119,8 @@ impl PrettyIR for RValueT {
                 .append(")")
                 .nest(2)
                 .group(),
-            RValueT::FnCall(f, args) => RcDoc::text(&*f.val)
+            RValueT::FnCall(f, args) => f
+                .to_doc()
                 .append("(")
                 .append(RcDoc::intersperse(
                     args.iter().map(|arg| arg.to_doc()),
@@ -147,8 +166,9 @@ impl Display for LValue {
 impl PrettyIR for LValueT {
     fn to_doc(&self) -> RcDoc<'_, ()> {
         match self {
-            LValueT::Var(x) => RcDoc::text(&*x.val),
+            LValueT::Var(x) => x.to_doc(),
             LValueT::Deref(rval) => RcDoc::text("*").append(rval.to_doc()),
+            LValueT::Member(x, n) => x.to_doc().append(RcDoc::text(".")).append(n.to_doc()),
             LValueT::Error(_) => RcDoc::text("???"),
         }
     }
@@ -173,7 +193,7 @@ impl PrettyIR for StmtT {
             StmtT::Call(f) => f.to_doc(),
             StmtT::Decl(x, ty) => (ty.to_doc())
                 .append(" ")
-                .append(&*x.val)
+                .append(x.to_doc())
                 .append(";")
                 .nest(2)
                 .group(),

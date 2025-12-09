@@ -216,6 +216,7 @@ pub type LValue = Ast<LValueT>;
 pub enum LValueT {
     Var(Rc<Ident>),
     Deref(Rc<RValue>),
+    Member(Rc<LValue>, Rc<Ident>),
     Error(Rc<Type>),
 }
 
@@ -236,6 +237,15 @@ pub enum StmtT {
 pub struct StructDefn {
     pub name: Rc<Ident>,
     pub fields: Vec<(Ident, Rc<Type>)>,
+}
+
+impl StructDefn {
+    pub fn get_field(&self, name: &Ident) -> Option<&Rc<Type>> {
+        self.fields
+            .iter()
+            .find(|(field_name, _)| name.val == field_name.val)
+            .map(|(_, ty)| ty)
+    }
 }
 
 pub type FnArg = (Option<Rc<Ident>>, Rc<Type>);
