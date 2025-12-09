@@ -27,7 +27,7 @@ impl<T: Eq + Hash> Deps<T> {
         self.deps.entry(from).or_default()
     }
 
-    fn propagate(&mut self) {
+    fn propagate(&mut self) -> PropagatedDeps<'_, T> {
         let mut todo = vec![];
         for r in &self.roots {
             if let Some(t) = self.deps.remove(r) {
@@ -42,10 +42,15 @@ impl<T: Eq + Hash> Deps<T> {
                 self.roots.insert(n);
             }
         }
+        PropagatedDeps(self)
     }
+}
 
-    fn contains(&mut self, t: &T) -> bool {
-        self.roots.contains(t)
+struct PropagatedDeps<'a, T>(&'a Deps<T>);
+impl<'a, T: Eq + Hash> PropagatedDeps<'a, T> {
+    #[inline]
+    fn contains(&self, t: &T) -> bool {
+        self.0.roots.contains(t)
     }
 }
 
@@ -54,6 +59,7 @@ enum DeclName {
     Fn(Rc<str>),
     Struct(Rc<str>),
     Typedef(Rc<str>),
+    Include(Rc<SourceInfo>),
 }
 
 fn in_main_file(mf: &Rc<str>, loc: &SourceInfo) -> bool {
@@ -160,50 +166,53 @@ fn scan_stmts(deps: &mut HashSet<DeclName>, stmts: &Vec<Rc<Stmt>>) {
     }
 }
 
+fn decl_name(decl: &Decl) -> DeclName {
+    match &decl.val {
+        DeclT::FnDefn(fn_defn) => DeclName::Fn(fn_defn.decl.name.val.clone()),
+        DeclT::FnDecl(fn_decl) => DeclName::Fn(fn_decl.name.val.clone()),
+        DeclT::Typedef(type_defn) => DeclName::Typedef(type_defn.name.val.clone()),
+        DeclT::StructDefn(struct_defn) => DeclName::Struct(struct_defn.name.val.clone()),
+        DeclT::IncludeDecl(_) => DeclName::Include(decl.loc.clone()),
+    }
+}
+
 fn scan_translation_unit(deps: &mut Deps<DeclName>, tu: &TranslationUnit) {
+    fn scan_fn_decl(
+        ds: &mut HashSet<DeclName>,
+        FnDecl {
+            name: _,
+            ret_type,
+            args,
+            requires,
+            ensures,
+        }: &FnDecl,
+    ) {
+        for (_name, ty) in args {
+            scan_type(ds, ty)
+        }
+        scan_type(ds, &ret_type);
+
+        for r in requires {
+            scan_rvalue(ds, r);
+        }
+        for e in ensures {
+            scan_rvalue(ds, e);
+        }
+    }
+
     for decl in &tu.decls {
-        let in_main_file = in_main_file(&tu.main_file_name, &*decl.loc);
-        let mut scan_fn_decl = |decl: &FnDecl| -> DeclName {
-            let FnDecl {
-                name,
-                ret_type,
-                args,
-                requires,
-                ensures,
-            } = decl;
-            let n = DeclName::Fn(name.val.clone());
-
-            if in_main_file {
-                deps.add_root(n.clone());
-            }
-            let ds = deps.deps_for(n.clone());
-            for (_name, ty) in args {
-                scan_type(ds, ty)
-            }
-            scan_type(ds, &ret_type);
-
-            for r in requires {
-                scan_rvalue(ds, r);
-            }
-            for e in ensures {
-                scan_rvalue(ds, e);
-            }
-
-            n
-        };
+        let n = decl_name(decl);
         match &decl.val {
             DeclT::FnDefn(FnDefn { decl, body }) => {
-                let n = scan_fn_decl(&decl);
-                scan_stmts(deps.deps_for(n), &body);
+                let ds = deps.deps_for(n);
+                scan_fn_decl(ds, &decl);
+                scan_stmts(ds, &body);
             }
             DeclT::FnDecl(fn_decl) => {
-                scan_fn_decl(fn_decl);
+                scan_fn_decl(deps.deps_for(n), fn_decl);
             }
-            DeclT::Typedef(TypeDefn { name, body }) => {
-                scan_type(deps.deps_for(DeclName::Typedef(name.val.clone())), body)
-            }
-            DeclT::StructDefn(StructDefn { name, fields }) => {
-                let n = DeclName::Struct(name.val.clone());
+            DeclT::Typedef(TypeDefn { name: _, body }) => scan_type(deps.deps_for(n), body),
+            DeclT::StructDefn(StructDefn { name: _, fields }) => {
                 let ds = deps.deps_for(n);
                 for (_name, ty) in fields {
                     scan_type(ds, ty)
@@ -217,21 +226,11 @@ fn scan_translation_unit(deps: &mut Deps<DeclName>, tu: &TranslationUnit) {
 pub fn prune(tu: &mut TranslationUnit) {
     let mut deps = Deps::new();
     scan_translation_unit(&mut deps, tu);
-    deps.propagate();
-    tu.decls.retain(|decl| {
-        in_main_file(&tu.main_file_name, &*decl.loc)
-            || (match &decl.val {
-                DeclT::FnDefn(fn_defn) => {
-                    deps.contains(&DeclName::Fn(fn_defn.decl.name.val.clone()))
-                }
-                DeclT::FnDecl(fn_decl) => deps.contains(&DeclName::Fn(fn_decl.name.val.clone())),
-                DeclT::Typedef(typedef) => {
-                    deps.contains(&DeclName::Typedef(typedef.name.val.clone()))
-                }
-                DeclT::StructDefn(struct_defn) => {
-                    deps.contains(&DeclName::Struct(struct_defn.name.val.clone()))
-                }
-                DeclT::IncludeDecl(_) => true,
-            })
-    });
+    for decl in &tu.decls {
+        if in_main_file(&tu.main_file_name, &decl.loc) {
+            deps.add_root(decl_name(&decl))
+        }
+    }
+    let deps = deps.propagate();
+    tu.decls.retain(|decl| deps.contains(&decl_name(decl)));
 }
