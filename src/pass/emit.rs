@@ -98,6 +98,19 @@ fn unaryfn(f: Doc, arg: Doc) -> Doc {
     parens(f.append(Doc::line()).append(arg))
 }
 
+fn unaryfn_with_type(f: Doc, arg: Doc, ty: Doc) -> Doc {
+    parens(
+        f.append(Doc::line()).append(arg).append(
+            Doc::line()
+                .append("<:")
+                .append(Doc::space())
+                .append(ty)
+                .nest(2)
+                .group(),
+        ),
+    )
+}
+
 fn emit_type(env: &Env, ty: &Type) -> Doc {
     annotated(ty, {
         match &ty.val {
@@ -395,10 +408,11 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
                 }
             }
             RValueT::Ref(v) => emit_lvalue(env, v),
-            RValueT::Cast(val, ty) => {
+            RValueT::Cast(val, to_ty) => {
                 let val_doc = emit_rvalue(env, val);
-                let val_ty = env.infer_rvalue(val);
-                let val_ty = match &val_ty {
+                let from_ty = env.infer_rvalue(val).map(|t| env.vtype_whnf(t));
+                let to_ty = env.vtype_whnf(to_ty.clone().into());
+                let from_ty = match &from_ty {
                     Some(ty) => &ty.val,
                     None => &TypeT::Error,
                 };
@@ -406,7 +420,7 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
                     let val_doc = val_doc.clone();
                     || Doc::text("(*TODO unsupported cast*)").append(val_doc)
                 };
-                match (val_ty, &ty.val) {
+                match (from_ty, &to_ty.val) {
                     (TypeT::Void, TypeT::Void) => val_doc,
                     (TypeT::Bool, TypeT::Bool) => val_doc,
                     // (TypeT::Bool, TypeT::Int { signed, width }) => todo!(),
@@ -425,10 +439,36 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
                     ) if s1 == s2 && w1 == w2 => val_doc,
                     (TypeT::Int { signed, width }, TypeT::SpecInt) => {
                         if let Some(m) = get_int_mod(signed, width) {
-                            unaryfn(Doc::text(format!("{}.v", m)), val_doc)
+                            unaryfn_with_type(
+                                Doc::text(format!("{}.v", m)),
+                                val_doc,
+                                Doc::text("int"),
+                            )
                         } else {
                             default()
                         }
+                    }
+                    (
+                        TypeT::Int {
+                            signed: s1,
+                            width: w1,
+                        },
+                        TypeT::Int {
+                            signed: s2,
+                            width: w2,
+                        },
+                    ) => {
+                        fn abbrev(s: bool, w: u32) -> String {
+                            format!("{}int{}", if s { "" } else { "u" }, w)
+                        }
+                        unaryfn(
+                            Doc::text(format!(
+                                "Int.Cast.{}_to_{}",
+                                abbrev(*s1, *w1),
+                                abbrev(*s2, *w2)
+                            )),
+                            val_doc,
+                        )
                     }
                     (TypeT::SizeT, TypeT::SpecInt) => unaryfn(Doc::text("SizeT.v"), val_doc),
                     // (TypeT::Int { signed:s1, width:w1 }, TypeT::Int { signed:s2, width:w2 }) => todo!(),
