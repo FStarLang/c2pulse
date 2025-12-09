@@ -384,6 +384,8 @@ public:
         return m(ir::BinOp::Eq());
       case clang::BO_LE:
         return m(ir::BinOp::LEq());
+      case clang::BO_LT:
+        return m(ir::BinOp::Lt());
 
       default:;
         // continue to error case

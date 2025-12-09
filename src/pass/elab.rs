@@ -141,6 +141,7 @@ impl<'a> Elaborator<'a> {
                 match bin_op {
                     BinOp::Eq
                     | BinOp::LEq
+                    | BinOp::Lt
                     | BinOp::Mul
                     | BinOp::Div
                     | BinOp::Mod

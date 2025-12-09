@@ -174,6 +174,7 @@ impl<'a> Checker<'a> {
                             }
                         }
                         BinOp::LEq
+                        | BinOp::Lt
                         | BinOp::Mul
                         | BinOp::Div
                         | BinOp::Mod

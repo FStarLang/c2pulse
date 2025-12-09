@@ -93,6 +93,7 @@ mod crate::ir {
         #layout(size=1, align=1);
         constructor Eq;
         constructor LEq;
+        constructor Lt;
         constructor LogAnd;
         constructor Mul;
         constructor Div;

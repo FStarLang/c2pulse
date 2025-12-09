@@ -489,6 +489,8 @@ fn expr_parser<
         let relational_expression = left_rec_binop!(shift_expression, {
             LEq(lhs, punct(Punct::LtEq), rhs) = e =>
                 mk_binop(BinOp::LEq, lhs, rhs, sift.resolve_source_info(&e.span())),
+            Lt(lhs, punct(Punct::Lt), rhs) = e =>
+                mk_binop(BinOp::Lt, lhs, rhs, sift.resolve_source_info(&e.span())),
         })
         .boxed();
 

@@ -162,6 +162,7 @@ pub enum TypeRefKind {
 pub enum BinOp {
     Eq,
     LEq,
+    Lt,
     LogAnd,
     Mul,
     Div,
@@ -175,6 +176,7 @@ impl BinOp {
         match self {
             BinOp::Eq => "==",
             BinOp::LEq => "<=",
+            BinOp::Lt => "<",
             BinOp::LogAnd => "&&",
             BinOp::Mul => "*",
             BinOp::Div => "/",
