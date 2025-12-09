@@ -574,13 +574,13 @@ fn emit_stmt(env: &Env, stmt: &Stmt) -> Doc {
                 .nest(2),
             StmtT::If(c, b1, b2) => Doc::text("if ")
                 .append(parens(emit_rvalue(env, c)))
+                .nest(2)
                 .append(" ")
                 .append(emit_block(env, b1))
                 .append(" else ")
                 .append(emit_block(env, b2))
                 .append(";")
-                .group()
-                .nest(2),
+                .group(),
             StmtT::While(cond, invs, body) => Doc::text("while ")
                 .append(parens(emit_rvalue(env, cond)))
                 .append(Doc::line())
@@ -591,10 +591,10 @@ fn emit_stmt(env: &Env, stmt: &Stmt) -> Doc {
                         .nest(2)
                         .append(Doc::line())
                 })))
+                .nest(2)
                 .append(emit_block(env, body))
                 .append(";")
-                .group()
-                .nest(2),
+                .group(),
             StmtT::Return(t) => emit_rvalue(env, t).append(";").group().nest(2),
             StmtT::Error => Doc::text("(admit());"),
         }
