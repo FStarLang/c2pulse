@@ -53,6 +53,7 @@ impl<T: Eq + Hash> Deps<T> {
 enum DeclName {
     Fn(Rc<str>),
     Struct(Rc<str>),
+    Typedef(Rc<str>),
 }
 
 fn in_main_file(mf: &Rc<str>, loc: &SourceInfo) -> bool {
@@ -78,6 +79,12 @@ fn scan_type(deps: &mut HashSet<DeclName>, ty: &Type) {
         TypeT::Void => {}
         TypeT::SLProp => {}
         TypeT::Bool => {}
+        TypeT::TypeRef(n) => {
+            deps.insert(match n {
+                TypeRefKind::Typedef(n) => DeclName::Typedef(n.val.clone()),
+                TypeRefKind::Struct(n) => DeclName::Struct(n.val.clone()),
+            });
+        }
         TypeT::Requires(ty, p) | TypeT::Ensures(ty, p) => {
             scan_type(deps, ty);
             scan_rvalue(deps, p);
@@ -191,6 +198,9 @@ fn scan_translation_unit(deps: &mut Deps<DeclName>, tu: &TranslationUnit) {
             DeclT::FnDecl(fn_decl) => {
                 scan_fn_decl(fn_decl);
             }
+            DeclT::Typedef(TypeDefn { name, body }) => {
+                scan_type(deps.deps_for(DeclName::Typedef(name.val.clone())), body)
+            }
             DeclT::StructDefn(StructDefn { name, fields }) => {
                 let n = DeclName::Struct(name.val.clone());
                 let ds = deps.deps_for(n);
@@ -214,6 +224,9 @@ pub fn prune(tu: &mut TranslationUnit) {
                     deps.contains(&DeclName::Fn(fn_defn.decl.name.val.clone()))
                 }
                 DeclT::FnDecl(fn_decl) => deps.contains(&DeclName::Fn(fn_decl.name.val.clone())),
+                DeclT::Typedef(typedef) => {
+                    deps.contains(&DeclName::Typedef(typedef.name.val.clone()))
+                }
                 DeclT::StructDefn(struct_defn) => {
                     deps.contains(&DeclName::Struct(struct_defn.name.val.clone()))
                 }

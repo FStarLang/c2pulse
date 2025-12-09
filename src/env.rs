@@ -4,6 +4,7 @@ use std::{collections::HashMap, rc::Rc};
 #[derive(Clone, Debug, Default)]
 struct Globals {
     fns: HashMap<Rc<str>, FnDecl>,
+    typedefs: HashMap<Rc<str>, TypeDefn>,
     structs: HashMap<Rc<str>, StructDefn>,
 }
 
@@ -47,6 +48,12 @@ impl Env {
             .insert(decl.name.val.clone(), decl);
     }
 
+    pub fn push_typedef(&mut self, defn: TypeDefn) {
+        Rc::make_mut(&mut self.globals)
+            .typedefs
+            .insert(defn.name.val.clone(), defn);
+    }
+
     pub fn push_struct(&mut self, decl: StructDefn) {
         Rc::make_mut(&mut self.globals)
             .structs
@@ -57,6 +64,7 @@ impl Env {
         match &decl.val {
             DeclT::FnDefn(fn_defn) => self.push_fn_decl(fn_defn.decl.clone()),
             DeclT::FnDecl(fn_decl) => self.push_fn_decl(fn_decl.clone()),
+            DeclT::Typedef(defn) => self.push_typedef(defn.clone()),
             DeclT::StructDefn(struct_defn) => self.push_struct(struct_defn.clone()),
             DeclT::IncludeDecl(_) => {}
         }
@@ -87,6 +95,14 @@ impl Env {
 
     pub fn lookup_fn(&self, ident: &Ident) -> Option<&FnDecl> {
         self.globals.fns.get(&ident.val)
+    }
+
+    pub fn lookup_type(&self, ident: &Ident) -> Option<&TypeDefn> {
+        self.globals.typedefs.get(&ident.val)
+    }
+
+    pub fn lookup_struct(&self, ident: &Ident) -> Option<&StructDefn> {
+        self.globals.structs.get(&ident.val)
     }
 
     pub fn lookup_var(&self, ident: &Ident) -> Option<&LocalDecl> {
@@ -209,6 +225,8 @@ impl Env {
             either_side!(TypeT::Void) => None,
             either_side!(TypeT::Pointer(_, _)) => None,
 
+            either_side!(TypeT::TypeRef(_)) => None,
+
             either_side!(
                 TypeT::Requires(..) | TypeT::Ensures(..) | TypeT::Consumes(..) | TypeT::Plain(..)
             ) => None,
@@ -233,6 +251,11 @@ impl Env {
             | TypeT::SpecInt
             | TypeT::SLProp
             | TypeT::Error => None,
+
+            TypeT::TypeRef(TypeRefKind::Typedef(n)) => {
+                self.lookup_type(n).map(|defn| defn.body.clone().into())
+            }
+            TypeT::TypeRef(TypeRefKind::Struct(_)) => None,
 
             TypeT::Requires(ty, _)
             | TypeT::Ensures(ty, _)
@@ -259,6 +282,7 @@ impl Env {
             (TypeT::Pointer(t1, k1), TypeT::Pointer(t2, k2)) => {
                 k1 == k2 && self.vtype_eq(t1.clone().into(), t2.clone().into())
             }
+            (TypeT::TypeRef(t1), TypeT::TypeRef(t2)) => t1 == t2,
             (TypeT::SpecInt, TypeT::SpecInt) => true,
             (TypeT::SLProp, TypeT::SLProp) => true,
             (TypeT::Error, _) | (_, TypeT::Error) => true,

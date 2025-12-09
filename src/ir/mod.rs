@@ -142,12 +142,20 @@ pub enum TypeT {
     SpecInt,
     SLProp,
 
+    TypeRef(TypeRefKind),
+
     Requires(Rc<Type>, Rc<RValue>),
     Ensures(Rc<Type>, Rc<RValue>),
     Consumes(Rc<Type>),
     Plain(Rc<Type>),
 
     Error,
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub enum TypeRefKind {
+    Typedef(Rc<Ident>),
+    Struct(Rc<Ident>),
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -248,6 +256,12 @@ pub struct FnDefn {
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub struct TypeDefn {
+    pub name: Rc<Ident>,
+    pub body: Rc<Type>,
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct CodeToken {
     pub before: &'static str,
     pub text: Ast<Rc<str>>,
@@ -279,6 +293,7 @@ pub type Decl = Ast<DeclT>;
 pub enum DeclT {
     FnDefn(FnDefn),
     FnDecl(FnDecl),
+    Typedef(TypeDefn),
     StructDefn(StructDefn),
     IncludeDecl(IncludeDecl),
 }

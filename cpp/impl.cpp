@@ -5,6 +5,8 @@
 #include "clang/Tooling/CompilationDatabase.h"
 #include "clang/Tooling/Tooling.h"
 #include <dlfcn.h>
+#include <sstream>
+#include <unordered_set>
 
 using namespace clang;
 using namespace clang::tooling;
@@ -132,6 +134,20 @@ Rc<rust::num_bigint::BigInt> toBigInt(llvm::APInt const &n) {
   return mk_bigint(toStr(out));
 }
 
+struct AnonNameGen {
+  llvm::StringRef base;
+  unsigned i = 0;
+
+  AnonNameGen(llvm::StringRef b) : base(b) {}
+
+  std::string next() {
+    std::ostringstream out;
+    out.write(base.data(), base.size());
+    out << "_anon_" << ++i;
+    return out.str();
+  }
+};
+
 class C2PulseConsumer : public ASTConsumer {
 public:
   C2PulseConsumer(RefMut<Ctx> c, RangeMap &m, SnipMap &s, CompilerInstance &ci)
@@ -142,6 +158,8 @@ public:
   SnipMap &snippets;
   SourceManager &sm;
   ASTContext *astCtx = nullptr;
+  std::unordered_set<RecordDecl *>
+      alreadyDefined; // guard against recursive structures
 
   // TODO: should probably wait with translation until after parsing
 
@@ -163,23 +181,82 @@ public:
     return rangeMap.getExpansionRange(sm, range);
   }
 
+  template <typename T>
   void reportUnsupported(SourceRange const &rng, Rc<ir::SourceInfo> const &loc,
-                         Ref<rust::Str> msg) {
+                         char const *msg, T const &extra) {
     if (!sm.isInMainFile(sm.getExpansionLoc(rng.getBegin()))) {
       // only complain about unsupported syntax in main file
       return;
     }
-    ctx.report_diag(loc.clone(), true, msg);
+    ctx.report_diag(loc.clone(), true, toStr(std::string(msg) + extra));
   }
 
-  Rc<ir::Type> trQualType(QualType t, SourceRange range) {
+  void trRecordDecl(Rc<ir::Ident> ident, RecordDecl *decl,
+                    AnonNameGen *liftStructs) {
+    if (!decl->isCompleteDefinition()) {
+      return;
+    }
+    if (!alreadyDefined.insert(decl).second)
+      return;
+    auto loc = getRange(decl->getSourceRange());
+    auto builder = DeclBuilder::new_(loc.clone(), ident.clone());
+    if (decl->getTagKind() == TagTypeKind::Struct) {
+      for (auto f : decl->fields()) {
+        auto floc = getRange(f->getSourceRange());
+        if (!f->getIdentifier()) {
+          reportUnsupported(f->getSourceRange(), floc,
+                            "unsupported anonymous field names", "");
+        }
+        builder.field(
+            ctx.mk_ident(toStr(f->getName()), std::move(floc)),
+            trQualType(f->getType(), f->getSourceRange(), liftStructs));
+      }
+      ctx.add_struct(std::move(builder));
+    } else {
+      reportUnsupported(decl->getSourceRange(), loc, "unsupported record kind",
+                        "");
+    }
+  }
+
+  Rc<ir::Type> trQualType(QualType t, SourceRange range,
+                          AnonNameGen *liftStructs = nullptr) {
+    t = t.IgnoreParens();
     auto loc = getRange(range);
 
     if (t.getAsString() == "size_t") {
       return mk_sizet(std::move(loc));
-    } else if (t->isPointerType()) {
+    } else if (auto tydef = dyn_cast<TypedefType>(t)) {
+      auto id = ctx.mk_ident(toStr(tydef->getDecl()->getName()), loc.clone());
+      return mk_type_typedef(std::move(loc), std::move(id));
+    } else if (auto elab = dyn_cast<ElaboratedType>(t)) {
+      return trQualType(elab->desugar(), range, liftStructs);
+    } else if (auto ptr = dyn_cast<PointerType>(t)) {
       return mk_pointer_unknown(
-          std::move(loc), trQualType(t->getPointeeType(), /*TODO*/ range));
+          std::move(loc),
+          trQualType(ptr->getPointeeType(), /*TODO*/ range, liftStructs));
+    } else if (auto rec = dyn_cast<RecordType>(t)) {
+      auto decl = rec->getDecl();
+      Rc<ir::Ident> name;
+      if (decl->getIdentifier()) {
+        name = ctx.mk_ident(toStr(decl->getName()), loc.clone());
+      } else if (liftStructs) {
+        name = ctx.mk_ident(toStr(liftStructs->next()), loc.clone());
+        trRecordDecl(name.clone(), decl, liftStructs);
+      } else {
+        reportUnsupported(
+            range, loc, "unsupported anonymous struct/union outside of typedef",
+            "");
+        return mk_type_err(std::move(loc));
+      }
+      switch (decl->getTagKind()) {
+      case TagTypeKind::Struct: {
+        return mk_type_struct(std::move(loc), std::move(name));
+      }
+      default: {
+        reportUnsupported(range, loc, "unsupported record kind", "");
+        return mk_type_err(std::move(loc));
+      }
+      }
     }
     if (t->isVoidType()) {
       return mk_void_type(std::move(loc));
@@ -193,7 +270,7 @@ public:
       return mk_int_type(std::move(loc), isSigned, width);
     }
 
-    reportUnsupported(range, loc, "unsupported type"_rs);
+    reportUnsupported(range, loc, "unsupported type ", t->getTypeClassName());
     return mk_type_err(std::move(loc));
   }
 
@@ -242,7 +319,7 @@ public:
     }
 
     reportUnsupported(e->getSourceRange(), loc,
-                      "unsupported lvalue expression"_rs);
+                      "unsupported lvalue expression ", e->getStmtClassName());
     return mk_lvalue_err(std::move(loc),
                          trQualType(e->getType(), e->getSourceRange()));
   }
@@ -319,7 +396,7 @@ public:
     }
 
     reportUnsupported(e->getSourceRange(), loc,
-                      "unsupported rvalue expression"_rs);
+                      "unsupported rvalue expression ", e->getStmtClassName());
     return mk_rvalue_err(std::move(loc),
                          trQualType(e->getType(), e->getSourceRange()));
   }
@@ -375,7 +452,8 @@ public:
           }
         } else {
           reportUnsupported(d->getSourceRange(), dloc,
-                            "unsupported variable declaration"_rs);
+                            "unsupported variable declaration ",
+                            d->getDeclKindName());
           stmts.push(mk_stmt_err(dloc.clone()));
         }
       }
@@ -389,7 +467,8 @@ public:
       return stmts.push(mk_call(std::move(loc), trRValue(c)));
     }
 
-    reportUnsupported(stmt->getSourceRange(), loc, "unsupported statement"_rs);
+    reportUnsupported(stmt->getSourceRange(), loc, "unsupported statement ",
+                      stmt->getStmtClassName());
     return stmts.push(mk_stmt_err(std::move(loc)));
   }
 
@@ -405,7 +484,7 @@ public:
     return {};
   }
 
-  void HandleDecl(Decl *D) {
+  rust::Unit HandleDecl(Decl *D) {
     if (auto *FD = dyn_cast<FunctionDecl>(D)) {
       // Include block
       if (FD->getName().starts_with("__c2pulse_include_anchor")) {
@@ -428,7 +507,7 @@ public:
           ctx.report_diag(std::move(loc), true,
                           "internal error: invalid INCLUDES encoding"_rs);
         }
-        return;
+        return {};
       }
 
       // Regular function decl
@@ -458,11 +537,33 @@ public:
         }
       }
       if (FD->hasBody()) {
-        ctx.add_fn_defn(std::move(builder), trStmts(FD->getBody()));
+        return ctx.add_fn_defn(std::move(builder), trStmts(FD->getBody()));
       } else {
-        ctx.add_fn_decl(std::move(builder));
+        return ctx.add_fn_decl(std::move(builder));
       }
+    } else if (auto *TD = dyn_cast<TypedefDecl>(D)) {
+      auto loc = getRange(TD->getSourceRange());
+      auto id = ctx.mk_ident(toStr(TD->getName()), loc.clone());
+      auto anon = AnonNameGen(TD->getName());
+      auto type =
+          trQualType(TD->getUnderlyingType(), TD->getSourceRange(), &anon);
+      type = trTypeAttrs(TD->getAttrs(), std::move(type));
+      return ctx.add_typedef(std::move(loc), std::move(id), std::move(type));
+    } else if (auto *RD = dyn_cast<RecordDecl>(D)) {
+      auto loc = getRange(RD->getSourceRange());
+      if (RD->getIdentifier()) {
+        auto id = ctx.mk_ident(toStr(RD->getName()), loc.clone());
+        auto anon = AnonNameGen(RD->getName());
+        trRecordDecl(std::move(id), RD, &anon);
+      } else {
+        // TODO: forward struct decls
+      }
+      return {};
     }
+
+    reportUnsupported(D->getSourceRange(), getRange(D->getSourceRange()),
+                      "unsupported declaration ", D->getDeclKindName());
+    return {};
   }
 };
 

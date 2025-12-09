@@ -138,6 +138,7 @@ mod crate::clang {
 
         fn add_fn_decl(&mut self, DeclBuilder);
         fn add_fn_defn(&mut self, DeclBuilder, Vec<Rc<Stmt>>);
+        fn add_typedef(&mut self, Rc<SourceInfo>, Rc<Ident>, Rc<Type>);
         fn add_struct(&mut self, DeclBuilder);
         fn add_include(&mut self, Rc<SourceInfo>, u32, &SnippetMap);
 
@@ -176,6 +177,8 @@ mod crate::clang {
     fn mk_int_type(Rc<SourceInfo>, bool, u32) -> Rc<Type>;
     fn mk_sizet(Rc<SourceInfo>) -> Rc<Type>;
     fn mk_pointer_unknown(Rc<SourceInfo>, Rc<Type>) -> Rc<Type>;
+    fn mk_type_struct(Rc<SourceInfo>, Rc<Ident>) -> Rc<Type>;
+    fn mk_type_typedef(Rc<SourceInfo>, Rc<Ident>) -> Rc<Type>;
     fn mk_type_requires(Rc<SourceInfo>, Rc<Type>, Rc<RValue>) -> Rc<Type>;
     fn mk_type_ensures(Rc<SourceInfo>, Rc<Type>, Rc<RValue>) -> Rc<Type>;
     fn mk_type_consumes(Rc<SourceInfo>, Rc<Type>) -> Rc<Type>;

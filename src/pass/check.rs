@@ -84,6 +84,16 @@ impl<'a> Checker<'a> {
             }
             TypeT::SpecInt => {}
             TypeT::SLProp => {}
+            TypeT::TypeRef(TypeRefKind::Typedef(n)) => {
+                if let None = env.lookup_type(n) {
+                    self.report(format!("unknown type {}", n), &ty.loc)
+                }
+            }
+            TypeT::TypeRef(TypeRefKind::Struct(n)) => {
+                if let None = env.lookup_struct(n) {
+                    self.report(format!("unknown struct {}", n), &ty.loc)
+                }
+            }
             TypeT::Requires(ty, p) | TypeT::Ensures(ty, p) => {
                 self.check_type(env, ty);
                 let env = &mut env.clone();
@@ -104,6 +114,7 @@ impl<'a> Checker<'a> {
             TypeT::Pointer(_, _) => true, // == 0 ?
             TypeT::SpecInt => true,
             TypeT::SLProp => true, // true/false
+            TypeT::TypeRef(_) => false,
             TypeT::Requires(..) | TypeT::Ensures(..) | TypeT::Consumes(..) | TypeT::Plain(..) => {
                 false
             }
@@ -311,7 +322,7 @@ impl<'a> Checker<'a> {
     }
 
     fn check_decl(&mut self, env: &Env, decl: &Decl) {
-        // TODO: check double definition of functions
+        // TODO: check double definition
         match &decl.val {
             DeclT::FnDefn(FnDefn { decl, body }) => {
                 self.check_fn_decl(env, decl);
@@ -320,6 +331,7 @@ impl<'a> Checker<'a> {
                 self.check_stmts(env, body);
             }
             DeclT::FnDecl(fn_decl) => self.check_fn_decl(env, fn_decl),
+            DeclT::Typedef(TypeDefn { name: _, body }) => self.check_type(env, body),
             DeclT::StructDefn(StructDefn { name: _, fields }) => {
                 for (_n, ty) in fields {
                     self.check_type(env, ty)

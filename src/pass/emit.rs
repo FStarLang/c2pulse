@@ -124,6 +124,11 @@ fn emit_type(env: &Env, ty: &Type) -> Doc {
             }
             TypeT::Error => Doc::text("unit"),
 
+            TypeT::TypeRef(n) => {
+                let (t, _pre, _post) = emit_typeref_name(n);
+                Doc::text(t)
+            }
+
             TypeT::SLProp => Doc::text("slprop"),
             TypeT::SpecInt => Doc::text("int"),
 
@@ -180,6 +185,16 @@ fn subst_inline_code_this(val: &mut InlineCode, this: &Rc<Ident>) {
     }
 }
 
+fn emit_typeref_name(k: &TypeRefKind) -> (String, String, String) {
+    let t = match k {
+        TypeRefKind::Typedef(n) => n.val.to_string(),
+        TypeRefKind::Struct(n) => format!("struct_{}", n.val),
+    };
+    let pre = format!("{}_pre", t);
+    let post = format!("{}_post", t);
+    (t, pre, post)
+}
+
 fn emit_type_slprop(
     env: &Env,
     ty: &Type,
@@ -201,6 +216,12 @@ fn emit_type_slprop(
             );
             req.push(live.clone());
             ens.push(live);
+        }
+        TypeT::TypeRef(n) => {
+            let (_t, pre, post) = emit_typeref_name(n);
+            let this = Doc::text(this.val.to_string());
+            req.push(unaryfn(Doc::text(pre), this.clone()));
+            ens.push(unaryfn(Doc::text(post), this));
         }
         TypeT::Requires(ty, p) => {
             emit_type_slprop(env, ty, req, ens, this);
@@ -329,6 +350,7 @@ fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
             TypeT::Requires(ty, _) | TypeT::Ensures(ty, _) | TypeT::Consumes(ty) | TypeT::Plain(ty),
         ) => emit_binop(env, op, ty.clone().into())?,
 
+        (_, TypeT::TypeRef(_)) => return None,
         (
             BinOp::LEq | BinOp::Mul | BinOp::Div | BinOp::Mod | BinOp::Add | BinOp::Sub,
             TypeT::Pointer(..),
@@ -553,6 +575,69 @@ fn emit_block(env: &Env, stmts: &Vec<Rc<Stmt>>) -> Doc {
     block(emit_stmts(env, stmts))
 }
 
+fn mk_let(n: Doc, args: &Vec<Doc>, ty: Doc, body: Doc) -> Doc {
+    (Doc::text("let").append(Doc::line()).append(n))
+        .append(
+            Doc::concat(args.iter().map(|arg| Doc::line().append(arg.clone())))
+                .append(Doc::line().append(":"))
+                .nest(2),
+        )
+        .group()
+        .append(Doc::line().append(ty))
+        .append(Doc::line().append("="))
+        .nest(2)
+        .group()
+        .append(Doc::line().append(body))
+        .group()
+        .nest(2)
+}
+
+fn mk_eager_unfold_let(n: Doc, args: &Vec<Doc>, ty: Doc, body: Doc) -> Doc {
+    Doc::text("[@@pulse_eager_unfold]")
+        .append(Doc::line())
+        .append(mk_let(n, args, ty, body))
+        .group()
+}
+
+fn mk_star<I: Iterator<Item = Doc>>(ps: I) -> Doc {
+    ps.reduce(|accum, p| {
+        accum
+            .append(Doc::space())
+            .append("**")
+            .append(Doc::line())
+            .append(p)
+    })
+    .unwrap_or_else(|| Doc::text("emp"))
+    .group()
+}
+
+fn emit_typedef(env: &Env, TypeDefn { name, body }: &TypeDefn) -> Doc {
+    let k = TypeRefKind::Typedef(name.clone());
+    let (t, pre, post) = emit_typeref_name(&k);
+    let t = Doc::text(t);
+    let ty_decl = mk_let(t.clone(), &vec![], Doc::text("Type"), emit_type(env, body));
+    let env = &mut env.clone();
+    env.push_this(TypeT::TypeRef(k).with_loc(name.loc.clone()));
+    let this = Rc::<str>::from("this").with_loc(name.loc.clone());
+    let this_args = vec![parens(Doc::text("this:").append(Doc::line()).append(t))];
+    let mut req = vec![];
+    let mut ens = vec![];
+    emit_type_slprop(env, body, &mut req, &mut ens, &this);
+    let pre_decl = mk_eager_unfold_let(
+        Doc::text(pre),
+        &this_args,
+        Doc::text("slprop"),
+        mk_star(req.into_iter()),
+    );
+    let post_decl = mk_eager_unfold_let(
+        Doc::text(post),
+        &this_args,
+        Doc::text("slprop"),
+        mk_star(ens.into_iter()),
+    );
+    Doc::intersperse(vec![ty_decl, pre_decl, post_decl], Doc::line())
+}
+
 fn emit_fn_decl(
     env: &Env,
     FnDecl {
@@ -664,6 +749,7 @@ fn emit_decl(env: &Env, decl: &Decl) -> Doc {
                 decl_doc.append(block(arg_redecl_as_mut.append(emit_stmts(env, body))).group())
             }
             DeclT::FnDecl(fn_decl) => emit_fn_decl(&mut env.clone(), fn_decl),
+            DeclT::Typedef(typedef) => emit_typedef(env, typedef),
             DeclT::StructDefn(_struct_defn) => todo(),
             DeclT::IncludeDecl(include_decl) => emit_inline_code(&include_decl.code),
         }

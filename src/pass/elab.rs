@@ -49,6 +49,8 @@ impl<'a> Elaborator<'a> {
             TypeT::SpecInt => {}
             TypeT::Bool => {}
 
+            TypeT::TypeRef(_) => {}
+
             TypeT::Requires(ty, p) | TypeT::Ensures(ty, p) => {
                 self.elab_type(env, Rc::make_mut(ty));
 
@@ -229,7 +231,7 @@ impl<'a> Elaborator<'a> {
     }
 
     fn elab_decl(&mut self, env: &Env, decl: &mut Decl) {
-        // TODO: check double definition of functions
+        // TODO: check double definition
         match &mut decl.val {
             DeclT::FnDefn(FnDefn { decl, body }) => {
                 self.elab_fn_decl(env, decl);
@@ -238,6 +240,7 @@ impl<'a> Elaborator<'a> {
                 self.elab_stmts(env, body);
             }
             DeclT::FnDecl(fn_decl) => self.elab_fn_decl(env, fn_decl),
+            DeclT::Typedef(typedef) => self.elab_type(env, Rc::make_mut(&mut typedef.body)),
             DeclT::StructDefn(StructDefn { name: _, fields }) => {
                 for (_n, ty) in fields {
                     self.elab_type(env, Rc::make_mut(ty))

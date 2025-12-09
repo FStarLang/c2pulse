@@ -11,6 +11,25 @@ impl<A: PrettyIR> PrettyIR for Ast<A> {
     }
 }
 
+impl Display for TypeRefKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.to_doc().pretty(80))
+    }
+}
+
+impl PrettyIR for TypeRefKind {
+    fn to_doc(&self) -> RcDoc<'_, ()> {
+        match self {
+            TypeRefKind::Typedef(n) => RcDoc::text(&*n.val),
+            TypeRefKind::Struct(n) => RcDoc::text("struct")
+                .append(RcDoc::line())
+                .append(&*n.val)
+                .group()
+                .nest(2),
+        }
+    }
+}
+
 impl Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.to_doc().pretty(80))
@@ -33,6 +52,7 @@ impl PrettyIR for TypeT {
             TypeT::Pointer(ty, PointerKind::Unknown) => ty.to_doc().append(RcDoc::text("[?]")),
             TypeT::SpecInt => RcDoc::text("_specint"),
             TypeT::SLProp => RcDoc::text("_slprop"),
+            TypeT::TypeRef(n) => n.to_doc(),
             TypeT::Requires(ty, p) => RcDoc::text("_requires(")
                 .append(p.to_doc())
                 .append(")")

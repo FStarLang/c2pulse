@@ -94,6 +94,13 @@ impl<'a> Ctx<'a> {
         })
     }
 
+    fn add_typedef(&mut self, loc: Rc<SourceInfo>, name: Rc<Ident>, body: Rc<Type>) {
+        self.translation_unit.decls.push(Ast {
+            loc,
+            val: DeclT::Typedef(TypeDefn { name, body }),
+        })
+    }
+
     fn add_struct(&mut self, builder: DeclBuilder) {
         self.translation_unit.decls.push(Ast {
             loc: builder.loc,
@@ -264,6 +271,12 @@ fn mk_sizet(loc: Rc<SourceInfo>) -> Rc<Type> {
 }
 fn mk_pointer_unknown(loc: Rc<SourceInfo>, to: Rc<Type>) -> Rc<Type> {
     mk_ast(loc, TypeT::Pointer(to, PointerKind::Unknown))
+}
+fn mk_type_struct(loc: Rc<SourceInfo>, n: Rc<Ident>) -> Rc<Type> {
+    mk_ast(loc, TypeT::TypeRef(TypeRefKind::Struct(n)))
+}
+fn mk_type_typedef(loc: Rc<SourceInfo>, n: Rc<Ident>) -> Rc<Type> {
+    mk_ast(loc, TypeT::TypeRef(TypeRefKind::Typedef(n)))
 }
 fn mk_type_requires(loc: Rc<SourceInfo>, ty: Rc<Type>, p: Rc<RValue>) -> Rc<Type> {
     TypeT::Requires(ty, p).with_loc(loc)
