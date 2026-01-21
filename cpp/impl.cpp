@@ -234,6 +234,12 @@ public:
       return mk_pointer_unknown(
           std::move(loc),
           trQualType(ptr->getPointeeType(), /*TODO*/ range, liftStructs));
+    } else if (auto adj = dyn_cast<AdjustedType>(t)) {
+      return trQualType(adj->getOriginalType(), range, liftStructs);
+    } else if (auto arr = dyn_cast<ArrayType>(t)) {
+      return mk_pointer_array(
+          std::move(loc),
+          trQualType(arr->getElementType(), /* TODO */ range, liftStructs));
     } else if (auto rec = dyn_cast<RecordType>(t)) {
       auto decl = rec->getDecl();
       Rc<ir::Ident> name;

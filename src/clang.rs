@@ -272,6 +272,9 @@ fn mk_sizet(loc: Rc<SourceInfo>) -> Rc<Type> {
 fn mk_pointer_unknown(loc: Rc<SourceInfo>, to: Rc<Type>) -> Rc<Type> {
     mk_ast(loc, TypeT::Pointer(to, PointerKind::Unknown))
 }
+fn mk_pointer_array(loc: Rc<SourceInfo>, to: Rc<Type>) -> Rc<Type> {
+    mk_ast(loc, TypeT::Pointer(to, PointerKind::Array))
+}
 fn mk_type_struct(loc: Rc<SourceInfo>, n: Rc<Ident>) -> Rc<Type> {
     mk_ast(loc, TypeT::TypeRef(TypeRefKind::Struct(n)))
 }
