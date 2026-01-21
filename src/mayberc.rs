@@ -10,24 +10,11 @@ enum S<T> {
     Own(T),
 }
 
-impl<T> MaybeRc<T> {
-    pub fn new_rc(value: T) -> Self {
-        Rc::new(value).into()
-    }
-}
-
 impl<T: Clone> MaybeRc<T> {
     pub fn to_rc(self) -> Rc<T> {
         match self.0 {
             S::Rc(x) => x,
             S::Own(x) => Rc::new(x.clone()),
-        }
-    }
-
-    pub fn make_mut(&mut self) -> &mut T {
-        match &mut self.0 {
-            S::Rc(x) => Rc::make_mut(x),
-            S::Own(x) => x,
         }
     }
 }
