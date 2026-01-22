@@ -21,6 +21,9 @@ struct Cli {
     #[arg(long = "tmpdir")]
     tmpdir: Option<String>,
 
+    #[arg(long = "print-ir")]
+    print_ir: bool,
+
     file: String,
 }
 
@@ -90,6 +93,12 @@ fn main() {
     pass::check::check(&mut diags, &mut tu, "prune", false);
     pass::elab::elab(&mut diags, &mut tu);
     pass::check::check(&mut diags, &mut tu, "elab", true);
+
+    if cli.print_ir {
+        println!("{}", tu);
+        return;
+    }
+
     let (pulse_code, range_map) = pass::emit::emit(&module_name, &tu);
 
     let outdir = match &cli.tmpdir {

@@ -1,6 +1,16 @@
 use crate::ir::*;
 use ::pretty::RcDoc;
 
+macro_rules! impl_display_using_prettyir {
+    ($t:ty) => {
+        impl Display for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                write!(f, "{}", self.to_doc().pretty(80))
+            }
+        }
+    };
+}
+
 pub trait PrettyIR {
     fn to_doc(&self) -> RcDoc<'_, ()>;
 }
@@ -29,11 +39,7 @@ impl PrettyIR for str {
     }
 }
 
-impl Display for TypeRefKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.to_doc().pretty(80))
-    }
-}
+impl_display_using_prettyir!(TypeRefKind);
 
 impl PrettyIR for TypeRefKind {
     fn to_doc(&self) -> RcDoc<'_, ()> {
@@ -48,11 +54,7 @@ impl PrettyIR for TypeRefKind {
     }
 }
 
-impl Display for Type {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.to_doc().pretty(80))
-    }
-}
+impl_display_using_prettyir!(Type);
 
 impl PrettyIR for TypeT {
     fn to_doc(&self) -> RcDoc<'_, ()> {
@@ -96,11 +98,7 @@ impl PrettyIR for TypeT {
     }
 }
 
-impl Display for RValue {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.to_doc().pretty(80))
-    }
-}
+impl_display_using_prettyir!(RValue);
 
 impl PrettyIR for RValueT {
     fn to_doc(&self) -> RcDoc<'_, ()> {
@@ -157,11 +155,7 @@ impl PrettyIR for RValueT {
     }
 }
 
-impl Display for LValue {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.to_doc().pretty(80))
-    }
-}
+impl_display_using_prettyir!(LValue);
 
 impl PrettyIR for LValueT {
     fn to_doc(&self) -> RcDoc<'_, ()> {
@@ -183,6 +177,7 @@ fn pretty_block(stmts: &Stmts) -> RcDoc<'_, ()> {
             .append(stmts.to_doc())
             .nest(2)
             .append(RcDoc::hardline())
+            .append("}")
             .group()
     }
 }
@@ -206,8 +201,7 @@ impl PrettyIR for StmtT {
                 .group(),
             StmtT::If(c, b1, b2) => RcDoc::text("if (")
                 .append(c.to_doc().nest(4))
-                .append(")")
-                .append(RcDoc::line())
+                .append(") ")
                 .append(pretty_block(b1))
                 .append(" else ")
                 .append(pretty_block(b2))
@@ -217,11 +211,14 @@ impl PrettyIR for StmtT {
                 .append(")")
                 .append(
                     RcDoc::concat(invs.iter().map(|inv| {
-                        RcDoc::text("invariant")
-                            .append(RcDoc::line())
-                            .append(inv.to_doc())
-                            .nest(2)
-                            .group()
+                        RcDoc::line().append(
+                            RcDoc::text("_invariant(")
+                                .append(RcDoc::line_())
+                                .append(inv.to_doc())
+                                .nest(2)
+                                .append(")")
+                                .group(),
+                        )
                     }))
                     .nest(2),
                 )
@@ -242,5 +239,134 @@ impl PrettyIR for StmtT {
 impl PrettyIR for Stmts {
     fn to_doc(&self) -> RcDoc<'_, ()> {
         RcDoc::intersperse(self.iter().map(|stmt| stmt.to_doc()), RcDoc::hardline()).group()
+    }
+}
+
+impl PrettyIR for StructDefn {
+    fn to_doc(&self) -> RcDoc<'_, ()> {
+        RcDoc::text("struct ")
+            .append(self.name.to_doc())
+            .append(" {")
+            .append(RcDoc::line_())
+            .append(RcDoc::concat(self.fields.iter().map(|f| {
+                f.1.to_doc()
+                    .append(RcDoc::line())
+                    .append(f.0.to_doc())
+                    .group()
+                    .nest(2)
+                    .append(RcDoc::hardline())
+            })))
+            .group()
+            .nest(2)
+            .append("};")
+    }
+}
+
+impl PrettyIR for FnDecl {
+    fn to_doc(&self) -> RcDoc<'_, ()> {
+        self.ret_type
+            .to_doc()
+            .append(RcDoc::line())
+            .append(self.name.to_doc())
+            .append("(")
+            .append(
+                RcDoc::intersperse(
+                    self.args.iter().map(|(n, ty)| {
+                        ty.to_doc()
+                            .append(match n {
+                                Some(n) => RcDoc::line().append(n.to_doc()),
+                                None => RcDoc::nil(),
+                            })
+                            .group()
+                            .nest(2)
+                    }),
+                    RcDoc::text(",").append(RcDoc::line()),
+                )
+                .group()
+                .nest(2),
+            )
+            .append(")")
+            .group()
+            .append(RcDoc::concat(self.requires.iter().map(|req| {
+                RcDoc::hardline().append(
+                    RcDoc::text("_requires(")
+                        .append(req.to_doc())
+                        .append(")")
+                        .group()
+                        .nest(2),
+                )
+            })))
+            .append(RcDoc::concat(self.ensures.iter().map(|ens| {
+                RcDoc::hardline().append(
+                    RcDoc::text("_ensures(")
+                        .append(ens.to_doc())
+                        .append(")")
+                        .group()
+                        .nest(2),
+                )
+            })))
+            .nest(2)
+            .group()
+    }
+}
+
+impl PrettyIR for FnDefn {
+    fn to_doc(&self) -> RcDoc<'_, ()> {
+        self.decl
+            .to_doc()
+            .append(RcDoc::hardline())
+            .append(pretty_block(&self.body))
+    }
+}
+
+impl PrettyIR for TypeDefn {
+    fn to_doc(&self) -> RcDoc<'_, ()> {
+        RcDoc::text("typedef")
+            .append(RcDoc::line())
+            .append(self.body.to_doc())
+            .append(RcDoc::line())
+            .append(self.name.to_doc())
+            .append(";")
+            .group()
+            .nest(2)
+    }
+}
+
+impl PrettyIR for IncludeDecl {
+    fn to_doc(&self) -> RcDoc<'_, ()> {
+        RcDoc::text("_include_pulse(")
+            .append(RcDoc::hardline())
+            .append(self.code.to_string())
+            .group()
+            .nest(2)
+            .append(RcDoc::hardline())
+            .append(")")
+    }
+}
+
+impl PrettyIR for DeclT {
+    fn to_doc(&self) -> RcDoc<'_, ()> {
+        match self {
+            DeclT::FnDefn(fn_defn) => fn_defn.to_doc(),
+            DeclT::FnDecl(fn_decl) => fn_decl.to_doc(),
+            DeclT::Typedef(type_defn) => type_defn.to_doc(),
+            DeclT::StructDefn(struct_defn) => struct_defn.to_doc(),
+            DeclT::IncludeDecl(include_decl) => include_decl.to_doc(),
+        }
+    }
+}
+
+impl_display_using_prettyir!(TranslationUnit);
+
+impl PrettyIR for TranslationUnit {
+    fn to_doc(&self) -> RcDoc<'_, ()> {
+        let header_comment = RcDoc::text("// ").append(&*self.main_file_name);
+
+        RcDoc::intersperse(
+            std::iter::once(header_comment)
+                .chain(self.decls.iter().map(|decl| decl.to_doc()))
+                .map(|doc| doc.append(RcDoc::hardline())),
+            RcDoc::hardline(),
+        )
     }
 }
