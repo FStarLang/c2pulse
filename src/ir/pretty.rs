@@ -161,7 +161,7 @@ impl PrettyIR for LValueT {
     fn to_doc(&self) -> RcDoc<'_, ()> {
         match self {
             LValueT::Var(x) => x.to_doc(),
-            LValueT::Deref(rval) => RcDoc::text("*").append(rval.to_doc()),
+            LValueT::Deref(rval) => RcDoc::text("(*").append(rval.to_doc()).append(")"),
             LValueT::Member(x, n) => x.to_doc().append(RcDoc::text(".")).append(n.to_doc()),
             LValueT::Error(_) => RcDoc::text("???"),
         }
