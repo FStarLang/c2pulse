@@ -310,6 +310,12 @@ fn get_int_mod(signed: &bool, width: &u32) -> Option<&'static str> {
     })
 }
 
+macro_rules! todo_binop {
+    () => {
+        return None
+    };
+}
+
 fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
     Some(match (op, &env.vtype_whnf(ty).val) {
         (BinOp::Eq, TypeT::SLProp | TypeT::Void) => Doc::text("=="),
@@ -327,13 +333,13 @@ fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
         (BinOp::LEq, TypeT::SizeT) => Doc::text("`SizeT.lte`"),
         (BinOp::Lt, TypeT::SizeT) => Doc::text("`SizeT.lt`"),
 
-        (BinOp::LEq, TypeT::Bool) => todo!(),
-        (BinOp::Lt, TypeT::Bool) => todo!(),
+        (BinOp::LEq, TypeT::Bool) => todo_binop!(),
+        (BinOp::Lt, TypeT::Bool) => todo_binop!(),
         (BinOp::LogAnd, TypeT::Bool) => Doc::text("&&"),
-        (BinOp::Div, TypeT::Bool) => todo!(),
-        (BinOp::Mod, TypeT::Bool) => todo!(),
-        (BinOp::Sub, TypeT::Bool) => todo!(),
-        (BinOp::Add, TypeT::Bool) => todo!(),
+        (BinOp::Div, TypeT::Bool) => todo_binop!(),
+        (BinOp::Mod, TypeT::Bool) => todo_binop!(),
+        (BinOp::Sub, TypeT::Bool) => todo_binop!(),
+        (BinOp::Add, TypeT::Bool) => todo_binop!(),
         (BinOp::Mul, TypeT::Bool) => Doc::text("&&"),
 
         (BinOp::LogAnd, TypeT::SLProp) => Doc::text("**"),
@@ -366,7 +372,7 @@ fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
         (BinOp::Mod, TypeT::SpecInt) => Doc::text("%"),
         (BinOp::Add, TypeT::SpecInt) => Doc::text("+"),
         (BinOp::Sub, TypeT::SpecInt) => Doc::text("-"),
-        (BinOp::LogAnd, TypeT::SpecInt) => todo!(),
+        (BinOp::LogAnd, TypeT::SpecInt) => todo_binop!(),
 
         (
             op,
