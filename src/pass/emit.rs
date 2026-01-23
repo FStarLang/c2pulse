@@ -270,7 +270,10 @@ fn emit_lvalue(env: &Env, v: &LValue) -> Doc {
                     ..
                 }) = env.lookup_var(x)
                 {
-                    panic!("illegal lvalue reference to variable {}", v)
+                    Doc::text(format!(
+                        "admit() (* illegal lvalue reference to variable {} *)",
+                        v
+                    ))
                 } else {
                     emit_var(x)
                 }
