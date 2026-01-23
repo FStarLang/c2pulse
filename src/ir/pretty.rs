@@ -185,7 +185,7 @@ fn pretty_block(stmts: &Stmts) -> RcDoc<'_, ()> {
 impl PrettyIR for StmtT {
     fn to_doc(&self) -> RcDoc<'_, ()> {
         match self {
-            StmtT::Call(f) => f.to_doc(),
+            StmtT::Call(f) => f.to_doc().append(";"),
             StmtT::Decl(x, ty) => (ty.to_doc())
                 .append(" ")
                 .append(x.to_doc())
@@ -252,6 +252,7 @@ impl PrettyIR for StructDefn {
                 f.1.to_doc()
                     .append(RcDoc::line())
                     .append(f.0.to_doc())
+                    .append(";")
                     .group()
                     .nest(2)
                     .append(RcDoc::hardline())
