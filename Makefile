@@ -54,3 +54,7 @@ endif
 .PHONY: lib
 lib: build-pulse
 	$(MAKE) -C pulse
+
+.PHONY: test
+test: rust lib
+	$(MAKE) -C test

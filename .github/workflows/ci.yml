@@ -65,6 +65,10 @@ jobs:
       run: |
         make -j$(nproc)
 
+    - name: Test c2pulse
+      run: |
+        make -j$(nproc) test
+
     - name: Checking that code is correctly formatted
       if: always()
       run: |
