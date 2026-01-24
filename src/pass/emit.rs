@@ -583,14 +583,18 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
                     Doc::text("(*unsupported binop*)(admit())")
                 }
             }
-            RValueT::FnCall(f, args) => parens(
-                Doc::text(f.val.to_string())
-                    .append(Doc::line())
-                    .append(Doc::intersperse(
-                        args.iter().map(|arg| emit_rvalue(env, arg)),
-                        Doc::line(),
-                    )),
-            ),
+            RValueT::FnCall(f, args) => {
+                let args = if args.is_empty() {
+                    Doc::text("()")
+                } else {
+                    Doc::intersperse(args.iter().map(|arg| emit_rvalue(env, arg)), Doc::line())
+                };
+                parens(
+                    Doc::text(f.val.to_string())
+                        .append(Doc::line())
+                        .append(args),
+                )
+            }
             RValueT::Live(v) => unaryfn(Doc::text("live"), emit_lvalue(env, v)),
             RValueT::Old(v) => unaryfn(Doc::text("old"), emit_rvalue(env, v)),
         }
@@ -761,6 +765,10 @@ fn emit_fn_decl(
 
         env.push_arg(arg, LocalDeclKind::RValue);
         emit_type_slprop(env, ty, &mut requires_props, &mut ensures_props, &n);
+    }
+
+    if params.is_empty() {
+        params.push(Doc::text("()"));
     }
 
     requires_props.extend(requires.iter().map(|r| emit_rvalue(env, r)));
