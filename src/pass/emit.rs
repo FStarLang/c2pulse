@@ -447,7 +447,13 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
                 };
                 let default = {
                     let val_doc = val_doc.clone();
-                    || Doc::text("(*TODO unsupported cast*)").append(val_doc)
+                    || {
+                        Doc::text(format!(
+                            "(*TODO unsupported cast from {} to {} *)",
+                            from_ty, to_ty
+                        ))
+                        .append(val_doc)
+                    }
                 };
                 match (from_ty, &to_ty.val) {
                     (TypeT::Void, TypeT::Void) => val_doc,
@@ -455,7 +461,21 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
                     // (TypeT::Bool, TypeT::Int { signed, width }) => todo!(),
                     // (TypeT::Bool, TypeT::SizeT) => todo!(),
                     (TypeT::Bool, TypeT::SLProp) => unaryfn(Doc::text("pure"), val_doc),
-                    // (TypeT::Int { signed, width }, TypeT::Bool) => todo!(),
+                    (TypeT::Int { signed, width }, TypeT::Bool) => {
+                        if let Some(m) = get_int_mod(signed, width) {
+                            binop(
+                                unaryfn_with_type(
+                                    Doc::text(format!("{}.v", m)),
+                                    val_doc,
+                                    Doc::text("int"),
+                                ),
+                                Doc::text("<>"),
+                                Doc::text("0"),
+                            )
+                        } else {
+                            default()
+                        }
+                    }
                     (
                         TypeT::Int {
                             signed: s1,

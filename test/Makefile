@@ -9,9 +9,9 @@ $(CACHE_DIR)/.depend: $(TESTS) Makefile
 	mkdir -p $(CACHE_DIR)
 	echo >$@
 	echo -n ALL_FST_FILES= >>$@
-	echo $(TESTS) | sed 's/ /\n/' | sed 's/^\(.\)\(.*\)\..*/\U\1\E\2.fst/' | sed -z 's/\n/ /' >>$@
+	echo $(TESTS) | sed 's/ /\n/g' | sed 's/^\(.\)\(.*\)\..*/\U\1\E\2.fst/' | tr '\n' ' ' >>$@
 	echo >>$@
-	echo $(TESTS) | sed 's/ /\n/' | sed 's;^\(.\)\(.*\)\..*;\U\1\E\2.fst: & $$(C2PULSE)\n;' >>$@
+	echo $(TESTS) | sed 's/ /\n/g' | sed 's;^\(.\)\(.*\)\..*;\U\1\E\2.fst: & $$(C2PULSE)\n;' >>$@
 
 include $(CACHE_DIR)/.depend
 

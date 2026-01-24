@@ -54,7 +54,7 @@ impl PrettyIR for TypeRefKind {
     }
 }
 
-impl_display_using_prettyir!(Type);
+impl_display_using_prettyir!(TypeT);
 
 impl PrettyIR for TypeT {
     fn to_doc(&self) -> RcDoc<'_, ()> {
@@ -98,7 +98,7 @@ impl PrettyIR for TypeT {
     }
 }
 
-impl_display_using_prettyir!(RValue);
+impl_display_using_prettyir!(RValueT);
 
 impl PrettyIR for RValueT {
     fn to_doc(&self) -> RcDoc<'_, ()> {
@@ -156,7 +156,7 @@ impl PrettyIR for RValueT {
     }
 }
 
-impl_display_using_prettyir!(LValue);
+impl_display_using_prettyir!(LValueT);
 
 impl PrettyIR for LValueT {
     fn to_doc(&self) -> RcDoc<'_, ()> {
