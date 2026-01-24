@@ -171,6 +171,9 @@ fn subst_this_rvalue(rvalue: &mut RValue, this: &Rc<Ident>) {
         RValueT::BoolLit(_) => {}
         RValueT::IntLit(..) => {}
         RValueT::LValue(lv) | RValueT::Ref(lv) => subst_this_lvalue(Rc::make_mut(lv), this),
+        RValueT::UnOp(_, arg) => {
+            subst_this_rvalue(Rc::make_mut(arg), this);
+        }
         RValueT::BinOp(_, lhs, rhs) => {
             subst_this_rvalue(Rc::make_mut(lhs), this);
             subst_this_rvalue(Rc::make_mut(rhs), this);
@@ -319,6 +322,17 @@ macro_rules! todo_binop {
     };
 }
 
+fn emit_unop(env: &Env, op: UnOp, ty: MaybeRc<Type>) -> Option<Doc> {
+    Some(match (op, &env.vtype_whnf(ty).val) {
+        (UnOp::Not, _) => Doc::text("not"),
+        (UnOp::Neg, TypeT::Int { signed, width }) => {
+            let modu = get_int_mod(signed, width)?;
+            Doc::text(format!("{}.sub {}.zero", modu, modu))
+        }
+        (UnOp::Neg, _) => return None,
+    })
+}
+
 fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
     Some(match (op, &env.vtype_whnf(ty).val) {
         (BinOp::Eq, TypeT::SLProp | TypeT::Void) => Doc::text("=="),
@@ -356,7 +370,7 @@ fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
         }
         (BinOp::Div, TypeT::SizeT) => Doc::text("`SizeT.div`"),
         (BinOp::Mod, TypeT::Int { signed, width }) => {
-            Doc::text(format!("`{}.mod`", get_int_mod(signed, width)?))
+            Doc::text(format!("`{}.rem`", get_int_mod(signed, width)?))
         }
         (BinOp::Mod, TypeT::SizeT) => Doc::text("`SizeT.mod`"),
         (BinOp::Add, TypeT::Int { signed, width }) => {
@@ -528,6 +542,16 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
             RValueT::BinOp(BinOp::Eq, lhs, rhs) => {
                 // TODO: this should be == in ghost contexts
                 binop(emit_rvalue(env, lhs), Doc::text("="), emit_rvalue(env, rhs))
+            }
+            RValueT::UnOp(op, arg) => {
+                if let Some(ty) = env.infer_rvalue(&arg)
+                    && let Some(op) = emit_unop(env, *op, ty)
+                {
+                    unaryfn(op, emit_rvalue(env, arg))
+                } else {
+                    // TODO: error
+                    Doc::text("(*unsupported binop*)(admit())")
+                }
             }
             RValueT::BinOp(op, lhs, rhs) => {
                 if let Some(ty) = env.infer_rvalue(&lhs)

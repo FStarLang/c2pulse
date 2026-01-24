@@ -107,6 +107,7 @@ impl PrettyIR for RValueT {
             RValueT::IntLit(n, _ty) => RcDoc::text(n.to_string()),
             RValueT::LValue(lval) => lval.to_doc(),
             RValueT::Ref(lval) => RcDoc::text("&").append(lval.to_doc()),
+            RValueT::UnOp(un_op, arg) => RcDoc::text(un_op.to_str()).append(arg.to_doc()),
             RValueT::BinOp(bin_op, lhs, rhs) => RcDoc::text("(")
                 .append(lhs.to_doc())
                 .append(RcDoc::space())

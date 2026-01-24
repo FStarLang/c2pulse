@@ -313,6 +313,9 @@ fn mk_rvalue_lvalue(loc: Rc<SourceInfo>, lval: Rc<LValue>) -> Rc<RValue> {
 fn mk_rvalue_cast(loc: Rc<SourceInfo>, val: Rc<RValue>, ty: Rc<Type>) -> Rc<RValue> {
     mk_ast(loc, RValueT::Cast(val, ty))
 }
+fn mk_rvalue_unop(loc: Rc<SourceInfo>, op: UnOp, arg: Rc<RValue>) -> Rc<RValue> {
+    mk_ast(loc, RValueT::UnOp(op, arg))
+}
 fn mk_rvalue_binop(loc: Rc<SourceInfo>, op: BinOp, lhs: Rc<RValue>, rhs: Rc<RValue>) -> Rc<RValue> {
     mk_ast(loc, RValueT::BinOp(op, lhs, rhs))
 }

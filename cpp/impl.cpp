@@ -367,6 +367,10 @@ public:
       case UO_AddrOf:
         return mk_rvalue_ref(std::move(loc), trLValue(uo->getSubExpr()));
 
+      case UO_Not:
+        return mk_rvalue_unop(std::move(loc), ir::UnOp::Not(),
+                              trRValue(uo->getSubExpr()));
+
       default:;
         // continue to error case
       }
@@ -384,10 +388,17 @@ public:
         return m(ir::BinOp::Mul());
       case clang::BO_Div:
         return m(ir::BinOp::Div());
+      case clang::BO_Rem:
+        return m(ir::BinOp::Mod());
       case clang::BO_LAnd:
         return m(ir::BinOp::LogAnd());
       case clang::BO_EQ:
         return m(ir::BinOp::Eq());
+      case clang::BO_NE: {
+        auto loc2 = loc.clone();
+        return mk_rvalue_unop(std::move(loc2), ir::UnOp::Not(),
+                              m(ir::BinOp::Eq()));
+      }
       case clang::BO_LE:
         return m(ir::BinOp::LEq());
       case clang::BO_LT:

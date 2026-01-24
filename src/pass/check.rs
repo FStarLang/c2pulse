@@ -136,6 +136,23 @@ impl<'a> Checker<'a> {
                 _ => self.check_lvalue(env, lval),
             },
             RValueT::Ref(lval) => self.check_lvalue(env, lval),
+            RValueT::UnOp(un_op, arg) => {
+                self.check_rvalue(env, arg);
+                if self.check_types
+                    && let Some(arg_ty) = self.infer_rvalue(env, arg)
+                {
+                    match un_op {
+                        UnOp::Not => match &env.vtype_whnf(arg_ty.clone().into()).val {
+                            TypeT::Bool | TypeT::Error => {}
+                            _ => self.report(
+                                format!("! needs to be applied to bool, not {}", arg_ty),
+                                &rval.loc,
+                            ),
+                        },
+                        UnOp::Neg => {}
+                    }
+                }
+            }
             RValueT::BinOp(bin_op, lhs, rhs) => {
                 self.check_rvalue(env, lhs);
                 self.check_rvalue(env, rhs);

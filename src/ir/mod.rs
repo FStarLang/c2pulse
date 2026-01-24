@@ -159,6 +159,27 @@ pub enum TypeRefKind {
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+pub enum UnOp {
+    Not,
+    Neg,
+}
+
+impl UnOp {
+    pub fn to_str(self) -> &'static str {
+        match self {
+            UnOp::Not => "!",
+            UnOp::Neg => "-",
+        }
+    }
+}
+
+impl Display for UnOp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.to_str())
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum BinOp {
     Eq,
     LEq,
@@ -201,6 +222,7 @@ pub enum RValueT {
     IntLit(Rc<BigInt>, Rc<Type>),
     LValue(Rc<LValue>),
     Ref(Rc<LValue>),
+    UnOp(UnOp, Rc<RValue>),
     BinOp(BinOp, Rc<RValue>, Rc<RValue>),
     FnCall(Rc<Ident>, RValues),
     Cast(Rc<RValue>, Rc<Type>),

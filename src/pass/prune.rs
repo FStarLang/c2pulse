@@ -126,6 +126,7 @@ fn scan_rvalue(deps: &mut HashSet<DeclName>, rv: &RValue) {
         }
         RValueT::Error(ty) => scan_type(deps, ty),
         RValueT::InlinePulse(_, ty) => scan_type(deps, ty),
+        RValueT::UnOp(_, arg) => scan_rvalue(deps, arg),
         RValueT::BinOp(_, lhs, rhs) => {
             scan_rvalue(deps, lhs);
             scan_rvalue(deps, rhs);

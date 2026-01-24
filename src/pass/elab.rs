@@ -129,6 +129,13 @@ impl<'a> Elaborator<'a> {
             }
             RValueT::Error(ty) => self.elab_type(env, Rc::make_mut(ty)),
             RValueT::InlinePulse(_, ty) => self.elab_type(env, Rc::make_mut(ty)),
+            RValueT::UnOp(un_op, arg) => {
+                self.elab_rvalue(env, Rc::make_mut(arg));
+                match un_op {
+                    UnOp::Not => self.cast_to_bool(env, arg),
+                    UnOp::Neg => {}
+                }
+            }
             RValueT::BinOp(bin_op, lhs, rhs) => {
                 self.elab_rvalue(env, Rc::make_mut(lhs));
                 self.elab_rvalue(env, Rc::make_mut(rhs));
