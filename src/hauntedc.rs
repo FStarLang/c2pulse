@@ -545,6 +545,9 @@ struct TokenSI {
 
 impl SourceInfoForTokens for TokenSI {
     fn resolve_source_info(&self, span: &SimpleSpan) -> Rc<SourceInfo> {
+        if span.end >= self.source_infos.len() {
+            return self.fallback.clone();
+        }
         if span.start == span.end {
             return self.source_infos[span.start].clone();
         }
@@ -559,6 +562,9 @@ impl SourceInfoForTokens for TokenSI {
     }
 
     fn resolve_error_location(&self, span: &SimpleSpan) -> Location {
+        if span.end >= self.source_infos.len() {
+            return self.fallback.location().clone();
+        }
         if span.start == span.end {
             if let SourceInfo::Original(loc) = &*self.source_infos[span.start] {
                 return loc.clone();
