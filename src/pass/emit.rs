@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use num_bigint::BigInt;
 use pretty::{RcDoc, Render, RenderAnnotated};
 
 use crate::{
@@ -458,7 +459,25 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
                 match (from_ty, &to_ty.val) {
                     (TypeT::Void, TypeT::Void) => val_doc,
                     (TypeT::Bool, TypeT::Bool) => val_doc,
-                    // (TypeT::Bool, TypeT::Int { signed, width }) => todo!(),
+                    (TypeT::Bool, TypeT::Int { signed, width }) => {
+                        if let Some(m) = get_int_mod(signed, width) {
+                            parens(
+                                Doc::text("if")
+                                    .append(Doc::line())
+                                    .append(val_doc)
+                                    .append(Doc::line())
+                                    .append("then")
+                                    .append(Doc::line())
+                                    .append(format!("{}.one", m))
+                                    .append(Doc::line())
+                                    .append("else")
+                                    .append(Doc::line())
+                                    .append(format!("{}.zero", m)),
+                            )
+                        } else {
+                            default()
+                        }
+                    }
                     // (TypeT::Bool, TypeT::SizeT) => todo!(),
                     (TypeT::Bool, TypeT::SLProp) => unaryfn(Doc::text("pure"), val_doc),
                     (TypeT::Int { signed, width }, TypeT::Bool) => {
@@ -560,6 +579,26 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
                 )
             }
             RValueT::BinOp(BinOp::Eq, lhs, rhs) => {
+                if let Some(ty) = env.infer_rvalue(lhs) {
+                    let ty = env.vtype_whnf(ty);
+                    match (&ty.val, &rhs.val) {
+                        (
+                            TypeT::Pointer(
+                                _,
+                                PointerKind::Ref | PointerKind::Unknown, /* TODO */
+                            ),
+                            RValueT::IntLit(n, _),
+                        ) => {
+                            if **n == BigInt::ZERO {
+                                return unaryfn(
+                                    Doc::text("Pulse.Lib.Reference.is_null"),
+                                    emit_rvalue(env, lhs),
+                                );
+                            }
+                        }
+                        _ => {}
+                    }
+                }
                 // TODO: this should be == in ghost contexts
                 binop(emit_rvalue(env, lhs), Doc::text("="), emit_rvalue(env, rhs))
             }

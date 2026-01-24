@@ -1,3 +1,5 @@
+use num_bigint::BigInt;
+
 use crate::diag::{Diagnostic, DiagnosticLevel, Diagnostics};
 use crate::env::{Env, LocalDeclKind};
 use crate::ir::*;
@@ -145,6 +147,17 @@ impl<'a> Elaborator<'a> {
                 let Some(rhs_ty) = self.infer_rvalue(env, rhs) else {
                     return;
                 };
+                if *bin_op == BinOp::Eq {
+                    let lhs_ty = env.vtype_whnf(lhs_ty.clone());
+                    if let TypeT::Pointer(_, _) = &lhs_ty.val {
+                        if let RValueT::IntLit(n, rhs_ty) = &mut Rc::make_mut(rhs).val {
+                            if **n == BigInt::ZERO {
+                                *rhs_ty = lhs_ty.to_rc();
+                                return;
+                            }
+                        }
+                    }
+                }
                 match bin_op {
                     BinOp::Eq
                     | BinOp::LEq

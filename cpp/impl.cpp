@@ -350,6 +350,11 @@ public:
                               trQualType(ic->getType(), ic->getSourceRange()));
 
       default:;
+        if (isNull(ic)) {
+          return mk_int_lit(std::move(loc), mk_bigint("0"_rs),
+                            trQualType(ic->getType(), ic->getSourceRange()));
+        }
+
         // continue to error case
       }
     } else if (auto p = dyn_cast<ParenExpr>(e)) {
@@ -423,6 +428,18 @@ public:
                       "unsupported rvalue expression ", e->getStmtClassName());
     return mk_rvalue_err(std::move(loc),
                          trQualType(e->getType(), e->getSourceRange()));
+  }
+
+  bool isNull(Expr *e) {
+    if (auto *c = dyn_cast<CastExpr>(e)) {
+      if (c->getCastKind() == CK_NullToPointer)
+        return true;
+      return isNull(c->getSubExpr());
+    } else if (auto *p = dyn_cast<ParenExpr>(e)) {
+      return isNull(p->getSubExpr());
+    } else {
+      return false;
+    }
   }
 
   Vec<Rc<ir::Stmt>> trStmts(Stmt *stmt) {
