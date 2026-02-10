@@ -1037,6 +1037,37 @@ fn emit_structdefn(env: &Env, StructDefn { name, fields }: &StructDefn) -> Doc {
                 ]),
             )),
     );
+    ses.push(
+        Doc::text("[@@pulse_intro]")
+            .append(Doc::line())
+            .append(mk_assume_val(
+                Doc::text(format!("struct_{}_raw_fold_uninit", name)),
+                &[parens(
+                    Doc::text("x:")
+                        .append(Doc::line())
+                        .append(ref_struct_type.clone()),
+                )],
+                naryfn([
+                    Doc::text("stt_ghost"),
+                    Doc::text("unit"),
+                    Doc::text("emp_inames"),
+                    {
+                        let mut pre = vec![naryfn([unfolded_tok.clone(), Doc::text("x")])];
+                        for (fld, _) in fields {
+                            pre.push(naryfn([
+                                Doc::text("Pulse.Lib.Reference.pts_to_uninit"),
+                                unaryfn(ghost_fld_name(fld), Doc::text("x")),
+                            ]));
+                        }
+                        mk_star(pre)
+                    },
+                    mk_thunk(naryfn([
+                        Doc::text("Pulse.Lib.Reference.pts_to_uninit"),
+                        Doc::text("x"),
+                    ])),
+                ]),
+            )),
+    );
 
     for (fld, fld_ty) in fields {
         let ll_ty = emit_type(env, fld_ty);

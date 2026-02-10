@@ -7,5 +7,6 @@ typedef struct {
 
 int_pair swap_functional(int_pair x)
 {
-  return (int_pair) { .a = x.b, .b = x.a };
+  int_pair result = (int_pair) { .a = x.b, .b = x.a };
+  return result;
 }

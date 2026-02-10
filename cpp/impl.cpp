@@ -456,8 +456,7 @@ public:
         return mk_rvalue_err(std::move(loc),
                              trQualType(e->getType(), e->getSourceRange()));
       }
-      auto structName =
-          ctx.mk_ident(toStr(it->second), loc.clone());
+      auto structName = ctx.mk_ident(toStr(it->second), loc.clone());
       auto builder =
           StructInitBuilder::new_(loc.clone(), std::move(structName));
       for (unsigned i = 0; i < init->getNumInits(); ++i) {
