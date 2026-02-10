@@ -894,7 +894,7 @@ fn emit_structdefn(env: &Env, StructDefn { name, fields }: &StructDefn) -> Doc {
                     .append(struct_type_name.clone()),
             )],
             Doc::text("slprop"),
-            Doc::text("emp")
+            Doc::text("emp"),
         ));
     }
 
