@@ -332,6 +332,30 @@ fn mk_rvalue_err(loc: Rc<SourceInfo>, ty: Rc<Type>) -> Rc<RValue> {
     mk_ast(loc, RValueT::Error(ty))
 }
 
+pub struct StructInitBuilder {
+    loc: Rc<SourceInfo>,
+    name: Rc<Ident>,
+    fields: Vec<(Rc<Ident>, Rc<RValue>)>,
+}
+
+impl StructInitBuilder {
+    fn new(loc: Rc<SourceInfo>, name: Rc<Ident>) -> StructInitBuilder {
+        StructInitBuilder {
+            loc,
+            name,
+            fields: vec![],
+        }
+    }
+
+    fn field(&mut self, name: Rc<Ident>, val: Rc<RValue>) {
+        self.fields.push((name, val));
+    }
+
+    fn build(self) -> Rc<RValue> {
+        RValueT::StructInit(self.name, self.fields).with_loc(self.loc)
+    }
+}
+
 fn mk_lvalue_var(loc: Rc<SourceInfo>, name: Rc<Ident>) -> Rc<LValue> {
     mk_ast(loc, LValueT::Var(name))
 }

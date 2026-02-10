@@ -190,6 +190,11 @@ impl<'a> Elaborator<'a> {
             RValueT::BoolLit(_) => {}
             RValueT::Live(val) => self.elab_lvalue(env, Rc::make_mut(val)),
             RValueT::Old(val) => self.elab_rvalue(env, Rc::make_mut(val)),
+            RValueT::StructInit(_, fields) => {
+                for (_fld_name, fld_val) in fields {
+                    self.elab_rvalue(env, Rc::make_mut(fld_val));
+                }
+            }
         }
     }
 

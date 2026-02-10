@@ -160,6 +160,8 @@ public:
   ASTContext *astCtx = nullptr;
   std::unordered_set<RecordDecl *>
       alreadyDefined; // guard against recursive structures
+  std::unordered_map<RecordDecl *, std::string>
+      structNames; // map record decls to generated struct names
 
   // TODO: should probably wait with translation until after parsing
 
@@ -244,9 +246,12 @@ public:
       auto decl = rec->getDecl();
       Rc<ir::Ident> name;
       if (decl->getIdentifier()) {
+        structNames.emplace(decl, decl->getName().str());
         name = ctx.mk_ident(toStr(decl->getName()), loc.clone());
       } else if (liftStructs) {
-        name = ctx.mk_ident(toStr(liftStructs->next()), loc.clone());
+        auto nameStr = liftStructs->next();
+        structNames.emplace(decl, nameStr);
+        name = ctx.mk_ident(toStr(nameStr), loc.clone());
         trRecordDecl(name.clone(), decl, liftStructs);
       } else {
         reportUnsupported(
@@ -341,6 +346,10 @@ public:
     if (auto ic = dyn_cast<CastExpr>(e)) {
       switch (ic->getCastKind()) {
       case CK_LValueToRValue:
+        if (dyn_cast<CompoundLiteralExpr>(
+                ic->getSubExpr()->IgnoreParenImpCasts())) {
+          return trRValue(ic->getSubExpr());
+        }
         return mk_rvalue_lvalue(std::move(loc), trLValue(ic->getSubExpr()));
 
       case CK_NoOp:
@@ -422,6 +431,43 @@ public:
         }
         return mk_rvalue_fncall(std::move(loc), std::move(fn), std::move(args));
       }
+    } else if (auto *cl = dyn_cast<CompoundLiteralExpr>(e)) {
+      auto *init = dyn_cast<InitListExpr>(cl->getInitializer());
+      if (!init) {
+        reportUnsupported(e->getSourceRange(), loc,
+                          "unsupported compound literal without init list", "");
+        return mk_rvalue_err(std::move(loc),
+                             trQualType(e->getType(), e->getSourceRange()));
+      }
+      auto qt = cl->getType().getDesugaredType(*astCtx);
+      auto *rec = dyn_cast<RecordType>(qt.getTypePtr());
+      if (!rec || rec->getDecl()->getTagKind() != TagTypeKind::Struct) {
+        reportUnsupported(e->getSourceRange(), loc,
+                          "unsupported compound literal for non-struct type",
+                          "");
+        return mk_rvalue_err(std::move(loc),
+                             trQualType(e->getType(), e->getSourceRange()));
+      }
+      auto *decl = rec->getDecl();
+      auto it = structNames.find(decl);
+      if (it == structNames.end()) {
+        reportUnsupported(e->getSourceRange(), loc,
+                          "unknown struct in compound literal", "");
+        return mk_rvalue_err(std::move(loc),
+                             trQualType(e->getType(), e->getSourceRange()));
+      }
+      auto structName =
+          ctx.mk_ident(toStr(it->second), loc.clone());
+      auto builder =
+          StructInitBuilder::new_(loc.clone(), std::move(structName));
+      for (unsigned i = 0; i < init->getNumInits(); ++i) {
+        auto *fieldInit = init->getInit(i);
+        auto *field = *std::next(decl->field_begin(), i);
+        auto floc = getRange(fieldInit->getSourceRange());
+        auto fieldName = ctx.mk_ident(toStr(field->getName()), std::move(floc));
+        builder.field(std::move(fieldName), trRValue(fieldInit));
+      }
+      return builder.build();
     }
 
     reportUnsupported(e->getSourceRange(), loc,

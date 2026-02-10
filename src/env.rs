@@ -173,6 +173,11 @@ impl Env {
             RValueT::BoolLit(_) => Some(TypeT::Bool.with_loc_core(rvalue.loc.clone()).into()),
             RValueT::Live(_) => Some(TypeT::SLProp.with_loc_core(rvalue.loc.clone()).into()),
             RValueT::Old(v) => self.infer_rvalue(v),
+            RValueT::StructInit(name, _) => Some(
+                rvalue
+                    .reuse_loc(TypeT::TypeRef(TypeRefKind::Struct(name.clone())))
+                    .into(),
+            ),
         }
     }
 

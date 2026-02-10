@@ -206,6 +206,11 @@ fn subst_this_rvalue(env: &Env, rvalue: &mut RValue, this: &Rc<RValue>) {
         RValueT::Error(_ty) => {}
         RValueT::Live(val) => subst_this_lvalue(env, Rc::make_mut(val), this),
         RValueT::Old(val) => subst_this_rvalue(env, Rc::make_mut(val), this),
+        RValueT::StructInit(_, fields) => {
+            for (_fld, val) in fields {
+                subst_this_rvalue(env, Rc::make_mut(val), this);
+            }
+        }
     }
 }
 
@@ -672,6 +677,18 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
             }
             RValueT::Live(v) => unaryfn(Doc::text("live"), emit_lvalue(env, v)),
             RValueT::Old(v) => unaryfn(Doc::text("old"), emit_rvalue(env, v)),
+            RValueT::StructInit(name, fields) => Doc::text("{")
+                .append(Doc::concat(fields.iter().map(|(fld, val)| {
+                    Doc::line()
+                        .append(Doc::text(format!("struct_{}__{}", name, fld)))
+                        .append("=")
+                        .append(emit_rvalue(env, val))
+                        .append(";")
+                })))
+                .nest(2)
+                .append(Doc::line())
+                .append("}")
+                .group(),
         }
     })
 }

@@ -229,6 +229,36 @@ impl<'a> Checker<'a> {
             RValueT::InlinePulse(_inline_code, ty) => self.check_type(env, ty),
             RValueT::Live(lval) => self.check_lvalue(env, lval),
             RValueT::Old(rval) => self.check_rvalue(env, rval),
+            RValueT::StructInit(name, fields) => {
+                let Some(s) = env.lookup_struct(name) else {
+                    self.report(format!("unknown struct {}", name), &rval.loc);
+                    return;
+                };
+                if self.check_types {
+                    if fields.len() != s.fields.len() {
+                        self.report(
+                            format!(
+                                "struct {} has {} fields, but {} were given",
+                                name,
+                                s.fields.len(),
+                                fields.len()
+                            ),
+                            &rval.loc,
+                        );
+                    }
+                    for (fld_name, fld_val) in fields {
+                        self.check_rvalue(env, fld_val);
+                        let Some(fld_ty) = s.get_field(fld_name) else {
+                            self.report(
+                                format!("no field {} in struct {}", fld_name, name),
+                                &rval.loc,
+                            );
+                            continue;
+                        };
+                        self.check_has_type(env, fld_val, fld_ty.clone().into());
+                    }
+                }
+            }
             RValueT::Error(ty) => self.check_type(env, ty),
         }
     }

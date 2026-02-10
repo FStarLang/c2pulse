@@ -175,6 +175,13 @@ mod crate::clang {
         fn insert_into_map(self, u32, &mut SnippetMap);
     }
 
+    type StructInitBuilder {
+        #heap_allocated;
+        fn new(Rc<SourceInfo>, Rc<Ident>) -> StructInitBuilder;
+        fn field(&mut self, Rc<Ident>, Rc<RValue>);
+        fn build(self) -> Rc<RValue>;
+    }
+
     fn str_from_parts(*const u8, usize) -> &str;
 
     fn mk_original_location(Rc<str>, u32, u32, u32, u32) -> Rc<SourceInfo>;

@@ -138,6 +138,12 @@ fn scan_rvalue(deps: &mut HashSet<DeclName>, rv: &RValue) {
         RValueT::BoolLit(_) => {}
         RValueT::Live(v) => scan_lvalue(deps, v),
         RValueT::Old(v) => scan_rvalue(deps, v),
+        RValueT::StructInit(name, fields) => {
+            deps.insert(DeclName::Struct(name.val.clone()));
+            for (_fld_name, fld_val) in fields {
+                scan_rvalue(deps, fld_val);
+            }
+        }
     }
 }
 

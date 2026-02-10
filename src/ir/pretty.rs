@@ -152,6 +152,19 @@ impl PrettyIR for RValueT {
                 .nest(2)
                 .group(),
             RValueT::Error(_) => RcDoc::text("???"),
+            RValueT::StructInit(name, fields) => RcDoc::text("(")
+                .append(name.to_doc())
+                .append(") {")
+                .append(RcDoc::intersperse(
+                    fields.iter().map(|(fld, val)| {
+                        RcDoc::text(".")
+                            .append(fld.to_doc())
+                            .append(" = ")
+                            .append(val.to_doc())
+                    }),
+                    RcDoc::text(",").append(RcDoc::line()),
+                ))
+                .append("}"),
         }
     }
 }

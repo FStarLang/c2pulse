@@ -229,6 +229,7 @@ pub enum RValueT {
     InlinePulse(Rc<InlineCode>, Rc<Type>),
     Live(Rc<LValue>),
     Old(Rc<RValue>),
+    StructInit(Rc<Ident>, Vec<(Rc<Ident>, Rc<RValue>)>),
     Error(Rc<Type>),
 }
 
