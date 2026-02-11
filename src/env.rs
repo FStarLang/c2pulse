@@ -149,7 +149,7 @@ impl Env {
                 rvalue
                     .reuse_loc(TypeT::Pointer(
                         self.infer_lvalue(v)?.to_rc(),
-                        PointerKind::Unknown,
+                        PointerKind::Ref,
                     ))
                     .into(),
             ),
