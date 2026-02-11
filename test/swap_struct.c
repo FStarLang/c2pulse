@@ -13,3 +13,9 @@ void swap_inplace(int_pair *x)
   x->a = x->b;
   x->b = tmp;
 }
+
+int_pair swap_functional(int_pair x)
+{
+  swap_inplace(&x);
+  return x;
+}
