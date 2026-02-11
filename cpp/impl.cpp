@@ -562,11 +562,11 @@ public:
             for (auto a : attr->getAttrs()) {
               if (auto val = isUnaryAttrOf(a, "c2pulse-assert")) {
                 stmts.push(mk_assert(loc.clone(), std::move(val.value())));
+                return rust::Unit();
               }
             }
           }
         }
-        return rust::Unit();
       }
     }
 
