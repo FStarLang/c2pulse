@@ -553,6 +553,21 @@ public:
       return rust::Unit();
     } else if (auto *c = dyn_cast<CallExpr>(stmt)) {
       return stmts.push(mk_call(std::move(loc), trRValue(c)));
+    } else if (auto *se = dyn_cast<StmtExpr>(stmt)) {
+      // _assert(p) expands to ({ __attribute__((annotate("c2pulse-assert",
+      // ...))) {} })
+      if (auto *comp = dyn_cast<CompoundStmt>(se->getSubStmt())) {
+        for (auto s : comp->body()) {
+          if (auto *attr = dyn_cast<AttributedStmt>(s)) {
+            for (auto a : attr->getAttrs()) {
+              if (auto val = isUnaryAttrOf(a, "c2pulse-assert")) {
+                stmts.push(mk_assert(loc.clone(), std::move(val.value())));
+              }
+            }
+          }
+        }
+        return rust::Unit();
+      }
     }
 
     reportUnsupported(stmt->getSourceRange(), loc, "unsupported statement ",

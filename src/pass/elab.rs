@@ -230,6 +230,10 @@ impl<'a> Elaborator<'a> {
             StmtT::Return(x) => {
                 self.elab_rvalue(env, Rc::make_mut(x));
             }
+            StmtT::Assert(v) => {
+                self.elab_rvalue(env, Rc::make_mut(v));
+                self.cast_to_slprop(env, v);
+            }
             StmtT::Error => {}
         }
     }

@@ -255,6 +255,7 @@ pub enum StmtT {
     If(Rc<RValue>, Rc<Stmts>, Rc<Stmts>),
     While(Rc<RValue>, Rc<RValues>, Rc<Stmts>),
     Return(Rc<RValue>),
+    Assert(Rc<RValue>),
     Error,
 }
 

@@ -740,6 +740,12 @@ fn emit_stmt(env: &Env, stmt: &Stmt) -> Doc {
                 .append(";")
                 .group(),
             StmtT::Return(t) => emit_rvalue(env, t).append(";").group().nest(2),
+            StmtT::Assert(v) => Doc::text("assert")
+                .append(Doc::line())
+                .append(emit_rvalue(env, v))
+                .append(";")
+                .group()
+                .nest(2),
             StmtT::Error => Doc::text("(admit());"),
         }
     })

@@ -346,6 +346,7 @@ impl<'a> Checker<'a> {
                 self.check_rvalue(env, v);
                 // TODO: check that v has return type of fn
             }
+            StmtT::Assert(v) => self.check_slprop(env, v),
             StmtT::Error => {}
         }
     }

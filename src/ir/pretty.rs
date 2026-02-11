@@ -245,6 +245,11 @@ impl PrettyIR for StmtT {
                 .append(";")
                 .nest(2)
                 .group(),
+            StmtT::Assert(v) => RcDoc::text("_assert(")
+                .append(v.to_doc())
+                .append(");")
+                .nest(2)
+                .group(),
             StmtT::Error => RcDoc::text("???;"),
         }
     }

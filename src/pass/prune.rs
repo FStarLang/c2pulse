@@ -163,6 +163,7 @@ fn scan_stmt(deps: &mut HashSet<DeclName>, stmt: &Stmt) {
             scan_stmts(deps, body);
         }
         StmtT::Return(v) => scan_rvalue(deps, v),
+        StmtT::Assert(v) => scan_rvalue(deps, v),
         StmtT::Error => {}
     }
 }

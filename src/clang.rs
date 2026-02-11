@@ -390,6 +390,9 @@ fn mk_while(loc: Rc<SourceInfo>, cond: Rc<RValue>, invs: RValues, body: Stmts) -
 fn mk_stmt_err(loc: Rc<SourceInfo>) -> Rc<Stmt> {
     mk_ast(loc, StmtT::Error)
 }
+fn mk_assert(loc: Rc<SourceInfo>, v: Rc<RValue>) -> Rc<Stmt> {
+    mk_ast(loc, StmtT::Assert(v))
+}
 
 pub fn parse_file(file_name: &str, vfs: &mut dyn VFS) -> (TranslationUnit, Diagnostics) {
     let mut ctx = Ctx::new(file_name.to_string(), vfs);
