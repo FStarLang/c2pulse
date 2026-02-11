@@ -340,6 +340,33 @@ public:
                          trQualType(e->getType(), e->getSourceRange()));
   }
 
+  Rc<ir::RValue> trStructInitList(InitListExpr *init, SourceRange range,
+                                  Rc<ir::SourceInfo> loc) {
+    auto qt = init->getType().getDesugaredType(*astCtx);
+    auto *rec = dyn_cast<RecordType>(qt.getTypePtr());
+    if (!rec || rec->getDecl()->getTagKind() != TagTypeKind::Struct) {
+      reportUnsupported(range, loc,
+                        "unsupported initializer list for non-struct type", "");
+      return mk_rvalue_err(std::move(loc), trQualType(init->getType(), range));
+    }
+    auto *decl = rec->getDecl();
+    auto it = structNames.find(decl);
+    if (it == structNames.end()) {
+      reportUnsupported(range, loc, "unknown struct in initializer list", "");
+      return mk_rvalue_err(std::move(loc), trQualType(init->getType(), range));
+    }
+    auto structName = ctx.mk_ident(toStr(it->second), loc.clone());
+    auto builder = StructInitBuilder::new_(loc.clone(), std::move(structName));
+    for (unsigned i = 0; i < init->getNumInits(); ++i) {
+      auto *fieldInit = init->getInit(i);
+      auto *field = *std::next(decl->field_begin(), i);
+      auto floc = getRange(fieldInit->getSourceRange());
+      auto fieldName = ctx.mk_ident(toStr(field->getName()), std::move(floc));
+      builder.field(std::move(fieldName), trRValue(fieldInit));
+    }
+    return builder.build();
+  }
+
   Rc<ir::RValue> trRValue(Expr *e) {
     auto loc = getRange(e->getSourceRange());
 
@@ -439,34 +466,9 @@ public:
         return mk_rvalue_err(std::move(loc),
                              trQualType(e->getType(), e->getSourceRange()));
       }
-      auto qt = cl->getType().getDesugaredType(*astCtx);
-      auto *rec = dyn_cast<RecordType>(qt.getTypePtr());
-      if (!rec || rec->getDecl()->getTagKind() != TagTypeKind::Struct) {
-        reportUnsupported(e->getSourceRange(), loc,
-                          "unsupported compound literal for non-struct type",
-                          "");
-        return mk_rvalue_err(std::move(loc),
-                             trQualType(e->getType(), e->getSourceRange()));
-      }
-      auto *decl = rec->getDecl();
-      auto it = structNames.find(decl);
-      if (it == structNames.end()) {
-        reportUnsupported(e->getSourceRange(), loc,
-                          "unknown struct in compound literal", "");
-        return mk_rvalue_err(std::move(loc),
-                             trQualType(e->getType(), e->getSourceRange()));
-      }
-      auto structName = ctx.mk_ident(toStr(it->second), loc.clone());
-      auto builder =
-          StructInitBuilder::new_(loc.clone(), std::move(structName));
-      for (unsigned i = 0; i < init->getNumInits(); ++i) {
-        auto *fieldInit = init->getInit(i);
-        auto *field = *std::next(decl->field_begin(), i);
-        auto floc = getRange(fieldInit->getSourceRange());
-        auto fieldName = ctx.mk_ident(toStr(field->getName()), std::move(floc));
-        builder.field(std::move(fieldName), trRValue(fieldInit));
-      }
-      return builder.build();
+      return trStructInitList(init, e->getSourceRange(), std::move(loc));
+    } else if (auto *init = dyn_cast<InitListExpr>(e)) {
+      return trStructInitList(init, e->getSourceRange(), std::move(loc));
     }
 
     reportUnsupported(e->getSourceRange(), loc,

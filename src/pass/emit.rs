@@ -498,6 +498,10 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
                     }
                 };
                 match (from_ty, &to_ty.val) {
+                    (
+                        TypeT::TypeRef(TypeRefKind::Struct(a)),
+                        TypeT::TypeRef(TypeRefKind::Struct(b)),
+                    ) if a.val == b.val => val_doc,
                     (TypeT::Void, TypeT::Void) => val_doc,
                     (TypeT::Bool, TypeT::Bool) => val_doc,
                     (TypeT::Bool, TypeT::Int { signed, width }) => {
