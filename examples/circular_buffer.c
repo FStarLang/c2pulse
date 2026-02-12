@@ -30,12 +30,6 @@ VerifiedCircBufLinearizeTo(
     uint8_t* DstBuffer,
     uint32_t DstLength)
 {
-    //
-    // Extracted from Pulse.Lib.CircularBuffer.resize:
-    //   let head_len = al - rs;
-    //   memcpy(new_ptr, old_head_ptr, head_len);  // old[rs..al) → new[0..head_len)
-    //   memcpy(new_tail_ptr, old_ptr, rs);         // old[0..rs)  → new[head_len..al)
-    //
     uint32_t rs = Buf->ReadStart;
     uint32_t al = Buf->AllocLength;
     uint32_t head_len = al - rs;
