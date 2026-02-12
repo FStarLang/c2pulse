@@ -2,6 +2,7 @@ use std::{path::Path, rc::Rc};
 
 use crate::{
     diag::{Diagnostic, Diagnostics},
+    ir::{Location, Position, Range},
     vfs::{OverlayFS, RealFS, VFS},
 };
 use clap::Parser;
@@ -46,7 +47,17 @@ fn serialize_diags(for_file: &str, diags: &Diagnostics) -> String {
                 if diag.loc.file_name == for_file {
                     diag
                 } else {
-                    diag.loc.file_name = for_file.clone();
+                    let pos0 = Position {
+                        line: 0,
+                        character: 0,
+                    };
+                    diag.loc = Location {
+                        file_name: for_file.clone(),
+                        range: Range {
+                            start: pos0,
+                            end: pos0,
+                        },
+                    };
                     diag
                 }
             })
