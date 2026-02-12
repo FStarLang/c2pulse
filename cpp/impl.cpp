@@ -49,9 +49,13 @@ struct RangeMap {
     if (auto result = files.find(id); result != files.end()) {
       return result->second.clone();
     } else {
-      auto res = ctx.intern_str(
-          id.isValid() ? toStr(sm.getFileEntryRefForID(id)->getName())
-                       : "<unknown>"_rs);
+      rust::Ref<rust::Str> fn = "<unknown>"_rs;
+      if (id.isValid()) {
+        if (auto entryRef = sm.getFileEntryRefForID(id)) {
+          fn = toStr(entryRef->getName());
+        }
+      }
+      auto res = ctx.intern_str(fn);
       files[id] = res.clone();
       return res;
     }
