@@ -1,0 +1,23 @@
+FROM mcr.microsoft.com/devcontainers/base:ubuntu
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        opam libgmp-dev tmux ripgrep \
+        clang-format ccls zstd rustup \
+        lsb-release wget software-properties-common gnupg && \
+    apt-get clean
+
+RUN wget https://apt.llvm.org/llvm.sh && \
+    chmod +x llvm.sh && \
+    ./llvm.sh 20 && \
+    apt-get update && \
+    apt-get install -y clang-20 libclang-cpp20-dev g++ clang-tools-20 libclang-20-dev && \
+    apt-get clean && \
+    rm llvm.sh
+
+USER vscode
+RUN opam init --bare
+
+RUN rustup install stable
+
+RUN curl -fsSL https://gh.io/copilot-install | bash
