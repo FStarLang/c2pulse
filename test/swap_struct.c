@@ -15,6 +15,7 @@ void swap_inplace(int_pair *x)
 }
 
 int_pair swap_functional(int_pair x)
+  _ensures(return.a == x.b && return.b == x.a)
 {
   swap_inplace(&x);
   return x;
