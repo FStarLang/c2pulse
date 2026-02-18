@@ -290,9 +290,10 @@ fn emit_var(v: &Ident) -> Doc {
 fn emit_lvalue(env: &Env, v: &Expr) -> Doc {
     match emit_expr(env, v) {
         ExprKind::LValue(doc) => doc,
-        ExprKind::RValue(_) => {
-            Doc::text(format!("(*TODO: cannot produce lvalue for {}*) (admit())", v))
-        }
+        ExprKind::RValue(_) => Doc::text(format!(
+            "(*TODO: cannot produce lvalue for {}*) (admit())",
+            v
+        )),
     }
 }
 
@@ -314,23 +315,18 @@ fn emit_expr(env: &Env, v: &Expr) -> ExprKind {
             Some(ty) => {
                 let ty = env.vtype_whnf(ty);
                 match &ty.val {
-                    TypeT::TypeRef(TypeRefKind::Struct(struct_name)) => {
-                        match emit_expr(env, x) {
-                            ExprKind::LValue(x_doc) => ExprKind::LValue(annotated(
-                                v,
-                                unaryfn(
-                                    Doc::text(struct_field_proj_name(struct_name, a)),
-                                    x_doc,
-                                ),
-                            )),
-                            ExprKind::RValue(x_doc) => ExprKind::RValue(annotated(
-                                v,
-                                x_doc
-                                    .append(Doc::text("."))
-                                    .append(Doc::text(struct_direct_fld_name(struct_name, a))),
-                            )),
-                        }
-                    }
+                    TypeT::TypeRef(TypeRefKind::Struct(struct_name)) => match emit_expr(env, x) {
+                        ExprKind::LValue(x_doc) => ExprKind::LValue(annotated(
+                            v,
+                            unaryfn(Doc::text(struct_field_proj_name(struct_name, a)), x_doc),
+                        )),
+                        ExprKind::RValue(x_doc) => ExprKind::RValue(annotated(
+                            v,
+                            x_doc
+                                .append(Doc::text("."))
+                                .append(Doc::text(struct_direct_fld_name(struct_name, a))),
+                        )),
+                    },
                     _ => ExprKind::RValue(annotated(
                         v,
                         Doc::text(format!("((*TODO struct field access on {}*) admit())", ty)),

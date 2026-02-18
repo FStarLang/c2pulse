@@ -345,7 +345,7 @@ public:
   }
 
   Rc<ir::Expr> trStructInitList(InitListExpr *init, SourceRange range,
-                                  Rc<ir::SourceInfo> loc) {
+                                Rc<ir::SourceInfo> loc) {
     auto qt = init->getType().getDesugaredType(*astCtx);
     auto *rec = dyn_cast<RecordType>(qt.getTypePtr());
     if (!rec || rec->getDecl()->getTagKind() != TagTypeKind::Struct) {
@@ -580,7 +580,7 @@ public:
   }
 
   std::optional<Rc<ir::Expr>> isUnaryAttrOf(Attr const *attr,
-                                              char const *name) {
+                                            char const *name) {
     if (auto ann = dyn_cast<AnnotateAttr>(attr);
         ann && ann->args_size() == 1 && ann->getAnnotation() == name) {
       if (auto ctrVal = ann->args_begin()[0]->getIntegerConstantExpr(*astCtx)) {
