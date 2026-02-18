@@ -66,7 +66,10 @@ impl<'a> Elaborator<'a> {
     }
 
     fn elab_lvalue(&mut self, env: &Env, lval: &mut Expr) {
-        self.elab_rvalue(env, lval)
+        self.elab_rvalue(env, lval);
+        if !env.is_lvalue(lval) {
+            self.report(format!("expected lvalue, got {}", lval), &lval.loc);
+        }
     }
 
     fn cast_to_slprop(&mut self, env: &Env, rval: &mut Rc<Expr>) {
@@ -112,7 +115,12 @@ impl<'a> Elaborator<'a> {
                 }
             }
             ExprT::IntLit(_, ty) => self.elab_type(env, Rc::make_mut(ty)),
-            ExprT::Ref(v) => self.elab_rvalue(env, Rc::make_mut(v)),
+            ExprT::Ref(v) => {
+                self.elab_rvalue(env, Rc::make_mut(v));
+                if !env.is_lvalue(v) {
+                    self.report(format!("expected lvalue for &, got {}", v), &rval.loc);
+                }
+            }
             ExprT::FnCall(_f, args) => {
                 // TODO: check type for f
                 for arg in args {

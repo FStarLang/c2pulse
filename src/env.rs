@@ -313,4 +313,17 @@ impl Env {
             _ => false,
         }
     }
+
+    pub fn is_lvalue(&self, expr: &Expr) -> bool {
+        match &expr.val {
+            ExprT::Var(x) => match self.lookup_var(x) {
+                Some(decl) => decl.kind == LocalDeclKind::LValue,
+                None => false,
+            },
+            ExprT::Deref(_) => true,
+            ExprT::Member(x, _) => self.is_lvalue(x),
+            ExprT::Error(_) => true,
+            _ => false,
+        }
+    }
 }

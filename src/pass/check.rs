@@ -159,7 +159,12 @@ impl<'a> Checker<'a> {
                     };
                 }
             }
-            ExprT::Ref(lval) => self.check_rvalue(env, lval),
+            ExprT::Ref(lval) => {
+                self.check_rvalue(env, lval);
+                if !env.is_lvalue(lval) {
+                    self.report(format!("expected lvalue for &, got {}", lval), &rval.loc);
+                }
+            }
             ExprT::UnOp(un_op, arg) => {
                 self.check_rvalue(env, arg);
                 if self.check_types
@@ -296,7 +301,10 @@ impl<'a> Checker<'a> {
     }
 
     fn check_lvalue(&mut self, env: &Env, lval: &Expr) {
-        self.check_rvalue(env, lval)
+        self.check_rvalue(env, lval);
+        if !env.is_lvalue(lval) {
+            self.report(format!("expected lvalue, got {}", lval), &lval.loc);
+        }
     }
 
     fn check_var(&mut self, env: &Env, n: &Ident, needs_lvalue: bool) {
