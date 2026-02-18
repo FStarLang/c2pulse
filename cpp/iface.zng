@@ -23,8 +23,7 @@ use crate::ir::Ident as Ident;
 use crate::ir::SourceInfo as SourceInfo;
 use crate::ir::Type as Type;
 use crate::ir::Stmt as Stmt;
-use crate::ir::LValue as LValue;
-use crate::ir::RValue as RValue;
+use crate::ir::Expr as Expr;
 use crate::ir::UnOp as UnOp;
 use crate::ir::BinOp as BinOp;
 use crate::hauntedc::SnippetMap as SnippetMap;
@@ -42,8 +41,7 @@ mod crate::ir {
     type SourceInfo { #only_by_ref; }
     type Ident { wellknown_traits(?Sized); }
     type Type { #only_by_ref; }
-    type LValue { #only_by_ref; }
-    type RValue { #only_by_ref; }
+    type Expr { #only_by_ref; }
     type Stmt { #only_by_ref; }
 
     type Rc<SourceInfo> {
@@ -52,20 +50,15 @@ mod crate::ir {
         fn clone(&self) -> Rc<SourceInfo>;
     }
 
-    type Rc<LValue> {
+    type Rc<Expr> {
         #layout(size=8, align=8);
-        fn deref(&self) -> &LValue;
+        fn deref(&self) -> &Expr;
     }
 
-    type Rc<RValue> {
-        #layout(size=8, align=8);
-        fn deref(&self) -> &RValue;
-    }
-
-    type Vec<Rc<RValue>> {
+    type Vec<Rc<Expr>> {
         #heap_allocated;
-        fn new() -> Vec<Rc<RValue>>;
-        fn push(&mut self, Rc<RValue>);
+        fn new() -> Vec<Rc<Expr>>;
+        fn push(&mut self, Rc<Expr>);
     }
 
     type Rc<Stmt> {
@@ -150,7 +143,7 @@ mod crate::clang {
         fn add_struct(&mut self, DeclBuilder);
         fn add_include(&mut self, Rc<SourceInfo>, u32, &SnippetMap);
 
-        fn parse_rvalue(&mut self, Rc<SourceInfo>, u32, &SnippetMap) -> Rc<RValue>;
+        fn parse_rvalue(&mut self, Rc<SourceInfo>, u32, &SnippetMap) -> Rc<Expr>;
 
         fn report_diag(&mut self, Rc<SourceInfo>, bool, &str);
 
@@ -164,8 +157,8 @@ mod crate::clang {
         fn arg(&mut self, Rc<Ident>, Rc<Type>);
         fn arg_anon(&mut self, Rc<Type>);
         fn field(&mut self, Rc<Ident>, Rc<Type>);
-        fn requires(&mut self, Rc<RValue>);
-        fn ensures(&mut self, Rc<RValue>);
+        fn requires(&mut self, Rc<Expr>);
+        fn ensures(&mut self, Rc<Expr>);
     }
 
     type InlineCodeBuilder {
@@ -178,8 +171,8 @@ mod crate::clang {
     type StructInitBuilder {
         #heap_allocated;
         fn new(Rc<SourceInfo>, Rc<Ident>) -> StructInitBuilder;
-        fn field(&mut self, Rc<Ident>, Rc<RValue>);
-        fn build(self) -> Rc<RValue>;
+        fn field(&mut self, Rc<Ident>, Rc<Expr>);
+        fn build(self) -> Rc<Expr>;
     }
 
     fn str_from_parts(*const u8, usize) -> &str;
@@ -195,38 +188,38 @@ mod crate::clang {
     fn mk_pointer_array(Rc<SourceInfo>, Rc<Type>) -> Rc<Type>;
     fn mk_type_struct(Rc<SourceInfo>, Rc<Ident>) -> Rc<Type>;
     fn mk_type_typedef(Rc<SourceInfo>, Rc<Ident>) -> Rc<Type>;
-    fn mk_type_requires(Rc<SourceInfo>, Rc<Type>, Rc<RValue>) -> Rc<Type>;
-    fn mk_type_ensures(Rc<SourceInfo>, Rc<Type>, Rc<RValue>) -> Rc<Type>;
+    fn mk_type_requires(Rc<SourceInfo>, Rc<Type>, Rc<Expr>) -> Rc<Type>;
+    fn mk_type_ensures(Rc<SourceInfo>, Rc<Type>, Rc<Expr>) -> Rc<Type>;
     fn mk_type_consumes(Rc<SourceInfo>, Rc<Type>) -> Rc<Type>;
     fn mk_type_plain(Rc<SourceInfo>, Rc<Type>) -> Rc<Type>;
     fn mk_type_err(Rc<SourceInfo>) -> Rc<Type>;
 
     fn mk_bigint(&str) -> Rc<BigInt>;
 
-    fn mk_bool_lit(Rc<SourceInfo>, bool) -> Rc<RValue>;
-    fn mk_int_lit(Rc<SourceInfo>, Rc<BigInt>, Rc<Type>) -> Rc<RValue>;
-    fn mk_rvalue_lvalue(Rc<SourceInfo>, Rc<LValue>) -> Rc<RValue>;
-    fn mk_rvalue_ref(Rc<SourceInfo>, Rc<LValue>) -> Rc<RValue>;
-    fn mk_rvalue_cast(Rc<SourceInfo>, Rc<RValue>, Rc<Type>) -> Rc<RValue>;
-    fn mk_rvalue_unop(Rc<SourceInfo>, UnOp, Rc<RValue>) -> Rc<RValue>;
-    fn mk_rvalue_binop(Rc<SourceInfo>, BinOp, Rc<RValue>, Rc<RValue>) -> Rc<RValue>;
-    fn mk_rvalue_fncall(Rc<SourceInfo>, Rc<Ident>, Vec<Rc<RValue>>) -> Rc<RValue>;
-    fn mk_cast(Rc<SourceInfo>, Rc<RValue>, Rc<Type>) -> Rc<RValue>;
-    fn mk_rvalue_err(Rc<SourceInfo>, Rc<Type>) -> Rc<RValue>;
+    fn mk_bool_lit(Rc<SourceInfo>, bool) -> Rc<Expr>;
+    fn mk_int_lit(Rc<SourceInfo>, Rc<BigInt>, Rc<Type>) -> Rc<Expr>;
+    fn mk_rvalue_lvalue(Rc<SourceInfo>, Rc<Expr>) -> Rc<Expr>;
+    fn mk_rvalue_ref(Rc<SourceInfo>, Rc<Expr>) -> Rc<Expr>;
+    fn mk_rvalue_cast(Rc<SourceInfo>, Rc<Expr>, Rc<Type>) -> Rc<Expr>;
+    fn mk_rvalue_unop(Rc<SourceInfo>, UnOp, Rc<Expr>) -> Rc<Expr>;
+    fn mk_rvalue_binop(Rc<SourceInfo>, BinOp, Rc<Expr>, Rc<Expr>) -> Rc<Expr>;
+    fn mk_rvalue_fncall(Rc<SourceInfo>, Rc<Ident>, Vec<Rc<Expr>>) -> Rc<Expr>;
+    fn mk_cast(Rc<SourceInfo>, Rc<Expr>, Rc<Type>) -> Rc<Expr>;
+    fn mk_rvalue_err(Rc<SourceInfo>, Rc<Type>) -> Rc<Expr>;
 
-    fn mk_lvalue_var(Rc<SourceInfo>, Rc<Ident>) -> Rc<LValue>;
-    fn mk_lvalue_member(Rc<SourceInfo>, Rc<LValue>, Rc<Ident>) -> Rc<LValue>;
-    fn mk_deref(Rc<SourceInfo>, Rc<RValue>) -> Rc<LValue>;
-    fn mk_lvalue_err(Rc<SourceInfo>, Rc<Type>) -> Rc<LValue>;
+    fn mk_lvalue_var(Rc<SourceInfo>, Rc<Ident>) -> Rc<Expr>;
+    fn mk_lvalue_member(Rc<SourceInfo>, Rc<Expr>, Rc<Ident>) -> Rc<Expr>;
+    fn mk_deref(Rc<SourceInfo>, Rc<Expr>) -> Rc<Expr>;
+    fn mk_lvalue_err(Rc<SourceInfo>, Rc<Type>) -> Rc<Expr>;
 
     fn mk_var_decl(Rc<SourceInfo>, Rc<Ident>, Rc<Type>) -> Rc<Stmt>;
-    fn mk_assign(Rc<SourceInfo>, Rc<LValue>, Rc<RValue>) -> Rc<Stmt>;
-    fn mk_return(Rc<SourceInfo>, Rc<RValue>) -> Rc<Stmt>;
-    fn mk_call(Rc<SourceInfo>, Rc<RValue>) -> Rc<Stmt>;
-    fn mk_if(Rc<SourceInfo>, Rc<RValue>, Vec<Rc<Stmt>>, Vec<Rc<Stmt>>) -> Rc<Stmt>;
-    fn mk_while(Rc<SourceInfo>, Rc<RValue>, Vec<Rc<RValue>>, Vec<Rc<Stmt>>) -> Rc<Stmt>;
+    fn mk_assign(Rc<SourceInfo>, Rc<Expr>, Rc<Expr>) -> Rc<Stmt>;
+    fn mk_return(Rc<SourceInfo>, Rc<Expr>) -> Rc<Stmt>;
+    fn mk_call(Rc<SourceInfo>, Rc<Expr>) -> Rc<Stmt>;
+    fn mk_if(Rc<SourceInfo>, Rc<Expr>, Vec<Rc<Stmt>>, Vec<Rc<Stmt>>) -> Rc<Stmt>;
+    fn mk_while(Rc<SourceInfo>, Rc<Expr>, Vec<Rc<Expr>>, Vec<Rc<Stmt>>) -> Rc<Stmt>;
     fn mk_stmt_err(Rc<SourceInfo>) -> Rc<Stmt>;
-    fn mk_assert(Rc<SourceInfo>, Rc<RValue>) -> Rc<Stmt>;
+    fn mk_assert(Rc<SourceInfo>, Rc<Expr>) -> Rc<Stmt>;
 }
 
 extern "C++" {

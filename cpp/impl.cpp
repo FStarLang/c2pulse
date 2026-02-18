@@ -315,7 +315,7 @@ public:
     return t->isUnsignedIntegerType() && astCtx->getIntWidth(t) == 1;
   }
 
-  Rc<ir::LValue> trLValue(Expr *e) {
+  Rc<ir::Expr> trLValue(Expr *e) {
     auto loc = getRange(e->getSourceRange());
 
     if (auto dre = dyn_cast<DeclRefExpr>(e)) {
@@ -344,7 +344,7 @@ public:
                          trQualType(e->getType(), e->getSourceRange()));
   }
 
-  Rc<ir::RValue> trStructInitList(InitListExpr *init, SourceRange range,
+  Rc<ir::Expr> trStructInitList(InitListExpr *init, SourceRange range,
                                   Rc<ir::SourceInfo> loc) {
     auto qt = init->getType().getDesugaredType(*astCtx);
     auto *rec = dyn_cast<RecordType>(qt.getTypePtr());
@@ -371,7 +371,7 @@ public:
     return builder.build();
   }
 
-  Rc<ir::RValue> trRValue(Expr *e) {
+  Rc<ir::Expr> trRValue(Expr *e) {
     auto loc = getRange(e->getSourceRange());
 
     if (auto ic = dyn_cast<CastExpr>(e)) {
@@ -456,7 +456,7 @@ public:
       if (auto fd = c->getDirectCallee()) {
         auto fn = ctx.mk_ident(toStr(fd->getName()),
                                getRange(c->getCallee()->getSourceRange()));
-        auto args = Vec<Rc<ir::RValue>>::new_();
+        auto args = Vec<Rc<ir::Expr>>::new_();
         for (auto arg : c->arguments()) {
           args.push(trRValue(arg));
         }
@@ -517,7 +517,7 @@ public:
                               trStmts(i->getThen()), trStmts(i->getElse())));
     } else if (auto *w = dyn_cast<WhileStmt>(stmt)) {
       auto body = w->getBody();
-      auto invs = Vec<Rc<ir::RValue>>::new_();
+      auto invs = Vec<Rc<ir::Expr>>::new_();
       if (auto attrBody = dyn_cast<AttributedStmt>(body)) {
         for (auto attr : attrBody->getAttrs()) {
           if (auto inv = isUnaryAttrOf(attr, "c2pulse-invariant")) {
@@ -579,7 +579,7 @@ public:
     return stmts.push(mk_stmt_err(std::move(loc)));
   }
 
-  std::optional<Rc<ir::RValue>> isUnaryAttrOf(Attr const *attr,
+  std::optional<Rc<ir::Expr>> isUnaryAttrOf(Attr const *attr,
                                               char const *name) {
     if (auto ann = dyn_cast<AnnotateAttr>(attr);
         ann && ann->args_size() == 1 && ann->getAnnotation() == name) {

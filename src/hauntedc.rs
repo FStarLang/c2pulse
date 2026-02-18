@@ -230,38 +230,19 @@ trait SourceInfoForTokens {
     fn resolve_error_location(&self, span: &SimpleSpan) -> Location;
 }
 
+// With unified ExprT, the parser Expr is just Rc<crate::ir::Expr>.
+// We use a newtype for convenience methods.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-enum Expr {
-    LValue(Rc<LValue>),
-    RValue(Rc<RValue>),
-}
+struct Expr(Rc<crate::ir::Expr>);
+
 impl Expr {
-    fn to_rvalue(self) -> Rc<RValue> {
-        match self {
-            Expr::LValue(e) => {
-                let loc = e.loc.clone();
-                RValueT::LValue(e).with_loc(loc)
-            }
-            Expr::RValue(e) => e,
-        }
+    fn to_rvalue(self) -> Rc<crate::ir::Expr> {
+        self.0
     }
 }
-impl Expr {
-    fn to_lvalue<'a, T, S>(self, span: S) -> Result<Rc<LValue>, Rich<'a, T, S>> {
-        match self {
-            Expr::LValue(e) => Ok(e),
-            Expr::RValue(_) => Err(Rich::custom(span, "lvalue required")),
-        }
-    }
-}
-impl From<Rc<LValue>> for Expr {
-    fn from(value: Rc<LValue>) -> Self {
-        Expr::LValue(value)
-    }
-}
-impl From<Rc<RValue>> for Expr {
-    fn from(value: Rc<RValue>) -> Self {
-        Expr::RValue(value)
+impl From<Rc<crate::ir::Expr>> for Expr {
+    fn from(value: Rc<crate::ir::Expr>) -> Self {
+        Expr(value)
     }
 }
 
@@ -311,7 +292,7 @@ macro_rules! and_then {
 }
 
 fn mk_binop(binop: BinOp, lhs: Expr, rhs: Expr, loc: Rc<SourceInfo>) -> Expr {
-    RValueT::BinOp(binop, lhs.to_rvalue(), rhs.to_rvalue())
+    ExprT::BinOp(binop, lhs.to_rvalue(), rhs.to_rvalue())
         .with_loc(loc)
         .into()
 }
@@ -361,7 +342,7 @@ fn expr_parser<
             .padded_by(ws());
         let identifier = ident.clone().map(|i| {
             let loc = i.loc.clone();
-            LValueT::Var(i).with_loc(loc).into()
+            ExprT::Var(i).with_loc(loc).into()
         });
 
         let integer_constant =
@@ -374,7 +355,7 @@ fn expr_parser<
                             width: 32,
                         } // TODO
                         .with_loc(loc.clone());
-                        Ok(RValueT::IntLit(Rc::new(i), ty).with_loc(loc).into())
+                        Ok(ExprT::IntLit(Rc::new(i), ty).with_loc(loc).into())
                     }
                     Err(err) => Err(Rich::custom(span, err)),
                 }
@@ -404,7 +385,7 @@ fn expr_parser<
                             return Err(Rich::custom(s, "_old takes exactly one argument"));
                         };
                         let arg: &Expr = arg;
-                        Ok(RValueT::Old(arg.clone().to_rvalue())
+                        Ok(ExprT::Old(arg.clone().to_rvalue())
                             .with_loc(sift.resolve_source_info(&s))
                             .into())
                     }
@@ -412,15 +393,11 @@ fn expr_parser<
                         let &[arg] = &args.as_slice() else {
                             return Err(Rich::custom(s, "_live takes exactly one argument"));
                         };
-                        let arg = arg.clone().to_lvalue(s)?;
-                        // let Expr::LValue(arg) = arg else {
-                        //     return Err(Rich::custom(s, "_live requires an lvalue argument"));
-                        // };
-                        Ok(RValueT::Live(arg.clone())
+                        Ok(ExprT::Live(arg.clone().to_rvalue())
                             .with_loc(sift.resolve_source_info(&s))
                             .into())
                     }
-                    _ => Ok(RValueT::FnCall(
+                    _ => Ok(ExprT::FnCall(
                         f,
                         args.into_iter().map(|e: Expr| e.to_rvalue()).collect(),
                     )
@@ -432,10 +409,10 @@ fn expr_parser<
         .boxed();
         let postfix_expression = left_recursion!(postfix_expression_nonrec, {
             Dot(lhs, id: Rc<Ident>: punct(Punct::Dot).ignore_then(ident.clone())) = e =>
-                Ok(LValueT::Member(lhs.to_lvalue(e.span())?, id).with_loc(sift.resolve_source_info(&e.span())).into()),
+                Ok(ExprT::Member(lhs.to_rvalue(), id).with_loc(sift.resolve_source_info(&e.span())).into()),
             Arrow(lhs, id: Rc<Ident>: punct(Punct::DashGt).ignore_then(ident.clone())) = e => {
                 let loc = sift.resolve_source_info(&e.span());
-                Ok(LValueT::Member(LValueT::Deref(lhs.to_rvalue()).with_loc(loc.clone()), id).with_loc(loc).into())
+                Ok(ExprT::Member(ExprT::Deref(lhs.to_rvalue()).with_loc(loc.clone()), id).with_loc(loc).into())
             },
         }).boxed();
 
@@ -445,24 +422,24 @@ fn expr_parser<
                 punct(Punct::Star)
                     .ignore_then(cast_expression.clone())
                     .map_with(|e: Expr, extra| {
-                        LValueT::Deref(e.to_rvalue())
+                        ExprT::Deref(e.to_rvalue())
                             .with_loc(sift.resolve_source_info(&extra.span()))
                             .into()
                     }),
                 punct(Punct::Amp)
                     .ignore_then(cast_expression.clone())
-                    .try_map_with(|e: Expr, extra| {
-                        Ok(RValueT::Ref(e.to_lvalue(extra.span())?)
+                    .map_with(|e: Expr, extra| {
+                        ExprT::Ref(e.to_rvalue())
                             .with_loc(sift.resolve_source_info(&extra.span()))
-                            .into())
+                            .into()
                     }),
             ));
 
             and_then!(type_name.delimited_by(punct(Punct::LParen), punct(Punct::RParen)), {
                 InlinePulse(ty, code: Rc<InlineCode>: inline_pulse) = e =>
-                    RValueT::InlinePulse(code, ty).with_loc(sift.resolve_source_info(&e.span())).into(),
+                    ExprT::InlinePulse(code, ty).with_loc(sift.resolve_source_info(&e.span())).into(),
                 Plain(ty, x: Expr: cast_expression) = e =>
-                    RValueT::Cast(x.to_rvalue(), ty).with_loc(sift.resolve_source_info(&e.span())).into(),
+                    ExprT::Cast(x.to_rvalue(), ty).with_loc(sift.resolve_source_info(&e.span())).into(),
             }).or(unary_expression)
         });
 
@@ -580,12 +557,12 @@ impl SourceInfoForTokens for TokenSI {
     }
 }
 
-pub fn parse_rvalue(
+pub fn parse_expr(
     diagnostics: &mut Diagnostics,
     fallback_loc: &Rc<SourceInfo>,
     code: &InlineCode,
     snippets: &SnippetMap,
-) -> Rc<RValue> {
+) -> Rc<crate::ir::Expr> {
     let mut tokens: Vec<(Token, SimpleSpan)> = vec![];
     let mut source_infos: Vec<Rc<SourceInfo>> = vec![];
     for (
@@ -623,8 +600,9 @@ pub fn parse_rvalue(
     ));
     let output = match result.output() {
         Some(output) => output.clone().to_rvalue(),
-        None => RValueT::Error(TypeT::Error.with_loc(fallback_loc.clone()))
-            .with_loc(fallback_loc.clone()),
+        None => {
+            ExprT::Error(TypeT::Error.with_loc(fallback_loc.clone())).with_loc(fallback_loc.clone())
+        }
     };
     diagnostics
         .diags

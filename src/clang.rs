@@ -2,7 +2,7 @@ use num_bigint::BigInt;
 
 use crate::{
     diag::{Diagnostic, DiagnosticLevel, Diagnostics},
-    hauntedc::{SnippetMap, parse_rvalue},
+    hauntedc::{SnippetMap, parse_expr},
     ir::*,
     vfs::VFS,
 };
@@ -121,12 +121,12 @@ impl<'a> Ctx<'a> {
         }
     }
 
-    fn parse_rvalue(&mut self, loc: Rc<SourceInfo>, idx: u32, snippets: &SnippetMap) -> Rc<RValue> {
+    fn parse_rvalue(&mut self, loc: Rc<SourceInfo>, idx: u32, snippets: &SnippetMap) -> Rc<Expr> {
         match snippets.snippets.get(&idx) {
-            Some(code) => parse_rvalue(&mut self.diagnostics, &loc, code, snippets),
+            Some(code) => parse_expr(&mut self.diagnostics, &loc, code, snippets),
             None => {
                 self.report_diag(loc.clone(), true, "internal error: invalid code snippet");
-                RValueT::Error(TypeT::Error.with_loc(loc.clone())).with_loc(loc)
+                ExprT::Error(TypeT::Error.with_loc(loc.clone())).with_loc(loc)
             }
         }
     }
@@ -159,8 +159,8 @@ struct DeclBuilder {
     ret_type: Option<Rc<Type>>,
     args: Vec<FnArg>,
     fields: Vec<(Ident, Rc<Type>)>,
-    requires: Vec<Rc<RValue>>,
-    ensures: Vec<Rc<RValue>>,
+    requires: Vec<Rc<Expr>>,
+    ensures: Vec<Rc<Expr>>,
 }
 
 impl DeclBuilder {
@@ -191,10 +191,10 @@ impl DeclBuilder {
         self.fields.push(((*name).clone(), ty))
     }
 
-    fn requires(&mut self, p: Rc<RValue>) {
+    fn requires(&mut self, p: Rc<Expr>) {
         self.requires.push(p)
     }
-    fn ensures(&mut self, p: Rc<RValue>) {
+    fn ensures(&mut self, p: Rc<Expr>) {
         self.ensures.push(p)
     }
 }
@@ -281,10 +281,10 @@ fn mk_type_struct(loc: Rc<SourceInfo>, n: Rc<Ident>) -> Rc<Type> {
 fn mk_type_typedef(loc: Rc<SourceInfo>, n: Rc<Ident>) -> Rc<Type> {
     mk_ast(loc, TypeT::TypeRef(TypeRefKind::Typedef(n)))
 }
-fn mk_type_requires(loc: Rc<SourceInfo>, ty: Rc<Type>, p: Rc<RValue>) -> Rc<Type> {
+fn mk_type_requires(loc: Rc<SourceInfo>, ty: Rc<Type>, p: Rc<Expr>) -> Rc<Type> {
     TypeT::Requires(ty, p).with_loc(loc)
 }
-fn mk_type_ensures(loc: Rc<SourceInfo>, ty: Rc<Type>, p: Rc<RValue>) -> Rc<Type> {
+fn mk_type_ensures(loc: Rc<SourceInfo>, ty: Rc<Type>, p: Rc<Expr>) -> Rc<Type> {
     TypeT::Ensures(ty, p).with_loc(loc)
 }
 fn mk_type_consumes(loc: Rc<SourceInfo>, ty: Rc<Type>) -> Rc<Type> {
@@ -301,41 +301,43 @@ fn mk_bigint(s: &str) -> Rc<BigInt> {
     Rc::from(BigInt::from_str(s).unwrap())
 }
 
-fn mk_bool_lit(loc: Rc<SourceInfo>, val: bool) -> Rc<RValue> {
-    mk_ast(loc, RValueT::BoolLit(val))
+fn mk_bool_lit(loc: Rc<SourceInfo>, val: bool) -> Rc<Expr> {
+    mk_ast(loc, ExprT::BoolLit(val))
 }
-fn mk_int_lit(loc: Rc<SourceInfo>, val: Rc<BigInt>, ty: Rc<Type>) -> Rc<RValue> {
-    mk_ast(loc, RValueT::IntLit(val, ty))
+fn mk_int_lit(loc: Rc<SourceInfo>, val: Rc<BigInt>, ty: Rc<Type>) -> Rc<Expr> {
+    mk_ast(loc, ExprT::IntLit(val, ty))
 }
-fn mk_rvalue_lvalue(loc: Rc<SourceInfo>, lval: Rc<LValue>) -> Rc<RValue> {
-    mk_ast(loc, RValueT::LValue(lval))
+fn mk_rvalue_lvalue(loc: Rc<SourceInfo>, lval: Rc<Expr>) -> Rc<Expr> {
+    // With unified Expr, lvalue-to-rvalue is identity
+    let _ = loc;
+    lval
 }
-fn mk_rvalue_cast(loc: Rc<SourceInfo>, val: Rc<RValue>, ty: Rc<Type>) -> Rc<RValue> {
-    mk_ast(loc, RValueT::Cast(val, ty))
+fn mk_rvalue_cast(loc: Rc<SourceInfo>, val: Rc<Expr>, ty: Rc<Type>) -> Rc<Expr> {
+    mk_ast(loc, ExprT::Cast(val, ty))
 }
-fn mk_rvalue_unop(loc: Rc<SourceInfo>, op: UnOp, arg: Rc<RValue>) -> Rc<RValue> {
-    mk_ast(loc, RValueT::UnOp(op, arg))
+fn mk_rvalue_unop(loc: Rc<SourceInfo>, op: UnOp, arg: Rc<Expr>) -> Rc<Expr> {
+    mk_ast(loc, ExprT::UnOp(op, arg))
 }
-fn mk_rvalue_binop(loc: Rc<SourceInfo>, op: BinOp, lhs: Rc<RValue>, rhs: Rc<RValue>) -> Rc<RValue> {
-    mk_ast(loc, RValueT::BinOp(op, lhs, rhs))
+fn mk_rvalue_binop(loc: Rc<SourceInfo>, op: BinOp, lhs: Rc<Expr>, rhs: Rc<Expr>) -> Rc<Expr> {
+    mk_ast(loc, ExprT::BinOp(op, lhs, rhs))
 }
-fn mk_rvalue_ref(loc: Rc<SourceInfo>, lval: Rc<LValue>) -> Rc<RValue> {
-    mk_ast(loc, RValueT::Ref(lval))
+fn mk_rvalue_ref(loc: Rc<SourceInfo>, lval: Rc<Expr>) -> Rc<Expr> {
+    mk_ast(loc, ExprT::Ref(lval))
 }
-fn mk_rvalue_fncall(loc: Rc<SourceInfo>, f: Rc<Ident>, args: Vec<Rc<RValue>>) -> Rc<RValue> {
-    RValueT::FnCall(f, args).with_loc(loc)
+fn mk_rvalue_fncall(loc: Rc<SourceInfo>, f: Rc<Ident>, args: Vec<Rc<Expr>>) -> Rc<Expr> {
+    ExprT::FnCall(f, args).with_loc(loc)
 }
-fn mk_cast(loc: Rc<SourceInfo>, val: Rc<RValue>, ty: Rc<Type>) -> Rc<RValue> {
-    mk_ast(loc, RValueT::Cast(val, ty))
+fn mk_cast(loc: Rc<SourceInfo>, val: Rc<Expr>, ty: Rc<Type>) -> Rc<Expr> {
+    mk_ast(loc, ExprT::Cast(val, ty))
 }
-fn mk_rvalue_err(loc: Rc<SourceInfo>, ty: Rc<Type>) -> Rc<RValue> {
-    mk_ast(loc, RValueT::Error(ty))
+fn mk_rvalue_err(loc: Rc<SourceInfo>, ty: Rc<Type>) -> Rc<Expr> {
+    mk_ast(loc, ExprT::Error(ty))
 }
 
 pub struct StructInitBuilder {
     loc: Rc<SourceInfo>,
     name: Rc<Ident>,
-    fields: Vec<(Rc<Ident>, Rc<RValue>)>,
+    fields: Vec<(Rc<Ident>, Rc<Expr>)>,
 }
 
 impl StructInitBuilder {
@@ -347,50 +349,50 @@ impl StructInitBuilder {
         }
     }
 
-    fn field(&mut self, name: Rc<Ident>, val: Rc<RValue>) {
+    fn field(&mut self, name: Rc<Ident>, val: Rc<Expr>) {
         self.fields.push((name, val));
     }
 
-    fn build(self) -> Rc<RValue> {
-        RValueT::StructInit(self.name, self.fields).with_loc(self.loc)
+    fn build(self) -> Rc<Expr> {
+        ExprT::StructInit(self.name, self.fields).with_loc(self.loc)
     }
 }
 
-fn mk_lvalue_var(loc: Rc<SourceInfo>, name: Rc<Ident>) -> Rc<LValue> {
-    mk_ast(loc, LValueT::Var(name))
+fn mk_lvalue_var(loc: Rc<SourceInfo>, name: Rc<Ident>) -> Rc<Expr> {
+    mk_ast(loc, ExprT::Var(name))
 }
-fn mk_deref(loc: Rc<SourceInfo>, v: Rc<RValue>) -> Rc<LValue> {
-    mk_ast(loc, LValueT::Deref(v))
+fn mk_deref(loc: Rc<SourceInfo>, v: Rc<Expr>) -> Rc<Expr> {
+    mk_ast(loc, ExprT::Deref(v))
 }
-fn mk_lvalue_member(loc: Rc<SourceInfo>, v: Rc<LValue>, a: Rc<Ident>) -> Rc<LValue> {
-    mk_ast(loc, LValueT::Member(v, a))
+fn mk_lvalue_member(loc: Rc<SourceInfo>, v: Rc<Expr>, a: Rc<Ident>) -> Rc<Expr> {
+    mk_ast(loc, ExprT::Member(v, a))
 }
-fn mk_lvalue_err(loc: Rc<SourceInfo>, ty: Rc<Type>) -> Rc<LValue> {
-    mk_ast(loc, LValueT::Error(ty))
+fn mk_lvalue_err(loc: Rc<SourceInfo>, ty: Rc<Type>) -> Rc<Expr> {
+    mk_ast(loc, ExprT::Error(ty))
 }
 
 fn mk_var_decl(loc: Rc<SourceInfo>, id: Rc<Ident>, ty: Rc<Type>) -> Rc<Stmt> {
     mk_ast(loc, StmtT::Decl(id, ty))
 }
-fn mk_assign(loc: Rc<SourceInfo>, lhs: Rc<LValue>, rhs: Rc<RValue>) -> Rc<Stmt> {
+fn mk_assign(loc: Rc<SourceInfo>, lhs: Rc<Expr>, rhs: Rc<Expr>) -> Rc<Stmt> {
     mk_ast(loc, StmtT::Assign(lhs, rhs))
 }
-fn mk_return(loc: Rc<SourceInfo>, v: Rc<RValue>) -> Rc<Stmt> {
+fn mk_return(loc: Rc<SourceInfo>, v: Rc<Expr>) -> Rc<Stmt> {
     mk_ast(loc, StmtT::Return(v))
 }
-fn mk_call(loc: Rc<SourceInfo>, f: Rc<RValue>) -> Rc<Stmt> {
+fn mk_call(loc: Rc<SourceInfo>, f: Rc<Expr>) -> Rc<Stmt> {
     StmtT::Call(f).with_loc(loc)
 }
-fn mk_if(loc: Rc<SourceInfo>, cond: Rc<RValue>, a: Stmts, b: Stmts) -> Rc<Stmt> {
+fn mk_if(loc: Rc<SourceInfo>, cond: Rc<Expr>, a: Stmts, b: Stmts) -> Rc<Stmt> {
     StmtT::If(cond, Rc::new(a), Rc::new(b)).with_loc(loc)
 }
-fn mk_while(loc: Rc<SourceInfo>, cond: Rc<RValue>, invs: RValues, body: Stmts) -> Rc<Stmt> {
+fn mk_while(loc: Rc<SourceInfo>, cond: Rc<Expr>, invs: Exprs, body: Stmts) -> Rc<Stmt> {
     StmtT::While(cond, Rc::new(invs), Rc::new(body)).with_loc(loc)
 }
 fn mk_stmt_err(loc: Rc<SourceInfo>) -> Rc<Stmt> {
     mk_ast(loc, StmtT::Error)
 }
-fn mk_assert(loc: Rc<SourceInfo>, v: Rc<RValue>) -> Rc<Stmt> {
+fn mk_assert(loc: Rc<SourceInfo>, v: Rc<Expr>) -> Rc<Stmt> {
     mk_ast(loc, StmtT::Assert(v))
 }
 

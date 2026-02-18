@@ -14,6 +14,22 @@ pub type SourceRangeMap = Vec<(Location, Range)>;
 type Annotation = Rc<SourceInfo>;
 type Doc = RcDoc<'static, Annotation>;
 
+/// Tracks whether an emitted expression is an F* lvalue (ref a) or rvalue (a).
+enum ExprKind {
+    LValue(Doc),
+    RValue(Doc),
+}
+
+impl ExprKind {
+    /// Convert to an rvalue (F* type `a`). Dereferences lvalues with `!`.
+    fn to_rvalue(self) -> Doc {
+        match self {
+            ExprKind::LValue(doc) => parens(Doc::text("!").append(doc)),
+            ExprKind::RValue(doc) => doc,
+        }
+    }
+}
+
 struct StrWriter {
     buffer: String,
     line: usize,
@@ -158,55 +174,38 @@ fn emit_type(env: &Env, ty: &Type) -> Doc {
     })
 }
 
-fn subst_this_lvalue(env: &Env, lvalue: &mut LValue, this: &Rc<RValue>) {
-    match &mut lvalue.val {
-        LValueT::Var(x) => {
+fn subst_this_rvalue(env: &Env, rvalue: &mut Expr, this: &Rc<Expr>) {
+    match &mut rvalue.val {
+        ExprT::Var(x) => {
             if &*x.val == "this" {
-                match &this.val {
-                    RValueT::LValue(this) => *lvalue = (**this).clone(),
-                    _ => todo!(),
-                }
+                *rvalue = (**this).clone()
             }
         }
-        LValueT::Deref(rv) => subst_this_rvalue(env, Rc::make_mut(rv), this),
-        LValueT::Member(x, _a) => subst_this_lvalue(env, Rc::make_mut(x), this),
-        LValueT::Error(_ty) => {}
-    }
-}
-
-fn subst_this_rvalue(env: &Env, rvalue: &mut RValue, this: &Rc<RValue>) {
-    match &mut rvalue.val {
-        RValueT::BoolLit(_) => {}
-        RValueT::IntLit(..) => {}
-        RValueT::LValue(lv) => match &lv.val {
-            LValueT::Var(x) => {
-                if &*x.val == "this" {
-                    *rvalue = (**this).clone()
-                }
-            }
-            _ => subst_this_lvalue(env, Rc::make_mut(lv), this),
-        },
-        RValueT::Ref(lv) => subst_this_lvalue(env, Rc::make_mut(lv), this),
-        RValueT::UnOp(_, arg) => {
+        ExprT::Deref(rv) => subst_this_rvalue(env, Rc::make_mut(rv), this),
+        ExprT::Member(x, _a) => subst_this_rvalue(env, Rc::make_mut(x), this),
+        ExprT::BoolLit(_) => {}
+        ExprT::IntLit(..) => {}
+        ExprT::Ref(lv) => subst_this_rvalue(env, Rc::make_mut(lv), this),
+        ExprT::UnOp(_, arg) => {
             subst_this_rvalue(env, Rc::make_mut(arg), this);
         }
-        RValueT::BinOp(_, lhs, rhs) => {
+        ExprT::BinOp(_, lhs, rhs) => {
             subst_this_rvalue(env, Rc::make_mut(lhs), this);
             subst_this_rvalue(env, Rc::make_mut(rhs), this);
         }
-        RValueT::FnCall(_f, args) => {
+        ExprT::FnCall(_f, args) => {
             for arg in args {
                 subst_this_rvalue(env, Rc::make_mut(arg), this);
             }
         }
-        RValueT::Cast(val, _) => {
+        ExprT::Cast(val, _) => {
             subst_this_rvalue(env, Rc::make_mut(val), this);
         }
-        RValueT::InlinePulse(val, _) => subst_inline_code_this(env, Rc::make_mut(val), this),
-        RValueT::Error(_ty) => {}
-        RValueT::Live(val) => subst_this_lvalue(env, Rc::make_mut(val), this),
-        RValueT::Old(val) => subst_this_rvalue(env, Rc::make_mut(val), this),
-        RValueT::StructInit(_, fields) => {
+        ExprT::InlinePulse(val, _) => subst_inline_code_this(env, Rc::make_mut(val), this),
+        ExprT::Error(_ty) => {}
+        ExprT::Live(val) => subst_this_rvalue(env, Rc::make_mut(val), this),
+        ExprT::Old(val) => subst_this_rvalue(env, Rc::make_mut(val), this),
+        ExprT::StructInit(_, fields) => {
             for (_fld, val) in fields {
                 subst_this_rvalue(env, Rc::make_mut(val), this);
             }
@@ -214,7 +213,7 @@ fn subst_this_rvalue(env: &Env, rvalue: &mut RValue, this: &Rc<RValue>) {
     }
 }
 
-fn subst_inline_code_this(env: &Env, val: &mut InlineCode, this: &Rc<RValue>) {
+fn subst_inline_code_this(env: &Env, val: &mut InlineCode, this: &Rc<Expr>) {
     for tok in &mut val.tokens {
         // This is ridiculuously hacky....
         if &*tok.text.val == "this" {
@@ -237,13 +236,7 @@ fn emit_typeref_name(k: &TypeRefKind) -> (String, String, String) {
     (t, pre, post)
 }
 
-fn emit_type_slprop(
-    env: &Env,
-    ty: &Type,
-    req: &mut Vec<Doc>,
-    ens: &mut Vec<Doc>,
-    this: &Rc<RValue>,
-) {
+fn emit_type_slprop(env: &Env, ty: &Type, req: &mut Vec<Doc>, ens: &mut Vec<Doc>, this: &Rc<Expr>) {
     match &ty.val {
         TypeT::Void
         | TypeT::Bool
@@ -258,9 +251,7 @@ fn emit_type_slprop(
 
             match kind {
                 PointerKind::Ref => {
-                    let derefed =
-                        RValueT::LValue(LValueT::Deref(this.clone()).with_loc(this.loc.clone()))
-                            .with_loc(this.loc.clone());
+                    let derefed = ExprT::Deref(this.clone()).with_loc(this.loc.clone());
                     emit_type_slprop(env, pointee_ty, req, ens, &derefed);
                 }
                 _ => {} // TODO
@@ -296,40 +287,63 @@ fn emit_var(v: &Ident) -> Doc {
     annotated(v, Doc::text(v.val.to_string()))
 }
 
-fn emit_lvalue(env: &Env, v: &LValue) -> Doc {
-    annotated(v, {
-        match &v.val {
-            LValueT::Var(x) => {
-                if let Some(LocalDecl {
-                    kind: LocalDeclKind::RValue,
-                    ..
-                }) = env.lookup_var(x)
-                {
-                    Doc::text(format!(
-                        "admit() (* illegal lvalue reference to variable {} *)",
-                        v
-                    ))
-                } else {
-                    emit_var(x)
+fn emit_lvalue(env: &Env, v: &Expr) -> Doc {
+    match emit_expr(env, v) {
+        ExprKind::LValue(doc) => doc,
+        ExprKind::RValue(_) => {
+            Doc::text(format!("(*TODO: cannot produce lvalue for {}*) (admit())", v))
+        }
+    }
+}
+
+fn emit_expr(env: &Env, v: &Expr) -> ExprKind {
+    match &v.val {
+        ExprT::Var(x) => {
+            if let Some(LocalDecl {
+                kind: LocalDeclKind::RValue,
+                ..
+            }) = env.lookup_var(x)
+            {
+                ExprKind::RValue(annotated(v, emit_var(x)))
+            } else {
+                ExprKind::LValue(annotated(v, emit_var(x)))
+            }
+        }
+        ExprT::Deref(inner) => ExprKind::LValue(annotated(v, emit_expr(env, inner).to_rvalue())),
+        ExprT::Member(x, a) => match env.infer_expr(x) {
+            Some(ty) => {
+                let ty = env.vtype_whnf(ty);
+                match &ty.val {
+                    TypeT::TypeRef(TypeRefKind::Struct(struct_name)) => {
+                        match emit_expr(env, x) {
+                            ExprKind::LValue(x_doc) => ExprKind::LValue(annotated(
+                                v,
+                                unaryfn(
+                                    Doc::text(struct_field_proj_name(struct_name, a)),
+                                    x_doc,
+                                ),
+                            )),
+                            ExprKind::RValue(x_doc) => ExprKind::RValue(annotated(
+                                v,
+                                x_doc
+                                    .append(Doc::text("."))
+                                    .append(Doc::text(struct_direct_fld_name(struct_name, a))),
+                            )),
+                        }
+                    }
+                    _ => ExprKind::RValue(annotated(
+                        v,
+                        Doc::text(format!("((*TODO struct field access on {}*) admit())", ty)),
+                    )),
                 }
             }
-            LValueT::Deref(v) => emit_rvalue(env, v),
-            LValueT::Member(x, a) => match env.infer_lvalue(x) {
-                Some(ty) => {
-                    let ty = env.vtype_whnf(ty);
-                    match &ty.val {
-                        TypeT::TypeRef(TypeRefKind::Struct(struct_name)) => unaryfn(
-                            Doc::text(struct_field_proj_name(struct_name, a)),
-                            emit_lvalue(env, x),
-                        ),
-                        _ => Doc::text(format!("((*TODO struct field access on {}*) admit())", ty)),
-                    }
-                }
-                None => Doc::text(format!("((*TODO cannot infer type of {}*) admit())", x)),
-            },
-            LValueT::Error(_ty) => Doc::text("(admit())"),
-        }
-    })
+            None => ExprKind::RValue(annotated(
+                v,
+                Doc::text(format!("((*TODO cannot infer type of {}*) admit())", x)),
+            )),
+        },
+        _ => ExprKind::RValue(emit_rvalue_inner(env, v)),
+    }
 }
 
 fn binop(a: Doc, op: Doc, b: Doc) -> Doc {
@@ -450,11 +464,15 @@ fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
     })
 }
 
-fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
+fn emit_rvalue(env: &Env, v: &Expr) -> Doc {
+    emit_expr(env, v).to_rvalue()
+}
+
+fn emit_rvalue_inner(env: &Env, v: &Expr) -> Doc {
     annotated(v, {
         match &v.val {
-            RValueT::BoolLit(v) => Doc::text(if *v { "true" } else { "false" }),
-            RValueT::IntLit(val, ty) => match ty.val {
+            ExprT::BoolLit(v) => Doc::text(if *v { "true" } else { "false" }),
+            ExprT::IntLit(val, ty) => match ty.val {
                 TypeT::Int {
                     signed: true,
                     width,
@@ -466,20 +484,12 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
                 TypeT::SizeT => Doc::text(format!("{}sz", val)),
                 _ => Doc::text(format!("(*unsupported integer literal*){}", val)),
             },
-            RValueT::LValue(v) => {
-                if let LValueT::Var(x) = &v.val
-                    && let Some(LocalDecl {
-                        kind: LocalDeclKind::RValue,
-                        ..
-                    }) = env.lookup_var(&x)
-                {
-                    emit_var(x)
-                } else {
-                    parens(Doc::text("!").append(emit_lvalue(env, v)))
-                }
+            ExprT::Var(_) | ExprT::Deref(_) | ExprT::Member(_, _) => {
+                // These are lvalue variants; handled by emit_expr
+                unreachable!("lvalue variants should be handled by emit_expr")
             }
-            RValueT::Ref(v) => emit_lvalue(env, v),
-            RValueT::Cast(val, to_ty) => {
+            ExprT::Ref(v) => emit_lvalue(env, v),
+            ExprT::Cast(val, to_ty) => {
                 let val_doc = emit_rvalue(env, val);
                 let from_ty = env.infer_rvalue(val).map(|t| env.vtype_whnf(t));
                 let to_ty = env.vtype_whnf(to_ty.clone().into());
@@ -602,12 +612,12 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
                     _ => default(),
                 }
             }
-            RValueT::Error(_ty) => Doc::text("(admit())"),
-            RValueT::InlinePulse(val, _) => parens(Doc::concat(val.tokens.iter().map(|tok| {
+            ExprT::Error(_ty) => Doc::text("(admit())"),
+            ExprT::InlinePulse(val, _) => parens(Doc::concat(val.tokens.iter().map(|tok| {
                 Doc::text(tok.before)
                     .append(annotated(&tok.text, Doc::text(tok.text.val.to_string())))
             }))),
-            RValueT::BinOp(BinOp::LogAnd, lhs, rhs) => {
+            ExprT::BinOp(BinOp::LogAnd, lhs, rhs) => {
                 if let Some(ty) = env.infer_rvalue(lhs) {
                     if ty.val == TypeT::SLProp {
                         return binop(
@@ -623,7 +633,7 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
                     emit_rvalue(env, rhs),
                 )
             }
-            RValueT::BinOp(BinOp::Eq, lhs, rhs) => {
+            ExprT::BinOp(BinOp::Eq, lhs, rhs) => {
                 if let Some(ty) = env.infer_rvalue(lhs) {
                     let ty = env.vtype_whnf(ty);
                     match (&ty.val, &rhs.val) {
@@ -632,7 +642,7 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
                                 _,
                                 PointerKind::Ref | PointerKind::Unknown, /* TODO */
                             ),
-                            RValueT::IntLit(n, _),
+                            ExprT::IntLit(n, _),
                         ) => {
                             if **n == BigInt::ZERO {
                                 return unaryfn(
@@ -647,7 +657,7 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
                 // TODO: this should be == in ghost contexts
                 binop(emit_rvalue(env, lhs), Doc::text("="), emit_rvalue(env, rhs))
             }
-            RValueT::UnOp(op, arg) => {
+            ExprT::UnOp(op, arg) => {
                 if let Some(ty) = env.infer_rvalue(&arg)
                     && let Some(op) = emit_unop(env, *op, ty)
                 {
@@ -657,7 +667,7 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
                     Doc::text("(*unsupported binop*)(admit())")
                 }
             }
-            RValueT::BinOp(op, lhs, rhs) => {
+            ExprT::BinOp(op, lhs, rhs) => {
                 if let Some(ty) = env.infer_rvalue(&lhs)
                     && let Some(op) = emit_binop(env, *op, ty)
                 {
@@ -667,7 +677,7 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
                     Doc::text("(*unsupported binop*)(admit())")
                 }
             }
-            RValueT::FnCall(f, args) => {
+            ExprT::FnCall(f, args) => {
                 let args = if args.is_empty() {
                     Doc::text("()")
                 } else {
@@ -679,9 +689,9 @@ fn emit_rvalue(env: &Env, v: &RValue) -> Doc {
                         .append(args),
                 )
             }
-            RValueT::Live(v) => unaryfn(Doc::text("live"), emit_lvalue(env, v)),
-            RValueT::Old(v) => unaryfn(Doc::text("old"), emit_rvalue(env, v)),
-            RValueT::StructInit(name, fields) => Doc::text("{")
+            ExprT::Live(v) => unaryfn(Doc::text("live"), emit_lvalue(env, v)),
+            ExprT::Old(v) => unaryfn(Doc::text("old"), emit_rvalue(env, v)),
+            ExprT::StructInit(name, fields) => Doc::text("{")
                 .append(Doc::concat(fields.iter().map(|(fld, val)| {
                     Doc::line()
                         .append(Doc::text(format!("struct_{}__{}", name, fld)))
@@ -812,8 +822,8 @@ fn mk_star<I: IntoIterator<Item = Doc>>(ps: I) -> Doc {
     }
 }
 
-fn mk_rvar(n: &Rc<Ident>) -> Rc<RValue> {
-    RValueT::LValue(LValueT::Var(n.clone()).with_loc(n.loc.clone())).with_loc(n.loc.clone())
+fn mk_rvar(n: &Rc<Ident>) -> Rc<Expr> {
+    ExprT::Var(n.clone()).with_loc(n.loc.clone())
 }
 
 fn emit_typedef(env: &Env, TypeDefn { name, body }: &TypeDefn) -> Doc {
@@ -858,6 +868,10 @@ fn mk_assume_val(n: Doc, args: &[Doc], ty: Doc) -> Doc {
 
 fn struct_field_proj_name(name: &Ident, fld: &Ident) -> String {
     format!("struct_{}__get_{}", name, fld)
+}
+
+fn struct_direct_fld_name(name: &Ident, fld: &Ident) -> String {
+    format!("struct_{}__{}", name, fld)
 }
 
 fn mk_fun(arg: Doc, body: Doc) -> Doc {

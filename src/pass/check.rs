@@ -22,14 +22,14 @@ impl<'a> Checker<'a> {
         });
     }
 
-    fn infer_rvalue(&mut self, env: &Env, rval: &RValue) -> Option<MaybeRc<Type>> {
+    fn infer_rvalue(&mut self, env: &Env, rval: &Expr) -> Option<MaybeRc<Type>> {
         env.infer_rvalue(rval).or_else(|| {
             self.report(format!("cannot infer type of {}", rval), &rval.loc);
             None
         })
     }
 
-    fn infer_lvalue(&mut self, env: &Env, lval: &LValue) -> Option<MaybeRc<Type>> {
+    fn infer_lvalue(&mut self, env: &Env, lval: &Expr) -> Option<MaybeRc<Type>> {
         env.infer_lvalue(lval).or_else(|| {
             self.report(format!("cannot infer type of {}", lval), &lval.loc);
             None
@@ -45,7 +45,7 @@ impl<'a> Checker<'a> {
         }
     }
 
-    fn check_has_type(&mut self, env: &Env, rval: &RValue, expected: MaybeRc<Type>) {
+    fn check_has_type(&mut self, env: &Env, rval: &Expr, expected: MaybeRc<Type>) {
         if self.check_types
             && let Some(ty) = self.infer_rvalue(env, rval)
             && !env.vtype_eq(ty.clone().into(), expected.clone())
@@ -60,12 +60,12 @@ impl<'a> Checker<'a> {
         }
     }
 
-    fn check_slprop(&mut self, env: &Env, p: &RValue) {
+    fn check_slprop(&mut self, env: &Env, p: &Expr) {
         self.check_rvalue(env, p);
         self.check_has_type(env, p, TypeT::SLProp.with_loc_core(p.loc.clone()).into());
     }
 
-    fn check_bool(&mut self, env: &Env, p: &RValue) {
+    fn check_bool(&mut self, env: &Env, p: &Expr) {
         self.check_rvalue(env, p);
         self.check_has_type(env, p, TypeT::Bool.with_loc_core(p.loc.clone()).into());
     }
@@ -122,21 +122,45 @@ impl<'a> Checker<'a> {
         }
     }
 
-    fn check_rvalue(&mut self, env: &Env, rval: &RValue) {
+    fn check_rvalue(&mut self, env: &Env, rval: &Expr) {
         match &rval.val {
-            RValueT::BoolLit(_) => {}
-            RValueT::IntLit(_n, ty) => {
+            ExprT::BoolLit(_) => {}
+            ExprT::IntLit(_n, ty) => {
                 self.check_type(env, ty);
                 if self.check_types && !self.is_valid_int_type(env, ty.clone().into()) {
                     self.report(format!("invalid integer type: {}", ty), &rval.loc);
                 }
             }
-            RValueT::LValue(lval) => match &lval.val {
-                LValueT::Var(n) => self.check_var(env, n, false),
-                _ => self.check_lvalue(env, lval),
-            },
-            RValueT::Ref(lval) => self.check_lvalue(env, lval),
-            RValueT::UnOp(un_op, arg) => {
+            ExprT::Var(n) => self.check_var(env, n, false),
+            ExprT::Deref(inner) => {
+                self.check_rvalue(env, inner);
+                if self.check_types
+                    && let Some(rval_ty) = self.infer_rvalue(env, inner)
+                    && !self.is_pointer_type(env, rval_ty.clone())
+                {
+                    self.report(format!("not a pointer type: {}", rval_ty), &inner.loc)
+                }
+            }
+            ExprT::Member(x, a) => {
+                self.check_rvalue(env, x);
+                if self.check_types
+                    && let Some(t) = self.infer_rvalue(env, x)
+                {
+                    let t = env.vtype_whnf(t);
+                    let TypeT::TypeRef(TypeRefKind::Struct(n)) = &t.val else {
+                        return self.report(format!("not a structure type: {}", t), &rval.loc);
+                    };
+                    let Some(s) = env.lookup_struct(n) else {
+                        return self.report(format!("unknown structure {}", n), &rval.loc);
+                    };
+                    let Some(_f) = s.get_field(a) else {
+                        return self
+                            .report(format!("no field {} in structure {}", a, n), &rval.loc);
+                    };
+                }
+            }
+            ExprT::Ref(lval) => self.check_rvalue(env, lval),
+            ExprT::UnOp(un_op, arg) => {
                 self.check_rvalue(env, arg);
                 if self.check_types
                     && let Some(arg_ty) = self.infer_rvalue(env, arg)
@@ -153,7 +177,7 @@ impl<'a> Checker<'a> {
                     }
                 }
             }
-            RValueT::BinOp(bin_op, lhs, rhs) => {
+            ExprT::BinOp(bin_op, lhs, rhs) => {
                 self.check_rvalue(env, lhs);
                 self.check_rvalue(env, rhs);
                 if self.check_types
@@ -200,7 +224,7 @@ impl<'a> Checker<'a> {
                     }
                 }
             }
-            RValueT::FnCall(f, args) => {
+            ExprT::FnCall(f, args) => {
                 for arg in args {
                     self.check_rvalue(env, arg)
                 }
@@ -222,14 +246,14 @@ impl<'a> Checker<'a> {
                     self.check_has_type(env, arg, decl_arg.1.clone().into());
                 }
             }
-            RValueT::Cast(rval, ty) => {
+            ExprT::Cast(rval, ty) => {
                 self.check_rvalue(env, rval);
                 self.check_type(env, ty);
             }
-            RValueT::InlinePulse(_inline_code, ty) => self.check_type(env, ty),
-            RValueT::Live(lval) => self.check_lvalue(env, lval),
-            RValueT::Old(rval) => self.check_rvalue(env, rval),
-            RValueT::StructInit(name, fields) => {
+            ExprT::InlinePulse(_inline_code, ty) => self.check_type(env, ty),
+            ExprT::Live(lval) => self.check_rvalue(env, lval),
+            ExprT::Old(rval) => self.check_rvalue(env, rval),
+            ExprT::StructInit(name, fields) => {
                 let Some(s) = env.lookup_struct(name) else {
                     self.report(format!("unknown struct {}", name), &rval.loc);
                     return;
@@ -259,7 +283,7 @@ impl<'a> Checker<'a> {
                     }
                 }
             }
-            RValueT::Error(ty) => self.check_type(env, ty),
+            ExprT::Error(ty) => self.check_type(env, ty),
         }
     }
 
@@ -271,38 +295,8 @@ impl<'a> Checker<'a> {
         }
     }
 
-    fn check_lvalue(&mut self, env: &Env, lval: &LValue) {
-        match &lval.val {
-            LValueT::Var(n) => self.check_var(env, n, true),
-            LValueT::Deref(rval) => {
-                self.check_rvalue(env, rval);
-                if self.check_types
-                    && let Some(rval_ty) = self.infer_rvalue(env, rval)
-                    && !self.is_pointer_type(env, rval_ty.clone())
-                {
-                    self.report(format!("not a pointer type: {}", rval_ty), &rval.loc)
-                }
-            }
-            LValueT::Member(x, a) => {
-                self.check_lvalue(env, x);
-                if self.check_types
-                    && let Some(t) = self.infer_lvalue(env, x)
-                {
-                    let t = env.vtype_whnf(t);
-                    let TypeT::TypeRef(TypeRefKind::Struct(n)) = &t.val else {
-                        return self.report(format!("not a structure type: {}", t), &lval.loc);
-                    };
-                    let Some(s) = env.lookup_struct(n) else {
-                        return self.report(format!("unknown structure {}", n), &lval.loc);
-                    };
-                    let Some(_f) = s.get_field(a) else {
-                        return self
-                            .report(format!("no field {} in structure {}", a, n), &lval.loc);
-                    };
-                }
-            }
-            LValueT::Error(ty) => self.check_type(env, ty),
-        }
+    fn check_lvalue(&mut self, env: &Env, lval: &Expr) {
+        self.check_rvalue(env, lval)
     }
 
     fn check_var(&mut self, env: &Env, n: &Ident, needs_lvalue: bool) {
@@ -359,7 +353,7 @@ impl<'a> Checker<'a> {
         }
     }
 
-    fn check_slprops(&mut self, env: &Env, slprops: &Vec<Rc<RValue>>) {
+    fn check_slprops(&mut self, env: &Env, slprops: &Vec<Rc<Expr>>) {
         for p in slprops {
             self.check_slprop(env, p)
         }

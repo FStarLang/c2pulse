@@ -10,8 +10,8 @@ struct Elaborator<'a> {
     diags: &'a mut Diagnostics,
 }
 
-fn cast_to(rval: &mut Rc<RValue>, ty: Rc<Type>) {
-    *rval = RValueT::Cast(rval.clone(), ty).with_loc(rval.loc.clone())
+fn cast_to(rval: &mut Rc<Expr>, ty: Rc<Type>) {
+    *rval = ExprT::Cast(rval.clone(), ty).with_loc(rval.loc.clone())
 }
 
 impl<'a> Elaborator<'a> {
@@ -23,7 +23,7 @@ impl<'a> Elaborator<'a> {
         });
     }
 
-    fn infer_rvalue(&mut self, env: &Env, rval: &RValue) -> Option<MaybeRc<Type>> {
+    fn infer_rvalue(&mut self, env: &Env, rval: &Expr) -> Option<MaybeRc<Type>> {
         env.infer_rvalue(rval).or_else(|| {
             self.report(format!("cannot infer type of {}", rval), &rval.loc);
             None
@@ -65,80 +65,77 @@ impl<'a> Elaborator<'a> {
         }
     }
 
-    fn elab_lvalue(&mut self, env: &Env, lval: &mut LValue) {
-        match &mut lval.val {
-            LValueT::Var(_) => {}
-            LValueT::Deref(v) => self.elab_rvalue(env, Rc::make_mut(v)),
-            LValueT::Member(x, a) => {
-                self.elab_lvalue(env, Rc::make_mut(x));
-                if let Some(t) = env.infer_lvalue(x) {
-                    let t = env.vtype_whnf(t);
-                    let TypeT::TypeRef(TypeRefKind::Struct(n)) = &t.val else {
-                        return self.report(format!("not a structure type: {}", t), &lval.loc);
-                    };
-                    let Some(s) = env.lookup_struct(n) else {
-                        return self.report(format!("unknown structure {}", n), &lval.loc);
-                    };
-                    let Some(_f) = s.get_field(a) else {
-                        return self
-                            .report(format!("no field {} in structure {}", a, n), &lval.loc);
-                    };
-                }
-            }
-            LValueT::Error(ty) => self.elab_type(env, Rc::make_mut(ty)),
-        }
+    fn elab_lvalue(&mut self, env: &Env, lval: &mut Expr) {
+        self.elab_rvalue(env, lval)
     }
 
-    fn cast_to_slprop(&mut self, env: &Env, rval: &mut Rc<RValue>) {
+    fn cast_to_slprop(&mut self, env: &Env, rval: &mut Rc<Expr>) {
         if env
             .infer_rvalue(rval)
             .filter(|p| env.is_slprop(p.clone()))
             .is_none()
         {
-            *rval = RValueT::Cast(rval.clone(), TypeT::SLProp.with_loc(rval.loc.clone()))
+            *rval = ExprT::Cast(rval.clone(), TypeT::SLProp.with_loc(rval.loc.clone()))
                 .with_loc(rval.loc.clone())
         }
     }
 
-    fn cast_to_bool(&mut self, env: &Env, rval: &mut Rc<RValue>) {
+    fn cast_to_bool(&mut self, env: &Env, rval: &mut Rc<Expr>) {
         if env
             .infer_rvalue(rval)
             .filter(|p| env.is_bool(p.clone()))
             .is_none()
         {
-            *rval = RValueT::Cast(rval.clone(), TypeT::Bool.with_loc(rval.loc.clone()))
+            *rval = ExprT::Cast(rval.clone(), TypeT::Bool.with_loc(rval.loc.clone()))
                 .with_loc(rval.loc.clone())
         }
     }
 
-    fn elab_rvalue(&mut self, env: &Env, rval: &mut RValue) {
+    fn elab_rvalue(&mut self, env: &Env, rval: &mut Expr) {
         match &mut rval.val {
-            RValueT::IntLit(_, ty) => self.elab_type(env, Rc::make_mut(ty)),
-            RValueT::LValue(v) => self.elab_lvalue(env, Rc::make_mut(v)),
-            RValueT::Ref(v) => self.elab_lvalue(env, Rc::make_mut(v)),
-            RValueT::FnCall(_f, args) => {
+            ExprT::Var(_) => {}
+            ExprT::Deref(v) => self.elab_rvalue(env, Rc::make_mut(v)),
+            ExprT::Member(x, a) => {
+                self.elab_rvalue(env, Rc::make_mut(x));
+                if let Some(t) = env.infer_expr(x) {
+                    let t = env.vtype_whnf(t);
+                    let TypeT::TypeRef(TypeRefKind::Struct(n)) = &t.val else {
+                        return self.report(format!("not a structure type: {}", t), &rval.loc);
+                    };
+                    let Some(s) = env.lookup_struct(n) else {
+                        return self.report(format!("unknown structure {}", n), &rval.loc);
+                    };
+                    let Some(_f) = s.get_field(a) else {
+                        return self
+                            .report(format!("no field {} in structure {}", a, n), &rval.loc);
+                    };
+                }
+            }
+            ExprT::IntLit(_, ty) => self.elab_type(env, Rc::make_mut(ty)),
+            ExprT::Ref(v) => self.elab_rvalue(env, Rc::make_mut(v)),
+            ExprT::FnCall(_f, args) => {
                 // TODO: check type for f
                 for arg in args {
                     self.elab_rvalue(env, Rc::make_mut(arg));
                 }
             }
-            RValueT::Cast(val, ty) => {
+            ExprT::Cast(val, ty) => {
                 let val = Rc::make_mut(val);
                 self.elab_type(env, Rc::make_mut(ty));
                 self.elab_rvalue(env, val);
                 let _actual_ty = env.infer_rvalue(val);
                 // TODO: check that actual_ty can be casted to ty
             }
-            RValueT::Error(ty) => self.elab_type(env, Rc::make_mut(ty)),
-            RValueT::InlinePulse(_, ty) => self.elab_type(env, Rc::make_mut(ty)),
-            RValueT::UnOp(un_op, arg) => {
+            ExprT::Error(ty) => self.elab_type(env, Rc::make_mut(ty)),
+            ExprT::InlinePulse(_, ty) => self.elab_type(env, Rc::make_mut(ty)),
+            ExprT::UnOp(un_op, arg) => {
                 self.elab_rvalue(env, Rc::make_mut(arg));
                 match un_op {
                     UnOp::Not => self.cast_to_bool(env, arg),
                     UnOp::Neg => {}
                 }
             }
-            RValueT::BinOp(bin_op, lhs, rhs) => {
+            ExprT::BinOp(bin_op, lhs, rhs) => {
                 self.elab_rvalue(env, Rc::make_mut(lhs));
                 self.elab_rvalue(env, Rc::make_mut(rhs));
                 let Some(lhs_ty) = self.infer_rvalue(env, lhs) else {
@@ -150,7 +147,7 @@ impl<'a> Elaborator<'a> {
                 if *bin_op == BinOp::Eq {
                     let lhs_ty = env.vtype_whnf(lhs_ty.clone());
                     if let TypeT::Pointer(_, _) = &lhs_ty.val {
-                        if let RValueT::IntLit(n, rhs_ty) = &mut Rc::make_mut(rhs).val {
+                        if let ExprT::IntLit(n, rhs_ty) = &mut Rc::make_mut(rhs).val {
                             if **n == BigInt::ZERO {
                                 *rhs_ty = lhs_ty.to_rc();
                                 return;
@@ -187,10 +184,10 @@ impl<'a> Elaborator<'a> {
                     }
                 }
             }
-            RValueT::BoolLit(_) => {}
-            RValueT::Live(val) => self.elab_lvalue(env, Rc::make_mut(val)),
-            RValueT::Old(val) => self.elab_rvalue(env, Rc::make_mut(val)),
-            RValueT::StructInit(_, fields) => {
+            ExprT::BoolLit(_) => {}
+            ExprT::Live(val) => self.elab_rvalue(env, Rc::make_mut(val)),
+            ExprT::Old(val) => self.elab_rvalue(env, Rc::make_mut(val)),
+            ExprT::StructInit(_, fields) => {
                 for (_fld_name, fld_val) in fields {
                     self.elab_rvalue(env, Rc::make_mut(fld_val));
                 }
@@ -246,7 +243,7 @@ impl<'a> Elaborator<'a> {
         }
     }
 
-    fn elab_slprops(&mut self, env: &Env, slprops: &mut Vec<Rc<RValue>>) {
+    fn elab_slprops(&mut self, env: &Env, slprops: &mut Vec<Rc<Expr>>) {
         for p in slprops {
             self.elab_rvalue(env, Rc::make_mut(p));
             self.cast_to_slprop(env, p);

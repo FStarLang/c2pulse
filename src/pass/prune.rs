@@ -93,77 +93,73 @@ fn scan_type(deps: &mut HashSet<DeclName>, ty: &Type) {
         }
         TypeT::Requires(ty, p) | TypeT::Ensures(ty, p) => {
             scan_type(deps, ty);
-            scan_rvalue(deps, p);
+            scan_expr(deps, p);
         }
         TypeT::Consumes(ty) | TypeT::Plain(ty) => scan_type(deps, ty),
         TypeT::SpecInt => {}
     }
 }
 
-fn scan_lvalue(deps: &mut HashSet<DeclName>, lv: &LValue) {
-    match &lv.val {
-        LValueT::Var(_) => {}
-        LValueT::Deref(v) => scan_rvalue(deps, v),
-        LValueT::Member(x, _a) => scan_lvalue(deps, x),
-        LValueT::Error(ty) => scan_type(deps, ty),
-    }
-}
-
-fn scan_rvalues(deps: &mut HashSet<DeclName>, rvs: &RValues) {
-    for rv in rvs {
-        scan_rvalue(deps, rv);
-    }
-}
-
-fn scan_rvalue(deps: &mut HashSet<DeclName>, rv: &RValue) {
+fn scan_expr(deps: &mut HashSet<DeclName>, rv: &Expr) {
     match &rv.val {
-        RValueT::IntLit(_, ty) => scan_type(deps, ty),
-        RValueT::LValue(v) => scan_lvalue(deps, v),
-        RValueT::Ref(v) => scan_lvalue(deps, v),
-        RValueT::Cast(val, ty) => {
-            scan_rvalue(deps, val);
+        ExprT::Var(_) => {}
+        ExprT::Deref(v) => scan_expr(deps, v),
+        ExprT::Member(x, _a) => scan_expr(deps, x),
+        ExprT::IntLit(_, ty) => scan_type(deps, ty),
+        ExprT::Ref(v) => scan_expr(deps, v),
+        ExprT::Cast(val, ty) => {
+            scan_expr(deps, val);
             scan_type(deps, ty);
         }
-        RValueT::Error(ty) => scan_type(deps, ty),
-        RValueT::InlinePulse(_, ty) => scan_type(deps, ty),
-        RValueT::UnOp(_, arg) => scan_rvalue(deps, arg),
-        RValueT::BinOp(_, lhs, rhs) => {
-            scan_rvalue(deps, lhs);
-            scan_rvalue(deps, rhs);
+        ExprT::Error(ty) => scan_type(deps, ty),
+        ExprT::InlinePulse(_, ty) => scan_type(deps, ty),
+        ExprT::UnOp(_, arg) => scan_expr(deps, arg),
+        ExprT::BinOp(_, lhs, rhs) => {
+            scan_expr(deps, lhs);
+            scan_expr(deps, rhs);
         }
-        RValueT::FnCall(f, args) => {
+        ExprT::FnCall(f, args) => {
             deps.insert(DeclName::Fn(f.val.clone()));
-            scan_rvalues(deps, args);
+            scan_exprs(deps, args);
         }
-        RValueT::BoolLit(_) => {}
-        RValueT::Live(v) => scan_lvalue(deps, v),
-        RValueT::Old(v) => scan_rvalue(deps, v),
-        RValueT::StructInit(name, fields) => {
+        ExprT::BoolLit(_) => {}
+        ExprT::Live(v) => scan_expr(deps, v),
+        ExprT::Old(v) => scan_expr(deps, v),
+        ExprT::StructInit(name, fields) => {
             deps.insert(DeclName::Struct(name.val.clone()));
             for (_fld_name, fld_val) in fields {
-                scan_rvalue(deps, fld_val);
+                scan_expr(deps, fld_val);
             }
         }
     }
 }
 
+fn scan_exprs(deps: &mut HashSet<DeclName>, rvs: &Exprs) {
+    for rv in rvs {
+        scan_expr(deps, rv);
+    }
+}
+
 fn scan_stmt(deps: &mut HashSet<DeclName>, stmt: &Stmt) {
     match &stmt.val {
-        StmtT::Call(v) => scan_rvalue(deps, v),
+        StmtT::Call(v) => scan_expr(deps, v),
         StmtT::Decl(_name, ty) => scan_type(deps, ty),
-        StmtT::Assign(_name, v) => scan_rvalue(deps, v),
+        StmtT::Assign(lhs, v) => {
+            scan_expr(deps, lhs);
+            scan_expr(deps, v);
+        }
         StmtT::If(c, b1, b2) => {
-            scan_rvalue(deps, c);
+            scan_expr(deps, c);
             scan_stmts(deps, b1);
             scan_stmts(deps, b2)
         }
         StmtT::While(cond, invs, body) => {
-            scan_rvalue(deps, cond);
-            scan_rvalues(deps, invs);
+            scan_expr(deps, cond);
+            scan_exprs(deps, invs);
             scan_stmts(deps, body);
         }
-        StmtT::Return(v) => scan_rvalue(deps, v),
-        StmtT::Assert(v) => scan_rvalue(deps, v),
+        StmtT::Return(v) => scan_expr(deps, v),
+        StmtT::Assert(v) => scan_expr(deps, v),
         StmtT::Error => {}
     }
 }
@@ -201,10 +197,10 @@ fn scan_translation_unit(deps: &mut Deps<DeclName>, tu: &TranslationUnit) {
         scan_type(ds, &ret_type);
 
         for r in requires {
-            scan_rvalue(ds, r);
+            scan_expr(ds, r);
         }
         for e in ensures {
-            scan_rvalue(ds, e);
+            scan_expr(ds, e);
         }
     }
 

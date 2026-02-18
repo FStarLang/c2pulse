@@ -98,17 +98,22 @@ impl PrettyIR for TypeT {
     }
 }
 
-impl_display_using_prettyir!(RValueT);
+impl_display_using_prettyir!(ExprT);
 
-impl PrettyIR for RValueT {
+impl PrettyIR for ExprT {
     fn to_doc(&self) -> RcDoc<'_, ()> {
         match self {
-            RValueT::BoolLit(b) => RcDoc::text(if *b { "true" } else { "false" }),
-            RValueT::IntLit(n, _ty) => RcDoc::text(n.to_string()),
-            RValueT::LValue(lval) => lval.to_doc(),
-            RValueT::Ref(lval) => RcDoc::text("&").append(lval.to_doc()),
-            RValueT::UnOp(un_op, arg) => RcDoc::text(un_op.to_str()).append(arg.to_doc()),
-            RValueT::BinOp(bin_op, lhs, rhs) => RcDoc::text("(")
+            // LValue variants
+            ExprT::Var(x) => x.to_doc(),
+            ExprT::Deref(rval) => RcDoc::text("(*").append(rval.to_doc()).append(")"),
+            ExprT::Member(x, n) => x.to_doc().append(RcDoc::text(".")).append(n.to_doc()),
+
+            // RValue variants
+            ExprT::BoolLit(b) => RcDoc::text(if *b { "true" } else { "false" }),
+            ExprT::IntLit(n, _ty) => RcDoc::text(n.to_string()),
+            ExprT::Ref(lval) => RcDoc::text("&").append(lval.to_doc()),
+            ExprT::UnOp(un_op, arg) => RcDoc::text(un_op.to_str()).append(arg.to_doc()),
+            ExprT::BinOp(bin_op, lhs, rhs) => RcDoc::text("(")
                 .append(lhs.to_doc())
                 .append(RcDoc::space())
                 .append(bin_op.to_str())
@@ -118,7 +123,7 @@ impl PrettyIR for RValueT {
                 .append(")")
                 .nest(2)
                 .group(),
-            RValueT::FnCall(f, args) => f
+            ExprT::FnCall(f, args) => f
                 .to_doc()
                 .append("(")
                 .append(RcDoc::intersperse(
@@ -126,14 +131,14 @@ impl PrettyIR for RValueT {
                     RcDoc::text(",").append(RcDoc::line()),
                 ))
                 .append(")"),
-            RValueT::Cast(rval, ty) => (RcDoc::text("(")
+            ExprT::Cast(rval, ty) => (RcDoc::text("(")
                 .append(ty.to_doc())
                 .append(")")
                 .nest(2)
                 .group())
             .append(RcDoc::line())
             .append(rval.to_doc()),
-            RValueT::InlinePulse(inline_code, ty) => (RcDoc::text("(")
+            ExprT::InlinePulse(inline_code, ty) => (RcDoc::text("(")
                 .append(ty.to_doc())
                 .append(")")
                 .nest(2)
@@ -141,18 +146,18 @@ impl PrettyIR for RValueT {
             .append(RcDoc::line())
             .append(RcDoc::text("_inline_pulse(").append(inline_code.to_string()))
             .append(RcDoc::text(")")),
-            RValueT::Live(v) => RcDoc::text("_live(")
+            ExprT::Live(v) => RcDoc::text("_live(")
                 .append(v.to_doc())
                 .append(")")
                 .nest(2)
                 .group(),
-            RValueT::Old(v) => RcDoc::text("_old(")
+            ExprT::Old(v) => RcDoc::text("_old(")
                 .append(v.to_doc())
                 .append(")")
                 .nest(2)
                 .group(),
-            RValueT::Error(_) => RcDoc::text("???"),
-            RValueT::StructInit(name, fields) => RcDoc::text("(")
+            ExprT::Error(_) => RcDoc::text("???"),
+            ExprT::StructInit(name, fields) => RcDoc::text("(")
                 .append(name.to_doc())
                 .append(") {")
                 .append(RcDoc::intersperse(
@@ -165,19 +170,6 @@ impl PrettyIR for RValueT {
                     RcDoc::text(",").append(RcDoc::line()),
                 ))
                 .append("}"),
-        }
-    }
-}
-
-impl_display_using_prettyir!(LValueT);
-
-impl PrettyIR for LValueT {
-    fn to_doc(&self) -> RcDoc<'_, ()> {
-        match self {
-            LValueT::Var(x) => x.to_doc(),
-            LValueT::Deref(rval) => RcDoc::text("(*").append(rval.to_doc()).append(")"),
-            LValueT::Member(x, n) => x.to_doc().append(RcDoc::text(".")).append(n.to_doc()),
-            LValueT::Error(_) => RcDoc::text("???"),
         }
     }
 }

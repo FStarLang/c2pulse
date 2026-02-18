@@ -144,8 +144,8 @@ pub enum TypeT {
 
     TypeRef(TypeRefKind),
 
-    Requires(Rc<Type>, Rc<RValue>),
-    Ensures(Rc<Type>, Rc<RValue>),
+    Requires(Rc<Type>, Rc<Expr>),
+    Ensures(Rc<Type>, Rc<Expr>),
     Consumes(Rc<Type>),
     Plain(Rc<Type>),
 
@@ -214,48 +214,44 @@ impl Display for BinOp {
     }
 }
 
-pub type RValue = Ast<RValueT>;
-pub type RValues = Vec<Rc<RValue>>;
+pub type Expr = Ast<ExprT>;
+pub type Exprs = Vec<Rc<Expr>>;
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
-pub enum RValueT {
+pub enum ExprT {
+    // LValue variants
+    Var(Rc<Ident>),
+    Deref(Rc<Expr>),
+    Member(Rc<Expr>, Rc<Ident>),
+
+    // RValue variants
     BoolLit(bool),
     IntLit(Rc<BigInt>, Rc<Type>),
-    LValue(Rc<LValue>),
-    Ref(Rc<LValue>),
-    UnOp(UnOp, Rc<RValue>),
-    BinOp(BinOp, Rc<RValue>, Rc<RValue>),
-    FnCall(Rc<Ident>, RValues),
-    Cast(Rc<RValue>, Rc<Type>),
+    Ref(Rc<Expr>),
+    UnOp(UnOp, Rc<Expr>),
+    BinOp(BinOp, Rc<Expr>, Rc<Expr>),
+    FnCall(Rc<Ident>, Exprs),
+    Cast(Rc<Expr>, Rc<Type>),
     InlinePulse(Rc<InlineCode>, Rc<Type>),
-    Live(Rc<LValue>),
-    Old(Rc<RValue>),
-    StructInit(Rc<Ident>, Vec<(Rc<Ident>, Rc<RValue>)>),
+    Live(Rc<Expr>),
+    Old(Rc<Expr>),
+    StructInit(Rc<Ident>, Vec<(Rc<Ident>, Rc<Expr>)>),
     Error(Rc<Type>),
 }
 
 pub type IdentT = str;
 pub type Ident = Ast<Rc<IdentT>>;
 
-pub type LValue = Ast<LValueT>;
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
-pub enum LValueT {
-    Var(Rc<Ident>),
-    Deref(Rc<RValue>),
-    Member(Rc<LValue>, Rc<Ident>),
-    Error(Rc<Type>),
-}
-
 pub type Stmt = Ast<StmtT>;
 pub type Stmts = Vec<Rc<Stmt>>;
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum StmtT {
-    Call(Rc<RValue>),
+    Call(Rc<Expr>),
     Decl(Rc<Ident>, Rc<Type>),
-    Assign(Rc<LValue>, Rc<RValue>),
-    If(Rc<RValue>, Rc<Stmts>, Rc<Stmts>),
-    While(Rc<RValue>, Rc<RValues>, Rc<Stmts>),
-    Return(Rc<RValue>),
-    Assert(Rc<RValue>),
+    Assign(Rc<Expr>, Rc<Expr>),
+    If(Rc<Expr>, Rc<Stmts>, Rc<Stmts>),
+    While(Rc<Expr>, Rc<Exprs>, Rc<Stmts>),
+    Return(Rc<Expr>),
+    Assert(Rc<Expr>),
     Error,
 }
 
@@ -281,8 +277,8 @@ pub struct FnDecl {
     pub name: Rc<Ident>,
     pub ret_type: Rc<Type>,
     pub args: Vec<FnArg>,
-    pub requires: RValues,
-    pub ensures: RValues,
+    pub requires: Exprs,
+    pub ensures: Exprs,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]

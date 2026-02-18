@@ -140,65 +140,62 @@ impl Env {
         );
     }
 
-    pub fn infer_rvalue(&self, rvalue: &RValue) -> Option<MaybeRc<Type>> {
-        match &rvalue.val {
-            RValueT::IntLit(_, ty) => Some(ty.clone().into()),
-            RValueT::LValue(v) => self.infer_lvalue(v),
-            RValueT::Ref(v) => Some(
-                // TODO: put kind on Ref?
-                rvalue
-                    .reuse_loc(TypeT::Pointer(
-                        self.infer_lvalue(v)?.to_rc(),
-                        PointerKind::Ref,
-                    ))
-                    .into(),
-            ),
-            RValueT::FnCall(f, _args) => match self.globals.fns.get(&f.val) {
-                Some(f_decl) => Some(f_decl.ret_type.clone().into()),
-                None => None,
-            },
-            RValueT::Cast(_, ty) => Some(ty.clone().into()),
-            RValueT::Error(ty) => Some(ty.clone().into()),
-            RValueT::InlinePulse(_, ty) => Some(ty.clone().into()),
-            RValueT::UnOp(UnOp::Not, _)
-            | RValueT::BinOp(BinOp::Eq | BinOp::LEq | BinOp::Lt, _, _) => {
-                Some(TypeT::Bool.with_loc_core(rvalue.loc.clone()).into())
-            }
-            RValueT::UnOp(UnOp::Neg, lhs)
-            | RValueT::BinOp(
-                BinOp::LogAnd | BinOp::Mul | BinOp::Div | BinOp::Mod | BinOp::Add | BinOp::Sub,
-                lhs,
-                _,
-            ) => self.infer_rvalue(lhs),
-            RValueT::BoolLit(_) => Some(TypeT::Bool.with_loc_core(rvalue.loc.clone()).into()),
-            RValueT::Live(_) => Some(TypeT::SLProp.with_loc_core(rvalue.loc.clone()).into()),
-            RValueT::Old(v) => self.infer_rvalue(v),
-            RValueT::StructInit(name, _) => Some(
-                rvalue
-                    .reuse_loc(TypeT::TypeRef(TypeRefKind::Struct(name.clone())))
-                    .into(),
-            ),
-        }
+    pub fn infer_rvalue(&self, rvalue: &Expr) -> Option<MaybeRc<Type>> {
+        self.infer_expr(rvalue)
     }
 
-    pub fn infer_lvalue(&self, lvalue: &LValue) -> Option<MaybeRc<Type>> {
-        match &lvalue.val {
-            LValueT::Var(ident) => Some(self.lookup_var_type(ident)?.clone().into()),
-            LValueT::Deref(x) => {
-                let x_ty = self.vtype_whnf(self.infer_rvalue(x)?);
+    pub fn infer_lvalue(&self, lvalue: &Expr) -> Option<MaybeRc<Type>> {
+        self.infer_expr(lvalue)
+    }
+
+    pub fn infer_expr(&self, expr: &Expr) -> Option<MaybeRc<Type>> {
+        match &expr.val {
+            ExprT::Var(ident) => Some(self.lookup_var_type(ident)?.clone().into()),
+            ExprT::Deref(x) => {
+                let x_ty = self.vtype_whnf(self.infer_expr(x)?);
                 match &x_ty.val {
                     TypeT::Pointer(to, _) => Some(to.clone().into()),
                     _ => None,
                 }
             }
-            LValueT::Member(x, a) => {
-                let x_ty = self.vtype_whnf(self.infer_lvalue(x)?);
+            ExprT::Member(x, a) => {
+                let x_ty = self.vtype_whnf(self.infer_expr(x)?);
                 let TypeT::TypeRef(TypeRefKind::Struct(s)) = &x_ty.val else {
                     return None;
                 };
                 Some(self.lookup_struct(s)?.get_field(a)?.clone().into())
             }
-            LValueT::Error(ty) => Some(ty.clone().into()),
+            ExprT::IntLit(_, ty) => Some(ty.clone().into()),
+            ExprT::Ref(v) => Some(
+                expr.reuse_loc(TypeT::Pointer(
+                    self.infer_expr(v)?.to_rc(),
+                    PointerKind::Ref,
+                ))
+                .into(),
+            ),
+            ExprT::FnCall(f, _args) => match self.globals.fns.get(&f.val) {
+                Some(f_decl) => Some(f_decl.ret_type.clone().into()),
+                None => None,
+            },
+            ExprT::Cast(_, ty) => Some(ty.clone().into()),
+            ExprT::Error(ty) => Some(ty.clone().into()),
+            ExprT::InlinePulse(_, ty) => Some(ty.clone().into()),
+            ExprT::UnOp(UnOp::Not, _) | ExprT::BinOp(BinOp::Eq | BinOp::LEq | BinOp::Lt, _, _) => {
+                Some(TypeT::Bool.with_loc_core(expr.loc.clone()).into())
+            }
+            ExprT::UnOp(UnOp::Neg, lhs)
+            | ExprT::BinOp(
+                BinOp::LogAnd | BinOp::Mul | BinOp::Div | BinOp::Mod | BinOp::Add | BinOp::Sub,
+                lhs,
+                _,
+            ) => self.infer_expr(lhs),
+            ExprT::BoolLit(_) => Some(TypeT::Bool.with_loc_core(expr.loc.clone()).into()),
+            ExprT::Live(_) => Some(TypeT::SLProp.with_loc_core(expr.loc.clone()).into()),
+            ExprT::Old(v) => self.infer_expr(v),
+            ExprT::StructInit(name, _) => Some(
+                expr.reuse_loc(TypeT::TypeRef(TypeRefKind::Struct(name.clone())))
+                    .into(),
+            ),
         }
     }
 
