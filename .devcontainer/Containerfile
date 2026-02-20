@@ -29,6 +29,7 @@ RUN --mount=type=bind,source=.git,destination=/c2p-repo \
     sudo mkdir /workspaces && sudo chown vscode:vscode /workspaces && \
     cd /workspaces && git clone --depth=1 --recurse-submodules --shallow-submodules --reference-if-able=/c2p-repo --dissociate /c2p-repo c2pulse && \
     cd c2pulse && \
+    ./opt/fstar/.scripts/get_fstar_z3.sh ~/.local/bin/ && \
     make -j`nproc` build-pulse && \
     sudo tar --zstd -cf /c2pulse-opt-cache.tar.zst opt .git/modules && \
     cd / && sudo rm -rf /workspaces
