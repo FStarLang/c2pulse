@@ -4,6 +4,10 @@ on:
   # schedule:
   #   # Run daily at 00:00 UTC
   #   - cron: '0 0 * * *'
+  push:
+    paths:
+      - 'opt/**'
+      - '.devcontainer/Containerfile'
   workflow_dispatch:
 
 env:
