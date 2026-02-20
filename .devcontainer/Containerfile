@@ -2,7 +2,7 @@ FROM mcr.microsoft.com/devcontainers/base:ubuntu
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        opam libgmp-dev tmux ripgrep \
+        opam pkg-config libgmp-dev tmux ripgrep \
         clang-format ccls zstd rustup \
         lsb-release wget software-properties-common gnupg && \
     apt-get clean
@@ -21,3 +21,14 @@ RUN opam init --bare
 RUN rustup install stable
 
 RUN curl -fsSL https://gh.io/copilot-install | bash
+
+RUN opam option depext-run-installs=true
+ENV OPAMYES=1
+RUN --mount=type=bind,source=.git,destination=/c2p-repo \
+    git config --global --add safe.directory /c2p-repo && \
+    sudo mkdir /workspaces && sudo chown vscode:vscode /workspaces && \
+    cd /workspaces && git clone --depth=1 --recurse-submodules --shallow-submodules --reference-if-able=/c2p-repo --dissociate /c2p-repo c2pulse && \
+    cd c2pulse && \
+    make -j`nproc` build-pulse && \
+    sudo tar --zstd -cf /c2pulse-opt-cache.tar.zst opt && \
+    cd / && sudo rm -rf /workspaces
