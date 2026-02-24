@@ -24,6 +24,7 @@ pub struct LocalDecl {
 pub struct Env {
     globals: Rc<Globals>,
     locals: HashMap<Rc<str>, LocalDecl>,
+    pub loop_depth: usize,
 }
 
 macro_rules! either_side {
@@ -40,6 +41,14 @@ macro_rules! both_sides {
 impl Env {
     pub fn new() -> Env {
         Env::default()
+    }
+
+    pub fn in_loop(&self) -> bool {
+        self.loop_depth > 0
+    }
+
+    pub fn enter_loop(&mut self) {
+        self.loop_depth += 1;
     }
 
     pub fn push_fn_decl(&mut self, decl: FnDecl) {
