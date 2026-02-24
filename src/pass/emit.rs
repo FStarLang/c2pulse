@@ -1135,7 +1135,8 @@ fn emit_structdefn(
             )],
             Doc::text("GTot")
                 .append(Doc::line())
-                .append(unaryfn(Doc::text("ref"), ll_type)),
+                .append(unaryfn(Doc::text("ref"), ll_type))
+                .group(),
         ));
     }
 
