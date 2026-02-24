@@ -206,14 +206,14 @@ impl<'a> Checker<'a> {
                     };
                     match bin_op {
                         BinOp::Eq => check_eq(self),
-                        BinOp::LogAnd => {
+                        BinOp::LogAnd | BinOp::LogOr => {
                             check_eq(self);
                             match &env.vtype_whnf(lhs_ty.clone().into()).val {
                                 TypeT::Bool | TypeT::SLProp | TypeT::Error => {}
                                 _ => self.report(
                                     format!(
-                                        "&& needs to be applied to bool/slprop, not {}",
-                                        lhs_ty
+                                        "{} needs to be applied to bool/slprop, not {}",
+                                        bin_op, lhs_ty
                                     ),
                                     &rval.loc,
                                 ),

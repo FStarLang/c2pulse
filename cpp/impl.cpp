@@ -448,6 +448,14 @@ public:
         return m(ir::BinOp::LEq());
       case clang::BO_LT:
         return m(ir::BinOp::Lt());
+      case clang::BO_GT:
+        return mk_rvalue_binop(std::move(loc), ir::BinOp::Lt(),
+                               trRValue(bo->getRHS()), trRValue(bo->getLHS()));
+      case clang::BO_GE:
+        return mk_rvalue_binop(std::move(loc), ir::BinOp::LEq(),
+                               trRValue(bo->getRHS()), trRValue(bo->getLHS()));
+      case clang::BO_LOr:
+        return m(ir::BinOp::LogOr());
 
       default:;
         // continue to error case

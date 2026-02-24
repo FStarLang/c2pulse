@@ -199,7 +199,8 @@ impl Env {
             ExprT::Cast(_, ty) => Some(ty.clone().into()),
             ExprT::Error(ty) => Some(ty.clone().into()),
             ExprT::InlinePulse(_, ty) => Some(ty.clone().into()),
-            ExprT::UnOp(UnOp::Not, _) | ExprT::BinOp(BinOp::Eq | BinOp::LEq | BinOp::Lt, _, _) => {
+            ExprT::UnOp(UnOp::Not, _)
+            | ExprT::BinOp(BinOp::Eq | BinOp::LEq | BinOp::Lt | BinOp::LogOr, _, _) => {
                 Some(TypeT::Bool.with_loc_core(expr.loc.clone()).into())
             }
             ExprT::UnOp(UnOp::Neg, lhs)

@@ -105,6 +105,7 @@ mk_punct_table! {
     Plus => "+",
     Dash => "-",
     Tilde => "~",
+    BangEq => "!=",
     Bang => "!",
 
     Slash => "/",
@@ -116,7 +117,6 @@ mk_punct_table! {
     Lt => "<",
     Gt => ">",
     EqEq => "==",
-    BangEq => "!=",
     Hat => "^",
     PipePipe => "||",
     Pipe => "|",
@@ -468,12 +468,21 @@ fn expr_parser<
                 mk_binop(BinOp::LEq, lhs, rhs, sift.resolve_source_info(&e.span())),
             Lt(lhs, punct(Punct::Lt), rhs) = e =>
                 mk_binop(BinOp::Lt, lhs, rhs, sift.resolve_source_info(&e.span())),
+            GtEq(lhs, punct(Punct::GtEq), rhs) = e =>
+                mk_binop(BinOp::LEq, rhs, lhs, sift.resolve_source_info(&e.span())),
+            Gt(lhs, punct(Punct::Gt), rhs) = e =>
+                mk_binop(BinOp::Lt, rhs, lhs, sift.resolve_source_info(&e.span())),
         })
         .boxed();
 
         let equality_expression = left_rec_binop!(relational_expression, {
             Eq(lhs, punct(Punct::EqEq), rhs) = e =>
                 mk_binop(BinOp::Eq, lhs, rhs, sift.resolve_source_info(&e.span())),
+            NEq(lhs, punct(Punct::BangEq), rhs) = e => {
+                let loc = sift.resolve_source_info(&e.span());
+                let eq = mk_binop(BinOp::Eq, lhs, rhs, loc.clone());
+                ExprT::UnOp(UnOp::Not, eq.to_rvalue()).with_loc(loc).into()
+            },
         })
         .boxed();
 
@@ -486,7 +495,11 @@ fn expr_parser<
                 mk_binop(BinOp::LogAnd, lhs, rhs, sift.resolve_source_info(&e.span())),
         })
         .boxed();
-        let logical_or_expression = logical_and_expression;
+        let logical_or_expression = left_rec_binop!(logical_and_expression, {
+            LogOr(lhs, punct(Punct::PipePipe), rhs) = e =>
+                mk_binop(BinOp::LogOr, lhs, rhs, sift.resolve_source_info(&e.span())),
+        })
+        .boxed();
 
         let conditional_expression = logical_or_expression;
 

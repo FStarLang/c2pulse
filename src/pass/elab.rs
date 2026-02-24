@@ -172,7 +172,8 @@ impl<'a> Elaborator<'a> {
                     | BinOp::Mod
                     | BinOp::Add
                     | BinOp::Sub
-                    | BinOp::LogAnd => {
+                    | BinOp::LogAnd
+                    | BinOp::LogOr => {
                         if let Some(meet_type) = env.meet_type(lhs_ty.clone(), rhs_ty.clone()) {
                             if !env.vtype_eq(lhs_ty, meet_type.clone()) {
                                 cast_to(lhs, meet_type.clone().to_rc())

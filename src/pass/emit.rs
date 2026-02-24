@@ -539,6 +539,7 @@ fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
         (BinOp::LEq, TypeT::Bool) => todo_binop!(),
         (BinOp::Lt, TypeT::Bool) => todo_binop!(),
         (BinOp::LogAnd, TypeT::Bool) => Doc::text("&&"),
+        (BinOp::LogOr, TypeT::Bool) => Doc::text("||"),
         (BinOp::Div, TypeT::Bool) => todo_binop!(),
         (BinOp::Mod, TypeT::Bool) => todo_binop!(),
         (BinOp::Sub, TypeT::Bool) => todo_binop!(),
@@ -546,6 +547,7 @@ fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
         (BinOp::Mul, TypeT::Bool) => Doc::text("&&"),
 
         (BinOp::LogAnd, TypeT::SLProp) => Doc::text("**"),
+        (BinOp::LogOr, TypeT::SLProp) => todo_binop!(),
 
         (BinOp::Mul, TypeT::Int { signed, width }) => {
             Doc::text(format!("`{}.mul`", get_int_mod(signed, width)?))
@@ -576,6 +578,7 @@ fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
         (BinOp::Add, TypeT::SpecInt) => Doc::text("+"),
         (BinOp::Sub, TypeT::SpecInt) => Doc::text("-"),
         (BinOp::LogAnd, TypeT::SpecInt) => todo_binop!(),
+        (BinOp::LogOr, TypeT::SpecInt) => todo_binop!(),
 
         (
             op,
@@ -588,7 +591,7 @@ fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
             TypeT::Pointer(..),
         )
         | (_, TypeT::Void)
-        | (BinOp::LogAnd, TypeT::Int { .. } | TypeT::SizeT | TypeT::Pointer(..))
+        | (BinOp::LogAnd | BinOp::LogOr, TypeT::Int { .. } | TypeT::SizeT | TypeT::Pointer(..))
         | (_, TypeT::SLProp)
         | (_, TypeT::Error) => return None,
     })
@@ -763,6 +766,11 @@ fn emit_rvalue_inner(env: &Env, nm: &mut NameMangling, v: &Expr) -> Doc {
                     emit_rvalue(env, nm, rhs),
                 )
             }
+            ExprT::BinOp(BinOp::LogOr, lhs, rhs) => binop(
+                emit_rvalue(env, nm, lhs),
+                Doc::text("||"),
+                emit_rvalue(env, nm, rhs),
+            ),
             ExprT::BinOp(BinOp::Eq, lhs, rhs) => {
                 if let Some(ty) = env.infer_rvalue(lhs) {
                     let ty = env.vtype_whnf(ty);
