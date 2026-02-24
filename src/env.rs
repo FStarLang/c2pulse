@@ -105,6 +105,7 @@ impl Env {
         for arg in &decl.args {
             self.push_arg(arg, LocalDeclKind::LValue);
         }
+        self.set_return_type(decl.ret_type.clone());
     }
 
     pub fn lookup_fn(&self, ident: &Ident) -> Option<&FnDecl> {

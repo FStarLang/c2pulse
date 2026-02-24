@@ -312,7 +312,6 @@ impl<'a> Elaborator<'a> {
                 self.elab_fn_decl(env, decl);
                 let env = &mut env.clone();
                 env.push_fn_decl_args_for_body(decl);
-                env.set_return_type(decl.ret_type.clone());
                 self.elab_stmts(env, body);
             }
             DeclT::FnDecl(fn_decl) => self.elab_fn_decl(env, fn_decl),
