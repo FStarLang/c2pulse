@@ -938,12 +938,24 @@ fn emit_stmt(env: &Env, nm: &mut NameMangling, stmt: &Stmt) -> Doc {
             StmtT::Goto(label) => Doc::text("goto ")
                 .append(nm.emit(Name::Var(label.val.clone())))
                 .append(";"),
-            StmtT::Label(_) => Doc::text("(* unrestructured label *)"),
-            StmtT::GotoBlock { body, label } => block(emit_stmts(env, nm, body))
-                .append(Doc::hardline())
-                .append("label ")
-                .append(nm.emit(Name::Var(label.val.clone())))
-                .append(":"),
+            StmtT::Label { .. } => Doc::text("(* unrestructured label *)"),
+            StmtT::GotoBlock {
+                body,
+                label,
+                ensures,
+            } => {
+                let mut doc = block(emit_stmts(env, nm, body));
+                for e in ensures.iter() {
+                    doc = doc
+                        .append(Doc::hardline())
+                        .append("ensures ")
+                        .append(emit_rvalue(env, nm, e));
+                }
+                doc.append(Doc::hardline())
+                    .append("label ")
+                    .append(nm.emit(Name::Var(label.val.clone())))
+                    .append(":;")
+            }
             StmtT::Error => Doc::text("(admit());"),
         }
     })

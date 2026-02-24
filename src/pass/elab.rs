@@ -265,9 +265,16 @@ impl<'a> Elaborator<'a> {
                 self.cast_to_slprop(env, v);
             }
             StmtT::Goto(_) => {}
-            StmtT::Label(_) => {}
-            StmtT::GotoBlock { body, label: _ } => {
+            StmtT::Label { ensures, .. } => {
+                self.elab_slprops(env, Rc::make_mut(ensures));
+            }
+            StmtT::GotoBlock {
+                body,
+                label: _,
+                ensures,
+            } => {
                 self.elab_stmts(env, Rc::make_mut(body));
+                self.elab_slprops(env, Rc::make_mut(ensures));
             }
             StmtT::Error => {}
         }

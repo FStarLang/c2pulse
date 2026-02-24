@@ -174,8 +174,21 @@ fn scan_stmt(deps: &mut HashSet<DeclName>, stmt: &Stmt) {
         }
         StmtT::Assert(v) => scan_expr(deps, v),
         StmtT::Goto(_) => {}
-        StmtT::Label(_) => {}
-        StmtT::GotoBlock { body, label: _ } => scan_stmts(deps, body),
+        StmtT::Label { ensures, .. } => {
+            for e in &**ensures {
+                scan_expr(deps, e)
+            }
+        }
+        StmtT::GotoBlock {
+            body,
+            label: _,
+            ensures,
+        } => {
+            scan_stmts(deps, body);
+            for e in &**ensures {
+                scan_expr(deps, e)
+            }
+        }
         StmtT::Error => {}
     }
 }

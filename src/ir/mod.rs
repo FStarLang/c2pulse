@@ -263,10 +263,14 @@ pub enum StmtT {
     Return(Option<Rc<Expr>>),
     Assert(Rc<Expr>),
     Goto(Rc<Ident>),
-    Label(Rc<Ident>),
+    Label {
+        name: Rc<Ident>,
+        ensures: Rc<Exprs>,
+    },
     GotoBlock {
         body: Rc<Stmts>,
         label: Rc<Ident>,
+        ensures: Rc<Exprs>,
     },
     Error,
 }

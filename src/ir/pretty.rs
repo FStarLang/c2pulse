@@ -274,11 +274,23 @@ impl PrettyIR for StmtT {
             StmtT::Goto(label) => RcDoc::text("goto ")
                 .append(RcDoc::text(label.val.to_string()))
                 .append(";"),
-            StmtT::Label(label) => RcDoc::text(label.val.to_string()).append(":"),
-            StmtT::GotoBlock { body, label } => pretty_block(body)
-                .append(RcDoc::hardline())
-                .append(RcDoc::text(label.val.to_string()))
-                .append(":"),
+            StmtT::Label { name, .. } => RcDoc::text(name.val.to_string()).append(":"),
+            StmtT::GotoBlock {
+                body,
+                label,
+                ensures,
+            } => {
+                let mut doc = pretty_block(body);
+                for e in ensures.iter() {
+                    doc = doc
+                        .append(RcDoc::hardline())
+                        .append("ensures ")
+                        .append(e.to_doc());
+                }
+                doc.append(RcDoc::hardline())
+                    .append(RcDoc::text(label.val.to_string()))
+                    .append(":")
+            }
             StmtT::Error => RcDoc::text("???;"),
         }
     }

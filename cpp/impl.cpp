@@ -559,8 +559,28 @@ public:
     } else if (auto *ls = dyn_cast<LabelStmt>(stmt)) {
       auto label =
           ctx.mk_ident(toStr(llvm::StringRef(ls->getName())), loc.clone());
-      stmts.push(mk_label(std::move(loc), std::move(label)));
-      return trStmt(stmts, ls->getSubStmt());
+      auto enss = Vec<Rc<ir::Expr>>::new_();
+      auto subStmt = ls->getSubStmt();
+      // Clang attaches __attribute__ to the label decl
+      auto labelDecl = ls->getDecl();
+      if (labelDecl->hasAttrs()) {
+        for (auto attr : labelDecl->getAttrs()) {
+          if (auto ens = isUnaryAttrOf(attr, "c2pulse-ensures")) {
+            enss.push(std::move(ens.value()));
+          }
+        }
+      }
+      // Also check if sub-statement is AttributedStmt
+      if (auto attrStmt = dyn_cast<AttributedStmt>(subStmt)) {
+        for (auto attr : attrStmt->getAttrs()) {
+          if (auto ens = isUnaryAttrOf(attr, "c2pulse-ensures")) {
+            enss.push(std::move(ens.value()));
+          }
+        }
+        subStmt = attrStmt->getSubStmt();
+      }
+      stmts.push(mk_label(std::move(loc), std::move(label), std::move(enss)));
+      return trStmt(stmts, subStmt);
     } else if (auto *ds = dyn_cast<DeclStmt>(stmt)) {
       for (auto d : ds->decls()) {
         auto dloc = getRange(d->getSourceRange());

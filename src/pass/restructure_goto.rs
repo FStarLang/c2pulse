@@ -24,16 +24,16 @@ fn restructure_stmts(stmts: &mut Vec<Rc<Stmt>>) {
 
     // Find and restructure label statements
     // Process from the end so indices remain valid
-    let label_positions: Vec<(usize, Rc<Ident>)> = stmts
+    let label_positions: Vec<(usize, Rc<Ident>, Rc<Exprs>)> = stmts
         .iter()
         .enumerate()
         .filter_map(|(i, s)| match &s.val {
-            StmtT::Label(name) => Some((i, name.clone())),
+            StmtT::Label { name, ensures } => Some((i, name.clone(), ensures.clone())),
             _ => None,
         })
         .collect();
 
-    for (label_idx, label_name) in label_positions.into_iter().rev() {
+    for (label_idx, label_name, label_ensures) in label_positions.into_iter().rev() {
         // Find the earliest statement containing a goto to this label
         let first_goto = stmts[..label_idx]
             .iter()
@@ -47,6 +47,7 @@ fn restructure_stmts(stmts: &mut Vec<Rc<Stmt>>) {
             let goto_block = StmtT::GotoBlock {
                 body: Rc::new(body),
                 label: label_name,
+                ensures: label_ensures,
             }
             .with_loc(loc);
 
