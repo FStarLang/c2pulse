@@ -378,7 +378,10 @@ fn mk_assign(loc: Rc<SourceInfo>, lhs: Rc<Expr>, rhs: Rc<Expr>) -> Rc<Stmt> {
     mk_ast(loc, StmtT::Assign(lhs, rhs))
 }
 fn mk_return(loc: Rc<SourceInfo>, v: Rc<Expr>) -> Rc<Stmt> {
-    mk_ast(loc, StmtT::Return(v))
+    mk_ast(loc, StmtT::Return(Some(v)))
+}
+fn mk_return_void(loc: Rc<SourceInfo>) -> Rc<Stmt> {
+    mk_ast(loc, StmtT::Return(None))
 }
 fn mk_call(loc: Rc<SourceInfo>, f: Rc<Expr>) -> Rc<Stmt> {
     StmtT::Call(f).with_loc(loc)

@@ -258,7 +258,7 @@ pub enum StmtT {
     },
     Break,
     Continue,
-    Return(Rc<Expr>),
+    Return(Option<Rc<Expr>>),
     Assert(Rc<Expr>),
     Error,
 }

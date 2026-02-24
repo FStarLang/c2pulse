@@ -374,11 +374,13 @@ impl<'a> Checker<'a> {
                 }
             }
             StmtT::Return(v) => {
-                self.check_rvalue(env, v);
-                if self.check_types
-                    && let Some(ret_ty) = &env.return_type
-                {
-                    self.check_has_type(env, v, ret_ty.clone().into());
+                if let Some(v) = v {
+                    self.check_rvalue(env, v);
+                    if self.check_types
+                        && let Some(ret_ty) = &env.return_type
+                    {
+                        self.check_has_type(env, v, ret_ty.clone().into());
+                    }
                 }
             }
             StmtT::Assert(v) => self.check_slprop(env, v),

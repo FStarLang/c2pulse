@@ -540,7 +540,11 @@ public:
     } else if (dyn_cast<ContinueStmt>(stmt)) {
       return stmts.push(mk_continue(std::move(loc)));
     } else if (auto *r = dyn_cast<ReturnStmt>(stmt)) {
-      return stmts.push(mk_return(std::move(loc), trRValue(r->getRetValue())));
+      if (auto *rv = r->getRetValue()) {
+        return stmts.push(mk_return(std::move(loc), trRValue(rv)));
+      } else {
+        return stmts.push(mk_return_void(std::move(loc)));
+      }
     } else if (auto *ds = dyn_cast<DeclStmt>(stmt)) {
       for (auto d : ds->decls()) {
         auto dloc = getRange(d->getSourceRange());

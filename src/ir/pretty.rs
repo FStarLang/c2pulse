@@ -259,12 +259,13 @@ impl PrettyIR for StmtT {
                 .group(),
             StmtT::Break => RcDoc::text("break;"),
             StmtT::Continue => RcDoc::text("continue;"),
-            StmtT::Return(v) => RcDoc::text("return")
+            StmtT::Return(Some(v)) => RcDoc::text("return")
                 .append(RcDoc::line())
                 .append(v.to_doc())
                 .append(";")
                 .nest(2)
                 .group(),
+            StmtT::Return(None) => RcDoc::text("return;"),
             StmtT::Assert(v) => RcDoc::text("_assert(")
                 .append(v.to_doc())
                 .append(");")
