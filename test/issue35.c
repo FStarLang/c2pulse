@@ -10,7 +10,9 @@ void empty_branch()
   }
 }
 
-int non_final_if_else() {
+int non_final_if_else()
+  _ensures(return == (_specint) 1)
+{
   if (1) {
     return 1;
   } else {
@@ -20,7 +22,9 @@ int non_final_if_else() {
   return 3;
 }
 
-int non_final_if () {
+int non_final_if ()
+  _ensures(return == (_specint) 1)
+{
   if (1) {
     return 1;
   }
