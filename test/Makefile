@@ -13,11 +13,11 @@ $(CACHE_DIR)/.depend: $(TESTS) Makefile
 	echo >>$@
 	echo $(TESTS) | sed 's/ /\n/g' | sed 's;^\(.\)\(.*\)\..*;\U\1\E\2.fst: & $$(C2PULSE)\n;' >>$@
 
+C2PULSE ?= ../target/debug/c2pulse
+
 include $(CACHE_DIR)/.depend
 
 ALL_CHECKED_FILES = $(addprefix $(CACHE_DIR)/,$(addsuffix .checked,$(ALL_FST_FILES)))
-
-C2PULSE ?= ../target/debug/c2pulse
 
 FSTAR_EXE ?= ../opt/run-fstar.sh
 FSTAR = $(FSTAR_EXE) \
