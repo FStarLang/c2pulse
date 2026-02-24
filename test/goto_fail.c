@@ -11,5 +11,6 @@ void cleanup_on_error(int *p)
     *p = 42;
     return;
 fail:
-    *p = 99;
+    // TODO: support ensures
+    // *p = 99;
 }

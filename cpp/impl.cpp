@@ -603,6 +603,8 @@ public:
           }
         }
       }
+    } else if (dyn_cast<NullStmt>(stmt)) {
+      return rust::Unit();
     }
 
     reportUnsupported(stmt->getSourceRange(), loc, "unsupported statement ",
