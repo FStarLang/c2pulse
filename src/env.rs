@@ -134,24 +134,28 @@ impl Env {
         }
     }
 
-    pub fn push_this(&mut self, ty: Rc<Type>) {
+    pub fn push_this(&mut self, ty: Rc<Type>) -> Rc<IdentT> {
+        let id: Rc<IdentT> = Rc::from("this");
         self.locals.insert(
-            Rc::<str>::from("this"),
+            id.clone(),
             LocalDecl {
                 ty,
                 kind: LocalDeclKind::RValue,
             },
         );
+        id
     }
 
-    pub fn push_return(&mut self, ty: Rc<Type>) {
+    pub fn push_return(&mut self, ty: Rc<Type>) -> Rc<IdentT> {
+        let id: Rc<IdentT> = Rc::from("return");
         self.locals.insert(
-            Rc::<str>::from("return"),
+            id.clone(),
             LocalDecl {
                 ty,
                 kind: LocalDeclKind::RValue,
             },
         );
+        id
     }
 
     pub fn infer_rvalue(&self, rvalue: &Expr) -> Option<MaybeRc<Type>> {

@@ -1002,8 +1002,9 @@ fn emit_typedef(env: &Env, nm: &mut NameMangling, TypeDefn { name, body }: &Type
     let t = nm.emit(Name::TypeRef(k.into()));
     let ty_decl = mk_let(t.clone(), &[], Doc::text("Type"), emit_type(env, nm, body));
     let env = &mut env.clone();
-    env.push_this(TypeT::TypeRef(k.clone()).with_loc(name.loc.clone()));
-    let this: Rc<Ident> = Rc::<str>::from("this").with_loc(name.loc.clone());
+    let this = env
+        .push_this(TypeT::TypeRef(k.clone()).with_loc(name.loc.clone()))
+        .with_loc(name.loc.clone());
     let this_doc = nm.emit(Name::Var(this.val.clone()));
     let this_args = vec![parens(this_doc.append(":").append(Doc::line()).append(t))];
     let mut req = vec![];
@@ -1356,8 +1357,9 @@ fn emit_fn_decl(
 
     requires_props.extend(requires.iter().map(|r| emit_rvalue(env, nm, r)));
 
-    let return_id = Rc::<str>::from("return").with_loc(ret_type.loc.clone());
-    env.push_return(ret_type.clone());
+    let return_id = env
+        .push_return(ret_type.clone())
+        .with_loc(ret_type.loc.clone());
     emit_type_slprop(
         env,
         nm,
@@ -1368,7 +1370,6 @@ fn emit_fn_decl(
     );
     let ret_type_doc = emit_type(env, nm, ret_type);
 
-    env.push_return(ret_type.clone());
     ensures_props.extend(ensures.iter().map(|r| emit_rvalue(env, nm, r)));
 
     let hdr = Doc::group(
