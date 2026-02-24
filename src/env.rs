@@ -25,6 +25,7 @@ pub struct Env {
     globals: Rc<Globals>,
     locals: HashMap<Rc<str>, LocalDecl>,
     pub loop_depth: usize,
+    pub return_type: Option<Rc<Type>>,
 }
 
 macro_rules! either_side {
@@ -49,6 +50,10 @@ impl Env {
 
     pub fn enter_loop(&mut self) {
         self.loop_depth += 1;
+    }
+
+    pub fn set_return_type(&mut self, ty: Rc<Type>) {
+        self.return_type = Some(ty);
     }
 
     pub fn push_fn_decl(&mut self, decl: FnDecl) {

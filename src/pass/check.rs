@@ -363,7 +363,11 @@ impl<'a> Checker<'a> {
             }
             StmtT::Return(v) => {
                 self.check_rvalue(env, v);
-                // TODO: check that v has return type of fn
+                if self.check_types
+                    && let Some(ret_ty) = &env.return_type
+                {
+                    self.check_has_type(env, v, ret_ty.clone().into());
+                }
             }
             StmtT::Assert(v) => self.check_slprop(env, v),
             StmtT::Error => {}
@@ -414,6 +418,7 @@ impl<'a> Checker<'a> {
                 self.check_fn_decl(env, decl);
                 let env = &mut env.clone();
                 env.push_fn_decl_args_for_body(decl);
+                env.set_return_type(decl.ret_type.clone());
                 self.check_stmts(env, body);
             }
             DeclT::FnDecl(fn_decl) => self.check_fn_decl(env, fn_decl),

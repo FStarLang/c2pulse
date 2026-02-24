@@ -235,6 +235,13 @@ impl<'a> Elaborator<'a> {
             StmtT::Break | StmtT::Continue => {}
             StmtT::Return(x) => {
                 self.elab_rvalue(env, Rc::make_mut(x));
+                if let Some(ret_ty) = &env.return_type {
+                    if let Some(v_ty) = env.infer_rvalue(x) {
+                        if !env.vtype_eq(v_ty, ret_ty.clone().into()) {
+                            cast_to(x, ret_ty.clone());
+                        }
+                    }
+                }
             }
             StmtT::Assert(v) => {
                 self.elab_rvalue(env, Rc::make_mut(v));
@@ -289,6 +296,7 @@ impl<'a> Elaborator<'a> {
                 self.elab_fn_decl(env, decl);
                 let env = &mut env.clone();
                 env.push_fn_decl_args_for_body(decl);
+                env.set_return_type(decl.ret_type.clone());
                 self.elab_stmts(env, body);
             }
             DeclT::FnDecl(fn_decl) => self.elab_fn_decl(env, fn_decl),
