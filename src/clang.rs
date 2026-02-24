@@ -389,6 +389,12 @@ fn mk_if(loc: Rc<SourceInfo>, cond: Rc<Expr>, a: Stmts, b: Stmts) -> Rc<Stmt> {
 fn mk_while(loc: Rc<SourceInfo>, cond: Rc<Expr>, invs: Exprs, body: Stmts) -> Rc<Stmt> {
     StmtT::While(cond, Rc::new(invs), Rc::new(body)).with_loc(loc)
 }
+fn mk_break(loc: Rc<SourceInfo>) -> Rc<Stmt> {
+    mk_ast(loc, StmtT::Break)
+}
+fn mk_continue(loc: Rc<SourceInfo>) -> Rc<Stmt> {
+    mk_ast(loc, StmtT::Continue)
+}
 fn mk_stmt_err(loc: Rc<SourceInfo>) -> Rc<Stmt> {
     mk_ast(loc, StmtT::Error)
 }

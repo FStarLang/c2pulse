@@ -892,6 +892,8 @@ fn emit_stmt(env: &Env, nm: &mut NameMangling, stmt: &Stmt) -> Doc {
                 .append(emit_block(env, nm, body))
                 .append(";")
                 .group(),
+            StmtT::Break => Doc::text("break;"),
+            StmtT::Continue => Doc::text("continue;"),
             StmtT::Return(t) => emit_rvalue(env, nm, t).append(";").group().nest(2),
             StmtT::Assert(v) => Doc::text("assert")
                 .append(Doc::line())

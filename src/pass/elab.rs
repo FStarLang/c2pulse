@@ -232,6 +232,7 @@ impl<'a> Elaborator<'a> {
                 self.elab_slprops(env, Rc::make_mut(invs));
                 self.elab_stmts(env, Rc::make_mut(body));
             }
+            StmtT::Break | StmtT::Continue => {}
             StmtT::Return(x) => {
                 self.elab_rvalue(env, Rc::make_mut(x));
             }

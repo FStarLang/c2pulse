@@ -231,6 +231,8 @@ impl PrettyIR for StmtT {
                 .append(RcDoc::hardline())
                 .append(pretty_block(body))
                 .group(),
+            StmtT::Break => RcDoc::text("break;"),
+            StmtT::Continue => RcDoc::text("continue;"),
             StmtT::Return(v) => RcDoc::text("return")
                 .append(RcDoc::line())
                 .append(v.to_doc())

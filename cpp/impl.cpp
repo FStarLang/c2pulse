@@ -528,6 +528,10 @@ public:
       }
       return stmts.push(mk_while(loc.clone(), trRValue(w->getCond()),
                                  std::move(invs), trStmts(body)));
+    } else if (dyn_cast<BreakStmt>(stmt)) {
+      return stmts.push(mk_break(std::move(loc)));
+    } else if (dyn_cast<ContinueStmt>(stmt)) {
+      return stmts.push(mk_continue(std::move(loc)));
     } else if (auto *r = dyn_cast<ReturnStmt>(stmt)) {
       return stmts.push(mk_return(std::move(loc), trRValue(r->getRetValue())));
     } else if (auto *ds = dyn_cast<DeclStmt>(stmt)) {

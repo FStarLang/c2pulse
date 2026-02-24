@@ -10,6 +10,7 @@ use crate::{
 struct Checker<'a> {
     pass: &'a str,
     check_types: bool,
+    loop_depth: usize,
     diags: &'a mut Diagnostics,
 }
 
@@ -342,7 +343,24 @@ impl<'a> Checker<'a> {
                 for inv in &**invs {
                     self.check_slprop(env, inv)
                 }
+                self.loop_depth += 1;
                 self.check_stmts(env, body);
+                self.loop_depth -= 1;
+            }
+            StmtT::Break | StmtT::Continue => {
+                if self.loop_depth == 0 {
+                    self.report(
+                        format!(
+                            "{} outside of loop",
+                            if matches!(&stmt.val, StmtT::Break) {
+                                "break"
+                            } else {
+                                "continue"
+                            }
+                        ),
+                        &stmt.loc,
+                    );
+                }
             }
             StmtT::Return(v) => {
                 self.check_rvalue(env, v);
@@ -423,6 +441,7 @@ pub fn check(diags: &mut Diagnostics, tu: &mut TranslationUnit, pass: &str, chec
     Checker {
         pass,
         check_types,
+        loop_depth: 0,
         diags,
     }
     .check_translation_unit(tu);

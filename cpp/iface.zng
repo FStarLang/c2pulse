@@ -218,6 +218,8 @@ mod crate::clang {
     fn mk_call(Rc<SourceInfo>, Rc<Expr>) -> Rc<Stmt>;
     fn mk_if(Rc<SourceInfo>, Rc<Expr>, Vec<Rc<Stmt>>, Vec<Rc<Stmt>>) -> Rc<Stmt>;
     fn mk_while(Rc<SourceInfo>, Rc<Expr>, Vec<Rc<Expr>>, Vec<Rc<Stmt>>) -> Rc<Stmt>;
+    fn mk_break(Rc<SourceInfo>) -> Rc<Stmt>;
+    fn mk_continue(Rc<SourceInfo>) -> Rc<Stmt>;
     fn mk_stmt_err(Rc<SourceInfo>) -> Rc<Stmt>;
     fn mk_assert(Rc<SourceInfo>, Rc<Expr>) -> Rc<Stmt>;
 }

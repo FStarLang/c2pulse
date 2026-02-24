@@ -158,6 +158,7 @@ fn scan_stmt(deps: &mut HashSet<DeclName>, stmt: &Stmt) {
             scan_exprs(deps, invs);
             scan_stmts(deps, body);
         }
+        StmtT::Break | StmtT::Continue => {}
         StmtT::Return(v) => scan_expr(deps, v),
         StmtT::Assert(v) => scan_expr(deps, v),
         StmtT::Error => {}

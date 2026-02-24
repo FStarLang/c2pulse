@@ -250,6 +250,8 @@ pub enum StmtT {
     Assign(Rc<Expr>, Rc<Expr>),
     If(Rc<Expr>, Rc<Stmts>, Rc<Stmts>),
     While(Rc<Expr>, Rc<Exprs>, Rc<Stmts>),
+    Break,
+    Continue,
     Return(Rc<Expr>),
     Assert(Rc<Expr>),
     Error,
