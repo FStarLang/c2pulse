@@ -1,4 +1,8 @@
-use std::rc::Rc;
+use std::fmt::Write;
+use std::{
+    collections::{HashMap, HashSet},
+    rc::Rc,
+};
 
 use num_bigint::BigInt;
 use pretty::{RcDoc, Render, RenderAnnotated};
@@ -132,7 +136,136 @@ fn unaryfn_with_type(f: Doc, arg: Doc, ty: Doc) -> Doc {
     )
 }
 
-fn emit_type(env: &Env, ty: &Type) -> Doc {
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+enum TypeRef {
+    Typedef(Rc<IdentT>),
+    Struct(Rc<IdentT>),
+}
+impl From<&TypeRefKind> for TypeRef {
+    fn from(tr: &TypeRefKind) -> Self {
+        match tr {
+            TypeRefKind::Typedef(t) => TypeRef::Typedef(t.val.clone()),
+            TypeRefKind::Struct(s) => TypeRef::Struct(s.val.clone()),
+        }
+    }
+}
+
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+enum Name {
+    Var(Rc<IdentT>),
+    Fn(Rc<IdentT>),
+    TypeRef(TypeRef),
+    TypeRefPred(TypeRef),
+    TypeRefPredPost(TypeRef),
+
+    StructFieldProj(Rc<IdentT>, Rc<IdentT>),
+    StructDirectFieldName(Rc<IdentT>, Rc<IdentT>),
+    StructGhostFieldProj(Rc<IdentT>, Rc<IdentT>),
+    StructAuxFn(Rc<IdentT>, String),
+}
+impl Name {
+    fn to_string(&self) -> String {
+        fn struct_to_string(ident: &Rc<IdentT>) -> String {
+            Name::TypeRef(TypeRef::Struct(ident.clone())).to_string()
+        }
+        fn typeref_to_string(typeref: &TypeRef) -> String {
+            Name::TypeRef(typeref.clone()).to_string()
+        }
+
+        match self {
+            Name::Var(v) => {
+                let v: &str = v;
+                match v {
+                    "this" | "return" => v.into(),
+                    _ => format!("var_{}", v),
+                }
+            }
+            Name::Fn(v) => format!("func_{}", v),
+            Name::TypeRef(TypeRef::Struct(str)) => format!("struct_{}", str),
+            Name::TypeRef(TypeRef::Typedef(ty)) => format!("ty_{}", ty),
+            Name::TypeRefPred(type_ref) => format!("{}__pred", typeref_to_string(type_ref)),
+            Name::TypeRefPredPost(type_ref) => format!("{}__post", typeref_to_string(type_ref)),
+            Name::StructFieldProj(str, fld) => format!("{}__get_{}", struct_to_string(str), fld),
+            Name::StructDirectFieldName(str, fld) => format!("{}__{}", struct_to_string(str), fld),
+            Name::StructGhostFieldProj(str, fld) => format!("{}__{}", struct_to_string(str), fld),
+            Name::StructAuxFn(str, f) => format!("{}__aux_{}", struct_to_string(str), f),
+        }
+    }
+}
+
+const RESERVED: &[&str] = &[
+    "fn", // keywords
+    "assume",
+    "requires",
+    "ensures",
+    "preserves",
+    "continue",
+    "break",
+    "label",
+    "goto",
+    "return",
+    "stt", // library names
+    "stt_ghost",
+    "stt_atomic",
+    "ref",
+    "array",
+    "admit",
+    "bool",
+    "unit",
+    "slprop",
+    "emp",
+    "emp_inames",
+    "int",
+    "nat",
+    "not",
+    "pulse_eager_unfold",
+    "pulse_intro",
+];
+
+struct NameMangling {
+    map: HashMap<Name, Rc<str>>,
+    used: HashSet<Rc<str>>,
+}
+impl NameMangling {
+    fn new() -> Self {
+        NameMangling {
+            map: HashMap::new(),
+            used: RESERVED.iter().map(|r| Rc::from(*r)).collect(),
+        }
+    }
+
+    fn pick_new(&mut self, mut base: String) -> Rc<str> {
+        if !self.used.contains(base.as_str()) {
+            return Rc::from(base);
+        }
+        let base_init_len = base.len();
+        for i in 1.. {
+            base.truncate(base_init_len);
+            write!(base, "_{}", i).unwrap();
+            if !self.used.contains(base.as_str()) {
+                return Rc::from(base);
+            }
+        }
+        unreachable!()
+    }
+
+    fn mangle(&mut self, name: &Name) -> Rc<str> {
+        if let Some(mangled) = self.map.get(name) {
+            return mangled.clone();
+        }
+
+        let mangled = self.pick_new(name.to_string().to_lowercase());
+        self.used.insert(mangled.clone());
+        self.map.insert(name.clone(), mangled.clone());
+        mangled
+    }
+
+    fn emit(&mut self, name: Name) -> Doc {
+        Doc::text(self.mangle(&name).to_string())
+    }
+}
+
+fn emit_type(env: &Env, nm: &mut NameMangling, ty: &Type) -> Doc {
     annotated(ty, {
         match &ty.val {
             TypeT::Void => Doc::text("unit"),
@@ -151,17 +284,14 @@ fn emit_type(env: &Env, ty: &Type) -> Doc {
             TypeT::SizeT => Doc::text("SizeT.t"),
 
             TypeT::Pointer(to, PointerKind::Array) => {
-                unaryfn(Doc::text("array"), emit_type(env, to))
+                unaryfn(Doc::text("array"), emit_type(env, nm, to))
             }
             TypeT::Pointer(to, PointerKind::Ref | PointerKind::Unknown) => {
-                unaryfn(Doc::text("ref"), emit_type(env, to))
+                unaryfn(Doc::text("ref"), emit_type(env, nm, to))
             }
             TypeT::Error => Doc::text("unit"),
 
-            TypeT::TypeRef(n) => {
-                let (t, _pre, _post) = emit_typeref_name(n);
-                Doc::text(t)
-            }
+            TypeT::TypeRef(n) => nm.emit(Name::TypeRef(n.into())),
 
             TypeT::SLProp => Doc::text("slprop"),
             TypeT::SpecInt => Doc::text("int"),
@@ -169,74 +299,67 @@ fn emit_type(env: &Env, ty: &Type) -> Doc {
             TypeT::Requires(ty, _)
             | TypeT::Ensures(ty, _)
             | TypeT::Consumes(ty)
-            | TypeT::Plain(ty) => emit_type(env, ty),
+            | TypeT::Plain(ty) => emit_type(env, nm, ty),
         }
     })
 }
 
-fn subst_this_rvalue(env: &Env, rvalue: &mut Expr, this: &Rc<Expr>) {
+fn subst_this_rvalue(env: &Env, nm: &mut NameMangling, rvalue: &mut Expr, this: &Rc<Expr>) {
     match &mut rvalue.val {
         ExprT::Var(x) => {
             if &*x.val == "this" {
                 *rvalue = (**this).clone()
             }
         }
-        ExprT::Deref(rv) => subst_this_rvalue(env, Rc::make_mut(rv), this),
-        ExprT::Member(x, _a) => subst_this_rvalue(env, Rc::make_mut(x), this),
+        ExprT::Deref(rv) => subst_this_rvalue(env, nm, Rc::make_mut(rv), this),
+        ExprT::Member(x, _a) => subst_this_rvalue(env, nm, Rc::make_mut(x), this),
         ExprT::BoolLit(_) => {}
         ExprT::IntLit(..) => {}
-        ExprT::Ref(lv) => subst_this_rvalue(env, Rc::make_mut(lv), this),
+        ExprT::Ref(lv) => subst_this_rvalue(env, nm, Rc::make_mut(lv), this),
         ExprT::UnOp(_, arg) => {
-            subst_this_rvalue(env, Rc::make_mut(arg), this);
+            subst_this_rvalue(env, nm, Rc::make_mut(arg), this);
         }
         ExprT::BinOp(_, lhs, rhs) => {
-            subst_this_rvalue(env, Rc::make_mut(lhs), this);
-            subst_this_rvalue(env, Rc::make_mut(rhs), this);
+            subst_this_rvalue(env, nm, Rc::make_mut(lhs), this);
+            subst_this_rvalue(env, nm, Rc::make_mut(rhs), this);
         }
         ExprT::FnCall(_f, args) => {
             for arg in args {
-                subst_this_rvalue(env, Rc::make_mut(arg), this);
+                subst_this_rvalue(env, nm, Rc::make_mut(arg), this);
             }
         }
         ExprT::Cast(val, _) => {
-            subst_this_rvalue(env, Rc::make_mut(val), this);
+            subst_this_rvalue(env, nm, Rc::make_mut(val), this);
         }
-        ExprT::InlinePulse(val, _) => subst_inline_code_this(env, Rc::make_mut(val), this),
+        ExprT::InlinePulse(val, _) => subst_inline_code_this(env, nm, Rc::make_mut(val), this),
         ExprT::Error(_ty) => {}
-        ExprT::Live(val) => subst_this_rvalue(env, Rc::make_mut(val), this),
-        ExprT::Old(val) => subst_this_rvalue(env, Rc::make_mut(val), this),
+        ExprT::Live(val) => subst_this_rvalue(env, nm, Rc::make_mut(val), this),
+        ExprT::Old(val) => subst_this_rvalue(env, nm, Rc::make_mut(val), this),
         ExprT::StructInit(_, fields) => {
             for (_fld, val) in fields {
-                subst_this_rvalue(env, Rc::make_mut(val), this);
+                subst_this_rvalue(env, nm, Rc::make_mut(val), this);
             }
         }
     }
 }
 
-fn subst_inline_code_this(env: &Env, val: &mut InlineCode, this: &Rc<Expr>) {
+fn subst_inline_code_this(env: &Env, nm: &mut NameMangling, val: &mut InlineCode, this: &Rc<Expr>) {
     for tok in &mut val.tokens {
         // This is ridiculuously hacky....
         if &*tok.text.val == "this" {
-            tok.text.val = Rc::from(emit_rvalue(env, this).pretty(100).to_string());
+            tok.text.val = Rc::from(emit_rvalue(env, nm, this).pretty(100).to_string());
         }
     }
 }
 
-fn mk_struct_type_name(name: &Ident) -> String {
-    format!("struct_{}", name.val)
-}
-
-fn emit_typeref_name(k: &TypeRefKind) -> (String, String, String) {
-    let t = match k {
-        TypeRefKind::Typedef(n) => n.val.to_string(),
-        TypeRefKind::Struct(n) => mk_struct_type_name(n),
-    };
-    let pre = format!("{}_pred", t);
-    let post = format!("{}_post", t);
-    (t, pre, post)
-}
-
-fn emit_type_slprop(env: &Env, ty: &Type, req: &mut Vec<Doc>, ens: &mut Vec<Doc>, this: &Rc<Expr>) {
+fn emit_type_slprop(
+    env: &Env,
+    nm: &mut NameMangling,
+    ty: &Type,
+    req: &mut Vec<Doc>,
+    ens: &mut Vec<Doc>,
+    this: &Rc<Expr>,
+) {
     match &ty.val {
         TypeT::Void
         | TypeT::Bool
@@ -245,50 +368,52 @@ fn emit_type_slprop(env: &Env, ty: &Type, req: &mut Vec<Doc>, ens: &mut Vec<Doc>
         | TypeT::SpecInt
         | TypeT::SLProp => {}
         TypeT::Pointer(pointee_ty, kind) => {
-            let live = annotated(ty, unaryfn(Doc::text("live"), emit_rvalue(env, this)));
+            let live = annotated(ty, unaryfn(Doc::text("live"), emit_rvalue(env, nm, this)));
             req.push(live.clone());
             ens.push(live);
 
             match kind {
                 PointerKind::Ref => {
                     let derefed = ExprT::Deref(this.clone()).with_loc(this.loc.clone());
-                    emit_type_slprop(env, pointee_ty, req, ens, &derefed);
+                    emit_type_slprop(env, nm, pointee_ty, req, ens, &derefed);
                 }
                 _ => {} // TODO
             }
         }
         TypeT::TypeRef(n) => {
-            let (_t, pre, post) = emit_typeref_name(n);
-            let this = emit_rvalue(env, this);
-            req.push(unaryfn(Doc::text(pre), this.clone()));
-            ens.push(unaryfn(Doc::text(post), this.clone()));
+            let this = emit_rvalue(env, nm, this);
+            req.push(unaryfn(nm.emit(Name::TypeRefPred(n.into())), this.clone()));
+            ens.push(unaryfn(
+                nm.emit(Name::TypeRefPredPost(n.into())),
+                this.clone(),
+            ));
         }
         TypeT::Requires(ty, p) => {
-            emit_type_slprop(env, ty, req, ens, this);
+            emit_type_slprop(env, nm, ty, req, ens, this);
 
             let p = &mut p.clone();
-            subst_this_rvalue(env, Rc::make_mut(p), this);
-            req.push(emit_rvalue(env, p));
+            subst_this_rvalue(env, nm, Rc::make_mut(p), this);
+            req.push(emit_rvalue(env, nm, p));
         }
         TypeT::Ensures(ty, p) => {
-            emit_type_slprop(env, ty, req, ens, this);
+            emit_type_slprop(env, nm, ty, req, ens, this);
 
             let p = &mut p.clone();
-            subst_this_rvalue(env, Rc::make_mut(p), this);
-            ens.push(emit_rvalue(env, p));
+            subst_this_rvalue(env, nm, Rc::make_mut(p), this);
+            ens.push(emit_rvalue(env, nm, p));
         }
-        TypeT::Consumes(ty) => emit_type_slprop(env, ty, req, &mut vec![], this),
+        TypeT::Consumes(ty) => emit_type_slprop(env, nm, ty, req, &mut vec![], this),
         TypeT::Plain(_) => {}
         TypeT::Error => {}
     }
 }
 
-fn emit_var(v: &Ident) -> Doc {
-    annotated(v, Doc::text(v.val.to_string()))
+fn emit_var(nm: &mut NameMangling, v: &Ident) -> Doc {
+    annotated(v, nm.emit(Name::Var(v.val.clone())))
 }
 
-fn emit_lvalue(env: &Env, v: &Expr) -> Doc {
-    match emit_expr(env, v) {
+fn emit_lvalue(env: &Env, nm: &mut NameMangling, v: &Expr) -> Doc {
+    match emit_expr(env, nm, v) {
         ExprKind::LValue(doc) => doc,
         ExprKind::RValue(_) => Doc::text(format!(
             "(*TODO: cannot produce lvalue for {}*) (admit())",
@@ -297,7 +422,7 @@ fn emit_lvalue(env: &Env, v: &Expr) -> Doc {
     }
 }
 
-fn emit_expr(env: &Env, v: &Expr) -> ExprKind {
+fn emit_expr(env: &Env, nm: &mut NameMangling, v: &Expr) -> ExprKind {
     match &v.val {
         ExprT::Var(x) => {
             if let Some(LocalDecl {
@@ -305,26 +430,35 @@ fn emit_expr(env: &Env, v: &Expr) -> ExprKind {
                 ..
             }) = env.lookup_var(x)
             {
-                ExprKind::RValue(annotated(v, emit_var(x)))
+                ExprKind::RValue(annotated(v, emit_var(nm, x)))
             } else {
-                ExprKind::LValue(annotated(v, emit_var(x)))
+                ExprKind::LValue(annotated(v, emit_var(nm, x)))
             }
         }
-        ExprT::Deref(inner) => ExprKind::LValue(annotated(v, emit_expr(env, inner).to_rvalue())),
+        ExprT::Deref(inner) => {
+            ExprKind::LValue(annotated(v, emit_expr(env, nm, inner).to_rvalue()))
+        }
         ExprT::Member(x, a) => match env.infer_expr(x) {
             Some(ty) => {
                 let ty = env.vtype_whnf(ty);
                 match &ty.val {
-                    TypeT::TypeRef(TypeRefKind::Struct(struct_name)) => match emit_expr(env, x) {
+                    TypeT::TypeRef(TypeRefKind::Struct(struct_name)) => match emit_expr(env, nm, x)
+                    {
                         ExprKind::LValue(x_doc) => ExprKind::LValue(annotated(
                             v,
-                            unaryfn(Doc::text(struct_field_proj_name(struct_name, a)), x_doc),
+                            unaryfn(
+                                nm.emit(Name::StructFieldProj(
+                                    struct_name.val.clone(),
+                                    a.val.clone(),
+                                )),
+                                x_doc,
+                            ),
                         )),
                         ExprKind::RValue(x_doc) => ExprKind::RValue(annotated(
                             v,
-                            x_doc
-                                .append(Doc::text("."))
-                                .append(Doc::text(struct_direct_fld_name(struct_name, a))),
+                            x_doc.append(Doc::text(".")).append(nm.emit(
+                                Name::StructDirectFieldName(struct_name.val.clone(), a.val.clone()),
+                            )),
                         )),
                     },
                     _ => ExprKind::RValue(annotated(
@@ -338,7 +472,7 @@ fn emit_expr(env: &Env, v: &Expr) -> ExprKind {
                 Doc::text(format!("((*TODO cannot infer type of {}*) admit())", x)),
             )),
         },
-        _ => ExprKind::RValue(emit_rvalue_inner(env, v)),
+        _ => ExprKind::RValue(emit_rvalue_inner(env, nm, v)),
     }
 }
 
@@ -460,11 +594,11 @@ fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
     })
 }
 
-fn emit_rvalue(env: &Env, v: &Expr) -> Doc {
-    emit_expr(env, v).to_rvalue()
+fn emit_rvalue(env: &Env, nm: &mut NameMangling, v: &Expr) -> Doc {
+    emit_expr(env, nm, v).to_rvalue()
 }
 
-fn emit_rvalue_inner(env: &Env, v: &Expr) -> Doc {
+fn emit_rvalue_inner(env: &Env, nm: &mut NameMangling, v: &Expr) -> Doc {
     annotated(v, {
         match &v.val {
             ExprT::BoolLit(v) => Doc::text(if *v { "true" } else { "false" }),
@@ -484,9 +618,9 @@ fn emit_rvalue_inner(env: &Env, v: &Expr) -> Doc {
                 // These are lvalue variants; handled by emit_expr
                 unreachable!("lvalue variants should be handled by emit_expr")
             }
-            ExprT::Ref(v) => emit_lvalue(env, v),
+            ExprT::Ref(v) => emit_lvalue(env, nm, v),
             ExprT::Cast(val, to_ty) => {
-                let val_doc = emit_rvalue(env, val);
+                let val_doc = emit_rvalue(env, nm, val);
                 let from_ty = env.infer_rvalue(val).map(|t| env.vtype_whnf(t));
                 let to_ty = env.vtype_whnf(to_ty.clone().into());
                 let from_ty = match &from_ty {
@@ -617,16 +751,16 @@ fn emit_rvalue_inner(env: &Env, v: &Expr) -> Doc {
                 if let Some(ty) = env.infer_rvalue(lhs) {
                     if ty.val == TypeT::SLProp {
                         return binop(
-                            emit_rvalue(env, lhs),
+                            emit_rvalue(env, nm, lhs),
                             Doc::text("**"),
-                            emit_rvalue(env, rhs),
+                            emit_rvalue(env, nm, rhs),
                         );
                     }
                 }
                 binop(
-                    emit_rvalue(env, lhs),
+                    emit_rvalue(env, nm, lhs),
                     Doc::text("&&"),
-                    emit_rvalue(env, rhs),
+                    emit_rvalue(env, nm, rhs),
                 )
             }
             ExprT::BinOp(BinOp::Eq, lhs, rhs) => {
@@ -643,7 +777,7 @@ fn emit_rvalue_inner(env: &Env, v: &Expr) -> Doc {
                             if **n == BigInt::ZERO {
                                 return unaryfn(
                                     Doc::text("Pulse.Lib.Reference.is_null"),
-                                    emit_rvalue(env, lhs),
+                                    emit_rvalue(env, nm, lhs),
                                 );
                             }
                         }
@@ -651,13 +785,17 @@ fn emit_rvalue_inner(env: &Env, v: &Expr) -> Doc {
                     }
                 }
                 // TODO: this should be == in ghost contexts
-                binop(emit_rvalue(env, lhs), Doc::text("="), emit_rvalue(env, rhs))
+                binop(
+                    emit_rvalue(env, nm, lhs),
+                    Doc::text("="),
+                    emit_rvalue(env, nm, rhs),
+                )
             }
             ExprT::UnOp(op, arg) => {
                 if let Some(ty) = env.infer_rvalue(&arg)
                     && let Some(op) = emit_unop(env, *op, ty)
                 {
-                    unaryfn(op, emit_rvalue(env, arg))
+                    unaryfn(op, emit_rvalue(env, nm, arg))
                 } else {
                     // TODO: error
                     Doc::text("(*unsupported binop*)(admit())")
@@ -667,7 +805,7 @@ fn emit_rvalue_inner(env: &Env, v: &Expr) -> Doc {
                 if let Some(ty) = env.infer_rvalue(&lhs)
                     && let Some(op) = emit_binop(env, *op, ty)
                 {
-                    binop(emit_rvalue(env, lhs), op, emit_rvalue(env, rhs))
+                    binop(emit_rvalue(env, nm, lhs), op, emit_rvalue(env, nm, rhs))
                 } else {
                     // TODO: error
                     Doc::text("(*unsupported binop*)(admit())")
@@ -677,22 +815,28 @@ fn emit_rvalue_inner(env: &Env, v: &Expr) -> Doc {
                 let args = if args.is_empty() {
                     Doc::text("()")
                 } else {
-                    Doc::intersperse(args.iter().map(|arg| emit_rvalue(env, arg)), Doc::line())
+                    Doc::intersperse(
+                        args.iter().map(|arg| emit_rvalue(env, nm, arg)),
+                        Doc::line(),
+                    )
                 };
                 parens(
-                    Doc::text(f.val.to_string())
+                    nm.emit(Name::Fn(f.val.clone()))
                         .append(Doc::line())
                         .append(args),
                 )
             }
-            ExprT::Live(v) => unaryfn(Doc::text("live"), emit_lvalue(env, v)),
-            ExprT::Old(v) => unaryfn(Doc::text("old"), emit_rvalue(env, v)),
+            ExprT::Live(v) => unaryfn(Doc::text("live"), emit_lvalue(env, nm, v)),
+            ExprT::Old(v) => unaryfn(Doc::text("old"), emit_rvalue(env, nm, v)),
             ExprT::StructInit(name, fields) => Doc::text("{")
                 .append(Doc::concat(fields.iter().map(|(fld, val)| {
                     Doc::line()
-                        .append(Doc::text(format!("struct_{}__{}", name, fld)))
+                        .append(nm.emit(Name::StructDirectFieldName(
+                            name.val.clone(),
+                            fld.val.clone(),
+                        )))
                         .append("=")
-                        .append(emit_rvalue(env, val))
+                        .append(emit_rvalue(env, nm, val))
                         .append(";")
                 })))
                 .nest(2)
@@ -703,52 +847,55 @@ fn emit_rvalue_inner(env: &Env, v: &Expr) -> Doc {
     })
 }
 
-fn emit_stmt(env: &Env, stmt: &Stmt) -> Doc {
+fn emit_stmt(env: &Env, nm: &mut NameMangling, stmt: &Stmt) -> Doc {
     annotated(stmt, {
         match &stmt.val {
-            StmtT::Call(v) => emit_rvalue(env, v).append(";").nest(2).group(),
-            StmtT::Decl(x, ty) => (Doc::text("let mut ").append(x.val.to_string()).append(" :"))
-                .append(Doc::line())
-                .append(emit_type(env, ty))
-                .append(";")
-                .nest(2)
-                .group(),
-            StmtT::Assign(x, t) => emit_lvalue(env, x)
+            StmtT::Call(v) => emit_rvalue(env, nm, v).append(";").nest(2).group(),
+            StmtT::Decl(x, ty) => {
+                let x = nm.emit(Name::Var(x.val.clone()));
+                (Doc::text("let mut ").append(x).append(" :"))
+                    .append(Doc::line())
+                    .append(emit_type(env, nm, ty))
+                    .append(";")
+                    .nest(2)
+                    .group()
+            }
+            StmtT::Assign(x, t) => emit_lvalue(env, nm, x)
                 .append(Doc::line())
                 .append(":=")
                 .group()
                 .append(Doc::line())
-                .append(emit_rvalue(env, t))
+                .append(emit_rvalue(env, nm, t))
                 .append(";")
                 .group()
                 .nest(2),
             StmtT::If(c, b1, b2) => Doc::text("if ")
-                .append(parens(emit_rvalue(env, c)))
+                .append(parens(emit_rvalue(env, nm, c)))
                 .nest(2)
                 .append(" ")
-                .append(emit_block(env, b1))
+                .append(emit_block(env, nm, b1))
                 .append(" else ")
-                .append(emit_block(env, b2))
+                .append(emit_block(env, nm, b2))
                 .append(";")
                 .group(),
             StmtT::While(cond, invs, body) => Doc::text("while ")
-                .append(parens(emit_rvalue(env, cond)))
+                .append(parens(emit_rvalue(env, nm, cond)))
                 .append(Doc::line())
                 .append(Doc::concat(invs.iter().map(|inv| {
                     Doc::text("invariant ")
-                        .append(emit_rvalue(env, inv))
+                        .append(emit_rvalue(env, nm, inv))
                         .group()
                         .nest(2)
                         .append(Doc::line())
                 })))
                 .nest(2)
-                .append(emit_block(env, body))
+                .append(emit_block(env, nm, body))
                 .append(";")
                 .group(),
-            StmtT::Return(t) => emit_rvalue(env, t).append(";").group().nest(2),
+            StmtT::Return(t) => emit_rvalue(env, nm, t).append(";").group().nest(2),
             StmtT::Assert(v) => Doc::text("assert")
                 .append(Doc::line())
-                .append(emit_rvalue(env, v))
+                .append(emit_rvalue(env, nm, v))
                 .append(";")
                 .group()
                 .nest(2),
@@ -765,20 +912,20 @@ fn block(stmts: Doc) -> Doc {
         .group()
 }
 
-fn emit_stmts(env: &Env, stmts: &Vec<Rc<Stmt>>) -> Doc {
+fn emit_stmts(env: &Env, nm: &mut NameMangling, stmts: &Vec<Rc<Stmt>>) -> Doc {
     let mut env = env.clone();
     Doc::concat(stmts.iter().map(|stmt| {
-        let doc = Doc::line().append(emit_stmt(&env, stmt));
+        let doc = Doc::line().append(emit_stmt(&env, nm, stmt));
         env.push_stmt(stmt);
         doc
     }))
 }
 
-fn emit_block(env: &Env, stmts: &Vec<Rc<Stmt>>) -> Doc {
+fn emit_block(env: &Env, nm: &mut NameMangling, stmts: &Vec<Rc<Stmt>>) -> Doc {
     if stmts.is_empty() {
         return Doc::text("{}");
     }
-    block(emit_stmts(env, stmts))
+    block(emit_stmts(env, nm, stmts))
 }
 
 fn mk_let(n: Doc, args: &[Doc], ty: Doc, body: Doc) -> Doc {
@@ -822,26 +969,26 @@ fn mk_rvar(n: &Rc<Ident>) -> Rc<Expr> {
     ExprT::Var(n.clone()).with_loc(n.loc.clone())
 }
 
-fn emit_typedef(env: &Env, TypeDefn { name, body }: &TypeDefn) -> Doc {
-    let k = TypeRefKind::Typedef(name.clone());
-    let (t, pre, post) = emit_typeref_name(&k);
-    let t = Doc::text(t);
-    let ty_decl = mk_let(t.clone(), &[], Doc::text("Type"), emit_type(env, body));
+fn emit_typedef(env: &Env, nm: &mut NameMangling, TypeDefn { name, body }: &TypeDefn) -> Doc {
+    let k = &TypeRefKind::Typedef(name.clone());
+    let t = nm.emit(Name::TypeRef(k.into()));
+    let ty_decl = mk_let(t.clone(), &[], Doc::text("Type"), emit_type(env, nm, body));
     let env = &mut env.clone();
-    env.push_this(TypeT::TypeRef(k).with_loc(name.loc.clone()));
-    let this = Rc::<str>::from("this").with_loc(name.loc.clone());
-    let this_args = vec![parens(Doc::text("this:").append(Doc::line()).append(t))];
+    env.push_this(TypeT::TypeRef(k.clone()).with_loc(name.loc.clone()));
+    let this: Rc<Ident> = Rc::<str>::from("this").with_loc(name.loc.clone());
+    let this_doc = nm.emit(Name::Var(this.val.clone()));
+    let this_args = vec![parens(this_doc.append(":").append(Doc::line()).append(t))];
     let mut req = vec![];
     let mut ens = vec![];
-    emit_type_slprop(env, body, &mut req, &mut ens, &mk_rvar(&this));
+    emit_type_slprop(env, nm, body, &mut req, &mut ens, &mk_rvar(&this));
     let pre_decl = mk_eager_unfold_let(
-        Doc::text(pre),
+        nm.emit(Name::TypeRefPred(k.into())),
         &this_args,
         Doc::text("slprop"),
         mk_star(req),
     );
     let post_decl = mk_eager_unfold_let(
-        Doc::text(post),
+        nm.emit(Name::TypeRefPredPost(k.into())),
         &this_args,
         Doc::text("slprop"),
         mk_star(ens),
@@ -862,14 +1009,6 @@ fn mk_assume_val(n: Doc, args: &[Doc], ty: Doc) -> Doc {
         .group()
 }
 
-fn struct_field_proj_name(name: &Ident, fld: &Ident) -> String {
-    format!("struct_{}__get_{}", name, fld)
-}
-
-fn struct_direct_fld_name(name: &Ident, fld: &Ident) -> String {
-    format!("struct_{}__{}", name, fld)
-}
-
 fn mk_fun(arg: Doc, body: Doc) -> Doc {
     parens(
         Doc::text("fun")
@@ -888,14 +1027,21 @@ fn mk_thunk(body: Doc) -> Doc {
     mk_fun(Doc::text("_"), body)
 }
 
-fn emit_structdefn(env: &Env, StructDefn { name, fields }: &StructDefn) -> Doc {
-    let (struct_type_name, pts_to_name, pts_to_name_post) =
-        emit_typeref_name(&TypeRefKind::Struct(name.clone()));
-    let ref_struct_type = unaryfn(Doc::text("ref"), Doc::text(struct_type_name.clone()));
+fn emit_structdefn(
+    env: &Env,
+    nm: &mut NameMangling,
+    StructDefn { name, fields }: &StructDefn,
+) -> Doc {
+    let k = &TypeRefKind::Struct(name.clone());
+    let struct_type_name = nm.emit(Name::TypeRef(k.into()));
+    let pts_to_name = nm.emit(Name::TypeRefPred(k.into()));
+    let pts_to_name_post = nm.emit(Name::TypeRefPredPost(k.into()));
+    let ref_struct_type = unaryfn(Doc::text("ref"), struct_type_name.clone());
+
+    let direct_fld = |fld: &Ident| Name::StructDirectFieldName(name.val.clone(), fld.val.clone());
 
     let mut ses = vec![];
 
-    let direct_fld = |fld: &Ident| Doc::text(format!("struct_{}__{}", name, fld));
     ses.push(
         Doc::text("noeq type")
             .append(Doc::line())
@@ -907,10 +1053,10 @@ fn emit_structdefn(env: &Env, StructDefn { name, fields }: &StructDefn) -> Doc {
             .group()
             .append(Doc::concat(fields.iter().map(|(fld, fld_ty)| {
                 Doc::hardline().append(
-                    direct_fld(fld)
+                    nm.emit(direct_fld(fld))
                         .append(":")
                         .append(Doc::line())
-                        .append(emit_type(env, fld_ty))
+                        .append(emit_type(env, nm, fld_ty))
                         .append(";")
                         .group()
                         .nest(2),
@@ -924,7 +1070,7 @@ fn emit_structdefn(env: &Env, StructDefn { name, fields }: &StructDefn) -> Doc {
 
     for n in [&pts_to_name, &pts_to_name_post] {
         ses.push(mk_eager_unfold_let(
-            Doc::text(n.clone()),
+            n.clone(),
             &[parens(
                 Doc::text("[@@@mkey] x:")
                     .append(Doc::line())
@@ -935,7 +1081,7 @@ fn emit_structdefn(env: &Env, StructDefn { name, fields }: &StructDefn) -> Doc {
         ));
     }
 
-    let unfolded_tok = Doc::text(format!("struct_{}__raw_unfolded", name));
+    let unfolded_tok = nm.emit(Name::StructAuxFn(name.val.clone(), "raw_unfolded".into()));
     ses.push(mk_assume_val(
         unfolded_tok.clone(),
         &[parens(
@@ -946,13 +1092,13 @@ fn emit_structdefn(env: &Env, StructDefn { name, fields }: &StructDefn) -> Doc {
         Doc::text("slprop"),
     ));
 
-    let ghost_fld_name = |fld: &Ident| Doc::text(format!("struct_{}__ghost_{}", name, fld));
+    let ghost_fld = |fld: &Ident| Name::StructGhostFieldProj(name.val.clone(), fld.val.clone());
 
     for (fld, fld_ty) in fields {
-        let ll_type = emit_type(env, fld_ty);
+        let ll_type = emit_type(env, nm, fld_ty);
 
         ses.push(mk_assume_val(
-            ghost_fld_name(fld),
+            nm.emit(ghost_fld(fld)),
             &[parens(
                 Doc::text("x:")
                     .append(Doc::line())
@@ -968,7 +1114,7 @@ fn emit_structdefn(env: &Env, StructDefn { name, fields }: &StructDefn) -> Doc {
         Doc::text("[@@pulse_intro]")
             .append(Doc::line())
             .append(mk_assume_val(
-                Doc::text(format!("struct_{}_raw_unfold", name)),
+                nm.emit(Name::StructAuxFn(name.val.clone(), "raw_unfold".into())),
                 &[
                     parens(
                         Doc::text("x:")
@@ -996,8 +1142,8 @@ fn emit_structdefn(env: &Env, StructDefn { name, fields }: &StructDefn) -> Doc {
                         for (fld, _) in fields {
                             post.push(naryfn([
                                 Doc::text("Pulse.Lib.Reference.pts_to"),
-                                unaryfn(ghost_fld_name(fld), Doc::text("x")),
-                                Doc::text("vx.").append(direct_fld(fld)),
+                                unaryfn(nm.emit(ghost_fld(fld)), Doc::text("x")),
+                                Doc::text("vx.").append(nm.emit(direct_fld(fld))),
                             ]));
                         }
                         mk_thunk(mk_star(post))
@@ -1011,7 +1157,7 @@ fn emit_structdefn(env: &Env, StructDefn { name, fields }: &StructDefn) -> Doc {
         Doc::text("[@@pulse_intro]")
             .append(Doc::line())
             .append(mk_assume_val(
-                Doc::text(format!("struct_{}_raw_fold", name)),
+                nm.emit(Name::StructAuxFn(name.val.clone(), "raw_fold".into())),
                 &{
                     let mut args = vec![parens(
                         Doc::text("x:")
@@ -1032,7 +1178,7 @@ fn emit_structdefn(env: &Env, StructDefn { name, fields }: &StructDefn) -> Doc {
                         for (fld, _) in fields {
                             pre.push(naryfn([
                                 Doc::text("Pulse.Lib.Reference.pts_to"),
-                                unaryfn(ghost_fld_name(fld), Doc::text("x")),
+                                unaryfn(nm.emit(ghost_fld(fld)), Doc::text("x")),
                                 fold_arg_name(fld),
                             ]));
                         }
@@ -1044,7 +1190,7 @@ fn emit_structdefn(env: &Env, StructDefn { name, fields }: &StructDefn) -> Doc {
                         Doc::text("{")
                             .append(Doc::concat(fields.iter().map(|(fld, _)| {
                                 Doc::line()
-                                    .append(direct_fld(fld))
+                                    .append(nm.emit(direct_fld(fld)))
                                     .append("=")
                                     .append(fold_arg_name(fld))
                                     .append(";")
@@ -1061,7 +1207,10 @@ fn emit_structdefn(env: &Env, StructDefn { name, fields }: &StructDefn) -> Doc {
         Doc::text("[@@pulse_intro]")
             .append(Doc::line())
             .append(mk_assume_val(
-                Doc::text(format!("struct_{}_raw_fold_uninit", name)),
+                nm.emit(Name::StructAuxFn(
+                    name.val.clone(),
+                    "raw_fold_uninit".into(),
+                )),
                 &[parens(
                     Doc::text("x:")
                         .append(Doc::line())
@@ -1076,7 +1225,7 @@ fn emit_structdefn(env: &Env, StructDefn { name, fields }: &StructDefn) -> Doc {
                         for (fld, _) in fields {
                             pre.push(naryfn([
                                 Doc::text("Pulse.Lib.Reference.pts_to_uninit"),
-                                unaryfn(ghost_fld_name(fld), Doc::text("x")),
+                                unaryfn(nm.emit(ghost_fld(fld)), Doc::text("x")),
                             ]));
                         }
                         mk_star(pre)
@@ -1090,14 +1239,14 @@ fn emit_structdefn(env: &Env, StructDefn { name, fields }: &StructDefn) -> Doc {
     );
 
     for (fld, fld_ty) in fields {
-        let ll_ty = emit_type(env, fld_ty);
+        let ll_ty = emit_type(env, nm, fld_ty);
         let fld_pts_to = naryfn([
             Doc::text("pts_to"),
-            unaryfn(ghost_fld_name(fld), Doc::text("x")),
+            unaryfn(nm.emit(ghost_fld(fld)), Doc::text("x")),
             Doc::text("vx"),
         ]);
         ses.push(mk_assume_val(
-            Doc::text(struct_field_proj_name(name, fld)),
+            nm.emit(Name::StructFieldProj(name.val.clone(), fld.val.clone())),
             &[
                 parens(
                     Doc::text("x:")
@@ -1123,7 +1272,7 @@ fn emit_structdefn(env: &Env, StructDefn { name, fields }: &StructDefn) -> Doc {
                         naryfn([
                             Doc::text("rewrites_to"),
                             Doc::text("vx'"),
-                            unaryfn(ghost_fld_name(fld), Doc::text("x")),
+                            unaryfn(nm.emit(ghost_fld(fld)), Doc::text("x")),
                         ]),
                     ]),
                 ),
@@ -1136,6 +1285,7 @@ fn emit_structdefn(env: &Env, StructDefn { name, fields }: &StructDefn) -> Doc {
 
 fn emit_fn_decl(
     env: &Env,
+    nm: &mut NameMangling,
     FnDecl {
         name,
         ret_type,
@@ -1155,15 +1305,16 @@ fn emit_fn_decl(
             .unwrap_or_else(|| Rc::<str>::from(format!("_unnamed{}", i)).with_loc(ty.loc.clone()));
 
         params.push(parens(
-            annotated(&n, Doc::text(n.val.to_string()))
+            annotated(&n, nm.emit(Name::Var(n.val.clone())))
                 .append(":")
                 .append(Doc::line())
-                .append(emit_type(env, ty)),
+                .append(emit_type(env, nm, ty)),
         ));
 
         env.push_arg(arg, LocalDeclKind::RValue);
         emit_type_slprop(
             env,
+            nm,
             ty,
             &mut requires_props,
             &mut ensures_props,
@@ -1175,26 +1326,27 @@ fn emit_fn_decl(
         params.push(Doc::text("()"));
     }
 
-    requires_props.extend(requires.iter().map(|r| emit_rvalue(env, r)));
+    requires_props.extend(requires.iter().map(|r| emit_rvalue(env, nm, r)));
 
     let return_id = Rc::<str>::from("return").with_loc(ret_type.loc.clone());
     env.push_return(ret_type.clone());
     emit_type_slprop(
         env,
+        nm,
         &ret_type,
         &mut ensures_props,
         &mut vec![],
         &mk_rvar(&return_id),
     );
-    let ret_type_doc = emit_type(env, ret_type);
+    let ret_type_doc = emit_type(env, nm, ret_type);
 
     env.push_return(ret_type.clone());
-    ensures_props.extend(ensures.iter().map(|r| emit_rvalue(env, r)));
+    ensures_props.extend(ensures.iter().map(|r| emit_rvalue(env, nm, r)));
 
     let hdr = Doc::group(
         Doc::text("fn")
             .append(Doc::line())
-            .append(name.val.to_string()),
+            .append(nm.emit(Name::Fn(name.val.clone()))),
     )
     .append(Doc::concat(params.into_iter().map(|p| Doc::line().append(p))).nest(2))
     .group();
@@ -1212,7 +1364,7 @@ fn emit_fn_decl(
     .append(Doc::group(
         Doc::text("returns")
             .append(Doc::line())
-            .append(return_id.val.to_string())
+            .append(nm.emit(Name::Var(return_id.val.clone())))
             .append(Doc::line())
             .append(":")
             .group()
@@ -1237,32 +1389,33 @@ fn emit_inline_code(code: &InlineCode) -> Doc {
     }))
 }
 
-fn emit_decl(env: &Env, decl: &Decl) -> Doc {
+fn emit_decl(env: &Env, nm: &mut NameMangling, decl: &Decl) -> Doc {
     annotated(decl, {
         match &decl.val {
             DeclT::FnDefn(FnDefn { decl, body }) => {
-                let decl_doc = emit_fn_decl(env, decl).nest(2).append(Doc::hardline());
+                let decl_doc = emit_fn_decl(env, nm, decl).nest(2).append(Doc::hardline());
                 let arg_redecl_as_mut = Doc::concat(decl.args.iter().filter_map(|(n, _)| {
                     n.as_ref().map(|n| {
                         Doc::line().append(annotated(
                             n,
-                            Doc::group(
+                            Doc::group({
+                                let n = nm.emit(Name::Var(n.val.clone()));
                                 Doc::text("let mut ")
-                                    .append(n.val.to_string())
+                                    .append(n.clone())
                                     .append(" = ")
-                                    .append(n.val.to_string())
-                                    .append(";"),
-                            ),
+                                    .append(n)
+                                    .append(";")
+                            }),
                         ))
                     })
                 }));
                 let env = &mut env.clone();
                 env.push_fn_decl_args_for_body(decl);
-                decl_doc.append(block(arg_redecl_as_mut.append(emit_stmts(env, body))).group())
+                decl_doc.append(block(arg_redecl_as_mut.append(emit_stmts(env, nm, body))).group())
             }
-            DeclT::FnDecl(fn_decl) => emit_fn_decl(&mut env.clone(), fn_decl),
-            DeclT::Typedef(typedef) => emit_typedef(env, typedef),
-            DeclT::StructDefn(struct_defn) => emit_structdefn(env, struct_defn),
+            DeclT::FnDecl(fn_decl) => emit_fn_decl(&mut env.clone(), nm, fn_decl),
+            DeclT::Typedef(typedef) => emit_typedef(env, nm, typedef),
+            DeclT::StructDefn(struct_defn) => emit_structdefn(env, nm, struct_defn),
             DeclT::IncludeDecl(include_decl) => emit_inline_code(&include_decl.code),
         }
     })
@@ -1270,13 +1423,14 @@ fn emit_decl(env: &Env, decl: &Decl) -> Doc {
 
 pub fn emit(module_name: &str, tu: &TranslationUnit) -> (String, SourceRangeMap) {
     let mut env = Env::new();
+    let nm = &mut NameMangling::new();
     let mut output: Vec<Doc> = vec![];
     output.push(Doc::text(format!(
         "module {}\nopen Pulse\nopen Pulse.Lib.C\n#lang-pulse",
         module_name
     )));
     for decl in &tu.decls {
-        output.push(emit_decl(&env, decl));
+        output.push(emit_decl(&env, nm, decl));
         env.push_decl(decl);
     }
     let output = Doc::intersperse(output, Doc::hardline().append(Doc::hardline())).group();
