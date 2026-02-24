@@ -20,12 +20,14 @@ uint32_t count_to_limit(uint32_t n, uint32_t limit)
 
 /* Sum only even numbers in [0, n) by skipping odds. */
 uint32_t sum_evens(uint32_t n)
+    _requires(n <= 10000)
 {
     uint32_t i = 0;
     uint32_t s = 0;
     while (i < n)
         _invariant(_live(i) && _live(s))
         _invariant(i <= n)
+        _invariant(s <= (_specint) 10000 * i)
     {
         i = i + 1;
         if (i == 1) {
