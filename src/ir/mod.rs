@@ -262,6 +262,12 @@ pub enum StmtT {
     Continue,
     Return(Option<Rc<Expr>>),
     Assert(Rc<Expr>),
+    Goto(Rc<Ident>),
+    Label(Rc<Ident>),
+    GotoBlock {
+        body: Rc<Stmts>,
+        label: Rc<Ident>,
+    },
     Error,
 }
 

@@ -102,6 +102,7 @@ fn main() {
     pass::check::check(&mut diags, &mut tu, "clang", false);
     pass::prune::prune(&mut tu);
     pass::check::check(&mut diags, &mut tu, "prune", false);
+    pass::restructure_goto::restructure_goto(&mut tu);
     pass::elab::elab(&mut diags, &mut tu);
     pass::check::check(&mut diags, &mut tu, "elab", true);
 

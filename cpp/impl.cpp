@@ -553,6 +553,14 @@ public:
       } else {
         return stmts.push(mk_return_void(std::move(loc)));
       }
+    } else if (auto *g = dyn_cast<GotoStmt>(stmt)) {
+      auto label = ctx.mk_ident(toStr(g->getLabel()->getName()), loc.clone());
+      return stmts.push(mk_goto(std::move(loc), std::move(label)));
+    } else if (auto *ls = dyn_cast<LabelStmt>(stmt)) {
+      auto label =
+          ctx.mk_ident(toStr(llvm::StringRef(ls->getName())), loc.clone());
+      stmts.push(mk_label(std::move(loc), std::move(label)));
+      return trStmt(stmts, ls->getSubStmt());
     } else if (auto *ds = dyn_cast<DeclStmt>(stmt)) {
       for (auto d : ds->decls()) {
         auto dloc = getRange(d->getSourceRange());

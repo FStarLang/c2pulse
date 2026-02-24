@@ -935,6 +935,15 @@ fn emit_stmt(env: &Env, nm: &mut NameMangling, stmt: &Stmt) -> Doc {
                 .append(";")
                 .group()
                 .nest(2),
+            StmtT::Goto(label) => Doc::text("goto ")
+                .append(nm.emit(Name::Var(label.val.clone())))
+                .append(";"),
+            StmtT::Label(_) => Doc::text("(* unrestructured label *)"),
+            StmtT::GotoBlock { body, label } => block(emit_stmts(env, nm, body))
+                .append(Doc::hardline())
+                .append("label ")
+                .append(nm.emit(Name::Var(label.val.clone())))
+                .append(":"),
             StmtT::Error => Doc::text("(admit());"),
         }
     })

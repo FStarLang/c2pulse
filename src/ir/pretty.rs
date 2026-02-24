@@ -271,6 +271,14 @@ impl PrettyIR for StmtT {
                 .append(");")
                 .nest(2)
                 .group(),
+            StmtT::Goto(label) => RcDoc::text("goto ")
+                .append(RcDoc::text(label.val.to_string()))
+                .append(";"),
+            StmtT::Label(label) => RcDoc::text(label.val.to_string()).append(":"),
+            StmtT::GotoBlock { body, label } => pretty_block(body)
+                .append(RcDoc::hardline())
+                .append(RcDoc::text(label.val.to_string()))
+                .append(":"),
             StmtT::Error => RcDoc::text("???;"),
         }
     }

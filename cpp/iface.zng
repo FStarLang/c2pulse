@@ -224,6 +224,8 @@ mod crate::clang {
     fn mk_continue(Rc<SourceInfo>) -> Rc<Stmt>;
     fn mk_stmt_err(Rc<SourceInfo>) -> Rc<Stmt>;
     fn mk_assert(Rc<SourceInfo>, Rc<Expr>) -> Rc<Stmt>;
+    fn mk_goto(Rc<SourceInfo>, Rc<Ident>) -> Rc<Stmt>;
+    fn mk_label(Rc<SourceInfo>, Rc<Ident>) -> Rc<Stmt>;
 }
 
 extern "C++" {

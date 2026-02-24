@@ -384,6 +384,11 @@ impl<'a> Checker<'a> {
                 }
             }
             StmtT::Assert(v) => self.check_slprop(env, v),
+            StmtT::Goto(_) => {}
+            StmtT::Label(_) => {}
+            StmtT::GotoBlock { body, label: _ } => {
+                self.check_stmts(env, body);
+            }
             StmtT::Error => {}
         }
     }
