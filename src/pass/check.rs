@@ -337,10 +337,22 @@ impl<'a> Checker<'a> {
                 self.check_stmts(env, b1);
                 self.check_stmts(env, b2);
             }
-            StmtT::While(cond, invs, body) => {
+            StmtT::While {
+                cond,
+                inv,
+                requires,
+                ensures,
+                body,
+            } => {
                 self.check_bool(env, cond);
-                for inv in &**invs {
+                for inv in &**inv {
                     self.check_slprop(env, inv)
+                }
+                for r in &**requires {
+                    self.check_slprop(env, r)
+                }
+                for e in &**ensures {
+                    self.check_slprop(env, e)
                 }
                 let mut loop_env = env.clone();
                 loop_env.enter_loop();

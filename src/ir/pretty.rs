@@ -212,11 +212,17 @@ impl PrettyIR for StmtT {
                 .append(" else ")
                 .append(pretty_block(b2))
                 .group(),
-            StmtT::While(cond, invs, body) => RcDoc::text("while (")
+            StmtT::While {
+                cond,
+                inv,
+                requires,
+                ensures,
+                body,
+            } => RcDoc::text("while (")
                 .append(cond.to_doc().nest(4))
                 .append(")")
                 .append(
-                    RcDoc::concat(invs.iter().map(|inv| {
+                    RcDoc::concat(inv.iter().map(|inv| {
                         RcDoc::line().append(
                             RcDoc::text("_invariant(")
                                 .append(RcDoc::line_())
@@ -226,6 +232,26 @@ impl PrettyIR for StmtT {
                                 .group(),
                         )
                     }))
+                    .append(RcDoc::concat(requires.iter().map(|r| {
+                        RcDoc::line().append(
+                            RcDoc::text("_requires(")
+                                .append(RcDoc::line_())
+                                .append(r.to_doc())
+                                .nest(2)
+                                .append(")")
+                                .group(),
+                        )
+                    })))
+                    .append(RcDoc::concat(ensures.iter().map(|e| {
+                        RcDoc::line().append(
+                            RcDoc::text("_ensures(")
+                                .append(RcDoc::line_())
+                                .append(e.to_doc())
+                                .nest(2)
+                                .append(")")
+                                .group(),
+                        )
+                    })))
                     .nest(2),
                 )
                 .append(RcDoc::hardline())

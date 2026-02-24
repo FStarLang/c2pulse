@@ -518,16 +518,23 @@ public:
     } else if (auto *w = dyn_cast<WhileStmt>(stmt)) {
       auto body = w->getBody();
       auto invs = Vec<Rc<ir::Expr>>::new_();
+      auto reqs = Vec<Rc<ir::Expr>>::new_();
+      auto enss = Vec<Rc<ir::Expr>>::new_();
       if (auto attrBody = dyn_cast<AttributedStmt>(body)) {
         for (auto attr : attrBody->getAttrs()) {
           if (auto inv = isUnaryAttrOf(attr, "c2pulse-invariant")) {
             invs.push(std::move(inv.value()));
+          } else if (auto req = isUnaryAttrOf(attr, "c2pulse-requires")) {
+            reqs.push(std::move(req.value()));
+          } else if (auto ens = isUnaryAttrOf(attr, "c2pulse-ensures")) {
+            enss.push(std::move(ens.value()));
           }
         }
         body = attrBody->getSubStmt();
       }
       return stmts.push(mk_while(loc.clone(), trRValue(w->getCond()),
-                                 std::move(invs), trStmts(body)));
+                                 std::move(invs), std::move(reqs),
+                                 std::move(enss), trStmts(body)));
     } else if (dyn_cast<BreakStmt>(stmt)) {
       return stmts.push(mk_break(std::move(loc)));
     } else if (dyn_cast<ContinueStmt>(stmt)) {

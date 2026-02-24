@@ -8,6 +8,7 @@ uint32_t count_to_limit(uint32_t n, uint32_t limit)
     while (i < n)
         _invariant(_live(i))
         _invariant(i <= n)
+        _ensures(i <= n)
     {
         if (i == limit) {
             break;

@@ -878,12 +878,32 @@ fn emit_stmt(env: &Env, nm: &mut NameMangling, stmt: &Stmt) -> Doc {
                 .append(emit_block(env, nm, b2))
                 .append(";")
                 .group(),
-            StmtT::While(cond, invs, body) => Doc::text("while ")
+            StmtT::While {
+                cond,
+                inv,
+                requires,
+                ensures,
+                body,
+            } => Doc::text("while ")
                 .append(parens(emit_rvalue(env, nm, cond)))
                 .append(Doc::line())
-                .append(Doc::concat(invs.iter().map(|inv| {
+                .append(Doc::concat(inv.iter().map(|inv| {
                     Doc::text("invariant ")
                         .append(emit_rvalue(env, nm, inv))
+                        .group()
+                        .nest(2)
+                        .append(Doc::line())
+                })))
+                .append(Doc::concat(requires.iter().map(|r| {
+                    Doc::text("requires ")
+                        .append(emit_rvalue(env, nm, r))
+                        .group()
+                        .nest(2)
+                        .append(Doc::line())
+                })))
+                .append(Doc::concat(ensures.iter().map(|e| {
+                    Doc::text("ensures ")
+                        .append(emit_rvalue(env, nm, e))
                         .group()
                         .nest(2)
                         .append(Doc::line())

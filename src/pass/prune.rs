@@ -153,9 +153,17 @@ fn scan_stmt(deps: &mut HashSet<DeclName>, stmt: &Stmt) {
             scan_stmts(deps, b1);
             scan_stmts(deps, b2)
         }
-        StmtT::While(cond, invs, body) => {
+        StmtT::While {
+            cond,
+            inv,
+            requires,
+            ensures,
+            body,
+        } => {
             scan_expr(deps, cond);
-            scan_exprs(deps, invs);
+            scan_exprs(deps, inv);
+            scan_exprs(deps, requires);
+            scan_exprs(deps, ensures);
             scan_stmts(deps, body);
         }
         StmtT::Break | StmtT::Continue => {}

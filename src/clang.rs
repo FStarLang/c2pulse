@@ -386,8 +386,22 @@ fn mk_call(loc: Rc<SourceInfo>, f: Rc<Expr>) -> Rc<Stmt> {
 fn mk_if(loc: Rc<SourceInfo>, cond: Rc<Expr>, a: Stmts, b: Stmts) -> Rc<Stmt> {
     StmtT::If(cond, Rc::new(a), Rc::new(b)).with_loc(loc)
 }
-fn mk_while(loc: Rc<SourceInfo>, cond: Rc<Expr>, invs: Exprs, body: Stmts) -> Rc<Stmt> {
-    StmtT::While(cond, Rc::new(invs), Rc::new(body)).with_loc(loc)
+fn mk_while(
+    loc: Rc<SourceInfo>,
+    cond: Rc<Expr>,
+    invs: Exprs,
+    requires: Exprs,
+    ensures: Exprs,
+    body: Stmts,
+) -> Rc<Stmt> {
+    StmtT::While {
+        cond,
+        inv: Rc::new(invs),
+        requires: Rc::new(requires),
+        ensures: Rc::new(ensures),
+        body: Rc::new(body),
+    }
+    .with_loc(loc)
 }
 fn mk_break(loc: Rc<SourceInfo>) -> Rc<Stmt> {
     mk_ast(loc, StmtT::Break)
