@@ -349,10 +349,10 @@ impl<'a> Checker<'a> {
                     self.check_slprop(env, inv)
                 }
                 for r in &**requires {
-                    self.check_slprop(env, r)
+                    self.check_bool(env, r)
                 }
                 for e in &**ensures {
-                    self.check_slprop(env, e)
+                    self.check_bool(env, e)
                 }
                 let mut loop_env = env.clone();
                 loop_env.enter_loop();

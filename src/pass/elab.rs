@@ -236,8 +236,14 @@ impl<'a> Elaborator<'a> {
                 self.elab_rvalue(env, Rc::make_mut(cond));
                 self.cast_to_bool(env, cond);
                 self.elab_slprops(env, Rc::make_mut(inv));
-                self.elab_slprops(env, Rc::make_mut(requires));
-                self.elab_slprops(env, Rc::make_mut(ensures));
+                for r in Rc::make_mut(requires) {
+                    self.elab_rvalue(env, Rc::make_mut(r));
+                    self.cast_to_bool(env, r);
+                }
+                for e in Rc::make_mut(ensures) {
+                    self.elab_rvalue(env, Rc::make_mut(e));
+                    self.cast_to_bool(env, e);
+                }
                 self.elab_stmts(env, Rc::make_mut(body));
             }
             StmtT::Break | StmtT::Continue => {}
