@@ -27,6 +27,8 @@ clang-format -i cpp/impl.cpp
 
 The test suite (`test/Makefile`) runs `c2pulse` on each `.c` file in `test/`, then verifies the generated `.fst` files using F*/Pulse. Building F*/Pulse from source requires opam and is handled by the top-level Makefile (set `C2PULSE_OPT=0` to skip if dependencies are pre-built).
 
+ALWAYS RUN `make test` TO MAKE SURE THE TESTS SUCCEED!!!
+
 ## Architecture
 
 ### Translation Pipeline
