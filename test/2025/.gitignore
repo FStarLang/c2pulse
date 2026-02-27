@@ -10,3 +10,5 @@
 *_source_range_info.json
 *_diagnostics.json
 /_cache
+
+*.checked
