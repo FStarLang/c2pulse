@@ -21,7 +21,7 @@ translate: $(ALL_FST_FILES)
 
 define TRANSLATE_RULE
 $(call fst_of,$(1)): $(1) $$(C2PULSE)
-	$$(C2PULSE) $$< || true
+	$$(C2PULSE) $$<
 endef
 $(foreach t,$(ALL_TESTS),$(eval $(call TRANSLATE_RULE,$(t))))
 
