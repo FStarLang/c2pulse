@@ -1,12 +1,10 @@
 #include <stdio.h>
 #include <stdint.h>
-#include "../include/PulseMacros.h"
-
+#include "../c2pulse.h"
 
 unsigned long long test2(size_t l, size_t k, unsigned long long j);
 
-REQUIRES(pure (SizeT.v l < 100))
-RETURNS(UInt64.t)
+_requires((_slprop) _inline_pulse(pure (SizeT.v l < 100)))
 unsigned long foo(size_t l);
 
 unsigned long foo(size_t l){
@@ -20,15 +18,14 @@ unsigned long foo(size_t l){
     return y + yy + jj;
 }
 
-REQUIRES(pure (SizeT.v l < 100))
-RETURNS(UInt64.t)
+_requires((_slprop) _inline_pulse(pure (SizeT.v l < 100)))
 unsigned long long test(size_t l, size_t k, unsigned long long j){
 
     k = l;
     k = k + 1;
     k = k - 1;
     j = foo(k);
-    LEMMA(assume (pure (UInt64.v !j < 1000)));
+    _assert((_slprop) _inline_pulse(assume (pure (UInt64.v !j < 1000))));
     k = k + j;
     
     return k;

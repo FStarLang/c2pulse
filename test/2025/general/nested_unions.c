@@ -1,12 +1,11 @@
 #include <stdbool.h>
 #include <stdint.h>
-#include "../include/PulseMacros.h"
+#include "../c2pulse.h"
 
 union ab {
 	int a;
 	bool b;
 };
-
 
 struct stru {
 	int8_t tag;

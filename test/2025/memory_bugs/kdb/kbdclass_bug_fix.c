@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "../../include/PulseMacros.h" 
+#include "../../c2pulse.h" 
 
 typedef struct _DEVICE_OBJECT DEVICE_OBJECT;
 typedef struct _DEVICE_EXTENSION DEVICE_EXTENSION;
@@ -24,7 +24,6 @@ struct _DEVICE_EXTENSION {
     LIST_ENTRY Link;
     DEVICE_OBJECT *Self;
 };
-
 
 typedef struct _GLOBALS {
     // Inv: LegacyDeviceList is a doubly link list with Flink, Blink pointing to 
@@ -75,7 +74,6 @@ DEVICE_OBJECT *IoCreateDevice() {
     devObj->DeviceExtension = devExt;
     return devObj;
 }
-
 
 void IoDeleteDevice(DEVICE_OBJECT *devObj) {
     DEVICE_EXTENSION *devExt = devObj->DeviceExtension;

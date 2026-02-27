@@ -1,9 +1,9 @@
+#include "../c2pulse.h"
 #include <cstddef>
 #include <cstdint>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
-
 
 // typedef struct _profile_descriptor_t {
 //     char* name;
@@ -76,5 +76,4 @@
 //     bool supports_unseal_policy;
 //     char *unseal_policy_format;
 // } profile_descriptor_t;
-
 

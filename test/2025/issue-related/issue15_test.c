@@ -1,6 +1,4 @@
-#include "../include/PulseMacros.h"
+#include "../c2pulse.h"
 
-REQUIRES(emp)
-ENSURES(emp)
 void test_empty(void)
 { return;  }

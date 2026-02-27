@@ -4,10 +4,10 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include "../include/PulseMacros.h"
+#include "../c2pulse.h"
 #include "DPE.h"
 
-INCLUDE (
+_include_pulse(
     open FStar.Ghost
     module SizeT = Pulse.Lib.C.SizeT
     let bool_to_bool b = b
@@ -15,10 +15,9 @@ INCLUDE (
     let my_length = 17
 )
 
-INCLUDE (
+_include_pulse(
     module U8 = FStar.UInt8
     module US = FStar.SizeT
-
 
     noeq
     type engine_record_repr = {
@@ -44,14 +43,10 @@ INCLUDE (
 
 )
 
-ERASED_ARG(#repr:erased _)
-ERASED_ARG(#uds_perm:_)
-ERASED_ARG(#p:_)
-ERASED_ARG(#uds_bytes:erased _)
-PRESERVES(is_engine_record record p repr)
-PRESERVES(uds |-> Frac uds_perm uds_bytes)
-REQUIRES(exists* c0. cdi |-> c0)
-ENSURES(exists* c1. cdi |-> c1)
-bool engine_main(ISARRAY(DICE_DIGEST_LEN) uint8_t *cdi, ISARRAY(UDS_LEN) uint8_t *uds, engine_record_t *record);
+_preserves((_slprop) _inline_pulse(is_engine_record record p repr))
+_preserves((_slprop) _inline_pulse(uds |-> Frac uds_perm uds_bytes))
+_requires((_slprop) _inline_pulse(exists* c0. cdi |-> c0))
+_ensures((_slprop) _inline_pulse(exists* c1. cdi |-> c1))
+bool engine_main(uint8_t *cdi, uint8_t *uds, engine_record_t *record);
 
 #endif

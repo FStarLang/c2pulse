@@ -1,18 +1,15 @@
-#include "../include/PulseMacros.h"
+#include "../c2pulse.h"
 
-ERASED_ARG(#vr:erased _)
-REQUIRES(r |-> vr)
-REQUIRES(pure Pulse.Lib.C.Int32.(fits (+) (as_int vr) 1))
-ENSURES(exists* w. (r |-> w) ** pure Pulse.Lib.C.Int32.(as_int w == as_int vr + 1))
+_requires((_slprop) _inline_pulse(r |-> vr))
+_requires((_slprop) _inline_pulse(pure Pulse.Lib.C.Int32.(fits (+) (as_int vr) 1)))
+_ensures((_slprop) _inline_pulse(exists* w. (r |-> w) ** pure Pulse.Lib.C.Int32.(as_int w == as_int vr + 1)))
 int incr (int *r)
 {
     *r = *r + 1;
     return *r;
 }
 
-REQUIRES(emp)
-RETURNS(i:Pulse.Lib.C.Int32.int32)
-ENSURES(pure Pulse.Lib.C.Int32.(as_int i == 1))
+_ensures((_slprop) _inline_pulse(pure Pulse.Lib.C.Int32.(as_int i == 1)))
 int one()
 {
     int i = 0;

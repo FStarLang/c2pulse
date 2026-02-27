@@ -1,9 +1,8 @@
 #include <stdio.h>
 #include <stdbool.h>
-#include "../include/PulseMacros.h"
+#include "../c2pulse.h"
 
-REQUIRES(pure (Int32.v a < 100))
-RETURNS(Int32.t)
+_requires((_slprop) _inline_pulse(pure (Int32.v a < 100)))
 int foo(int a, bool b) {
     a = a + b;
     int *p; 

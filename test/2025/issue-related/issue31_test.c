@@ -1,9 +1,6 @@
-#include "../include/PulseMacros.h"
+#include "../c2pulse.h"
 #include <stdlib.h>
 
-REQUIRES(emp)
-RETURNS(i:int32)
-ENSURES(emp)
 int check_null(int *r)
 {
   if (r == NULL)

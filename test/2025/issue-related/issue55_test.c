@@ -1,13 +1,12 @@
-#include "../include/PulseMacros.h"
+#include "../c2pulse.h"
 #include <stddef.h>
 #include <stdbool.h>
 
-EXPECT_FAILURE()
-bool compare(ISARRAY(l) int *a1, ISARRAY(l) int *a2, size_t l)
+bool compare(int *a1, int *a2, size_t l)
 {
     size_t i = 0;
     while( (i < l) ? a1[i] == a2[i] : false )
-    INVARIANTS( invariant c. emp)
+        _invariant((_slprop) _inline_pulse(emp))
     {
         i = i + 1;
     }

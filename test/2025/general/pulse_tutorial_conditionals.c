@@ -1,19 +1,16 @@
 #include <stdint.h>
 #include <stdlib.h>
-#include "../include/PulseMacros.h"
+#include "../c2pulse.h"
 
-INCLUDE(
+_include_pulse(
   let max_spec x y = if x < y then y else x
 )
 
-ERASED_ARG(#vx #vy:erased _)
-ERASED_ARG(#px #py:_)
-REQUIRES(x |-> Frac px vx)
-REQUIRES(y |-> Frac py vy)
-RETURNS(n:int32)
-ENSURES(x |-> Frac px vx)
-ENSURES(y |-> Frac py vy)
-ENSURES(pure (as_int n == max_spec (as_int vx) (as_int vy)))
+_requires((_slprop) _inline_pulse(x |-> Frac px vx))
+_requires((_slprop) _inline_pulse(y |-> Frac py vy))
+_ensures((_slprop) _inline_pulse(x |-> Frac px vx))
+_ensures((_slprop) _inline_pulse(y |-> Frac py vy))
+_ensures((_slprop) _inline_pulse(pure (as_int n == max_spec (as_int vx) (as_int vy))))
 int max (int *x, int *y)
 {
     if (*x > *y)
@@ -26,28 +23,22 @@ int max (int *x, int *y)
     }
 }
 
-EXPECT_FAILURE()
-ERASED_ARG(#vx #vy:_)
-ERASED_ARG(#px #py:_)
-REQUIRES(x |-> Frac px vx)
-REQUIRES(y |-> Frac py vy)
-RETURNS(n:int32)
-ENSURES(x |-> Frac px vx)
-ENSURES(y |-> Frac py vy)
-ENSURES(pure (as_int n == max_spec (as_int vx) (as_int vy)))
+_requires((_slprop) _inline_pulse(x |-> Frac px vx))
+_requires((_slprop) _inline_pulse(y |-> Frac py vy))
+_ensures((_slprop) _inline_pulse(x |-> Frac px vx))
+_ensures((_slprop) _inline_pulse(y |-> Frac py vy))
+_ensures((_slprop) _inline_pulse(pure (as_int n == max_spec (as_int vx) (as_int vy))))
 int max_alt(int *x, int *y)
 {
   int result = 0; 
   int vx = *x;
   int vy = *y;
   if (vx > vy)
-  ENSURES(
-    exists* r.
+  _ensures((_slprop) _inline_pulse(exists* r.
        (x |-> Frac px vx) **
        (y |-> Frac py vy) **
        (result |-> r) **
-       pure (as_int r == max_spec (as_int vx) (as_int vy))
-  )
+       pure (as_int r == max_spec (as_int vx) (as_int vy))))
   {
     result = vx;
   }
@@ -58,41 +49,37 @@ int max_alt(int *x, int *y)
   return result;
 }
 
-ERASED_ARG(#w:option int32)
-ERASED_ARG(#p:_)
-REQUIRES(r |->? Frac p w)
-RETURNS(i:int32)
-ENSURES(r |->? Frac p w)
-ENSURES(pure (Some? w ==> Some?.v w == i))
+_requires((_slprop) _inline_pulse(r |->? Frac p w))
+_ensures((_slprop) _inline_pulse(r |->? Frac p w))
+_ensures((_slprop) _inline_pulse(pure (Some? w ==> Some?.v w == i)))
 int read_nullable(int *r)
 {
   if (r == NULL)
   {
-    LEMMA(elim_intro_null !r);
+    _assert((_slprop) _inline_pulse(elim_intro_null !r));
     return 0;
   }
   else
   {
-    LEMMA(elim_non_null !r);
+    _assert((_slprop) _inline_pulse(elim_non_null !r));
     int v = *r;
-    LEMMA(intro_non_null !r);
+    _assert((_slprop) _inline_pulse(intro_non_null !r));
     return v;
   }
 }
 
-ERASED_ARG(#w:option int32)
-REQUIRES(r |->? w)
-ENSURES(exists* x. (r |->? x) ** pure (if Some? w then x == Some v else x == w))
+_requires((_slprop) _inline_pulse(r |->? w))
+_ensures((_slprop) _inline_pulse(exists* x. (r |->? x) ** pure (if Some? w then x == Some v else x == w)))
 void write_nullable(int *r, int v)
 {
   if (r == NULL)
   {
-    LEMMA(elim_intro_null !r);
+    _assert((_slprop) _inline_pulse(elim_intro_null !r));
   }
   else
   {
-    LEMMA(elim_non_null !r);
+    _assert((_slprop) _inline_pulse(elim_non_null !r));
     *r = v;
-    LEMMA(intro_non_null !r);
+    _assert((_slprop) _inline_pulse(intro_non_null !r));
   }
 }

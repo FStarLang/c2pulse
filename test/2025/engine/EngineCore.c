@@ -1,27 +1,23 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include "../include/PulseMacros.h"
+#include "../c2pulse.h"
 #include "DPE.h"
 #include "EngineCore.h"
 #include "HACL.h"
 
-REQUIRES("a1 |-> Frac 'p1 's1")
-REQUIRES("a2 |-> Frac 'p2 's2")
-RETURNS(b:bool)
-ENSURES("a1 |-> Frac 'p1 's1")
-ENSURES("a2 |-> Frac 'p2 's2")
-ENSURES("pure (b <==> Seq.equal 's1 's2)")
-bool compare(size_t len, ISARRAY(len)uint8_t *a1, ISARRAY(len)uint8_t *a2)
+_requires((_slprop) _inline_pulse(a1 |-> Frac 'p1 's1))
+_requires((_slprop) _inline_pulse(a2 |-> Frac 'p2 's2))
+_ensures((_slprop) _inline_pulse(a1 |-> Frac 'p1 's1))
+_ensures((_slprop) _inline_pulse(a2 |-> Frac 'p2 's2))
+_ensures((_slprop) _inline_pulse(pure (b <==> Seq.equal 's1 's2)))
+bool compare(size_t len, uint8_t *a1, uint8_t *a2)
 {
-    LEMMA(admit());
+    _assert((_slprop) _inline_pulse(admit()));
     return false;
 }
 
-
-ERASED_ARG(#repr:erased _)
-ERASED_ARG(#p:_)
-PRESERVES(is_engine_record record p repr)
+_preserves((_slprop) _inline_pulse(is_engine_record record p repr))
 bool authenticate_l0_image(engine_record_t *record)
 {
     bool valid_header_sig = ed25519_verify(record->l0_image_auth_pubkey, record->l0_image_header, record->l0_image_header_size, record->l0_image_header_sig);
@@ -39,15 +35,11 @@ bool authenticate_l0_image(engine_record_t *record)
     }
 }
 
-ERASED_ARG(#uds_perm:_)
-ERASED_ARG(#p:_)
-ERASED_ARG(#repr:erased _)
-PRESERVES(is_engine_record record p repr)
-ERASED_ARG(#uds_bytes:erased _)
-PRESERVES(uds |-> Frac uds_perm uds_bytes)
-REQUIRES(exists* c0. cdi |-> c0)
-ENSURES(exists* c1. cdi |-> c1)
-void compute_cdi(ISARRAY(DICE_DIGEST_LEN)uint8_t *cdi, ISARRAY(UDS_LEN)uint8_t *uds, engine_record_t *record){
+_preserves((_slprop) _inline_pulse(is_engine_record record p repr))
+_preserves((_slprop) _inline_pulse(uds |-> Frac uds_perm uds_bytes))
+_requires((_slprop) _inline_pulse(exists* c0. cdi |-> c0))
+_ensures((_slprop) _inline_pulse(exists* c1. cdi |-> c1))
+void compute_cdi(uint8_t *cdi, uint8_t *uds, engine_record_t *record){
     uint8_t uds_digest[DICE_DIGEST_LEN];
     uint8_t l0_digest[DICE_DIGEST_LEN];
     hacl_hash(DICE_HASH_ALG, UDS_LEN, uds, uds_digest);
@@ -55,7 +47,7 @@ void compute_cdi(ISARRAY(DICE_DIGEST_LEN)uint8_t *cdi, ISARRAY(UDS_LEN)uint8_t *
     hacl_hmac(DICE_HASH_ALG, cdi, uds_digest, DICE_DIGEST_LEN, l0_digest, DICE_DIGEST_LEN);
 }
 
-bool engine_main(ISARRAY(DICE_DIGEST_LEN) uint8_t *cdi, ISARRAY(UDS_LEN) uint8_t *uds, engine_record_t *record){
+bool engine_main(uint8_t *cdi, uint8_t *uds, engine_record_t *record){
 
     bool b = authenticate_l0_image(record);
     if (b){

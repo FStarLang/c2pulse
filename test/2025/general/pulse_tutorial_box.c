@@ -1,8 +1,8 @@
 #include <stdint.h>
 #include <stdlib.h>
-#include "../include/PulseMacros.h"
+#include "../c2pulse.h"
 
-INCLUDE (
+_include_pulse(
     ghost
     fn freebie ()
     requires emp
@@ -12,23 +12,18 @@ INCLUDE (
     }    
 )
 
-REQUIRES(emp)
-RETURNS(i:int32)
-ENSURES(emp)
 int test_empty(void)
 { return 0; }
 
-RETURNS (i:int32)
-ENSURES(pure False)
+_ensures((_slprop) _inline_pulse(pure False))
 int test_freebie(void)
 {
-    LEMMA(freebie());
+    _assert((_slprop) _inline_pulse(freebie()));
     return 0;
 }
 
-RETURNS(i:ref int32)
-ENSURES(i |-> v)
-ENSURES(freeable i)
+_ensures((_slprop) _inline_pulse(i |-> v))
+_ensures((_slprop) _inline_pulse(freeable i))
 int* new_heap_ref(int v)
 {
     int *r = (int*)malloc(sizeof(int));
@@ -36,11 +31,8 @@ int* new_heap_ref(int v)
     return r;
 }
 
-
-ERASED_ARG(#w:_)
-REQUIRES((r |-> w) ** freeable r)
-RETURNS(i:int32)
-ENSURES(pure (i == w))
+_requires((_slprop) _inline_pulse((r |-> w) ** freeable r))
+_ensures(i == w)
 int last_value_of(int* r)
 {
    int v = *r;
@@ -48,12 +40,10 @@ int last_value_of(int* r)
    return v;   
 }
 
-ERASED_ARG(#w:_)
-REQUIRES(r |-> w)
-REQUIRES(freeable r)
-RETURNS(s:ref int32)
-ENSURES(s |-> w)
-ENSURES(freeable s)
+_requires((_slprop) _inline_pulse(r |-> w))
+_requires((_slprop) _inline_pulse(freeable r))
+_ensures((_slprop) _inline_pulse(s |-> w))
+_ensures((_slprop) _inline_pulse(freeable s))
 int* copy_free_box (int* r)
 {
     int v = *r;
@@ -63,10 +53,8 @@ int* copy_free_box (int* r)
     return s;
 }
 
-ERASED_ARG(#w:_)
-REQUIRES(r |-> w)
-RETURNS(s:ref int32)
-ENSURES((r |-> w) ** (s |-> w) ** freeable s)
+_requires((_slprop) _inline_pulse(r |-> w))
+_ensures((_slprop) _inline_pulse((r |-> w) ** (s |-> w) ** freeable s))
 int* copy_box(int* r)
 {
     int v = *r;

@@ -1,9 +1,8 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
-#include "../include/PulseMacros.h"
+#include "../c2pulse.h"
 
-RETURNS(bool)
 bool foo(size_t i, size_t j){
 
 	if (i < j){
@@ -15,7 +14,6 @@ bool foo(size_t i, size_t j){
 
 }
 
-RETURNS(bool)
 bool bar(uint64_t i, uint64_t j){
 
 	if (i < j){
@@ -27,7 +25,6 @@ bool bar(uint64_t i, uint64_t j){
 
 }
 
-RETURNS(bool)
 bool baz(uint32_t i, uint64_t j){
 
         if (i < j){
@@ -39,7 +36,6 @@ bool baz(uint32_t i, uint64_t j){
 
 }
 
-RETURNS(bool)
 bool boo(uint64_t i, uint32_t j){
 
         if (i < j){

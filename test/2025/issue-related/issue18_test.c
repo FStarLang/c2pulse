@@ -1,10 +1,7 @@
 #include <stdint.h>
 #include <stdlib.h>
-#include "../include/PulseMacros.h"
+#include "../c2pulse.h"
 
-REQUIRES(emp)
-RETURNS(i:int32)
-ENSURES(emp)
 int test(void)
 {
   return 0;
@@ -15,7 +12,7 @@ typedef struct _point {
   int py;
 } point;
 
-INCLUDE (
+_include_pulse(
   let is_diag_point (p:ref point) (v:int32)
   : slprop
   = point_pred p {px=v; py=v}
@@ -33,15 +30,14 @@ INCLUDE (
   }
 )
 
-ERASED_ARG(#v:erased _)
-REQUIRES(is_point p v)
-REQUIRES(pure <| fits (+) (fst v) (as_int dx))
-REQUIRES(pure <| fits (+) (snd v) (as_int dy))
-ENSURES(is_point p (fst v + as_int dx, snd v + as_int dy))
+_requires((_slprop) _inline_pulse(is_point p v))
+_requires((_slprop) _inline_pulse(pure <| fits (+) (fst v) (as_int dx)))
+_requires((_slprop) _inline_pulse(pure <| fits (+) (snd v) (as_int dy)))
+_ensures((_slprop) _inline_pulse(is_point p (fst v + as_int dx, snd v + as_int dy)))
 void move(point *p, int dx, int dy)
 {
-  LEMMA(unfold(is_point); point_explode !p);
+  _assert((_slprop) _inline_pulse(unfold(is_point); point_explode !p));
   p->px = p->px + dx;
   p->py = p->py + dy;
-  LEMMA(point_recover !p; fold_is_point !p);
+  _assert((_slprop) _inline_pulse(point_recover !p; fold_is_point !p));
 }

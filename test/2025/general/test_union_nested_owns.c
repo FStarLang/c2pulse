@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include "../include/PulseMacros.h"
+#include "../c2pulse.h"
 
-INCLUDE (
+_include_pulse(
   module U32 = Pulse.Lib.C.UInt32
   open Pulse.Lib.C.UInt32
 )
@@ -18,28 +18,25 @@ union ab {
   bool *b;      
 };
 
-ERASED_ARG(a:erased (ref uint32))
-ERASED_ARG(v:erased uint32)
-PRESERVES(ab_pred x (Case_ab_a a))
-REQUIRES(reveal a |-> v)
-REQUIRES(pure (U32.fits ( + ) (UInt32.v v) 1))
-ENSURES(exists* (u:uint32). (reveal a |-> u) ** pure (U32.as_int u == U32.as_int v + 1))
+_preserves((_slprop) _inline_pulse(ab_pred x (Case_ab_a a)))
+_requires((_slprop) _inline_pulse(reveal a |-> v))
+_requires((_slprop) _inline_pulse(pure (U32.fits ( + ) (UInt32.v v) 1)))
+_ensures((_slprop) _inline_pulse(exists* (u:uint32). (reveal a |-> u) ** pure (U32.as_int u == U32.as_int v + 1)))
 void incr_a(union ab *x) {
-  LEMMA(ab_is_a (!x));
-  LEMMA(ab_explode !x);
+  _assert((_slprop) _inline_pulse(ab_is_a (!x)));
+  _assert((_slprop) _inline_pulse(ab_explode !x));
   *x->a = *x->a + 1;
-  LEMMA(ab_recover !x #(Case_ab_a _));
+  _assert((_slprop) _inline_pulse(ab_recover !x #(Case_ab_a _)));
 }
 
-ERASED_ARG(v:erased _)
-REQUIRES(exists* s. ab_pred x s)
-PRESERVES(a |-> v)
-ENSURES(ab_pred x (Case_ab_a a))
+_requires((_slprop) _inline_pulse(exists* s. ab_pred x s))
+_preserves((_slprop) _inline_pulse(a |-> v))
+_ensures((_slprop) _inline_pulse(ab_pred x (Case_ab_a a)))
 void set_case_a(union ab *x, unsigned int *a) {
-  LEMMA(ab_change_a !x);
-  LEMMA(ab_explode !x);
+  _assert((_slprop) _inline_pulse(ab_change_a !x));
+  _assert((_slprop) _inline_pulse(ab_explode !x));
   x->a = a;
-  LEMMA(ab_recover !x #(Case_ab_a _));
+  _assert((_slprop) _inline_pulse(ab_recover !x #(Case_ab_a _)));
 }
 
 struct stru {
@@ -47,7 +44,7 @@ struct stru {
         union ab payload;
 };
 
-INCLUDE(
+_include_pulse(
 let stru_payload (a:ab_spec) : slprop = 
   match a with 
   | Case_ab_a a -> exists* v. (a |-> v)
@@ -106,22 +103,22 @@ ensures stru_ok u s
 }
 )
 
-PRESERVES(exists* s. stru_ok foo s)
+_preserves((_slprop) _inline_pulse(exists* s. stru_ok foo s))
 void test_union(struct stru * foo){
-  LEMMA(stru_explode (!foo));
+  _assert((_slprop) _inline_pulse(stru_explode (!foo)));
   if (foo->tag == 0){
-    LEMMA(ab_is_a (! (! foo)).payload; ab_explode (! (!foo)).payload; elim_stru_payload_a _);
+    _assert((_slprop) _inline_pulse(ab_is_a (! (! foo)).payload; ab_explode (! (!foo)).payload; elim_stru_payload_a _));
     *foo->payload.a = 1;
-    LEMMA(intro_stru_payload_a _; ab_recover (! (!foo)).payload #(Case_ab_a _);
-          stru_recover (!foo); intro_stru_ok (!foo));
+    _assert((_slprop) _inline_pulse(intro_stru_payload_a _; ab_recover (! (!foo)).payload #(Case_ab_a _);
+          stru_recover (!foo); intro_stru_ok (!foo)));
   }
   else if (foo->tag == 1) {
-    LEMMA(ab_is_b (! (! foo)).payload; ab_explode (! (!foo)).payload; elim_stru_payload_b _);
+    _assert((_slprop) _inline_pulse(ab_is_b (! (! foo)).payload; ab_explode (! (!foo)).payload; elim_stru_payload_b _));
     *foo->payload.b = false;
-    LEMMA(intro_stru_payload_b _; ab_recover (! (!foo)).payload #(Case_ab_b _);
-          stru_recover (!foo); intro_stru_ok (!foo));    
+    _assert((_slprop) _inline_pulse(intro_stru_payload_b _; ab_recover (! (!foo)).payload #(Case_ab_b _);
+          stru_recover (!foo); intro_stru_ok (!foo)));    
   }
   else {
-    LEMMA(unreachable());
+    _assert((_slprop) _inline_pulse(unreachable()));
   }
 }

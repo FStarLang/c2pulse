@@ -1,35 +1,31 @@
 
-#include "../include/PulseMacros.h"
+#include "../c2pulse.h"
 
-INCLUDE(let max_spec x y = if x < y then y else x)
+_include_pulse(let max_spec x y = if x < y then y else x)
 
-ERASED_ARG(#vx #vy : _)
-ERASED_ARG(#px #py : _)
-REQUIRES(x |->Frac px vx)
-REQUIRES(y |->Frac py vy)
-RETURNS(n : int32)
-ENSURES(x |->Frac px vx)
-ENSURES(y |->Frac py vy)
-ENSURES(pure(as_int n == max_spec(as_int vx)(as_int vy)))
-EXPECT_FAILURE() // see comments below
+_requires((_slprop) _inline_pulse(x |->Frac px vx))
+_requires((_slprop) _inline_pulse(y |->Frac py vy))
+_ensures((_slprop) _inline_pulse(x |->Frac px vx))
+_ensures((_slprop) _inline_pulse(y |->Frac py vy))
+_ensures((_slprop) _inline_pulse(pure(as_int n == max_spec(as_int vx)(as_int vy))))
+// see comments below
 int max_alt(int *x, int *y) {
-  LEMMA(let orig_x = x); // doesn't help, x is the local shadowed version
+  _assert((_slprop) _inline_pulse(let orig_x = x)); // doesn't help, x is the local shadowed version
   int result = 0;
   int xx = *x;
   int yy = *y;
-  LEMMA(with vx. assert x |-> vx);
-  LEMMA(with vy. assert y |-> vy);
-  LEMMA(with vxx. assert xx |-> vxx);
-  LEMMA(with vyy. assert yy |-> vyy);
+  _assert((_slprop) _inline_pulse(with vx. assert x |-> vx));
+  _assert((_slprop) _inline_pulse(with vy. assert y |-> vy));
+  _assert((_slprop) _inline_pulse(with vxx. assert xx |-> vxx));
+  _assert((_slprop) _inline_pulse(with vyy. assert yy |-> vyy));
   if (xx > yy)
     // Note: if does not frame anything, so the ensures must mention the full
     // postcondition. But we need to mention the **original** x and y, not the
     // locally shadowed versions, so we're out of luck here.
-    ENSURES(exists* r. (x |-> Frac px vx) ** (y |-> Frac py vy) ** (xx |-> vxx) ** 
+    _ensures((_slprop) _inline_pulse(exists* r. (x |-> Frac px vx) ** (y |-> Frac py vy) ** (xx |-> vxx) ** 
                        (yy |-> vyy) **
                        (result |-> r) **
-                       pure (as_int r == max_spec (as_int vxx) (as_int vyy))
-           ) 
+                       pure (as_int r == max_spec (as_int vxx) (as_int vyy)))) 
     {
       result = xx;
     }
@@ -40,14 +36,11 @@ int max_alt(int *x, int *y) {
 }
 
 // However, this now works without an ENSURES clause
-ERASED_ARG(#vx #vy : erased _)
-ERASED_ARG(#px #py : _)
-REQUIRES(x |->Frac px vx)
-REQUIRES(y |->Frac py vy)
-RETURNS(n : int32)
-ENSURES(x |->Frac px vx)
-ENSURES(y |->Frac py vy)
-ENSURES(pure(as_int n == max_spec(as_int vx)(as_int vy)))
+_requires((_slprop) _inline_pulse(x |->Frac px vx))
+_requires((_slprop) _inline_pulse(y |->Frac py vy))
+_ensures((_slprop) _inline_pulse(x |->Frac px vx))
+_ensures((_slprop) _inline_pulse(y |->Frac py vy))
+_ensures((_slprop) _inline_pulse(pure(as_int n == max_spec(as_int vx)(as_int vy))))
 int max_alt2(int *x, int *y) {
   int result = 0;
   int vx = *x;
@@ -63,14 +56,11 @@ int max_alt2(int *x, int *y) {
 }
 
 // Or more naturally:
-ERASED_ARG(#vx #vy : erased _)
-ERASED_ARG(#px #py : _)
-REQUIRES(x |->Frac px vx)
-REQUIRES(y |->Frac py vy)
-RETURNS(n : int32)
-ENSURES(x |->Frac px vx)
-ENSURES(y |->Frac py vy)
-ENSURES(pure(as_int n == max_spec(as_int vx)(as_int vy)))
+_requires((_slprop) _inline_pulse(x |->Frac px vx))
+_requires((_slprop) _inline_pulse(y |->Frac py vy))
+_ensures((_slprop) _inline_pulse(x |->Frac px vx))
+_ensures((_slprop) _inline_pulse(y |->Frac py vy))
+_ensures((_slprop) _inline_pulse(pure(as_int n == max_spec(as_int vx)(as_int vy))))
 int max_alt3(int *x, int *y) {
   int result = 0;
   if (*x > *y)
@@ -84,14 +74,11 @@ int max_alt3(int *x, int *y) {
 }
 
 // Or more naturally:
-ERASED_ARG(#vx #vy : erased _)
-ERASED_ARG(#px #py : _)
-REQUIRES(x |->Frac px vx)
-REQUIRES(y |->Frac py vy)
-RETURNS(n : int32)
-ENSURES(x |->Frac px vx)
-ENSURES(y |->Frac py vy)
-ENSURES(pure(as_int n == max_spec(as_int vx)(as_int vy)))
+_requires((_slprop) _inline_pulse(x |->Frac px vx))
+_requires((_slprop) _inline_pulse(y |->Frac py vy))
+_ensures((_slprop) _inline_pulse(x |->Frac px vx))
+_ensures((_slprop) _inline_pulse(y |->Frac py vy))
+_ensures((_slprop) _inline_pulse(pure(as_int n == max_spec(as_int vx)(as_int vy))))
 int max_alt4(int *x, int *y) {
   if (*x > *y)
     return *x;

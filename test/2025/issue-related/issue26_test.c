@@ -1,20 +1,19 @@
 #include <stdint.h>
 #include <stdlib.h>
-#include "../include/PulseMacros.h"
+#include "../c2pulse.h"
 
 typedef struct _point {
   int px;
   int py;
 } point;
 
-
-INCLUDE (
+_include_pulse(
   let is_point (p:ref point) (xy : (int & int))
   : slprop
   = exists* v. point_pred p v ** pure (as_int v.px == fst xy) ** pure (as_int v.py == snd xy)
 )
 
-INCLUDE (
+_include_pulse(
   ghost
   fn fold_is_point (p:ref point) (#s:point_spec)
   requires point_pred p s
@@ -24,38 +23,34 @@ INCLUDE (
   }
 )
 
-ERASED_ARG(#v:erased _)
-REQUIRES(is_point p v)
-REQUIRES(pure <| fits (+) (fst v) (as_int dx))
-REQUIRES(pure <| fits (+) (snd v) (as_int dy))
-ENSURES(is_point p (fst v + as_int dx, snd v + as_int dy))
+_requires((_slprop) _inline_pulse(is_point p v))
+_requires((_slprop) _inline_pulse(pure <| fits (+) (fst v) (as_int dx)))
+_requires((_slprop) _inline_pulse(pure <| fits (+) (snd v) (as_int dy)))
+_ensures((_slprop) _inline_pulse(is_point p (fst v + as_int dx, snd v + as_int dy)))
 void move_alt(point *p, int dx, int dy)
 {
-  LEMMA(unfold(is_point); point_explode !p);
+  _assert((_slprop) _inline_pulse(unfold(is_point); point_explode !p));
   p->px = p->px + dx;
   p->py = p->py + dy;
-  LEMMA(point_recover !p; fold_is_point !p);
+  _assert((_slprop) _inline_pulse(point_recover !p; fold_is_point !p));
 }
 
-
-RETURNS(p:ref point)
-ENSURES(is_point p (as_int x, as_int y))
-ENSURES(freeable p)
+_ensures((_slprop) _inline_pulse(is_point p (as_int x, as_int y)))
+_ensures((_slprop) _inline_pulse(freeable p))
 point* create_point(int x, int y)
 {
   point* p = (point*)malloc(sizeof(point));
-  LEMMA(point_explode !p);
+  _assert((_slprop) _inline_pulse(point_explode !p));
   p->px = x;
   p->py = y;
-  LEMMA(point_recover !p; fold_is_point !p);
+  _assert((_slprop) _inline_pulse(point_recover !p; fold_is_point !p));
   return p;
 }
-
 
 void create_and_move()
 {
   point *p = create_point(0, 0);
   move_alt(p, 1, 1);
-  LEMMA(unfold(is_point); point_explode !p; point_recover !p);
+  _assert((_slprop) _inline_pulse(unfold(is_point); point_explode !p; point_recover !p));
   free(p);
 }

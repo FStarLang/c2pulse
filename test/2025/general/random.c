@@ -1,8 +1,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include "../include/PulseMacros.h"
-
+#include "../c2pulse.h"
 
 typedef struct _s1 {
     bool bytes[10];
@@ -12,12 +11,12 @@ typedef struct _s1 {
     bool arr[]; 
 } s1;
 
-PRESERVES(exists* s1_s. s1_pred x1 s1_s)
+_preserves((_slprop) _inline_pulse(exists* s1_s. s1_pred x1 s1_s))
 void foo(s1 *x1){
-    LEMMA(s1_explode (!x1));
-    LEMMA(pts_to_len ((!(!x1)).bytes));
-    ISARRAY() bool *tempArr = x1->bytes;
-    ISARRAY() char *tempArr1 = x1->charbytes;
+    _assert((_slprop) _inline_pulse(s1_explode (!x1)));
+    _assert((_slprop) _inline_pulse(pts_to_len ((!(!x1)).bytes)));
+    bool *tempArr = x1->bytes;
+    char *tempArr1 = x1->charbytes;
     int x;
     int matrix[10][10];
     x++; 
@@ -29,6 +28,6 @@ void foo(s1 *x1){
     
 
     //TODO: implement x %= 2;
-    LEMMA(admit());
+    _assert((_slprop) _inline_pulse(admit()));
     return;
 }

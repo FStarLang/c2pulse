@@ -1,23 +1,19 @@
-#include "../include/PulseMacros.h"
+#include "../c2pulse.h"
 #include <stdint.h>
 
-RETURNS(Int32.t)
 int neg(uint32_t x) { 
     return -x;
 }
 
-RETURNS(Int64.t)
 long neg_2(uint64_t x) { 
     return -x;
 }
 
 //Vidush : Will fail since minus is not there for Int32.
-// RETURNS(Int32.t)
-// int neg_3(int x) { 
+//// int neg_3(int x) { 
 //     return -x;
 // }
 
-RETURNS(Int32.t)
 int not(int x) { 
     return !x;
 }

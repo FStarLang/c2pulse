@@ -1,11 +1,9 @@
-#include "../include/PulseMacros.h"
+#include "../c2pulse.h"
 
-INCLUDE(assume val res : slprop)
+_include_pulse(assume val res : slprop)
 
-REQUIRES(res)
 void bar(void);
 
-REQUIRES(res)
 void foo() {
 	bar();
 }

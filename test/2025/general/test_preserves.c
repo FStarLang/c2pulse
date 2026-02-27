@@ -1,8 +1,5 @@
-#include "../include/PulseMacros.h"
+#include "../c2pulse.h"
 
-
-PRESERVES(emp)
-RETURNS(int32)
 int foo(){
   return 0;
 }

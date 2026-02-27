@@ -1,8 +1,7 @@
-#include "../include/PulseMacros.h"
-
+#include "../c2pulse.h"
 
 void foo() {
   int x;
-  LEMMA(assert emp);
+  _assert((_slprop) _inline_pulse(assert emp));
   x = 1;
 }

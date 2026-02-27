@@ -1,4 +1,4 @@
-#include "../include/PulseMacros.h"
+#include "../c2pulse.h"
 
 int foo()
 {

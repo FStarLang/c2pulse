@@ -1,5 +1,4 @@
-#include "../include/PulseMacros.h"
-RETURNS(Int32.t)
+#include "../c2pulse.h"
 int foo()
 {
 	int x;

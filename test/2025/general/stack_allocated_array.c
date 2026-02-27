@@ -1,8 +1,8 @@
 #include <stddef.h>
-#include "../include/PulseMacros.h"
+#include "../c2pulse.h"
 
-REQUIRES(pure (abs (Int32.v len) < 100))
-REQUIRES(pure ((Int32.v len) > 0))
+_requires((_slprop) _inline_pulse(pure (abs (Int32.v len) < 100)))
+_requires((_slprop) _inline_pulse(pure ((Int32.v len) > 0)))
 void foo(int len){
    int arr[10];
    int y = (len + 2) * 2; 

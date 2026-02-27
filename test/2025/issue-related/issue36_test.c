@@ -1,6 +1,6 @@
-#include "../include/PulseMacros.h"
+#include "../c2pulse.h"
 
-REQUIRES(pure (as_int x > 0))
+_requires((_slprop) _inline_pulse(pure (as_int x > 0)))
 void test(int x)
 {
     x = x - 1;

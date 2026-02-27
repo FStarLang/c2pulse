@@ -1,9 +1,8 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include "../include/PulseMacros.h"
+#include "../c2pulse.h"
 
-RETURNS(b:bool)
 bool test_bool(int a, int b)
 {
     if (a < b)

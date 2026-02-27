@@ -1,8 +1,6 @@
-#include "../include/PulseMacros.h"
+#include "../c2pulse.h"
 
-EXPECT_FAILURE()
-RETURNS(s:ref int32)
-ENSURES(s |-> 0l)
+_ensures((_slprop) _inline_pulse(s |-> 0l))
 int* refs_are_scoped()
 {
     int s = 0;

@@ -1,7 +1,6 @@
 #include <stdint.h>
-#include "../include/PulseMacros.h"
+#include "../c2pulse.h"
 
-RETURNS(b:FStar.UInt32.t)
 uint32_t integer_promotion()
 {
   uint32_t x = 1;

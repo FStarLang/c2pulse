@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include "../include/PulseMacros.h"
+#include "../c2pulse.h"
 
 typedef struct _foo{
 int a; 
@@ -20,7 +20,6 @@ uint32_t foo(){
 long long foo1(){
     return 10;
 }
-
 
 long foo2(){
     return 10;
@@ -42,7 +41,6 @@ void foo5(){
 
 //Vidush: Should we just fail for all functions 
 //that return a void pointer?
-EXPECT_FAILURE()
 void *foo6(){
     return NULL;
 }
@@ -59,8 +57,7 @@ struct _foo *baz(){
     return NULL;
 }
 
-ERASED_ARG(s:_)
-REQUIRES(pure (Case_ab_a? s))
+_requires((_slprop) _inline_pulse(pure (Case_ab_a? s)))
 union ab *baz1(union ab *x){
     return x;
 }

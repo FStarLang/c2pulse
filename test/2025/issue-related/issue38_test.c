@@ -4,7 +4,6 @@ struct foo {
 	int left;
 };
 
-
 /* This is a funny corner case, that works.
    The internal struct declaration does not
    defined any field for foo2, but defines a new

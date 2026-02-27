@@ -1,40 +1,32 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include "../include/PulseMacros.h"
+#include "../c2pulse.h"
 
-
-INCLUDE ( 
+_include_pulse( 
   module SZ = Pulse.Lib.C.SizeT
   module U64 = FStar.UInt64
  )
 
-ERASED_ARG(#s:erased (Seq.seq int32))
-ERASED_ARG(#p:perm  { SizeT.v i < Seq.length s })
-REQUIRES(arr |-> Frac p s)
-RETURNS(v:int32)
-ENSURES(arr |-> Frac p s)
-ENSURES(pure (v == Seq.index s (SizeT.v i) ))
-int read_i(ISARRAY() int *arr, size_t i)
+_requires((_slprop) _inline_pulse(arr |-> Frac p s))
+_ensures((_slprop) _inline_pulse(arr |-> Frac p s))
+_ensures((_slprop) _inline_pulse(pure (v == Seq.index s (SizeT.v i) )))
+int read_i(int *arr, size_t i)
 {
     return arr[i];
 }
 
-ERASED_ARG(#s:erased (Seq.seq int32) { SizeT.v i < Seq.length s })
-REQUIRES(arr |-> s)
-ENSURES(exists* s1. (arr |-> s1) ** pure (s1 == Seq.upd s (SizeT.v i) v))
-void write_i(ISARRAY() int *arr, size_t i, int v)
+_requires((_slprop) _inline_pulse(arr |-> s))
+_ensures((_slprop) _inline_pulse(exists* s1. (arr |-> s1) ** pure (s1 == Seq.upd s (SizeT.v i) v)))
+void write_i(int *arr, size_t i, int v)
 {
     arr[i] = v;
 }
 
-ERASED_ARG(#s1 #s2 : erased (Seq.seq int32))
-ERASED_ARG(#p:perm { Seq.length s1 = Seq.length s2 && Seq.length s2 = SizeT.v l })
-PRESERVES(a1 |-> Frac p s1)
-PRESERVES(a2 |-> Frac p s2)
-RETURNS(res:int32)
-ENSURES(pure (res==1l <==> (SizeT.v i < SizeT.v l && Seq.index s1 (SizeT.v i) = Seq.index s2 (SizeT.v i))))
-int compare_elements(ISARRAY() int *a1, ISARRAY() int *a2, size_t l, size_t i)
+_preserves((_slprop) _inline_pulse(a1 |-> Frac p s1))
+_preserves((_slprop) _inline_pulse(a2 |-> Frac p s2))
+_ensures((_slprop) _inline_pulse(pure (res==1l <==> (SizeT.v i < SizeT.v l && Seq.index s1 (SizeT.v i) = Seq.index s2 (SizeT.v i)))))
+int compare_elements(int *a1, int *a2, size_t l, size_t i)
 {
     if (i < l)
     {
@@ -53,25 +45,20 @@ int compare_elements(ISARRAY() int *a1, ISARRAY() int *a2, size_t l, size_t i)
     }
 }
 
-INCLUDE (
+_include_pulse(
     module SizeT = Pulse.Lib.C.SizeT
 )
 
-ERASED_ARG(#s1 #s2 : erased (Seq.seq int32))
-ERASED_ARG(#p:perm { Seq.length s1 = Seq.length s2 && Seq.length s2 = SizeT.v l })
-PRESERVES(a1 |-> Frac p s1)
-PRESERVES(a2 |-> Frac p s2)
-RETURNS(res:bool)
-ENSURES(pure (res <==> Seq.equal s1 s2))
-bool compare(ISARRAY() int *a1, ISARRAY() int *a2, size_t l)
+_preserves((_slprop) _inline_pulse(a1 |-> Frac p s1))
+_preserves((_slprop) _inline_pulse(a2 |-> Frac p s2))
+_ensures((_slprop) _inline_pulse(pure (res <==> Seq.equal s1 s2)))
+bool compare(int *a1, int *a2, size_t l)
 {
     size_t i = 0;
-    LEMMA(with va1. assert (a1 |-> va1));
-    LEMMA(with va2. assert (a2 |-> va2));
+    _assert((_slprop) _inline_pulse(with va1. assert (a1 |-> va1)));
+    _assert((_slprop) _inline_pulse(with va2. assert (a2 |-> va2)));
     while( compare_elements(a1, a2, l, i) == 1 )
-    INVARIANTS(
-        invariant b.
-        exists* vi vl.
+        _invariant((_slprop) _inline_pulse(exists* vi vl.
         (a1 |-> va1) ** (a2 |-> va2) ** (* tedious *)
         (i |-> vi) ** (va1 |-> Frac p s1) ** (va2 |-> Frac p s2) **
         (l |-> vl) **
@@ -80,8 +67,7 @@ bool compare(ISARRAY() int *a1, ISARRAY() int *a2, size_t l)
         /\ Seq.length s2 = SizeT.v vl
         /\ SizeT.v vi <= SizeT.v vl
         /\ (b == (SizeT.v vi < SizeT.v vl && Seq.index s1 (SizeT.v vi) = Seq.index s2 (SizeT.v vi)))
-        /\ (forall (i:nat). i < SizeT.v vi ==> Seq.index s1 i == Seq.index s2 i))
-    )
+        /\ (forall (i:nat). i < SizeT.v vi ==> Seq.index s1 i == Seq.index s2 i))))
     {
         i = i + 1;
     }

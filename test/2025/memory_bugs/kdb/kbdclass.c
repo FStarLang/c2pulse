@@ -27,7 +27,6 @@ struct _DEVICE_EXTENSION {
     DEVICE_OBJECT *Self;
 };
 
-
 typedef struct _GLOBALS {
     int OtherField1; // to ensure that &LegacyDeviceList points to the middle of the struct
     int OtherField2; // and that the offset &LegacyDeviceList is not the same as &Link in DeviceExtension
@@ -79,7 +78,6 @@ DEVICE_OBJECT *IoCreateDevice() {
     devObj->DeviceExtension = devExt;
     return devObj;
 }
-
 
 void IoDeleteDevice(DEVICE_OBJECT *devObj) {
     DEVICE_EXTENSION *devExt = devObj->DeviceExtension;

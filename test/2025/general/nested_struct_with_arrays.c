@@ -1,16 +1,16 @@
 #include <stdlib.h>
 #include <stdint.h>
-#include "../include/PulseMacros.h"
+#include "../c2pulse.h"
 
 typedef struct _s1 {
-    ISARRAY(32) uint8_t *bytes;
+    uint8_t *bytes;
 } s1;
 
 typedef struct _s2 {
     s1 *field_s1;
 } s2;
 
-INCLUDE (
+_include_pulse(
 [@@pulse_unfold] let owns_s2 (x:ref s2) (y:Seq.seq UInt8.t) = 
 exists* s2_spec s1_spec. 
   s2_pred x s2_spec **
@@ -32,33 +32,31 @@ ensures owns_s2 x bytes { rewrite each z as ({bytes=z}).bytes }
 
 void test()
 {
-    ISARRAY(32) uint8_t *bytes = (uint8_t*)malloc(sizeof(uint8_t)*32);
+    uint8_t *bytes = (uint8_t*)malloc(sizeof(uint8_t)*32);
     s1 x1;
-    LEMMA(s1_pack x1);
+    _assert((_slprop) _inline_pulse(s1_pack x1));
     x1.bytes = bytes;
     x1.bytes = bytes;
-    LEMMA(admit());
+    _assert((_slprop) _inline_pulse(admit()));
 }
 
-
-RETURNS(x: _)
-ENSURES(exists* y. owns_s2 x y)
+_ensures((_slprop) _inline_pulse(exists* y. owns_s2 x y))
 s2* mk_s2()
 {
-    ISARRAY(32) uint8_t *bytes = (uint8_t*)malloc(sizeof(uint8_t)*32);
+    uint8_t *bytes = (uint8_t*)malloc(sizeof(uint8_t)*32);
     s1 *x1 = (s1*)malloc(sizeof(s1));
     x1->bytes = bytes;
     s2 *x2 = (s2*)malloc(sizeof(s2));
     x2->field_s1 = x1;
-    LEMMA(intro_owns_s2 ());
+    _assert((_slprop) _inline_pulse(intro_owns_s2 ()));
     return x2;
 }
 
-PRESERVES(exists* y. owns_s2 x2 y)
+_preserves((_slprop) _inline_pulse(exists* y. owns_s2 x2 y))
 uint8_t read_byte0(s2 *x2)
 {
     s1 *x1 = x2->field_s1;
-    LEMMA(pts_to_len (!(!(!x1)).bytes));
+    _assert((_slprop) _inline_pulse(pts_to_len (!(!(!x1)).bytes)));
     uint8_t res = x1->bytes[0];
     return res;
 }

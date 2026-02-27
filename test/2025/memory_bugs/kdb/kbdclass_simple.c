@@ -24,7 +24,6 @@ struct _DEVICE_EXTENSION {
     DEVICE_OBJECT *Self;
 };
 
-
 typedef struct _GLOBALS {
     // Inv: LegacyDeviceList is a doubly link list with Flink, Blink pointing to 
     //   a)  &LegacyDeviceList of the GLOBALS 
@@ -73,7 +72,6 @@ DEVICE_OBJECT *IoCreateDevice() {
     devObj->DeviceExtension = devExt;
     return devObj;
 }
-
 
 void IoDeleteDevice(DEVICE_OBJECT *devObj) {
     DEVICE_EXTENSION *devExt = devObj->DeviceExtension;

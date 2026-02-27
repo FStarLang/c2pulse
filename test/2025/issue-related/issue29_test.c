@@ -1,15 +1,12 @@
-#include "../include/PulseMacros.h"
+#include "../c2pulse.h"
 #include <stdint.h>
 #include <stdlib.h>
 
-INCLUDE(let max_spec x y = if x < y then y else x)
+_include_pulse(let max_spec x y = if x < y then y else x)
 
-ERASED_ARG(#vx #vy : erased _)
-ERASED_ARG(#px #py : _)
-PRESERVES(x |->Frac px vx)
-PRESERVES(y |->Frac py vy)
-RETURNS(n : int32)
-ENSURES(pure(as_int n == max_spec(as_int vx)(as_int vy)))
+_preserves((_slprop) _inline_pulse(x |->Frac px vx))
+_preserves((_slprop) _inline_pulse(y |->Frac py vy))
+_ensures((_slprop) _inline_pulse(pure(as_int n == max_spec(as_int vx)(as_int vy))))
 int max(int *x, int *y) {
   if (*x > *y) {
     return *x;

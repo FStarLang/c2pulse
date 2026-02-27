@@ -1,8 +1,6 @@
 #include <stdlib.h>
-#include "../../include/PulseMacros.h"
+#include "../../c2pulse.h"
 
-REQUIRES(emp)
-ENSURES(emp)
 void uninitialized() {
     int *x = (int *) malloc(sizeof(int));
     *x = 1;

@@ -3,7 +3,6 @@ typedef struct _bar {
         int y;
 } bar;
 
-
 typedef struct _foo {
     bar c;
 } foo;

@@ -1,4 +1,4 @@
-#include "../include/PulseMacros.h"
+#include "../c2pulse.h"
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -37,7 +37,6 @@ int8_t cmp28(int8_t x, int8_t y) { return x <= y; }
 int8_t cmp29(int8_t x, int8_t y) { return x < y; }
 int8_t cmp30(int8_t x, int8_t y) { return x != y; }
 
-
 uint64_t cmp31(uint64_t x, uint64_t y) { return x == y; }
 uint64_t cmp32(uint64_t x, uint64_t y) { return x >= y; }
 uint64_t cmp33(uint64_t x, uint64_t y) { return x > y; }
@@ -65,7 +64,6 @@ uint8_t cmp51(uint8_t x, uint8_t y) { return x > y; }
 uint8_t cmp52(uint8_t x, uint8_t y) { return x <= y; }
 uint8_t cmp53(uint8_t x, uint8_t y) { return x < y; }
 uint8_t cmp54(uint8_t x, uint8_t y) { return x != y; }
-
 
 bool cmp55(bool x, bool y) { return x == y; }
 bool cmp56(bool x, bool y) { return x >= y; }

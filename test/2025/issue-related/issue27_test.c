@@ -1,6 +1,5 @@
-#include "../include/PulseMacros.h"
+#include "../c2pulse.h"
 
-RETURNS(s:int32)
 int refs_are_scoped()
 {
     int s = 0;
