@@ -27,6 +27,7 @@ use crate::ir::Expr as Expr;
 use crate::ir::UnOp as UnOp;
 use crate::ir::BinOp as BinOp;
 use crate::hauntedc::SnippetMap as SnippetMap;
+use crate::hauntedc::TargetIntWidths as TargetIntWidths;
 
 type Rc<str> {
     #layout(size=16, align=8);
@@ -109,6 +110,12 @@ type SnippetMap {
     fn default() -> SnippetMap;
 }
 
+type TargetIntWidths {
+    #layout(size=20, align=4);
+    wellknown_traits(Copy);
+    constructor { char_width: u32, short_width: u32, int_width: u32, long_width: u32, long_long_width: u32 };
+}
+
 use crate::vfs::VFSEntry as VFSEntry;
 mod crate::vfs {
     type VFSEntry {
@@ -133,6 +140,8 @@ mod crate::clang {
         #only_by_ref;
 
         fn get_input_file_name(&self) -> &str;
+
+        fn set_target_int_widths(&mut self, TargetIntWidths);
 
         fn intern_str(&mut self, &str) -> Rc<str>;
 

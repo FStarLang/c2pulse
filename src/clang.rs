@@ -2,7 +2,7 @@ use num_bigint::BigInt;
 
 use crate::{
     diag::{Diagnostic, DiagnosticLevel, Diagnostics},
-    hauntedc::{SnippetMap, parse_expr},
+    hauntedc::{SnippetMap, TargetIntWidths, parse_expr},
     ir::*,
     vfs::VFS,
 };
@@ -25,6 +25,7 @@ pub struct Ctx<'a> {
     interned_strs: HashSet<Rc<str>>,
     translation_unit: TranslationUnit,
     diagnostics: Diagnostics,
+    target_int_widths: TargetIntWidths,
 }
 
 impl<'a> Ctx<'a> {
@@ -40,11 +41,16 @@ impl<'a> Ctx<'a> {
                 decls: vec![],
             },
             diagnostics: Diagnostics::empty(),
+            target_int_widths: TargetIntWidths::default(),
         }
     }
 
     fn get_input_file_name(&self) -> &str {
         &self.input_file_name
+    }
+
+    fn set_target_int_widths(&mut self, widths: TargetIntWidths) {
+        self.target_int_widths = widths;
     }
 
     fn intern_str(&mut self, s: &str) -> Rc<str> {
@@ -123,7 +129,13 @@ impl<'a> Ctx<'a> {
 
     fn parse_rvalue(&mut self, loc: Rc<SourceInfo>, idx: u32, snippets: &SnippetMap) -> Rc<Expr> {
         match snippets.snippets.get(&idx) {
-            Some(code) => parse_expr(&mut self.diagnostics, &loc, code, snippets),
+            Some(code) => parse_expr(
+                &mut self.diagnostics,
+                &loc,
+                code,
+                snippets,
+                &self.target_int_widths,
+            ),
             None => {
                 self.report_diag(loc.clone(), true, "internal error: invalid code snippet");
                 ExprT::Error(TypeT::Error.with_loc(loc.clone())).with_loc(loc)

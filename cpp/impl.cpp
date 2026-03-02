@@ -34,6 +34,7 @@ Ref<rust::Str> toStr(std::string const &str) {
 }
 
 using SnipMap = rust::crate::hauntedc::SnippetMap;
+using TargetIntWidths = rust::crate::hauntedc::TargetIntWidths;
 
 template <> struct std::hash<FileID> {
   std::size_t operator()(FileID const &s) const noexcept {
@@ -169,7 +170,13 @@ public:
 
   // TODO: should probably wait with translation until after parsing
 
-  void Initialize(ASTContext &Context) override { astCtx = &Context; }
+  void Initialize(ASTContext &Context) override {
+    astCtx = &Context;
+    auto const &TI = Context.getTargetInfo();
+    ctx.set_target_int_widths(
+        TargetIntWidths(TI.getCharWidth(), TI.getShortWidth(), TI.getIntWidth(),
+                        TI.getLongWidth(), TI.getLongLongWidth()));
+  }
 
   virtual bool HandleTopLevelDecl(DeclGroupRef DG) override {
     for (auto D : DG)

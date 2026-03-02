@@ -220,6 +220,28 @@ fn punct<'tokens, 'src: 'tokens, I: ValueInput<'tokens, Token = Token<'src>, Spa
     just(Token::Punct(op)).padded_by(ws())
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct TargetIntWidths {
+    pub char_width: u32,
+    pub short_width: u32,
+    pub int_width: u32,
+    pub long_width: u32,
+    pub long_long_width: u32,
+}
+
+impl Default for TargetIntWidths {
+    fn default() -> Self {
+        // LP64 defaults (Linux/macOS amd64)
+        TargetIntWidths {
+            char_width: 8,
+            short_width: 16,
+            int_width: 32,
+            long_width: 64,
+            long_long_width: 64,
+        }
+    }
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct SnippetMap {
     pub snippets: HashMap<u32, InlineCode>,
@@ -307,17 +329,104 @@ fn expr_parser<
 >(
     snip_map: &'src SnippetMap,
     sift: &'src SIFT,
+    target_widths: &'src TargetIntWidths,
 ) -> impl Parser<'tokens, I, Expr, Extra<'tokens, 'src>> + Clone {
     recursive(|expr| {
         let assignment_expression = expr.clone();
 
         // let expression = assignment_expression;
 
-        let type_name = select! {
-            Token::Ident("_slprop") => TypeT::SLProp,
-            Token::Ident("_specint") => TypeT::SpecInt,
+        // Parse C integer type specifiers: [signed|unsigned] [short|long|long long] [int|char]
+        let signedness = select! {
+            Token::Ident("signed") => true,
+            Token::Ident("unsigned") => false,
         }
-        .map_with(|ty, e| ty.with_loc(sift.resolve_source_info(&e.span())));
+        .padded_by(ws());
+
+        let size_modifier = select! {
+            Token::Ident("short") => 0u8,
+            Token::Ident("long") => 1u8,
+        }
+        .padded_by(ws())
+        .then(
+            select! { Token::Ident("long") => () }
+                .padded_by(ws())
+                .or_not(),
+        )
+        .map(|(m, extra_long)| match (m, extra_long) {
+            (0, _) => 0u8,        // short
+            (1, None) => 1u8,     // long
+            (1, Some(())) => 2u8, // long long
+            _ => unreachable!(),
+        });
+
+        let int_or_char = select! {
+            Token::Ident("int") => false,
+            Token::Ident("char") => true,
+        }
+        .padded_by(ws());
+
+        let tw = *target_widths;
+        let integer_type = signedness
+            .or_not()
+            .then(size_modifier.or_not())
+            .then(int_or_char.or_not())
+            .try_map(move |((sign_opt, size_opt), base_opt), span| {
+                if sign_opt.is_none() && size_opt.is_none() && base_opt.is_none() {
+                    return Err(Rich::custom(span, "expected type specifier"));
+                }
+                let signed = sign_opt.unwrap_or(true);
+                let is_char = base_opt == Some(true);
+                let width = if is_char {
+                    tw.char_width
+                } else {
+                    match size_opt {
+                        Some(0) => tw.short_width,
+                        Some(1) => tw.long_width,
+                        Some(2) => tw.long_long_width,
+                        None | Some(_) => tw.int_width,
+                    }
+                };
+                Ok(TypeT::Int { signed, width })
+            });
+
+        let ident = select! { Token::Ident(ident) => ident }
+            .map_with(|ident, e| {
+                Rc::<str>::from(ident).with_loc(sift.resolve_source_info(&e.span()))
+            })
+            .padded_by(ws());
+
+        let struct_type = select! { Token::Ident("struct") => () }
+            .padded_by(ws())
+            .ignore_then(ident.clone())
+            .map(|name| TypeT::TypeRef(TypeRefKind::Struct(name)));
+
+        let base_type = choice((
+            select! {
+                Token::Ident("_slprop") => TypeT::SLProp,
+                Token::Ident("_specint") => TypeT::SpecInt,
+                Token::Ident("void") => TypeT::Void,
+                Token::Ident("size_t") => TypeT::SizeT,
+            }
+            .padded_by(ws()),
+            select! {
+                Token::Ident("bool") => TypeT::Bool,
+                Token::Ident("_Bool") => TypeT::Bool,
+            }
+            .padded_by(ws()),
+            struct_type,
+            integer_type,
+        ));
+
+        let type_name = base_type
+            .map_with(|ty, e| ty.with_loc(sift.resolve_source_info(&e.span())))
+            .then(punct(Punct::Star).repeated().collect::<Vec<_>>())
+            .map_with(|(base_ty, stars), e| {
+                let loc = sift.resolve_source_info(&e.span());
+                stars.into_iter().fold(base_ty, |inner, _| {
+                    TypeT::Pointer(inner, PointerKind::Unknown).with_loc(loc.clone())
+                })
+            });
 
         let inline_pulse = select! { Token::Ident("_inline_pulse") => () }
             .ignore_then(
@@ -335,11 +444,6 @@ fn expr_parser<
             })
             .boxed();
 
-        let ident = select! { Token::Ident(ident) => ident }
-            .map_with(|ident, e| {
-                Rc::<str>::from(ident).with_loc(sift.resolve_source_info(&e.span()))
-            })
-            .padded_by(ws());
         let identifier = ident.clone().map(|i| {
             let loc = i.loc.clone();
             ExprT::Var(i).with_loc(loc).into()
@@ -575,6 +679,7 @@ pub fn parse_expr(
     fallback_loc: &Rc<SourceInfo>,
     code: &InlineCode,
     snippets: &SnippetMap,
+    target_widths: &TargetIntWidths,
 ) -> Rc<crate::ir::Expr> {
     let mut tokens: Vec<(Token, SimpleSpan)> = vec![];
     let mut source_infos: Vec<Rc<SourceInfo>> = vec![];
@@ -607,7 +712,7 @@ pub fn parse_expr(
         source_infos,
         fallback: fallback_loc.clone(),
     };
-    let result = expr_parser(snippets, &source_infos).parse(IterInput::new(
+    let result = expr_parser(snippets, &source_infos, target_widths).parse(IterInput::new(
         tokens.iter().map(Clone::clone),
         (tokens.len()..tokens.len()).into(),
     ));
