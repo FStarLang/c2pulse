@@ -2,7 +2,7 @@ FROM mcr.microsoft.com/devcontainers/base:ubuntu
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        opam pkg-config libgmp-dev tmux ripgrep tig \
+        opam pkg-config libgmp-dev tmux ripgrep tig gdb \
         clang clang-format ccls zstd rustup \
         lsb-release wget software-properties-common gnupg && \
     apt-get clean
@@ -27,7 +27,7 @@ ENV OPAMYES=1
 RUN --mount=type=bind,source=.git,destination=/c2p-repo \
     git config --global --add safe.directory /c2p-repo && \
     sudo mkdir /workspaces && sudo chown vscode:vscode /workspaces && \
-    cd /workspaces && git clone --depth=1 --recurse-submodules --shallow-submodules --reference-if-able=/c2p-repo --dissociate /c2p-repo c2pulse && \
+    cd /workspaces && git clone --depth=1 --recurse-submodules --reference-if-able=/c2p-repo --dissociate /c2p-repo c2pulse && \
     cd c2pulse && \
     ./opt/fstar/.scripts/get_fstar_z3.sh ~/.local/bin/ && \
     make -j`nproc` build-pulse && \
