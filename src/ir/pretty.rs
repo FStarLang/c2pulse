@@ -107,6 +107,7 @@ impl PrettyIR for ExprT {
             ExprT::Var(x) => x.to_doc(),
             ExprT::Deref(rval) => RcDoc::text("(*").append(rval.to_doc()).append(")"),
             ExprT::Member(x, n) => x.to_doc().append(RcDoc::text(".")).append(n.to_doc()),
+            ExprT::Index(arr, idx) => arr.to_doc().append("[").append(idx.to_doc()).append("]"),
 
             // RValue variants
             ExprT::BoolLit(b) => RcDoc::text(if *b { "true" } else { "false" }),

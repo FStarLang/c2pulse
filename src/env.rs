@@ -179,10 +179,22 @@ impl Env {
             }
             ExprT::Member(x, a) => {
                 let x_ty = self.vtype_whnf(self.infer_expr(x)?);
-                let TypeT::TypeRef(TypeRefKind::Struct(s)) = &x_ty.val else {
-                    return None;
-                };
-                Some(self.lookup_struct(s)?.get_field(a)?.clone().into())
+                match &x_ty.val {
+                    TypeT::Pointer(_, PointerKind::Array) if &*a.val == "_length" => {
+                        Some(TypeT::SpecInt.with_loc_core(expr.loc.clone()).into())
+                    }
+                    TypeT::TypeRef(TypeRefKind::Struct(s)) => {
+                        Some(self.lookup_struct(s)?.get_field(a)?.clone().into())
+                    }
+                    _ => None,
+                }
+            }
+            ExprT::Index(arr, _idx) => {
+                let arr_ty = self.vtype_whnf(self.infer_expr(arr)?);
+                match &arr_ty.val {
+                    TypeT::Pointer(elem, PointerKind::Array) => Some(elem.clone().into()),
+                    _ => None,
+                }
             }
             ExprT::IntLit(_, ty) => Some(ty.clone().into()),
             ExprT::Ref(v) => Some(
@@ -342,6 +354,7 @@ impl Env {
             },
             ExprT::Deref(_) => true,
             ExprT::Member(x, _) => self.is_lvalue(x),
+            ExprT::Index(_, _) => true,
             ExprT::Error(_) => true,
             _ => false,
         }

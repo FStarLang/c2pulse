@@ -224,6 +224,7 @@ pub enum ExprT {
     Var(Rc<Ident>),
     Deref(Rc<Expr>),
     Member(Rc<Expr>, Rc<Ident>),
+    Index(Rc<Expr>, Rc<Expr>),
 
     // RValue variants
     BoolLit(bool),

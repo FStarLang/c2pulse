@@ -340,6 +340,10 @@ fn subst_this_rvalue(env: &Env, nm: &mut NameMangling, rvalue: &mut Expr, this: 
                 subst_this_rvalue(env, nm, Rc::make_mut(val), this);
             }
         }
+        ExprT::Index(arr, idx) => {
+            subst_this_rvalue(env, nm, Rc::make_mut(arr), this);
+            subst_this_rvalue(env, nm, Rc::make_mut(idx), this);
+        }
     }
 }
 
@@ -442,6 +446,15 @@ fn emit_expr(env: &Env, nm: &mut NameMangling, v: &Expr) -> ExprKind {
             Some(ty) => {
                 let ty = env.vtype_whnf(ty);
                 match &ty.val {
+                    TypeT::Pointer(_, PointerKind::Array) if &*a.val == "_length" => {
+                        ExprKind::RValue(annotated(
+                            v,
+                            unaryfn(
+                                Doc::text("Seq.length"),
+                                unaryfn(Doc::text("value_of"), emit_rvalue(env, nm, x)),
+                            ),
+                        ))
+                    }
                     TypeT::TypeRef(TypeRefKind::Struct(struct_name)) => match emit_expr(env, nm, x)
                     {
                         ExprKind::LValue(x_doc) => ExprKind::LValue(annotated(
@@ -472,6 +485,17 @@ fn emit_expr(env: &Env, nm: &mut NameMangling, v: &Expr) -> ExprKind {
                 Doc::text(format!("((*TODO cannot infer type of {}*) admit())", x)),
             )),
         },
+        ExprT::Index(arr, idx) => {
+            let arr_doc = emit_rvalue(env, nm, arr);
+            let idx_doc = emit_rvalue(env, nm, idx);
+            ExprKind::RValue(annotated(
+                v,
+                arr_doc
+                    .append(Doc::text(".("))
+                    .append(idx_doc)
+                    .append(Doc::text(")")),
+            ))
+        }
         _ => ExprKind::RValue(emit_rvalue_inner(env, nm, v)),
     }
 }
@@ -617,7 +641,7 @@ fn emit_rvalue_inner(env: &Env, nm: &mut NameMangling, v: &Expr) -> Doc {
                 TypeT::SizeT => Doc::text(format!("{}sz", val)),
                 _ => Doc::text(format!("(*unsupported integer literal*){}", val)),
             },
-            ExprT::Var(_) | ExprT::Deref(_) | ExprT::Member(_, _) => {
+            ExprT::Var(_) | ExprT::Deref(_) | ExprT::Member(_, _) | ExprT::Index(_, _) => {
                 // These are lvalue variants; handled by emit_expr
                 unreachable!("lvalue variants should be handled by emit_expr")
             }
@@ -630,6 +654,12 @@ fn emit_rvalue_inner(env: &Env, nm: &mut NameMangling, v: &Expr) -> Doc {
                     Some(ty) => &ty.val,
                     None => &TypeT::Error,
                 };
+                // Special case: integer literal cast to SizeT → emit Nsz
+                if matches!(&to_ty.val, TypeT::SizeT) {
+                    if let ExprT::IntLit(n, _) = &val.val {
+                        return Doc::text(format!("{}sz", n));
+                    }
+                }
                 let default = {
                     let val_doc = val_doc.clone();
                     || {
@@ -727,6 +757,19 @@ fn emit_rvalue_inner(env: &Env, nm: &mut NameMangling, v: &Expr) -> Doc {
                         )
                     }
                     (TypeT::SizeT, TypeT::SpecInt) => unaryfn(Doc::text("SizeT.v"), val_doc),
+                    (TypeT::Int { signed, width }, TypeT::SizeT) => {
+                        if let Some(m) = get_int_mod(signed, width) {
+                            unaryfn(
+                                Doc::text(format!("SizeT.uint_to_t ({}.v", m)),
+                                val_doc.append(Doc::text(")")),
+                            )
+                        } else {
+                            default()
+                        }
+                    }
+                    (TypeT::SpecInt, TypeT::SizeT) => {
+                        unaryfn(Doc::text("SizeT.uint_to_t"), val_doc)
+                    }
                     // (TypeT::Int { signed:s1, width:w1 }, TypeT::Int { signed:s2, width:w2 }) => todo!(),
                     // (TypeT::Int { signed, width }, TypeT::SizeT) => todo!(),
                     // (TypeT::Int { signed, width }, TypeT::SLProp) => todo!(),
@@ -868,15 +911,33 @@ fn emit_stmt(env: &Env, nm: &mut NameMangling, stmt: &Stmt) -> Doc {
                     .nest(2)
                     .group()
             }
-            StmtT::Assign(x, t) => emit_lvalue(env, nm, x)
-                .append(Doc::line())
-                .append(":=")
-                .group()
-                .append(Doc::line())
-                .append(emit_rvalue(env, nm, t))
-                .append(";")
-                .group()
-                .nest(2),
+            StmtT::Assign(x, t) => {
+                if let ExprT::Index(arr, idx) = &x.val {
+                    // Array write: arr.(idx) <- val;
+                    emit_rvalue(env, nm, arr)
+                        .append(Doc::text(".("))
+                        .append(emit_rvalue(env, nm, idx))
+                        .append(Doc::text(")"))
+                        .append(Doc::line())
+                        .append("<-")
+                        .group()
+                        .append(Doc::line())
+                        .append(emit_rvalue(env, nm, t))
+                        .append(";")
+                        .group()
+                        .nest(2)
+                } else {
+                    emit_lvalue(env, nm, x)
+                        .append(Doc::line())
+                        .append(":=")
+                        .group()
+                        .append(Doc::line())
+                        .append(emit_rvalue(env, nm, t))
+                        .append(";")
+                        .group()
+                        .nest(2)
+                }
+            }
             StmtT::If(c, b1, b2) => Doc::text("if ")
                 .append(parens(emit_rvalue(env, nm, c)))
                 .nest(2)

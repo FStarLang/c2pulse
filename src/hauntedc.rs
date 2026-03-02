@@ -512,6 +512,8 @@ fn expr_parser<
         ))
         .boxed();
         let postfix_expression = left_recursion!(postfix_expression_nonrec, {
+            Index(lhs, idx: Expr: assignment_expression.clone().delimited_by(punct(Punct::LBracket), punct(Punct::RBracket))) = e =>
+                Ok(ExprT::Index(lhs.to_rvalue(), idx.to_rvalue()).with_loc(sift.resolve_source_info(&e.span())).into()),
             Dot(lhs, id: Rc<Ident>: punct(Punct::Dot).ignore_then(ident.clone())) = e =>
                 Ok(ExprT::Member(lhs.to_rvalue(), id).with_loc(sift.resolve_source_info(&e.span())).into()),
             Arrow(lhs, id: Rc<Ident>: punct(Punct::DashGt).ignore_then(ident.clone())) = e => {

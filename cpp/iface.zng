@@ -219,6 +219,7 @@ mod crate::clang {
 
     fn mk_lvalue_var(Rc<SourceInfo>, Rc<Ident>) -> Rc<Expr>;
     fn mk_lvalue_member(Rc<SourceInfo>, Rc<Expr>, Rc<Ident>) -> Rc<Expr>;
+    fn mk_index(Rc<SourceInfo>, Rc<Expr>, Rc<Expr>) -> Rc<Expr>;
     fn mk_deref(Rc<SourceInfo>, Rc<Expr>) -> Rc<Expr>;
     fn mk_lvalue_err(Rc<SourceInfo>, Rc<Type>) -> Rc<Expr>;
 

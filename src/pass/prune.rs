@@ -105,6 +105,10 @@ fn scan_expr(deps: &mut HashSet<DeclName>, rv: &Expr) {
         ExprT::Var(_) => {}
         ExprT::Deref(v) => scan_expr(deps, v),
         ExprT::Member(x, _a) => scan_expr(deps, x),
+        ExprT::Index(arr, idx) => {
+            scan_expr(deps, arr);
+            scan_expr(deps, idx);
+        }
         ExprT::IntLit(_, ty) => scan_type(deps, ty),
         ExprT::Ref(v) => scan_expr(deps, v),
         ExprT::Cast(val, ty) => {

@@ -147,16 +147,48 @@ impl<'a> Checker<'a> {
                     && let Some(t) = self.infer_rvalue(env, x)
                 {
                     let t = env.vtype_whnf(t);
-                    let TypeT::TypeRef(TypeRefKind::Struct(n)) = &t.val else {
-                        return self.report(format!("not a structure type: {}", t), &rval.loc);
-                    };
-                    let Some(s) = env.lookup_struct(n) else {
-                        return self.report(format!("unknown structure {}", n), &rval.loc);
-                    };
-                    let Some(_f) = s.get_field(a) else {
-                        return self
-                            .report(format!("no field {} in structure {}", a, n), &rval.loc);
-                    };
+                    match &t.val {
+                        TypeT::Pointer(_, PointerKind::Array) if &*a.val == "_length" => {}
+                        TypeT::TypeRef(TypeRefKind::Struct(n)) => {
+                            let Some(s) = env.lookup_struct(n) else {
+                                return self.report(format!("unknown structure {}", n), &rval.loc);
+                            };
+                            let Some(_f) = s.get_field(a) else {
+                                return self.report(
+                                    format!("no field {} in structure {}", a, n),
+                                    &rval.loc,
+                                );
+                            };
+                        }
+                        _ => {
+                            return self.report(format!("not a structure type: {}", t), &rval.loc);
+                        }
+                    }
+                }
+            }
+            ExprT::Index(arr, idx) => {
+                self.check_rvalue(env, arr);
+                self.check_rvalue(env, idx);
+                if self.check_types {
+                    if let Some(arr_ty) = self.infer_rvalue(env, arr) {
+                        let arr_ty = env.vtype_whnf(arr_ty);
+                        match &arr_ty.val {
+                            TypeT::Pointer(_, PointerKind::Array) => {}
+                            TypeT::Error => {}
+                            _ => self.report(format!("not an array type: {}", arr_ty), &rval.loc),
+                        }
+                    }
+                    if let Some(idx_ty) = self.infer_rvalue(env, idx) {
+                        let idx_ty = env.vtype_whnf(idx_ty);
+                        match &idx_ty.val {
+                            TypeT::SizeT => {}
+                            TypeT::Error => {}
+                            _ => self.report(
+                                format!("array index must have type SizeT, got: {}", idx_ty),
+                                &idx.loc,
+                            ),
+                        }
+                    }
                 }
             }
             ExprT::Ref(lval) => {

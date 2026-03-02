@@ -379,6 +379,9 @@ fn mk_deref(loc: Rc<SourceInfo>, v: Rc<Expr>) -> Rc<Expr> {
 fn mk_lvalue_member(loc: Rc<SourceInfo>, v: Rc<Expr>, a: Rc<Ident>) -> Rc<Expr> {
     mk_ast(loc, ExprT::Member(v, a))
 }
+fn mk_index(loc: Rc<SourceInfo>, base: Rc<Expr>, idx: Rc<Expr>) -> Rc<Expr> {
+    mk_ast(loc, ExprT::Index(base, idx))
+}
 fn mk_lvalue_err(loc: Rc<SourceInfo>, ty: Rc<Type>) -> Rc<Expr> {
     mk_ast(loc, ExprT::Error(ty))
 }

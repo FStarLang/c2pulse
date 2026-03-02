@@ -343,6 +343,9 @@ public:
       auto base = m->isArrow() ? mk_deref(loc.clone(), trRValue(m->getBase()))
                                : trLValue(m->getBase());
       return mk_lvalue_member(std::move(loc), std::move(base), std::move(id));
+    } else if (auto sub = dyn_cast<ArraySubscriptExpr>(e)) {
+      return mk_index(std::move(loc), trRValue(sub->getBase()),
+                      trRValue(sub->getIdx()));
     }
 
     reportUnsupported(e->getSourceRange(), loc,

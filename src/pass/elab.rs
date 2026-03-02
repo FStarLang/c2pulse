@@ -102,16 +102,34 @@ impl<'a> Elaborator<'a> {
                 self.elab_rvalue(env, Rc::make_mut(x));
                 if let Some(t) = env.infer_expr(x) {
                     let t = env.vtype_whnf(t);
-                    let TypeT::TypeRef(TypeRefKind::Struct(n)) = &t.val else {
-                        return self.report(format!("not a structure type: {}", t), &rval.loc);
-                    };
-                    let Some(s) = env.lookup_struct(n) else {
-                        return self.report(format!("unknown structure {}", n), &rval.loc);
-                    };
-                    let Some(_f) = s.get_field(a) else {
-                        return self
-                            .report(format!("no field {} in structure {}", a, n), &rval.loc);
-                    };
+                    match &t.val {
+                        TypeT::Pointer(_, PointerKind::Array) if &*a.val == "_length" => {}
+                        TypeT::TypeRef(TypeRefKind::Struct(n)) => {
+                            let Some(s) = env.lookup_struct(n) else {
+                                return self.report(format!("unknown structure {}", n), &rval.loc);
+                            };
+                            let Some(_f) = s.get_field(a) else {
+                                return self.report(
+                                    format!("no field {} in structure {}", a, n),
+                                    &rval.loc,
+                                );
+                            };
+                        }
+                        _ => {
+                            return self.report(format!("not a structure type: {}", t), &rval.loc);
+                        }
+                    }
+                }
+            }
+            ExprT::Index(arr, idx) => {
+                self.elab_rvalue(env, Rc::make_mut(arr));
+                self.elab_rvalue(env, Rc::make_mut(idx));
+                // Cast index to SizeT for Pulse array operations
+                if let Some(idx_ty) = env.infer_rvalue(idx) {
+                    let idx_ty_whnf = env.vtype_whnf(idx_ty);
+                    if !matches!(idx_ty_whnf.val, TypeT::SizeT) {
+                        cast_to(idx, TypeT::SizeT.with_loc(idx.loc.clone()));
+                    }
                 }
             }
             ExprT::IntLit(_, ty) => self.elab_type(env, Rc::make_mut(ty)),
