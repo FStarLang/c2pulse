@@ -665,6 +665,7 @@ fn emit_rvalue_inner(env: &Env, nm: &mut NameMangling, v: &Expr) -> Doc {
                     width,
                 } => Doc::text(format!("(UInt{}.uint_to_t {})", width, val)),
                 TypeT::SizeT => Doc::text(format!("{}sz", val)),
+                TypeT::SpecInt => Doc::text(format!("{}", val)),
                 _ => Doc::text(format!("(*unsupported integer literal*){}", val)),
             },
             ExprT::Var(_) | ExprT::Deref(_) | ExprT::Member(_, _) | ExprT::Index(_, _) => {
@@ -780,6 +781,20 @@ fn emit_rvalue_inner(env: &Env, nm: &mut NameMangling, v: &Expr) -> Doc {
                     }
                     (TypeT::SpecInt, TypeT::SizeT) => {
                         unaryfn(Doc::text("SizeT.uint_to_t"), val_doc)
+                    }
+                    (TypeT::SpecInt, TypeT::Int { signed, width }) => {
+                        if let Some(m) = get_int_mod(signed, width) {
+                            unaryfn(
+                                Doc::text(format!(
+                                    "{}.{}",
+                                    m,
+                                    if *signed { "int_to_t" } else { "uint_to_t" }
+                                )),
+                                val_doc,
+                            )
+                        } else {
+                            default()
+                        }
                     }
                     // (TypeT::Int { signed:s1, width:w1 }, TypeT::Int { signed:s2, width:w2 }) => todo!(),
                     // (TypeT::Int { signed, width }, TypeT::SizeT) => todo!(),

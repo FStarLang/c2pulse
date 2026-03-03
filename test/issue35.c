@@ -11,7 +11,7 @@ void empty_branch()
 }
 
 int non_final_if_else()
-  _ensures(return == (_specint) 1)
+  _ensures(return == 1)
 {
   if (1) {
     return 1;
@@ -23,7 +23,7 @@ int non_final_if_else()
 }
 
 int non_final_if ()
-  _ensures(return == (_specint) 1)
+  _ensures(return == 1)
 {
   if (1) {
     return 1;

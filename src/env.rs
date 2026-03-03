@@ -263,7 +263,28 @@ impl Env {
             }
 
             both_sides!(TypeT::Bool) => None,
-            both_sides!(TypeT::Int { .. }) => None,
+            // Different Int types: use C-style usual arithmetic conversion
+            (
+                TypeT::Int {
+                    signed: s1,
+                    width: w1,
+                },
+                TypeT::Int {
+                    signed: s2,
+                    width: w2,
+                },
+            ) => {
+                // Pick the wider type; if same width, pick unsigned
+                let (signed, width) = if w1 > w2 {
+                    (*s1, *w1)
+                } else if w2 > w1 {
+                    (*s2, *w2)
+                } else {
+                    // Same width: unsigned wins per C rules
+                    (*s1 && *s2, *w1)
+                };
+                Some(TypeT::Int { signed, width }.with_loc(a.loc.clone()).into())
+            }
             both_sides!(TypeT::SLProp) => None,
             both_sides!(TypeT::SizeT) => None,
             both_sides!(TypeT::SpecInt) => None,

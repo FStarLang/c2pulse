@@ -8,8 +8,8 @@ void test_rvalue_antiquot(int *x)
 }
 
 void test_ghost_stmt(int *x)
-    _requires(*x == (int) 0)
-    _ensures(*x == (int) 0)
+    _requires(*x == 0)
+    _ensures(*x == 0)
 {
     _ghost_stmt(rewrite (pure ($(*x) = $(*x))) as (pure ($(*x) = $(*x))));
     return;

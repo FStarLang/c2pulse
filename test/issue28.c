@@ -7,7 +7,7 @@ typedef struct _point {
 
 void use_point(point *p)
   _preserves_value(p->py)
-  _ensures((_specint) p->px == 17)
+  _ensures(p->px == 17)
 {
   p->px = 17;
 }

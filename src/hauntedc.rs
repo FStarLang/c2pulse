@@ -458,15 +458,35 @@ fn expr_parser<
         });
 
         let integer_constant =
-            select! { Token::Integer(i, suf) => (i,suf) }.try_map(|(i, _suf), span| {
+            select! { Token::Integer(i, suf) => (i,suf) }.try_map(move |(i, suf), span| {
                 match BigInt::from_str(i) {
                     Ok(i) => {
                         let loc = sift.resolve_source_info(&span);
-                        let ty = TypeT::Int {
-                            signed: false,
-                            width: 32,
-                        } // TODO
-                        .with_loc(loc.clone());
+                        let ty_val = match suf {
+                            IntegerSuffix::None => TypeT::SpecInt,
+                            IntegerSuffix::U => TypeT::Int {
+                                signed: false,
+                                width: tw.int_width,
+                            },
+                            IntegerSuffix::L => TypeT::Int {
+                                signed: true,
+                                width: tw.long_width,
+                            },
+                            IntegerSuffix::UL => TypeT::Int {
+                                signed: false,
+                                width: tw.long_width,
+                            },
+                            IntegerSuffix::LL => TypeT::Int {
+                                signed: true,
+                                width: tw.long_long_width,
+                            },
+                            IntegerSuffix::ULL => TypeT::Int {
+                                signed: false,
+                                width: tw.long_long_width,
+                            },
+                            IntegerSuffix::Z | IntegerSuffix::UZ => TypeT::SizeT,
+                        };
+                        let ty = ty_val.with_loc(loc.clone());
                         Ok(ExprT::IntLit(Rc::new(i), ty).with_loc(loc).into())
                     }
                     Err(err) => Err(Rich::custom(span, err)),

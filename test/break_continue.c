@@ -27,7 +27,7 @@ uint32_t sum_evens(uint32_t n)
     while (i < n)
         _invariant(_live(i) && _live(s))
         _invariant(i <= n)
-        _invariant(s <= (_specint) 10000 * i)
+        _invariant(s <= 10000 * i)
     {
         i = i + 1;
         if (i == 1) {

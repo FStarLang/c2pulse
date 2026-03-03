@@ -10,7 +10,7 @@ fail:;
 }
 
 int cleanup_on_error2()
-    _ensures((_specint) return == 30)
+    _ensures(return == 30)
 {
     int p = 0;
     if (p != 0)
