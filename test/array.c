@@ -24,3 +24,14 @@ void tydef_array(uptr a)
   a[0] = 42;
   a[1] = a[0] + 67;
 }
+
+typedef struct {
+  _array unsigned *x;
+} uptr_struct;
+void struct_arr(uptr_struct a)
+  _requires(a.x._length == 2)
+  _ensures(a.x._length == 2 && a.x[0] == 42)
+{
+  a.x[0] = 42;
+  a.x[1] = a.x[0] + 67;
+}

@@ -1187,18 +1187,37 @@ fn emit_structdefn(
             .group(),
     );
 
-    for n in [&pts_to_name, &pts_to_name_post] {
-        ses.push(mk_eager_unfold_let(
-            n.clone(),
-            &[parens(
-                Doc::text("[@@@mkey] x:")
-                    .append(Doc::line())
-                    .append(struct_type_name.clone()),
-            )],
-            Doc::text("slprop"),
-            Doc::text("emp"),
-        ));
+    // Generate struct pred/post by gathering slprops from fields
+    let env = &mut env.clone();
+    let this = env
+        .push_this(TypeT::TypeRef(k.clone()).with_loc(name.loc.clone()))
+        .with_loc(name.loc.clone());
+    let this_args = vec![parens(
+        Doc::text("[@@@mkey] ")
+            .append(nm.emit(Name::Var(this.val.clone())))
+            .append(":")
+            .append(Doc::line())
+            .append(struct_type_name.clone()),
+    )];
+    let mut req = vec![];
+    let mut ens = vec![];
+    for (fld, fld_ty) in fields {
+        let field_expr =
+            ExprT::Member(mk_rvar(&this), fld.clone().into()).with_loc(fld.loc.clone());
+        emit_type_slprop(env, nm, fld_ty, &mut req, &mut ens, &field_expr);
     }
+    ses.push(mk_eager_unfold_let(
+        pts_to_name.clone(),
+        &this_args,
+        Doc::text("slprop"),
+        mk_star(req),
+    ));
+    ses.push(mk_eager_unfold_let(
+        pts_to_name_post.clone(),
+        &this_args,
+        Doc::text("slprop"),
+        mk_star(ens),
+    ));
 
     let unfolded_tok = nm.emit(Name::StructAuxFn(name.val.clone(), "raw_unfolded".into()));
     ses.push(mk_assume_val(
