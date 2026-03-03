@@ -15,7 +15,7 @@ typedef struct {
   uint32_t second;
 } u32_pair;
 
-_preserves(_freeable(this))
+_allocated
 typedef u32_pair* freeable_u32_pair_ptr;
 
 freeable_u32_pair_ptr new_u32_pair()

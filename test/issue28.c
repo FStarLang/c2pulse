@@ -5,7 +5,10 @@ typedef struct _point {
   int py;
 } point;
 
-void use_point(point *p) {
+void use_point(point *p)
+  _preserves_value(p->py)
+  _ensures((_specint) p->px == 17)
+{
   p->px = 17;
 }
 

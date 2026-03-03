@@ -5,6 +5,7 @@
 // Flat verified circular buffer state.
 // Buffer memory is externally owned (by QUIC_RECV_CHUNK).
 typedef struct VERIFIED_CIRC_BUFFER {
+    _array
     uint8_t*  Buffer;        // Physical buffer (externally owned, not freed by us)
     uint32_t  ReadStart;     // Read head position in physical buffer
     uint32_t  AllocLength;   // Physical buffer size (always a power of 2)
