@@ -1124,11 +1124,27 @@ fn mk_let(n: Doc, args: &[Doc], ty: Doc, body: Doc) -> Doc {
         .nest(2)
 }
 
-fn mk_eager_unfold_let(n: Doc, args: &[Doc], ty: Doc, body: Doc) -> Doc {
-    Doc::text("[@@pulse_eager_unfold]")
+fn mk_eager_unfold_slprop(n: Doc, args: &[Doc], body: Doc) -> Doc {
+    (Doc::text("[@@pulse_eager_unfold]")
         .append(Doc::line())
-        .append(mk_let(n, args, ty, body))
+        .append("let")
+        .append(Doc::line())
+        .append("invariant")
         .group()
+        .append(Doc::line())
+        .append(n))
+    .group()
+    .append(
+        Doc::concat(args.iter().map(|arg| Doc::line().append(arg.clone())))
+            .nest(2)
+            .append(Doc::line().append("=").group()),
+    )
+    .group()
+    .nest(2)
+    .group()
+    .append(Doc::line().append(body))
+    .group()
+    .nest(2)
 }
 
 fn mk_star<I: IntoIterator<Item = Doc>>(ps: I) -> Doc {
@@ -1161,16 +1177,14 @@ fn emit_typedef(env: &Env, nm: &mut NameMangling, TypeDefn { name, body }: &Type
     let mut req = vec![];
     let mut ens = vec![];
     emit_type_slprop(env, nm, body, &mut req, &mut ens, &mk_rvar(&this));
-    let pre_decl = mk_eager_unfold_let(
+    let pre_decl = mk_eager_unfold_slprop(
         nm.emit(Name::TypeRefPred(k.into())),
         &this_args,
-        Doc::text("slprop"),
         mk_star(req),
     );
-    let post_decl = mk_eager_unfold_let(
+    let post_decl = mk_eager_unfold_slprop(
         nm.emit(Name::TypeRefPredPost(k.into())),
         &this_args,
-        Doc::text("slprop"),
         mk_star(ens),
     );
     Doc::intersperse(vec![ty_decl, pre_decl, post_decl], Doc::line())
@@ -1267,16 +1281,14 @@ fn emit_structdefn(
             ExprT::Member(mk_rvar(&this), fld.clone().into()).with_loc(fld.loc.clone());
         emit_type_slprop(env, nm, fld_ty, &mut req, &mut ens, &field_expr);
     }
-    ses.push(mk_eager_unfold_let(
+    ses.push(mk_eager_unfold_slprop(
         pts_to_name.clone(),
         &this_args,
-        Doc::text("slprop"),
         mk_star(req),
     ));
-    ses.push(mk_eager_unfold_let(
+    ses.push(mk_eager_unfold_slprop(
         pts_to_name_post.clone(),
         &this_args,
-        Doc::text("slprop"),
         mk_star(ens),
     ));
 
