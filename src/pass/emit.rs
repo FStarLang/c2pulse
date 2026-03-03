@@ -367,12 +367,7 @@ fn subst_inline_pulse_code_this(
 ) {
     for tok in &mut val.tokens {
         match tok {
-            InlinePulseToken::Verbatim(ct) => {
-                // This is ridiculuously hacky....
-                if &*ct.text.val == "this" {
-                    ct.text.val = Rc::from(emit_rvalue(env, nm, this).pretty(100).to_string());
-                }
-            }
+            InlinePulseToken::Verbatim(_) => {}
             InlinePulseToken::RValueAntiquot { expr, .. }
             | InlinePulseToken::LValueAntiquot { expr, .. } => {
                 subst_this_rvalue(env, nm, Rc::make_mut(expr), this);
