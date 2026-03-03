@@ -9,6 +9,7 @@ include Pulse.Lib.C.Array
 include FStar.Int.Cast
 include Pulse.Lib.C.Casts
 include Pulse.Lib.C.UnaryOps
+include Pulse.Lib.WithPure
 open Pulse.Lib.Core
 let _Bool = bool
 

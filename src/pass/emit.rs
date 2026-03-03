@@ -719,7 +719,7 @@ fn emit_rvalue_inner(env: &Env, nm: &mut NameMangling, v: &Expr) -> Doc {
                     }
                     (TypeT::Bool, TypeT::SpecInt) => unaryfn(Doc::text("bool_to_int"), val_doc),
                     // (TypeT::Bool, TypeT::SizeT) => todo!(),
-                    (TypeT::Bool, TypeT::SLProp) => unaryfn(Doc::text("pure"), val_doc),
+                    (TypeT::Bool, TypeT::SLProp) => unaryfn(Doc::text("with_pure"), val_doc),
                     (TypeT::Int { signed, width }, TypeT::Bool) => {
                         fn abbrev(s: &bool, w: &u32) -> String {
                             format!("{}int{}", if *s { "" } else { "u" }, w)

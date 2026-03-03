@@ -36,3 +36,6 @@
 
 #define _preserves(p) _requires(p) _ensures(p)
 #define _allocated _preserves((_slprop) _inline_pulse(freeable this))
+
+#define _same_as_old(x) ((x) == _old(x))
+#define _preserves_value(x) _ensures(_same_as_old(x))
