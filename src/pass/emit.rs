@@ -686,9 +686,7 @@ fn emit_rvalue_inner(env: &Env, nm: &mut NameMangling, v: &Expr) -> Doc {
                             val_doc,
                         )
                     }
-                    (TypeT::Bool, TypeT::SpecInt) => {
-                        unaryfn(Doc::text("bool_to_int"), val_doc)
-                    }
+                    (TypeT::Bool, TypeT::SpecInt) => unaryfn(Doc::text("bool_to_int"), val_doc),
                     // (TypeT::Bool, TypeT::SizeT) => todo!(),
                     (TypeT::Bool, TypeT::SLProp) => unaryfn(Doc::text("pure"), val_doc),
                     (TypeT::Int { signed, width }, TypeT::Bool) => {
