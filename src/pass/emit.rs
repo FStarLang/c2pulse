@@ -678,40 +678,27 @@ fn emit_rvalue_inner(env: &Env, nm: &mut NameMangling, v: &Expr) -> Doc {
                     (TypeT::Void, TypeT::Void) => val_doc,
                     (TypeT::Bool, TypeT::Bool) => val_doc,
                     (TypeT::Bool, TypeT::Int { signed, width }) => {
-                        if let Some(m) = get_int_mod(signed, width) {
-                            parens(
-                                Doc::text("if")
-                                    .append(Doc::line())
-                                    .append(val_doc)
-                                    .append(Doc::line())
-                                    .append("then")
-                                    .append(Doc::line())
-                                    .append(format!("{}.one", m))
-                                    .append(Doc::line())
-                                    .append("else")
-                                    .append(Doc::line())
-                                    .append(format!("{}.zero", m)),
-                            )
-                        } else {
-                            default()
+                        fn abbrev(s: &bool, w: &u32) -> String {
+                            format!("{}int{}", if *s { "" } else { "u" }, w)
                         }
+                        unaryfn(
+                            Doc::text(format!("bool_to_{}", abbrev(signed, width))),
+                            val_doc,
+                        )
+                    }
+                    (TypeT::Bool, TypeT::SpecInt) => {
+                        unaryfn(Doc::text("bool_to_int"), val_doc)
                     }
                     // (TypeT::Bool, TypeT::SizeT) => todo!(),
                     (TypeT::Bool, TypeT::SLProp) => unaryfn(Doc::text("pure"), val_doc),
                     (TypeT::Int { signed, width }, TypeT::Bool) => {
-                        if let Some(m) = get_int_mod(signed, width) {
-                            binop(
-                                unaryfn_with_type(
-                                    Doc::text(format!("{}.v", m)),
-                                    val_doc,
-                                    Doc::text("int"),
-                                ),
-                                Doc::text("<>"),
-                                Doc::text("0"),
-                            )
-                        } else {
-                            default()
+                        fn abbrev(s: &bool, w: &u32) -> String {
+                            format!("{}int{}", if *s { "" } else { "u" }, w)
                         }
+                        unaryfn(
+                            Doc::text(format!("{}_to_bool", abbrev(signed, width))),
+                            val_doc,
+                        )
                     }
                     (
                         TypeT::Int {

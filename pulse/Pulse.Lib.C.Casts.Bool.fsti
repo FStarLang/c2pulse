@@ -1,5 +1,6 @@
 module Pulse.Lib.C.Casts.Bool
 
+let bool_to_int (b:bool) = if b then 1 else 0
 let bool_to_int64 (b:bool) = if b then 1L else 0L
 let bool_to_uint64 (b:bool) = if b then 1UL else 0UL
 let bool_to_int32 (b:bool) = if b then 1l else 0l
