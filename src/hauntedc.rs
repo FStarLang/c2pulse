@@ -133,6 +133,8 @@ mk_punct_table! {
     Hash => "#",
 
     ColonColon => "::",
+
+    Dollar => "$",
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -749,13 +751,12 @@ impl SourceInfoForTokens for TokenSI {
     }
 }
 
-pub fn parse_expr(
-    diagnostics: &mut Diagnostics,
-    fallback_loc: &Rc<SourceInfo>,
-    code: &InlineCode,
-    snippets: &SnippetMap,
-    target_widths: &TargetIntWidths,
-) -> Rc<crate::ir::Expr> {
+struct RelexedTokens<'a> {
+    tokens: Vec<(Token<'a>, SimpleSpan)>,
+    source_infos: Vec<Rc<SourceInfo>>,
+}
+
+fn relex_inline_code<'a>(diagnostics: &mut Diagnostics, code: &'a InlineCode) -> RelexedTokens<'a> {
     let mut tokens: Vec<(Token, SimpleSpan)> = vec![];
     let mut source_infos: Vec<Rc<SourceInfo>> = vec![];
     for (
@@ -793,6 +794,23 @@ pub fn parse_expr(
         }
         i += 1;
     }
+    RelexedTokens {
+        tokens,
+        source_infos,
+    }
+}
+
+pub fn parse_expr(
+    diagnostics: &mut Diagnostics,
+    fallback_loc: &Rc<SourceInfo>,
+    code: &InlineCode,
+    snippets: &SnippetMap,
+    target_widths: &TargetIntWidths,
+) -> Rc<crate::ir::Expr> {
+    let RelexedTokens {
+        tokens,
+        source_infos,
+    } = relex_inline_code(diagnostics, code);
     let source_infos = TokenSI {
         source_infos,
         fallback: fallback_loc.clone(),
@@ -823,69 +841,105 @@ pub fn process_inline_pulse(
     snippets: &SnippetMap,
     target_widths: &TargetIntWidths,
 ) -> InlinePulseCode {
-    let tokens = &code.tokens;
-    let mut result = Vec::new();
-    let mut i = 0;
-    while i < tokens.len() {
-        if &*tokens[i].text.val == "$" {
-            let before = tokens[i].before;
-            let is_lvalue;
-            // Check for $& (lvalue) vs $ (rvalue)
-            if i + 1 < tokens.len() && &*tokens[i + 1].text.val == "&" {
-                is_lvalue = true;
-                i += 2; // skip $ and &
-            } else {
-                is_lvalue = false;
-                i += 1; // skip $
-            }
-            // Expect opening paren
-            if i < tokens.len() && &*tokens[i].text.val == "(" {
-                i += 1; // skip (
-                // Collect tokens until matching )
-                let mut depth = 1;
-                let start = i;
-                while i < tokens.len() && depth > 0 {
-                    if &*tokens[i].text.val == "(" {
-                        depth += 1;
-                    } else if &*tokens[i].text.val == ")" {
-                        depth -= 1;
-                    }
-                    if depth > 0 {
-                        i += 1;
-                    }
-                }
-                // tokens[start..i] are the inner tokens
+    let mut diags = Diagnostics::empty();
+    let RelexedTokens {
+        tokens: relexed,
+        source_infos: _,
+    } = relex_inline_code(&mut diags, code);
+
+    // Intermediate representation: chumsky parser produces token index ranges,
+    // then we post-process to parse antiquotation inner expressions.
+    #[derive(Debug, Clone)]
+    enum RawToken {
+        Verbatim(SimpleSpan),
+        Antiquot {
+            is_lvalue: bool,
+            dollar_span: SimpleSpan,
+            body_span: SimpleSpan,
+        },
+    }
+
+    // Balanced parentheses: matches everything between ( and ), handling nesting.
+    let balanced_inner = recursive(|inner: Recursive<dyn Parser<_, _, Extra<'_, '_>>>| {
+        choice((
+            any()
+                .filter(|t: &Token| {
+                    *t != Token::Punct(Punct::LParen) && *t != Token::Punct(Punct::RParen)
+                })
+                .ignored(),
+            just(Token::Punct(Punct::LParen))
+                .ignored()
+                .then(inner)
+                .then(just(Token::Punct(Punct::RParen)).ignored())
+                .ignored(),
+        ))
+        .repeated()
+        .ignored()
+        .map_with(|_, extra| extra.span())
+    });
+
+    let antiquot = just(Token::Punct(Punct::Dollar))
+        .map_with(|_, extra| extra.span())
+        .then(
+            just(Token::Punct(Punct::Amp))
+                .or_not()
+                .map(|amp| amp.is_some()),
+        )
+        .then_ignore(just(Token::Punct(Punct::LParen)))
+        .then(balanced_inner)
+        .then_ignore(just(Token::Punct(Punct::RParen)))
+        .map(|((dollar_span, is_lvalue), body_span)| RawToken::Antiquot {
+            is_lvalue,
+            dollar_span,
+            body_span,
+        });
+
+    let verbatim = any()
+        .filter(|t: &Token| *t != Token::Whitespace)
+        .map_with(|_, extra| RawToken::Verbatim(extra.span()));
+
+    let inline_pulse_parser = choice((antiquot, verbatim))
+        .padded_by(ws())
+        .repeated()
+        .collect::<Vec<_>>();
+
+    let parse_result = inline_pulse_parser.parse(IterInput::new(
+        relexed.iter().map(Clone::clone),
+        (relexed.len()..relexed.len()).into(),
+    ));
+
+    let raw_tokens = parse_result.output().cloned().unwrap_or_default();
+
+    // Post-process: convert RawTokens to InlinePulseTokens
+    let result = raw_tokens
+        .into_iter()
+        .map(|raw| match raw {
+            RawToken::Verbatim(span) => InlinePulseToken::Verbatim(code.tokens[span.start].clone()),
+            RawToken::Antiquot {
+                is_lvalue,
+                dollar_span,
+                body_span,
+            } => {
+                let before = code.tokens[dollar_span.start].before;
                 let inner_code = InlineCode {
-                    tokens: tokens[start..i].to_vec(),
+                    tokens: code.tokens[body_span.start..body_span.end].to_vec(),
                 };
-                let mut diags = Diagnostics::empty();
+                let mut inner_diags = Diagnostics::empty();
                 let expr = parse_expr(
-                    &mut diags,
+                    &mut inner_diags,
                     fallback_loc,
                     &inner_code,
                     snippets,
                     target_widths,
                 );
                 if is_lvalue {
-                    result.push(InlinePulseToken::LValueAntiquot { before, expr });
+                    InlinePulseToken::LValueAntiquot { before, expr }
                 } else {
-                    result.push(InlinePulseToken::RValueAntiquot { before, expr });
+                    InlinePulseToken::RValueAntiquot { before, expr }
                 }
-                i += 1; // skip closing )
-            } else {
-                // Malformed: emit $ as verbatim
-                result.push(InlinePulseToken::Verbatim(CodeToken {
-                    before,
-                    text: Ast {
-                        loc: fallback_loc.clone(),
-                        val: Rc::from("$"),
-                    },
-                }));
             }
-        } else {
-            result.push(InlinePulseToken::Verbatim(tokens[i].clone()));
-            i += 1;
-        }
-    }
+        })
+        .collect();
+
     InlinePulseCode { tokens: result }
 }
