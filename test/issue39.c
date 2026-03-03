@@ -42,7 +42,7 @@ int test5(int x)
 
 // TODO in Pulse: Allocating a mutable local variable expects an annotated post-condition
 // int test6(int x)
-//   _ensures(return == (_specint)1)
+//   _ensures(return == 1)
 // {
 //   if (1) {
 //     int *p = &x;
