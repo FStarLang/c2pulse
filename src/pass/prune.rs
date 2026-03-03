@@ -129,6 +129,10 @@ fn scan_expr(deps: &mut HashSet<DeclName>, rv: &Expr) {
         ExprT::BoolLit(_) => {}
         ExprT::Live(v) => scan_expr(deps, v),
         ExprT::Old(v) => scan_expr(deps, v),
+        ExprT::Forall(_, ty, body) | ExprT::Exists(_, ty, body) => {
+            scan_type(deps, ty);
+            scan_expr(deps, body);
+        }
         ExprT::StructInit(name, fields) => {
             deps.insert(DeclName::Struct(name.val.clone()));
             for (_fld_name, fld_val) in fields {

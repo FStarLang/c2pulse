@@ -215,6 +215,11 @@ impl<'a> Elaborator<'a> {
             ExprT::BoolLit(_) => {}
             ExprT::Live(val) => self.elab_rvalue(env, Rc::make_mut(val)),
             ExprT::Old(val) => self.elab_rvalue(env, Rc::make_mut(val)),
+            ExprT::Forall(var, ty, body) | ExprT::Exists(var, ty, body) => {
+                let mut env = env.clone();
+                env.push_var_decl(var, ty.clone(), LocalDeclKind::RValue);
+                self.elab_rvalue(&env, Rc::make_mut(body));
+            }
             ExprT::StructInit(_, fields) => {
                 for (_fld_name, fld_val) in fields {
                     self.elab_rvalue(env, Rc::make_mut(fld_val));

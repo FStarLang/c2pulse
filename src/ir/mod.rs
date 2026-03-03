@@ -239,6 +239,8 @@ pub enum ExprT {
     InlinePulse(Rc<InlineCode>, Rc<Type>),
     Live(Rc<Expr>),
     Old(Rc<Expr>),
+    Forall(Rc<Ident>, Rc<Type>, Rc<Expr>),
+    Exists(Rc<Ident>, Rc<Type>, Rc<Expr>),
     StructInit(Rc<Ident>, Vec<(Rc<Ident>, Rc<Expr>)>),
     Error(Rc<Type>),
 }

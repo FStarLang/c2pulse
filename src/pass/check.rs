@@ -290,6 +290,12 @@ impl<'a> Checker<'a> {
             ExprT::InlinePulse(_inline_code, ty) => self.check_type(env, ty),
             ExprT::Live(lval) => self.check_rvalue(env, lval),
             ExprT::Old(rval) => self.check_rvalue(env, rval),
+            ExprT::Forall(var, ty, body) | ExprT::Exists(var, ty, body) => {
+                self.check_type(env, ty);
+                let mut env = env.clone();
+                env.push_var_decl(var, ty.clone(), LocalDeclKind::RValue);
+                self.check_rvalue(&env, body);
+            }
             ExprT::StructInit(name, fields) => {
                 let Some(s) = env.lookup_struct(name) else {
                     self.report(format!("unknown struct {}", name), &rval.loc);

@@ -335,6 +335,9 @@ fn subst_this_rvalue(env: &Env, nm: &mut NameMangling, rvalue: &mut Expr, this: 
         ExprT::Error(_ty) => {}
         ExprT::Live(val) => subst_this_rvalue(env, nm, Rc::make_mut(val), this),
         ExprT::Old(val) => subst_this_rvalue(env, nm, Rc::make_mut(val), this),
+        ExprT::Forall(_, _, body) | ExprT::Exists(_, _, body) => {
+            subst_this_rvalue(env, nm, Rc::make_mut(body), this);
+        }
         ExprT::StructInit(_, fields) => {
             for (_fld, val) in fields {
                 subst_this_rvalue(env, nm, Rc::make_mut(val), this);
@@ -870,6 +873,43 @@ fn emit_rvalue_inner(env: &Env, nm: &mut NameMangling, v: &Expr) -> Doc {
             }
             ExprT::Live(v) => unaryfn(Doc::text("live"), emit_lvalue(env, nm, v)),
             ExprT::Old(v) => unaryfn(Doc::text("old"), emit_rvalue(env, nm, v)),
+            ExprT::Forall(var, ty, body) | ExprT::Exists(var, ty, body) => {
+                let mut env = env.clone();
+                env.push_var_decl(var, ty.clone(), LocalDeclKind::RValue);
+                let keyword = match &v.val {
+                    ExprT::Forall(..) => {
+                        if let Some(body_ty) = env.infer_rvalue(body)
+                            && matches!(env.vtype_whnf(body_ty).val, TypeT::SLProp)
+                        {
+                            "forall*"
+                        } else {
+                            "forall"
+                        }
+                    }
+                    _ => {
+                        if let Some(body_ty) = env.infer_rvalue(body)
+                            && matches!(env.vtype_whnf(body_ty).val, TypeT::SLProp)
+                        {
+                            "exists*"
+                        } else {
+                            "exists"
+                        }
+                    }
+                };
+                parens(
+                    Doc::text(keyword)
+                        .append(Doc::line())
+                        .append(parens(
+                            nm.emit(Name::Var(var.val.clone()))
+                                .append(":")
+                                .append(Doc::space())
+                                .append(emit_type(&env, nm, ty)),
+                        ))
+                        .append(".")
+                        .append(Doc::line())
+                        .append(emit_rvalue(&env, nm, body)),
+                )
+            }
             ExprT::StructInit(name, fields) => Doc::text("{")
                 .append(Doc::concat(fields.iter().map(|(fld, val)| {
                     Doc::line()

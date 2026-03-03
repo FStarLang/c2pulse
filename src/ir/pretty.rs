@@ -157,6 +157,24 @@ impl PrettyIR for ExprT {
                 .append(")")
                 .nest(2)
                 .group(),
+            ExprT::Forall(var, ty, body) => RcDoc::text("_forall(")
+                .append(ty.to_doc())
+                .append(RcDoc::space())
+                .append(var.to_doc())
+                .append(", ")
+                .append(body.to_doc())
+                .append(")")
+                .nest(2)
+                .group(),
+            ExprT::Exists(var, ty, body) => RcDoc::text("_exists(")
+                .append(ty.to_doc())
+                .append(RcDoc::space())
+                .append(var.to_doc())
+                .append(", ")
+                .append(body.to_doc())
+                .append(")")
+                .nest(2)
+                .group(),
             ExprT::Error(_) => RcDoc::text("???"),
             ExprT::StructInit(name, fields) => RcDoc::text("(")
                 .append(name.to_doc())

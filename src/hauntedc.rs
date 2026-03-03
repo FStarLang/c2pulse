@@ -474,7 +474,33 @@ fn expr_parser<
 
         let primary_expression = identifier.or(constant).or(parenthesized);
 
+        let quantifier = select! {
+            Token::Ident("_forall") => true,
+            Token::Ident("_exists") => false,
+        }
+        .padded_by(ws())
+        .then(
+            type_name
+                .clone()
+                .then(ident.clone())
+                .then_ignore(punct(Punct::Comma))
+                .then(assignment_expression.clone())
+                .delimited_by(punct(Punct::LParen), punct(Punct::RParen)),
+        )
+        .map_with(|(is_forall, ((ty, var), body)): (bool, _), extra| -> Expr {
+            let loc = sift.resolve_source_info(&extra.span());
+            let body: Expr = body;
+            let body_rv = body.to_rvalue();
+            if is_forall {
+                ExprT::Forall(var, ty, body_rv).with_loc(loc).into()
+            } else {
+                ExprT::Exists(var, ty, body_rv).with_loc(loc).into()
+            }
+        })
+        .boxed();
+
         let postfix_expression_nonrec = choice((
+            quantifier,
             ident
                 .clone() // TODO: function should be postfix_expression
                 .then(
@@ -484,7 +510,7 @@ fn expr_parser<
                         .collect::<Vec<_>>()
                         .delimited_by(punct(Punct::LParen), punct(Punct::RParen)),
                 )
-                .try_map(|(f, args), s| match &*f.val {
+                .try_map(|(f, args): (_, Vec<Expr>), s| match &*f.val {
                     "_old" => {
                         let &[arg] = &args.as_slice() else {
                             return Err(Rich::custom(s, "_old takes exactly one argument"));
@@ -508,8 +534,9 @@ fn expr_parser<
                     )
                     .with_loc(sift.resolve_source_info(&s))
                     .into()),
-                }),
-            primary_expression,
+                })
+                .boxed(),
+            primary_expression.boxed(),
         ))
         .boxed();
         let postfix_expression = left_recursion!(postfix_expression_nonrec, {
