@@ -116,7 +116,16 @@ fn scan_expr(deps: &mut HashSet<DeclName>, rv: &Expr) {
             scan_type(deps, ty);
         }
         ExprT::Error(ty) => scan_type(deps, ty),
-        ExprT::InlinePulse(_, ty) => scan_type(deps, ty),
+        ExprT::InlinePulse(code, ty) => {
+            scan_type(deps, ty);
+            for tok in &code.tokens {
+                match tok {
+                    InlinePulseToken::RValueAntiquot { expr, .. }
+                    | InlinePulseToken::LValueAntiquot { expr, .. } => scan_expr(deps, expr),
+                    InlinePulseToken::Verbatim(_) => {}
+                }
+            }
+        }
         ExprT::UnOp(_, arg) => scan_expr(deps, arg),
         ExprT::BinOp(_, lhs, rhs) => {
             scan_expr(deps, lhs);

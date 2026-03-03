@@ -32,6 +32,13 @@ impl ExprKind {
             ExprKind::RValue(doc) => doc,
         }
     }
+
+    /// Extract the raw document without rvalue/lvalue conversion.
+    fn into_doc(self) -> Doc {
+        match self {
+            ExprKind::LValue(doc) | ExprKind::RValue(doc) => doc,
+        }
+    }
 }
 
 struct StrWriter {
@@ -331,7 +338,9 @@ fn subst_this_rvalue(env: &Env, nm: &mut NameMangling, rvalue: &mut Expr, this: 
         ExprT::Cast(val, _) => {
             subst_this_rvalue(env, nm, Rc::make_mut(val), this);
         }
-        ExprT::InlinePulse(val, _) => subst_inline_code_this(env, nm, Rc::make_mut(val), this),
+        ExprT::InlinePulse(val, _) => {
+            subst_inline_pulse_code_this(env, nm, Rc::make_mut(val), this)
+        }
         ExprT::Error(_ty) => {}
         ExprT::Live(val) => subst_this_rvalue(env, nm, Rc::make_mut(val), this),
         ExprT::Old(val) => subst_this_rvalue(env, nm, Rc::make_mut(val), this),
@@ -350,11 +359,24 @@ fn subst_this_rvalue(env: &Env, nm: &mut NameMangling, rvalue: &mut Expr, this: 
     }
 }
 
-fn subst_inline_code_this(env: &Env, nm: &mut NameMangling, val: &mut InlineCode, this: &Rc<Expr>) {
+fn subst_inline_pulse_code_this(
+    env: &Env,
+    nm: &mut NameMangling,
+    val: &mut InlinePulseCode,
+    this: &Rc<Expr>,
+) {
     for tok in &mut val.tokens {
-        // This is ridiculuously hacky....
-        if &*tok.text.val == "this" {
-            tok.text.val = Rc::from(emit_rvalue(env, nm, this).pretty(100).to_string());
+        match tok {
+            InlinePulseToken::Verbatim(ct) => {
+                // This is ridiculuously hacky....
+                if &*ct.text.val == "this" {
+                    ct.text.val = Rc::from(emit_rvalue(env, nm, this).pretty(100).to_string());
+                }
+            }
+            InlinePulseToken::RValueAntiquot { expr, .. }
+            | InlinePulseToken::LValueAntiquot { expr, .. } => {
+                subst_this_rvalue(env, nm, Rc::make_mut(expr), this);
+            }
         }
     }
 }
@@ -784,8 +806,16 @@ fn emit_rvalue_inner(env: &Env, nm: &mut NameMangling, v: &Expr) -> Doc {
             }
             ExprT::Error(_ty) => Doc::text("(admit())"),
             ExprT::InlinePulse(val, _) => parens(Doc::concat(val.tokens.iter().map(|tok| {
-                Doc::text(tok.before)
-                    .append(annotated(&tok.text, Doc::text(tok.text.val.to_string())))
+                match tok {
+                    InlinePulseToken::Verbatim(ct) => Doc::text(ct.before)
+                        .append(annotated(&ct.text, Doc::text(ct.text.val.to_string()))),
+                    InlinePulseToken::RValueAntiquot { before, expr } => {
+                        Doc::text(*before).append(emit_rvalue(env, nm, expr))
+                    }
+                    InlinePulseToken::LValueAntiquot { before, expr } => {
+                        Doc::text(*before).append(emit_expr(env, nm, expr).into_doc())
+                    }
+                }
             }))),
             ExprT::BinOp(BinOp::LogAnd, lhs, rhs) => {
                 if let Some(ty) = env.infer_rvalue(lhs) {

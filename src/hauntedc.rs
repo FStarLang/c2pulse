@@ -439,7 +439,12 @@ fn expr_parser<
                     .ok()
                     .and_then(|i| snip_map.snippets.get(&i));
                 match snip {
-                    Some(snip) => Ok(Rc::new(snip.clone())),
+                    Some(snip) => {
+                        let fallback_loc = sift.resolve_source_info(&span);
+                        let code =
+                            process_inline_pulse(&fallback_loc, snip, snip_map, target_widths);
+                        Ok(Rc::new(code))
+                    }
                     None => Err(Rich::custom(span, format!("snippet {} not found", i))),
                 }
             })
@@ -577,7 +582,7 @@ fn expr_parser<
             ));
 
             and_then!(type_name.delimited_by(punct(Punct::LParen), punct(Punct::RParen)), {
-                InlinePulse(ty, code: Rc<InlineCode>: inline_pulse) = e =>
+                InlinePulse(ty, code: Rc<InlinePulseCode>: inline_pulse) = e =>
                     ExprT::InlinePulse(code, ty).with_loc(sift.resolve_source_info(&e.span())).into(),
                 Plain(ty, x: Expr: cast_expression) = e =>
                     ExprT::Cast(x.to_rvalue(), ty).with_loc(sift.resolve_source_info(&e.span())).into(),
@@ -810,4 +815,77 @@ pub fn parse_expr(
             msg: format!("{}", err),
         }));
     output
+}
+
+pub fn process_inline_pulse(
+    fallback_loc: &Rc<SourceInfo>,
+    code: &InlineCode,
+    snippets: &SnippetMap,
+    target_widths: &TargetIntWidths,
+) -> InlinePulseCode {
+    let tokens = &code.tokens;
+    let mut result = Vec::new();
+    let mut i = 0;
+    while i < tokens.len() {
+        if &*tokens[i].text.val == "$" {
+            let before = tokens[i].before;
+            let is_lvalue;
+            // Check for $& (lvalue) vs $ (rvalue)
+            if i + 1 < tokens.len() && &*tokens[i + 1].text.val == "&" {
+                is_lvalue = true;
+                i += 2; // skip $ and &
+            } else {
+                is_lvalue = false;
+                i += 1; // skip $
+            }
+            // Expect opening paren
+            if i < tokens.len() && &*tokens[i].text.val == "(" {
+                i += 1; // skip (
+                // Collect tokens until matching )
+                let mut depth = 1;
+                let start = i;
+                while i < tokens.len() && depth > 0 {
+                    if &*tokens[i].text.val == "(" {
+                        depth += 1;
+                    } else if &*tokens[i].text.val == ")" {
+                        depth -= 1;
+                    }
+                    if depth > 0 {
+                        i += 1;
+                    }
+                }
+                // tokens[start..i] are the inner tokens
+                let inner_code = InlineCode {
+                    tokens: tokens[start..i].to_vec(),
+                };
+                let mut diags = Diagnostics::empty();
+                let expr = parse_expr(
+                    &mut diags,
+                    fallback_loc,
+                    &inner_code,
+                    snippets,
+                    target_widths,
+                );
+                if is_lvalue {
+                    result.push(InlinePulseToken::LValueAntiquot { before, expr });
+                } else {
+                    result.push(InlinePulseToken::RValueAntiquot { before, expr });
+                }
+                i += 1; // skip closing )
+            } else {
+                // Malformed: emit $ as verbatim
+                result.push(InlinePulseToken::Verbatim(CodeToken {
+                    before,
+                    text: Ast {
+                        loc: fallback_loc.clone(),
+                        val: Rc::from("$"),
+                    },
+                }));
+            }
+        } else {
+            result.push(InlinePulseToken::Verbatim(tokens[i].clone()));
+            i += 1;
+        }
+    }
+    InlinePulseCode { tokens: result }
 }

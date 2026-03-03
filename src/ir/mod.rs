@@ -236,7 +236,7 @@ pub enum ExprT {
     BinOp(BinOp, Rc<Expr>, Rc<Expr>),
     FnCall(Rc<Ident>, Exprs),
     Cast(Rc<Expr>, Rc<Type>),
-    InlinePulse(Rc<InlineCode>, Rc<Type>),
+    InlinePulse(Rc<InlinePulseCode>, Rc<Type>),
     Live(Rc<Expr>),
     Old(Rc<Expr>),
     Forall(Rc<Ident>, Rc<Type>, Rc<Expr>),
@@ -338,6 +338,24 @@ impl InlineCode {
         }
         result
     }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub enum InlinePulseToken {
+    Verbatim(CodeToken),
+    RValueAntiquot {
+        before: &'static str,
+        expr: Rc<Expr>,
+    },
+    LValueAntiquot {
+        before: &'static str,
+        expr: Rc<Expr>,
+    },
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub struct InlinePulseCode {
+    pub tokens: Vec<InlinePulseToken>,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]

@@ -153,7 +153,18 @@ impl<'a> Elaborator<'a> {
                 // TODO: check that actual_ty can be casted to ty
             }
             ExprT::Error(ty) => self.elab_type(env, Rc::make_mut(ty)),
-            ExprT::InlinePulse(_, ty) => self.elab_type(env, Rc::make_mut(ty)),
+            ExprT::InlinePulse(code, ty) => {
+                self.elab_type(env, Rc::make_mut(ty));
+                for tok in &mut Rc::make_mut(code).tokens {
+                    match tok {
+                        InlinePulseToken::RValueAntiquot { expr, .. }
+                        | InlinePulseToken::LValueAntiquot { expr, .. } => {
+                            self.elab_rvalue(env, Rc::make_mut(expr))
+                        }
+                        InlinePulseToken::Verbatim(_) => {}
+                    }
+                }
+            }
             ExprT::UnOp(un_op, arg) => {
                 self.elab_rvalue(env, Rc::make_mut(arg));
                 match un_op {

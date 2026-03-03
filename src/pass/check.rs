@@ -287,7 +287,18 @@ impl<'a> Checker<'a> {
                 self.check_rvalue(env, rval);
                 self.check_type(env, ty);
             }
-            ExprT::InlinePulse(_inline_code, ty) => self.check_type(env, ty),
+            ExprT::InlinePulse(code, ty) => {
+                self.check_type(env, ty);
+                for tok in &code.tokens {
+                    match tok {
+                        InlinePulseToken::RValueAntiquot { expr, .. }
+                        | InlinePulseToken::LValueAntiquot { expr, .. } => {
+                            self.check_rvalue(env, expr)
+                        }
+                        InlinePulseToken::Verbatim(_) => {}
+                    }
+                }
+            }
             ExprT::Live(lval) => self.check_rvalue(env, lval),
             ExprT::Old(rval) => self.check_rvalue(env, rval),
             ExprT::Forall(var, ty, body) | ExprT::Exists(var, ty, body) => {
