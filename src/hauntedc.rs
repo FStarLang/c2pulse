@@ -540,6 +540,13 @@ fn expr_parser<
                             .with_loc(sift.resolve_source_info(&extra.span()))
                             .into()
                     }),
+                punct(Punct::Bang)
+                    .ignore_then(cast_expression.clone())
+                    .map_with(|e: Expr, extra| {
+                        ExprT::UnOp(UnOp::Not, e.to_rvalue())
+                            .with_loc(sift.resolve_source_info(&extra.span()))
+                            .into()
+                    }),
             ));
 
             and_then!(type_name.delimited_by(punct(Punct::LParen), punct(Punct::RParen)), {

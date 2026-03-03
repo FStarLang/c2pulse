@@ -4,6 +4,7 @@
 int test_implies(bool a, bool b)
     _requires(a ==> b)
     _ensures(a ==> b)
+    _ensures(!a || b)
 {
     return 0;
 }
