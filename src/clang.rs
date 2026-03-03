@@ -2,7 +2,7 @@ use num_bigint::BigInt;
 
 use crate::{
     diag::{Diagnostic, DiagnosticLevel, Diagnostics},
-    hauntedc::{SnippetMap, TargetIntWidths, parse_expr},
+    hauntedc::{SnippetMap, TargetIntWidths, parse_expr, process_inline_pulse},
     ir::*,
     vfs::VFS,
 };
@@ -124,6 +124,20 @@ impl<'a> Ctx<'a> {
                 val: DeclT::IncludeDecl(IncludeDecl { code: code.clone() }),
             }),
             None => self.report_diag(loc, true, "internal error: invalid inline_pulse encoding"),
+        }
+    }
+
+    fn mk_ghost_stmt(&mut self, loc: Rc<SourceInfo>, idx: u32, snippets: &SnippetMap) -> Rc<Stmt> {
+        match snippets.snippets.get(&idx) {
+            Some(code) => {
+                let pulse_code =
+                    process_inline_pulse(&loc, code, snippets, &self.target_int_widths);
+                mk_ast(loc, StmtT::GhostStmt(Rc::new(pulse_code)))
+            }
+            None => {
+                self.report_diag(loc.clone(), true, "internal error: invalid code snippet");
+                mk_ast(loc, StmtT::Error)
+            }
         }
     }
 

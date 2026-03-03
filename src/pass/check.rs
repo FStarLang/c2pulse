@@ -433,6 +433,17 @@ impl<'a> Checker<'a> {
                 }
             }
             StmtT::Assert(v) => self.check_slprop(env, v),
+            StmtT::GhostStmt(code) => {
+                for tok in &code.tokens {
+                    match tok {
+                        InlinePulseToken::RValueAntiquot { expr, .. }
+                        | InlinePulseToken::LValueAntiquot { expr, .. } => {
+                            self.check_rvalue(env, expr)
+                        }
+                        InlinePulseToken::Verbatim(_) => {}
+                    }
+                }
+            }
             StmtT::Goto(_) => {}
             StmtT::Label { ensures, .. } => {
                 for e in &**ensures {

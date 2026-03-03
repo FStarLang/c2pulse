@@ -1,6 +1,24 @@
 use crate::ir::*;
 use ::pretty::RcDoc;
 
+fn inline_pulse_code_to_doc<'a>(code: &'a InlinePulseCode) -> RcDoc<'a, ()> {
+    RcDoc::concat(code.tokens.iter().map(|tok| {
+        match tok {
+            InlinePulseToken::Verbatim(ct) => {
+                RcDoc::text(ct.before).append(RcDoc::text(ct.text.val.to_string()))
+            }
+            InlinePulseToken::RValueAntiquot { before, expr } => RcDoc::text(*before)
+                .append("$(")
+                .append(expr.to_doc())
+                .append(")"),
+            InlinePulseToken::LValueAntiquot { before, expr } => RcDoc::text(*before)
+                .append("$&(")
+                .append(expr.to_doc())
+                .append(")"),
+        }
+    }))
+}
+
 macro_rules! impl_display_using_prettyir {
     ($t:ty) => {
         impl Display for $t {
@@ -139,32 +157,15 @@ impl PrettyIR for ExprT {
                 .group())
             .append(RcDoc::line())
             .append(rval.to_doc()),
-            ExprT::InlinePulse(inline_code, ty) => {
-                let code_doc = RcDoc::concat(inline_code.tokens.iter().map(|tok| {
-                    match tok {
-                        InlinePulseToken::Verbatim(ct) => {
-                            RcDoc::text(ct.before).append(RcDoc::text(ct.text.val.to_string()))
-                        }
-                        InlinePulseToken::RValueAntiquot { before, expr } => RcDoc::text(*before)
-                            .append("$(")
-                            .append(expr.to_doc())
-                            .append(")"),
-                        InlinePulseToken::LValueAntiquot { before, expr } => RcDoc::text(*before)
-                            .append("$&(")
-                            .append(expr.to_doc())
-                            .append(")"),
-                    }
-                }));
-                (RcDoc::text("(")
-                    .append(ty.to_doc())
-                    .append(")")
-                    .nest(2)
-                    .group())
-                .append(RcDoc::line())
-                .append(RcDoc::text("_inline_pulse("))
-                .append(code_doc)
-                .append(RcDoc::text(")"))
-            }
+            ExprT::InlinePulse(inline_code, ty) => (RcDoc::text("(")
+                .append(ty.to_doc())
+                .append(")")
+                .nest(2)
+                .group())
+            .append(RcDoc::line())
+            .append(RcDoc::text("_inline_pulse("))
+            .append(inline_pulse_code_to_doc(inline_code))
+            .append(RcDoc::text(")")),
             ExprT::Live(v) => RcDoc::text("_live(")
                 .append(v.to_doc())
                 .append(")")
@@ -305,6 +306,11 @@ impl PrettyIR for StmtT {
             StmtT::Return(None) => RcDoc::text("return;"),
             StmtT::Assert(v) => RcDoc::text("_assert(")
                 .append(v.to_doc())
+                .append(");")
+                .nest(2)
+                .group(),
+            StmtT::GhostStmt(code) => RcDoc::text("_ghost_stmt(")
+                .append(inline_pulse_code_to_doc(code))
                 .append(");")
                 .nest(2)
                 .group(),

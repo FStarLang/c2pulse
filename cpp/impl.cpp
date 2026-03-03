@@ -625,12 +625,18 @@ public:
     } else if (auto *se = dyn_cast<StmtExpr>(stmt)) {
       // _assert(p) expands to ({ __attribute__((annotate("c2pulse-assert",
       // ...))) {} })
+      // _ghost_stmt(p) expands similarly with "c2pulse-ghost-stmt"
       if (auto *comp = dyn_cast<CompoundStmt>(se->getSubStmt())) {
         for (auto s : comp->body()) {
           if (auto *attr = dyn_cast<AttributedStmt>(s)) {
             for (auto a : attr->getAttrs()) {
               if (auto val = isUnaryAttrOf(a, "c2pulse-assert")) {
                 stmts.push(mk_assert(loc.clone(), std::move(val.value())));
+                return rust::Unit();
+              }
+              if (auto ctr = isUnaryAttrCounter(a, "c2pulse-ghost-stmt")) {
+                stmts.push(
+                    ctx.mk_ghost_stmt(loc.clone(), ctr.value(), snippets));
                 return rust::Unit();
               }
             }
@@ -653,6 +659,17 @@ public:
       if (auto ctrVal = ann->args_begin()[0]->getIntegerConstantExpr(*astCtx)) {
         unsigned ctr = ctrVal->getZExtValue();
         return {ctx.parse_rvalue(getRange(attr->getRange()), ctr, snippets)};
+      }
+    }
+    return {};
+  }
+
+  std::optional<unsigned> isUnaryAttrCounter(Attr const *attr,
+                                             char const *name) {
+    if (auto ann = dyn_cast<AnnotateAttr>(attr);
+        ann && ann->args_size() == 1 && ann->getAnnotation() == name) {
+      if (auto ctrVal = ann->args_begin()[0]->getIntegerConstantExpr(*astCtx)) {
+        return {static_cast<unsigned>(ctrVal->getZExtValue())};
       }
     }
     return {};

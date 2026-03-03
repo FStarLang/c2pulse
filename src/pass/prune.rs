@@ -190,6 +190,15 @@ fn scan_stmt(deps: &mut HashSet<DeclName>, stmt: &Stmt) {
             }
         }
         StmtT::Assert(v) => scan_expr(deps, v),
+        StmtT::GhostStmt(code) => {
+            for tok in &code.tokens {
+                match tok {
+                    InlinePulseToken::RValueAntiquot { expr, .. }
+                    | InlinePulseToken::LValueAntiquot { expr, .. } => scan_expr(deps, expr),
+                    InlinePulseToken::Verbatim(_) => {}
+                }
+            }
+        }
         StmtT::Goto(_) => {}
         StmtT::Label { ensures, .. } => {
             for e in &**ensures {

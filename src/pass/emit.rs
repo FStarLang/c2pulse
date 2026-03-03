@@ -1052,6 +1052,19 @@ fn emit_stmt(env: &Env, nm: &mut NameMangling, stmt: &Stmt) -> Doc {
                 .append(";")
                 .group()
                 .nest(2),
+            StmtT::GhostStmt(code) => Doc::concat(code.tokens.iter().map(|tok| {
+                match tok {
+                    InlinePulseToken::Verbatim(ct) => Doc::text(ct.before)
+                        .append(annotated(&ct.text, Doc::text(ct.text.val.to_string()))),
+                    InlinePulseToken::RValueAntiquot { before, expr } => {
+                        Doc::text(*before).append(emit_rvalue(env, nm, expr))
+                    }
+                    InlinePulseToken::LValueAntiquot { before, expr } => {
+                        Doc::text(*before).append(emit_expr(env, nm, expr).into_doc())
+                    }
+                }
+            }))
+            .append(";"),
             StmtT::Goto(label) => Doc::text("goto ")
                 .append(nm.emit(Name::Var(label.val.clone())))
                 .append(";"),

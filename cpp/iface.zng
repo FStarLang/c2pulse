@@ -154,6 +154,8 @@ mod crate::clang {
         fn add_struct(&mut self, DeclBuilder);
         fn add_include(&mut self, Rc<SourceInfo>, u32, &SnippetMap);
 
+        fn mk_ghost_stmt(&mut self, Rc<SourceInfo>, u32, &SnippetMap) -> Rc<Stmt>;
+
         fn parse_rvalue(&mut self, Rc<SourceInfo>, u32, &SnippetMap) -> Rc<Expr>;
 
         fn report_diag(&mut self, Rc<SourceInfo>, bool, &str);

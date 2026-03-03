@@ -299,6 +299,17 @@ impl<'a> Elaborator<'a> {
                 self.elab_rvalue(env, Rc::make_mut(v));
                 self.cast_to_slprop(env, v);
             }
+            StmtT::GhostStmt(code) => {
+                for tok in &mut Rc::make_mut(code).tokens {
+                    match tok {
+                        InlinePulseToken::RValueAntiquot { expr, .. }
+                        | InlinePulseToken::LValueAntiquot { expr, .. } => {
+                            self.elab_rvalue(env, Rc::make_mut(expr))
+                        }
+                        InlinePulseToken::Verbatim(_) => {}
+                    }
+                }
+            }
             StmtT::Goto(_) => {}
             StmtT::Label { ensures, .. } => {
                 self.elab_slprops(env, Rc::make_mut(ensures));
