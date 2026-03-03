@@ -212,9 +212,11 @@ impl Env {
             ExprT::Error(ty) => Some(ty.clone().into()),
             ExprT::InlinePulse(_, ty) => Some(ty.clone().into()),
             ExprT::UnOp(UnOp::Not, _)
-            | ExprT::BinOp(BinOp::Eq | BinOp::LEq | BinOp::Lt | BinOp::LogOr, _, _) => {
-                Some(TypeT::Bool.with_loc_core(expr.loc.clone()).into())
-            }
+            | ExprT::BinOp(
+                BinOp::Eq | BinOp::LEq | BinOp::Lt | BinOp::LogOr | BinOp::Implies,
+                _,
+                _,
+            ) => Some(TypeT::Bool.with_loc_core(expr.loc.clone()).into()),
             ExprT::UnOp(UnOp::Neg, lhs)
             | ExprT::BinOp(
                 BinOp::LogAnd | BinOp::Mul | BinOp::Div | BinOp::Mod | BinOp::Add | BinOp::Sub,

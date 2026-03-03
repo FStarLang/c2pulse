@@ -97,6 +97,7 @@ mod crate::ir {
         constructor Lt;
         constructor LogAnd;
         constructor LogOr;
+        constructor Implies;
         constructor Mul;
         constructor Div;
         constructor Mod;

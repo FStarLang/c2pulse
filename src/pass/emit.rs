@@ -564,6 +564,7 @@ fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
         (BinOp::Lt, TypeT::Bool) => todo_binop!(),
         (BinOp::LogAnd, TypeT::Bool) => Doc::text("&&"),
         (BinOp::LogOr, TypeT::Bool) => Doc::text("||"),
+        (BinOp::Implies, TypeT::Bool) => Doc::text("==>"),
         (BinOp::Div, TypeT::Bool) => todo_binop!(),
         (BinOp::Mod, TypeT::Bool) => todo_binop!(),
         (BinOp::Sub, TypeT::Bool) => todo_binop!(),
@@ -572,6 +573,7 @@ fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
 
         (BinOp::LogAnd, TypeT::SLProp) => Doc::text("**"),
         (BinOp::LogOr, TypeT::SLProp) => todo_binop!(),
+        (BinOp::Implies, TypeT::SLProp) => Doc::text("`Pulse.Lib.Trade.trade`"),
 
         (BinOp::Mul, TypeT::Int { signed, width }) => {
             Doc::text(format!("`{}.mul`", get_int_mod(signed, width)?))
@@ -603,6 +605,7 @@ fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
         (BinOp::Sub, TypeT::SpecInt) => Doc::text("-"),
         (BinOp::LogAnd, TypeT::SpecInt) => todo_binop!(),
         (BinOp::LogOr, TypeT::SpecInt) => todo_binop!(),
+        (BinOp::Implies, TypeT::SpecInt) => todo_binop!(),
 
         (
             op,
@@ -615,7 +618,10 @@ fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
             TypeT::Pointer(..),
         )
         | (_, TypeT::Void)
-        | (BinOp::LogAnd | BinOp::LogOr, TypeT::Int { .. } | TypeT::SizeT | TypeT::Pointer(..))
+        | (
+            BinOp::LogAnd | BinOp::LogOr | BinOp::Implies,
+            TypeT::Int { .. } | TypeT::SizeT | TypeT::Pointer(..),
+        )
         | (_, TypeT::SLProp)
         | (_, TypeT::Error) => return None,
     })

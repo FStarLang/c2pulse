@@ -117,6 +117,7 @@ mk_punct_table! {
     Lt => "<",
     Gt => ">",
     EqEq => "==",
+    EqEqGt => "==>",
     Hat => "^",
     PipePipe => "||",
     Pipe => "|",
@@ -607,7 +608,40 @@ fn expr_parser<
         })
         .boxed();
 
-        let conditional_expression = logical_or_expression;
+        let conditional_expression = logical_or_expression
+            .clone()
+            .then(
+                punct(Punct::EqEqGt)
+                    .ignore_then(recursive(|implies_rhs| {
+                        logical_or_expression
+                            .clone()
+                            .then(punct(Punct::EqEqGt).ignore_then(implies_rhs).or_not())
+                            .map_with(|(lhs, rhs): (Expr, Option<Expr>), extra| -> Expr {
+                                match rhs {
+                                    Some(rhs) => mk_binop(
+                                        BinOp::Implies,
+                                        lhs,
+                                        rhs,
+                                        sift.resolve_source_info(&extra.span()),
+                                    ),
+                                    None => lhs,
+                                }
+                            })
+                    }))
+                    .or_not(),
+            )
+            .map_with(|(lhs, rhs): (Expr, Option<Expr>), extra| -> Expr {
+                match rhs {
+                    Some(rhs) => mk_binop(
+                        BinOp::Implies,
+                        lhs,
+                        rhs,
+                        sift.resolve_source_info(&extra.span()),
+                    ),
+                    None => lhs,
+                }
+            })
+            .boxed();
 
         let constant_expression = conditional_expression;
 
@@ -709,6 +743,16 @@ pub fn parse_expr(
             (i..(i + 1)).into(),
         ));
         source_infos.push(loc.clone());
+    }
+    // Merge adjacent EqEq + Gt tokens (no whitespace between) into EqEqGt.
+    // Clang's lexer tokenizes `==>` as `==` followed by `>`, so we merge them here.
+    let mut i = 0;
+    while i + 1 < tokens.len() {
+        if tokens[i].0 == Token::Punct(Punct::EqEq) && tokens[i + 1].0 == Token::Punct(Punct::Gt) {
+            tokens[i].0 = Token::Punct(Punct::EqEqGt);
+            tokens.remove(i + 1);
+        }
+        i += 1;
     }
     let source_infos = TokenSI {
         source_infos,
