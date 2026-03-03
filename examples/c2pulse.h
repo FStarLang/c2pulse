@@ -15,6 +15,7 @@
 
 #define _plain [[clang::annotate("c2pulse-plain")]]
 #define _consumes [[clang::annotate("c2pulse-consumes")]]
+#define _array [[clang::annotate("c2pulse-array")]]
 
 #define _inline_pulse(args) _inline_pulse(__capture_args(args))
 
@@ -29,6 +30,7 @@
 
 #define _plain
 #define _consumes
+#define _array
 
 #endif
 

@@ -312,6 +312,9 @@ public:
         } else if (ann->getAnnotation() == "c2pulse-consumes" &&
                    ann->args_size() == 0) {
           ty = mk_type_consumes(std::move(loc), std::move(ty));
+        } else if (ann->getAnnotation() == "c2pulse-array" &&
+                   ann->args_size() == 0) {
+          ty = mk_type_array(std::move(loc), std::move(ty));
         }
       }
     }
