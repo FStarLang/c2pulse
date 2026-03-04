@@ -1152,7 +1152,7 @@ fn mk_eager_unfold_slprop(n: Doc, args: &[Doc], body: Doc) -> Doc {
         .append(Doc::line())
         .append("let")
         .append(Doc::line())
-        .append("invariant")
+        .append("predicate")
         .group()
         .append(Doc::line())
         .append(n))
