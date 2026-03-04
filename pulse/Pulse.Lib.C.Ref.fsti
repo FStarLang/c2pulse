@@ -16,14 +16,14 @@ instance inhabited_array (a:Type) : Pulse.Lib.C.Inhabited.inhabited (array a) = 
 
 val freeable (#a: Type u#a) ([@@@mkey] r:ref a) : slprop
 
-fn alloc_ref u#a (#a: Type u#a) {| inhabited a |} ()
+fn alloc_ref u#a (#a: Type u#a) ()
   returns  r : ref a
-  ensures  exists* x. r |-> x
+  ensures  pts_to_uninit r
   ensures  freeable r
 
 fn free_ref u#a (#a: Type u#a) (r:ref a)
   requires freeable r
-  requires exists* x. r |-> x
+  requires pts_to_uninit r
 
 // let live u#a (#a: Type u#a) ([@@@mkey] r:ref a) : slprop =
 //   exists* x. r |-> x

@@ -19,10 +19,11 @@ _allocated
 typedef u32_pair* freeable_u32_pair_ptr;
 
 freeable_u32_pair_ptr new_u32_pair()
-  _ensures(return->first == 0ul)
-  _ensures(return->second == 1ul)
+  _ensures(return->first == 0u)
+  _ensures(return->second == 1u)
 {
   u32_pair *x = (u32_pair *)malloc(sizeof(u32_pair));
+  _ghost_stmt(admit());
   x->first = 0ul;
   x->second = 1ul;
   return x;
@@ -58,7 +59,7 @@ uint32_t multiply_by_repeated_addition(uint32_t x, uint32_t y)
   uint32_t ctr = 0;
   uint32_t acc = 0;
   while (ctr < x)
-    _invariant(_live(&ctr) && _live(&acc))
+    _invariant(_live(ctr) && _live(acc))
     _invariant(ctr <= x && acc == ctr * y)
   {
       ctr = ctr + 1;
