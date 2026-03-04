@@ -220,6 +220,8 @@ mod crate::clang {
     fn mk_rvalue_fncall(Rc<SourceInfo>, Rc<Ident>, Vec<Rc<Expr>>) -> Rc<Expr>;
     fn mk_cast(Rc<SourceInfo>, Rc<Expr>, Rc<Type>) -> Rc<Expr>;
     fn mk_rvalue_err(Rc<SourceInfo>, Rc<Type>) -> Rc<Expr>;
+    fn mk_malloc(Rc<SourceInfo>, Rc<Type>) -> Rc<Expr>;
+    fn mk_free(Rc<SourceInfo>, Rc<Expr>) -> Rc<Expr>;
 
     fn mk_lvalue_var(Rc<SourceInfo>, Rc<Ident>) -> Rc<Expr>;
     fn mk_lvalue_member(Rc<SourceInfo>, Rc<Expr>, Rc<Ident>) -> Rc<Expr>;

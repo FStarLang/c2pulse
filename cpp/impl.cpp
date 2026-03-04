@@ -409,6 +409,24 @@ public:
                             trQualType(ic->getType(), ic->getSourceRange()));
         }
 
+        // Detect (T*) malloc(sizeof(T)) pattern
+        if (auto *call =
+                dyn_cast<CallExpr>(ic->getSubExpr()->IgnoreParenImpCasts())) {
+          if (auto *callee = call->getDirectCallee()) {
+            if (callee->getName() == "malloc" && call->getNumArgs() == 1) {
+              if (auto *sizeofExpr = dyn_cast<UnaryExprOrTypeTraitExpr>(
+                      call->getArg(0)->IgnoreParenImpCasts())) {
+                if (sizeofExpr->getKind() == UETT_SizeOf &&
+                    sizeofExpr->isArgumentType()) {
+                  auto allocTy = trQualType(sizeofExpr->getArgumentType(),
+                                            sizeofExpr->getSourceRange());
+                  return mk_malloc(std::move(loc), std::move(allocTy));
+                }
+              }
+            }
+          }
+        }
+
         // continue to error case
       }
     } else if (auto p = dyn_cast<ParenExpr>(e)) {
@@ -476,6 +494,17 @@ public:
       }
     } else if (auto *c = dyn_cast<CallExpr>(e)) {
       if (auto fd = c->getDirectCallee()) {
+        // Detect free(ptr)
+        if (fd->getName() == "free" && c->getNumArgs() == 1) {
+          auto arg = c->getArg(0);
+          // Strip implicit void* cast
+          if (auto *ic = dyn_cast<ImplicitCastExpr>(arg)) {
+            if (ic->getCastKind() == CK_BitCast) {
+              arg = ic->getSubExpr();
+            }
+          }
+          return mk_free(std::move(loc), trRValue(arg));
+        }
         auto fn = ctx.mk_ident(toStr(fd->getName()),
                                getRange(c->getCallee()->getSourceRange()));
         auto args = Vec<Rc<ir::Expr>>::new_();

@@ -210,6 +210,11 @@ impl Env {
             },
             ExprT::Cast(_, ty) => Some(ty.clone().into()),
             ExprT::Error(ty) => Some(ty.clone().into()),
+            ExprT::Malloc(ty) => Some(
+                expr.reuse_loc(TypeT::Pointer(ty.clone(), PointerKind::Ref))
+                    .into(),
+            ),
+            ExprT::Free(_) => Some(TypeT::Void.with_loc_core(expr.loc.clone()).into()),
             ExprT::InlinePulse(_, ty) => Some(ty.clone().into()),
             ExprT::UnOp(UnOp::Not, _)
             | ExprT::BinOp(

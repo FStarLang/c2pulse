@@ -352,6 +352,8 @@ fn subst_this_rvalue(env: &Env, nm: &mut NameMangling, rvalue: &mut Expr, this: 
                 subst_this_rvalue(env, nm, Rc::make_mut(val), this);
             }
         }
+        ExprT::Malloc(_) => {}
+        ExprT::Free(val) => subst_this_rvalue(env, nm, Rc::make_mut(val), this),
         ExprT::Index(arr, idx) => {
             subst_this_rvalue(env, nm, Rc::make_mut(arr), this);
             subst_this_rvalue(env, nm, Rc::make_mut(idx), this);
@@ -965,6 +967,19 @@ fn emit_rvalue_inner(env: &Env, nm: &mut NameMangling, v: &Expr) -> Doc {
                 .append(Doc::line())
                 .append("}")
                 .group(),
+            ExprT::Malloc(ty) => parens(
+                Doc::text("Pulse.Lib.C.Ref.alloc_ref")
+                    .append(Doc::line())
+                    .append(Doc::text("#"))
+                    .append(emit_type(env, nm, ty))
+                    .append(Doc::line())
+                    .append("()"),
+            ),
+            ExprT::Free(val) => parens(
+                Doc::text("Pulse.Lib.C.Ref.free_ref")
+                    .append(Doc::line())
+                    .append(emit_rvalue(env, nm, val)),
+            ),
         }
     })
 }

@@ -370,6 +370,12 @@ fn mk_cast(loc: Rc<SourceInfo>, val: Rc<Expr>, ty: Rc<Type>) -> Rc<Expr> {
 fn mk_rvalue_err(loc: Rc<SourceInfo>, ty: Rc<Type>) -> Rc<Expr> {
     mk_ast(loc, ExprT::Error(ty))
 }
+fn mk_malloc(loc: Rc<SourceInfo>, ty: Rc<Type>) -> Rc<Expr> {
+    mk_ast(loc, ExprT::Malloc(ty))
+}
+fn mk_free(loc: Rc<SourceInfo>, val: Rc<Expr>) -> Rc<Expr> {
+    mk_ast(loc, ExprT::Free(val))
+}
 
 pub struct StructInitBuilder {
     loc: Rc<SourceInfo>,

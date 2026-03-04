@@ -116,6 +116,8 @@ fn scan_expr(deps: &mut HashSet<DeclName>, rv: &Expr) {
             scan_type(deps, ty);
         }
         ExprT::Error(ty) => scan_type(deps, ty),
+        ExprT::Malloc(ty) => scan_type(deps, ty),
+        ExprT::Free(val) => scan_expr(deps, val),
         ExprT::InlinePulse(code, ty) => {
             scan_type(deps, ty);
             for tok in &code.tokens {

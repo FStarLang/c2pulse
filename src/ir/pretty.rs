@@ -195,6 +195,10 @@ impl PrettyIR for ExprT {
                 .nest(2)
                 .group(),
             ExprT::Error(_) => RcDoc::text("???"),
+            ExprT::Malloc(ty) => RcDoc::text("malloc(sizeof(")
+                .append(ty.to_doc())
+                .append("))"),
+            ExprT::Free(val) => RcDoc::text("free(").append(val.to_doc()).append(")"),
             ExprT::StructInit(name, fields) => RcDoc::text("(")
                 .append(name.to_doc())
                 .append(") {")
