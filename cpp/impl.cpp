@@ -409,18 +409,49 @@ public:
                             trQualType(ic->getType(), ic->getSourceRange()));
         }
 
-        // Detect (T*) malloc(sizeof(T)) pattern
+        // Detect (T*) malloc(sizeof(T)) and (T*) malloc(sizeof(T) * n)
         if (auto *call =
                 dyn_cast<CallExpr>(ic->getSubExpr()->IgnoreParenImpCasts())) {
           if (auto *callee = call->getDirectCallee()) {
             if (callee->getName() == "malloc" && call->getNumArgs() == 1) {
-              if (auto *sizeofExpr = dyn_cast<UnaryExprOrTypeTraitExpr>(
-                      call->getArg(0)->IgnoreParenImpCasts())) {
+              auto *arg = call->getArg(0)->IgnoreParenImpCasts();
+              // Single element: malloc(sizeof(T))
+              if (auto *sizeofExpr = dyn_cast<UnaryExprOrTypeTraitExpr>(arg)) {
                 if (sizeofExpr->getKind() == UETT_SizeOf &&
                     sizeofExpr->isArgumentType()) {
                   auto allocTy = trQualType(sizeofExpr->getArgumentType(),
                                             sizeofExpr->getSourceRange());
                   return mk_malloc(std::move(loc), std::move(allocTy));
+                }
+              }
+              // Array: malloc(sizeof(T) * n) or malloc(n * sizeof(T))
+              if (auto *binOp = dyn_cast<BinaryOperator>(arg)) {
+                if (binOp->getOpcode() == BO_Mul) {
+                  auto *lhs = binOp->getLHS()->IgnoreParenImpCasts();
+                  auto *rhs = binOp->getRHS()->IgnoreParenImpCasts();
+                  const UnaryExprOrTypeTraitExpr *sizeofSide = nullptr;
+                  Expr *countSide = nullptr;
+                  if (auto *s = dyn_cast<UnaryExprOrTypeTraitExpr>(lhs)) {
+                    if (s->getKind() == UETT_SizeOf && s->isArgumentType()) {
+                      sizeofSide = s;
+                      countSide = binOp->getRHS();
+                    }
+                  }
+                  if (!sizeofSide) {
+                    if (auto *s = dyn_cast<UnaryExprOrTypeTraitExpr>(rhs)) {
+                      if (s->getKind() == UETT_SizeOf && s->isArgumentType()) {
+                        sizeofSide = s;
+                        countSide = binOp->getLHS();
+                      }
+                    }
+                  }
+                  if (sizeofSide && countSide) {
+                    auto allocTy = trQualType(sizeofSide->getArgumentType(),
+                                              sizeofSide->getSourceRange());
+                    auto countExpr = trRValue(countSide);
+                    return mk_malloc_array(std::move(loc), std::move(allocTy),
+                                           std::move(countExpr));
+                  }
                 }
               }
             }

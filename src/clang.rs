@@ -373,6 +373,9 @@ fn mk_rvalue_err(loc: Rc<SourceInfo>, ty: Rc<Type>) -> Rc<Expr> {
 fn mk_malloc(loc: Rc<SourceInfo>, ty: Rc<Type>) -> Rc<Expr> {
     mk_ast(loc, ExprT::Malloc(ty))
 }
+fn mk_malloc_array(loc: Rc<SourceInfo>, ty: Rc<Type>, count: Rc<Expr>) -> Rc<Expr> {
+    mk_ast(loc, ExprT::MallocArray(ty, count))
+}
 fn mk_free(loc: Rc<SourceInfo>, val: Rc<Expr>) -> Rc<Expr> {
     mk_ast(loc, ExprT::Free(val))
 }

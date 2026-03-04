@@ -221,6 +221,7 @@ mod crate::clang {
     fn mk_cast(Rc<SourceInfo>, Rc<Expr>, Rc<Type>) -> Rc<Expr>;
     fn mk_rvalue_err(Rc<SourceInfo>, Rc<Type>) -> Rc<Expr>;
     fn mk_malloc(Rc<SourceInfo>, Rc<Type>) -> Rc<Expr>;
+    fn mk_malloc_array(Rc<SourceInfo>, Rc<Type>, Rc<Expr>) -> Rc<Expr>;
     fn mk_free(Rc<SourceInfo>, Rc<Expr>) -> Rc<Expr>;
 
     fn mk_lvalue_var(Rc<SourceInfo>, Rc<Ident>) -> Rc<Expr>;

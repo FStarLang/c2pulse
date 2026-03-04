@@ -34,3 +34,8 @@ int sum_and_free_point(_consumes point_ptr p)
     free(p);
     return sum;
 }
+
+void test_array_malloc_free(void) {
+    int *arr = (int *) malloc(sizeof(int) * 10);
+    free(arr);
+}

@@ -117,6 +117,10 @@ fn scan_expr(deps: &mut HashSet<DeclName>, rv: &Expr) {
         }
         ExprT::Error(ty) => scan_type(deps, ty),
         ExprT::Malloc(ty) => scan_type(deps, ty),
+        ExprT::MallocArray(ty, count) => {
+            scan_type(deps, ty);
+            scan_expr(deps, count);
+        }
         ExprT::Free(val) => scan_expr(deps, val),
         ExprT::InlinePulse(code, ty) => {
             scan_type(deps, ty);

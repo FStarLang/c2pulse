@@ -154,6 +154,16 @@ impl<'a> Elaborator<'a> {
             }
             ExprT::Error(ty) => self.elab_type(env, Rc::make_mut(ty)),
             ExprT::Malloc(ty) => self.elab_type(env, Rc::make_mut(ty)),
+            ExprT::MallocArray(ty, count) => {
+                self.elab_type(env, Rc::make_mut(ty));
+                self.elab_rvalue(env, Rc::make_mut(count));
+                // alloc_array expects SizeT count
+                if let Some(count_ty) = env.infer_rvalue(count) {
+                    if !matches!(&env.vtype_whnf(count_ty).val, TypeT::SizeT) {
+                        cast_to(count, TypeT::SizeT.with_loc(count.loc.clone()));
+                    }
+                }
+            }
             ExprT::Free(val) => self.elab_rvalue(env, Rc::make_mut(val)),
             ExprT::InlinePulse(code, ty) => {
                 self.elab_type(env, Rc::make_mut(ty));
@@ -254,8 +264,20 @@ impl<'a> Elaborator<'a> {
                 let Some(v_ty) = env.infer_rvalue(v) else {
                     return;
                 };
-                if !env.vtype_eq(x_ty.clone(), v_ty) {
-                    cast_to(v, x_ty.to_rc());
+                if !env.vtype_eq(x_ty.clone(), v_ty.clone()) {
+                    // Don't cast if the only difference is pointer kind refinement
+                    let x_whnf = env.vtype_whnf(x_ty.clone());
+                    let v_whnf = env.vtype_whnf(v_ty.clone());
+                    let is_kind_refinement = matches!(
+                        (&x_whnf.val, &v_whnf.val),
+                        (
+                            TypeT::Pointer(_, PointerKind::Unknown | PointerKind::Ref),
+                            TypeT::Pointer(_, PointerKind::Array)
+                        )
+                    );
+                    if !is_kind_refinement {
+                        cast_to(v, x_ty.to_rc());
+                    }
                 }
             }
             StmtT::If(c, b1, b2) => {
@@ -330,9 +352,45 @@ impl<'a> Elaborator<'a> {
 
     fn elab_stmts(&mut self, env: &Env, stmts: &mut Vec<Rc<Stmt>>) {
         let mut env = env.clone();
-        for stmt in stmts {
-            self.elab_stmt(&env, Rc::make_mut(stmt));
-            env.push_stmt(stmt);
+        for i in 0..stmts.len() {
+            self.elab_stmt(&env, Rc::make_mut(&mut stmts[i]));
+            // Refine pointer kind: if Assign from MallocArray, update the preceding Decl
+            let refinement = if let StmtT::Assign(x, v) = &stmts[i].val {
+                if let ExprT::Var(var_name) = &x.val {
+                    if let Some(v_ty) = env.infer_rvalue(v) {
+                        if let TypeT::Pointer(_, rhs_kind) = &env.vtype_whnf(v_ty).val {
+                            if *rhs_kind != PointerKind::Unknown {
+                                Some((var_name.val.clone(), rhs_kind.clone()))
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+            if let Some((var_name, new_kind)) = refinement {
+                for j in (0..i).rev() {
+                    if let StmtT::Decl(decl_name, decl_ty) = &mut Rc::make_mut(&mut stmts[j]).val {
+                        if decl_name.val == var_name {
+                            if let TypeT::Pointer(_, kind) = &mut Rc::make_mut(decl_ty).val {
+                                if *kind == PointerKind::Unknown || *kind == PointerKind::Ref {
+                                    *kind = new_kind;
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+            env.push_stmt(&stmts[i]);
         }
     }
 

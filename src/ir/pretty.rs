@@ -198,6 +198,11 @@ impl PrettyIR for ExprT {
             ExprT::Malloc(ty) => RcDoc::text("malloc(sizeof(")
                 .append(ty.to_doc())
                 .append("))"),
+            ExprT::MallocArray(ty, count) => RcDoc::text("malloc(sizeof(")
+                .append(ty.to_doc())
+                .append(") * ")
+                .append(count.to_doc())
+                .append(")"),
             ExprT::Free(val) => RcDoc::text("free(").append(val.to_doc()).append(")"),
             ExprT::StructInit(name, fields) => RcDoc::text("(")
                 .append(name.to_doc())

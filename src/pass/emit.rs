@@ -353,6 +353,9 @@ fn subst_this_rvalue(env: &Env, nm: &mut NameMangling, rvalue: &mut Expr, this: 
             }
         }
         ExprT::Malloc(_) => {}
+        ExprT::MallocArray(_, count) => {
+            subst_this_rvalue(env, nm, Rc::make_mut(count), this);
+        }
         ExprT::Free(val) => subst_this_rvalue(env, nm, Rc::make_mut(val), this),
         ExprT::Index(arr, idx) => {
             subst_this_rvalue(env, nm, Rc::make_mut(arr), this);
@@ -975,11 +978,35 @@ fn emit_rvalue_inner(env: &Env, nm: &mut NameMangling, v: &Expr) -> Doc {
                     .append(Doc::line())
                     .append("()"),
             ),
-            ExprT::Free(val) => parens(
-                Doc::text("Pulse.Lib.C.Ref.free_ref")
+            ExprT::MallocArray(ty, count) => parens(
+                Doc::text("Pulse.Lib.C.Array.alloc_array")
                     .append(Doc::line())
-                    .append(emit_rvalue(env, nm, val)),
+                    .append(Doc::text("#"))
+                    .append(emit_type(env, nm, ty))
+                    .append(Doc::line())
+                    .append(emit_rvalue(env, nm, count)),
             ),
+            ExprT::Free(val) => {
+                let is_array = env
+                    .infer_expr(val)
+                    .map(|ty| {
+                        matches!(
+                            env.vtype_whnf(ty).val,
+                            TypeT::Pointer(_, PointerKind::Array)
+                        )
+                    })
+                    .unwrap_or(false);
+                let func = if is_array {
+                    "Pulse.Lib.C.Array.free_array"
+                } else {
+                    "Pulse.Lib.C.Ref.free_ref"
+                };
+                parens(
+                    Doc::text(func)
+                        .append(Doc::line())
+                        .append(emit_rvalue(env, nm, val)),
+                )
+            }
         }
     })
 }

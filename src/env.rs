@@ -214,6 +214,10 @@ impl Env {
                 expr.reuse_loc(TypeT::Pointer(ty.clone(), PointerKind::Ref))
                     .into(),
             ),
+            ExprT::MallocArray(ty, _) => Some(
+                expr.reuse_loc(TypeT::Pointer(ty.clone(), PointerKind::Array))
+                    .into(),
+            ),
             ExprT::Free(_) => Some(TypeT::Void.with_loc_core(expr.loc.clone()).into()),
             ExprT::InlinePulse(_, ty) => Some(ty.clone().into()),
             ExprT::UnOp(UnOp::Not, _)
