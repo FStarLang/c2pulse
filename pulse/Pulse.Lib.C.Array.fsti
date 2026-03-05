@@ -21,3 +21,4 @@ fn update_arr_with (#a:Type0) (arr: array a) (idx: SizeT.t) (f: (a -> a))
   returns _r : unit
   ensures live arr
   ensures with_pure (Seq.length (value_of arr) = old (Seq.length (value_of arr)))
+  ensures with_pure (Seq.index (value_of arr) (SizeT.v idx) == f (old (Seq.index (value_of arr) (SizeT.v idx))))

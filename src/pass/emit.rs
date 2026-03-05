@@ -276,6 +276,7 @@ impl NameMangling {
 struct Emitter<'a> {
     nm: NameMangling,
     diags: &'a mut Diagnostics,
+    in_spec: bool,
 }
 
 impl<'a> Emitter<'a> {
@@ -543,15 +544,36 @@ impl<'a> Emitter<'a> {
                 }
             },
             ExprT::Index(arr, idx) => {
-                let arr_doc = self.emit_rvalue(env, arr);
-                let idx_doc = self.emit_rvalue(env, idx);
-                ExprKind::RValue(annotated(
-                    v,
-                    arr_doc
-                        .append(Doc::text(".("))
-                        .append(idx_doc)
-                        .append(Doc::text(")")),
-                ))
+                if self.in_spec {
+                    let arr_doc = self.emit_rvalue(env, arr);
+                    let idx_doc = self.emit_rvalue(env, idx);
+                    let idx_nat = match env.infer_expr(idx) {
+                        Ok(ty) if matches!(&ty.val, TypeT::SizeT) => {
+                            unaryfn(Doc::text("SizeT.v"), idx_doc)
+                        }
+                        _ => idx_doc,
+                    };
+                    ExprKind::RValue(annotated(
+                        v,
+                        parens(
+                            Doc::text("Seq.index")
+                                .append(Doc::line())
+                                .append(unaryfn(Doc::text("value_of"), arr_doc))
+                                .append(Doc::line())
+                                .append(idx_nat),
+                        ),
+                    ))
+                } else {
+                    let arr_doc = self.emit_rvalue(env, arr);
+                    let idx_doc = self.emit_rvalue(env, idx);
+                    ExprKind::RValue(annotated(
+                        v,
+                        arr_doc
+                            .append(Doc::text(".("))
+                            .append(idx_doc)
+                            .append(Doc::text(")")),
+                    ))
+                }
             }
             _ => ExprKind::RValue(self.emit_rvalue_inner(env, v)),
         }
@@ -1189,34 +1211,44 @@ impl<'a> Emitter<'a> {
                     requires,
                     ensures,
                     body,
-                } => Doc::text("while ")
-                    .append(parens(self.emit_rvalue(env, cond)))
-                    .append(Doc::line())
-                    .append(Doc::concat(inv.iter().map(|inv| {
-                        Doc::text("invariant ")
-                            .append(self.emit_rvalue(env, inv))
-                            .group()
-                            .nest(2)
-                            .append(Doc::line())
-                    })))
-                    .append(Doc::concat(requires.iter().map(|r| {
-                        Doc::text("requires ")
-                            .append(self.emit_rvalue(env, r))
-                            .group()
-                            .nest(2)
-                            .append(Doc::line())
-                    })))
-                    .append(Doc::concat(ensures.iter().map(|e| {
-                        Doc::text("ensures ")
-                            .append(self.emit_rvalue(env, e))
-                            .group()
-                            .nest(2)
-                            .append(Doc::line())
-                    })))
-                    .nest(2)
-                    .append(self.emit_block(env, body))
-                    .append(";")
-                    .group(),
+                } => {
+                    self.in_spec = true;
+                    let inv_docs: Vec<_> =
+                        inv.iter().map(|inv| self.emit_rvalue(env, inv)).collect();
+                    let req_docs: Vec<_> =
+                        requires.iter().map(|r| self.emit_rvalue(env, r)).collect();
+                    let ens_docs: Vec<_> =
+                        ensures.iter().map(|e| self.emit_rvalue(env, e)).collect();
+                    self.in_spec = false;
+                    Doc::text("while ")
+                        .append(parens(self.emit_rvalue(env, cond)))
+                        .append(Doc::line())
+                        .append(Doc::concat(inv_docs.into_iter().map(|d| {
+                            Doc::text("invariant ")
+                                .append(d)
+                                .group()
+                                .nest(2)
+                                .append(Doc::line())
+                        })))
+                        .append(Doc::concat(req_docs.into_iter().map(|d| {
+                            Doc::text("requires ")
+                                .append(d)
+                                .group()
+                                .nest(2)
+                                .append(Doc::line())
+                        })))
+                        .append(Doc::concat(ens_docs.into_iter().map(|d| {
+                            Doc::text("ensures ")
+                                .append(d)
+                                .group()
+                                .nest(2)
+                                .append(Doc::line())
+                        })))
+                        .nest(2)
+                        .append(self.emit_block(env, body))
+                        .append(";")
+                        .group()
+                }
                 StmtT::Break => Doc::text("break;"),
                 StmtT::Continue => Doc::text("continue;"),
                 StmtT::Return(Some(t)) => Doc::text("return")
@@ -1745,7 +1777,9 @@ impl<'a> Emitter<'a> {
             params.push(Doc::text("()"));
         }
 
+        self.in_spec = true;
         requires_props.extend(requires.iter().map(|r| self.emit_rvalue(env, r)));
+        self.in_spec = false;
 
         let return_id = env
             .push_return(ret_type.clone())
@@ -1759,7 +1793,9 @@ impl<'a> Emitter<'a> {
         );
         let ret_type_doc = self.emit_type(env, ret_type);
 
+        self.in_spec = true;
         ensures_props.extend(ensures.iter().map(|r| self.emit_rvalue(env, r)));
+        self.in_spec = false;
 
         let hdr = Doc::group(
             Doc::text("fn")
@@ -2113,6 +2149,7 @@ pub fn emit(
     let emitter = &mut Emitter {
         nm: NameMangling::new(),
         diags,
+        in_spec: false,
     };
     let mut output: Vec<Doc> = vec![];
     output.push(Doc::text(format!(
