@@ -1101,6 +1101,74 @@ impl<'a> Emitter<'a> {
         })
     }
 
+    fn emit_assign(&mut self, env: &Env, x: &Expr, t: &Expr) -> Doc {
+        if let ExprT::Member(inner, field) = &x.val {
+            if let ExprT::Index(arr, idx) = &inner.val {
+                if let Ok(elem_ty) = env.infer_expr(inner) {
+                    let elem_ty = env.vtype_whnf(elem_ty);
+                    if let TypeT::TypeRef(TypeRefKind::Struct(struct_name)) = &elem_ty.val {
+                        let arr_doc = self.emit_rvalue(env, arr);
+                        let idx_doc = self.emit_rvalue(env, idx);
+                        let field_name = self.nm.emit(Name::StructDirectFieldName(
+                            struct_name.val.clone(),
+                            field.val.clone(),
+                        ));
+                        let rhs_doc = self.emit_rvalue(env, t);
+                        return Doc::text("let __arr = ")
+                            .append(arr_doc)
+                            .append(Doc::text(";"))
+                            .append(Doc::line())
+                            .append(Doc::text("let __idx = "))
+                            .append(idx_doc)
+                            .append(Doc::text(";"))
+                            .append(Doc::line())
+                            .append(Doc::text("let __cur = __arr.(__idx);"))
+                            .append(Doc::line())
+                            .append(Doc::text("let __val = "))
+                            .append(rhs_doc)
+                            .append(Doc::text(";"))
+                            .append(Doc::line())
+                            .append(Doc::text("__arr.(__idx)"))
+                            .append(Doc::line())
+                            .append("<-")
+                            .group()
+                            .append(Doc::line())
+                            .append(Doc::text("{ __cur with "))
+                            .append(field_name)
+                            .append(Doc::text(" = __val }"))
+                            .append(";")
+                            .group()
+                            .nest(2);
+                    }
+                }
+            }
+        }
+        if let ExprT::Index(arr, idx) = &x.val {
+            self.emit_rvalue(env, arr)
+                .append(Doc::text(".("))
+                .append(self.emit_rvalue(env, idx))
+                .append(Doc::text(")"))
+                .append(Doc::line())
+                .append("<-")
+                .group()
+                .append(Doc::line())
+                .append(self.emit_rvalue(env, t))
+                .append(";")
+                .group()
+                .nest(2)
+        } else {
+            self.emit_lvalue(env, x)
+                .append(Doc::line())
+                .append(":=")
+                .group()
+                .append(Doc::line())
+                .append(self.emit_rvalue(env, t))
+                .append(";")
+                .group()
+                .nest(2)
+        }
+    }
+
     fn emit_stmt(&mut self, env: &Env, stmt: &Stmt) -> Doc {
         annotated(stmt, {
             match &stmt.val {
@@ -1114,33 +1182,7 @@ impl<'a> Emitter<'a> {
                         .nest(2)
                         .group()
                 }
-                StmtT::Assign(x, t) => {
-                    if let ExprT::Index(arr, idx) = &x.val {
-                        // Array write: arr.(idx) <- val;
-                        self.emit_rvalue(env, arr)
-                            .append(Doc::text(".("))
-                            .append(self.emit_rvalue(env, idx))
-                            .append(Doc::text(")"))
-                            .append(Doc::line())
-                            .append("<-")
-                            .group()
-                            .append(Doc::line())
-                            .append(self.emit_rvalue(env, t))
-                            .append(";")
-                            .group()
-                            .nest(2)
-                    } else {
-                        self.emit_lvalue(env, x)
-                            .append(Doc::line())
-                            .append(":=")
-                            .group()
-                            .append(Doc::line())
-                            .append(self.emit_rvalue(env, t))
-                            .append(";")
-                            .group()
-                            .nest(2)
-                    }
-                }
+                StmtT::Assign(x, t) => self.emit_assign(env, x, t),
                 StmtT::If(c, b1, b2) => Doc::text("if ")
                     .append(parens(self.emit_rvalue(env, c)))
                     .nest(2)
