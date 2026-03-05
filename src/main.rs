@@ -111,7 +111,7 @@ fn main() {
         return;
     }
 
-    let (pulse_code, range_map) = pass::emit::emit(&module_name, &tu);
+    let (pulse_code, range_map) = pass::emit::emit(&mut diags, &module_name, &tu);
 
     let outdir = match &cli.tmpdir {
         Some(tmpdir) => Path::new(tmpdir),
