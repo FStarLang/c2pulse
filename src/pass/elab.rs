@@ -139,10 +139,21 @@ impl<'a> Elaborator<'a> {
                     self.report(format!("expected lvalue for &, got {}", v), &rval.loc);
                 }
             }
-            ExprT::FnCall(_f, args) => {
-                // TODO: check type for f
-                for arg in args {
+            ExprT::FnCall(f, args) => {
+                for arg in args.iter_mut() {
                     self.elab_rvalue(env, Rc::make_mut(arg));
+                }
+                if let Some(fn_decl) = env.lookup_fn(f) {
+                    let param_types: Vec<_> =
+                        fn_decl.args.iter().map(|(_, ty)| ty.clone()).collect();
+                    for (arg, param_ty) in args.iter_mut().zip(param_types.iter()) {
+                        let expected_ty = env.vtype_whnf(param_ty.clone().into());
+                        if let Some(actual_ty) = env.infer_rvalue(arg) {
+                            if !env.vtype_eq(actual_ty, expected_ty.clone()) {
+                                cast_to(arg, (*expected_ty).clone().into());
+                            }
+                        }
+                    }
                 }
             }
             ExprT::Cast(val, ty) => {

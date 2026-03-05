@@ -30,3 +30,13 @@ _pure bool pure_let(bool x) {
     y = x;
     return y;
 }
+
+void test() {
+    bool pure_let_result = pure_let(true);
+    _assert(pure_let_result == true);
+    _assert(pure_let_result == pure_let(true));
+    _assert(pure_let(pure_let_result) == true);
+
+    bool pure_not_result = pure_not(true);
+    _assert(pure_not_result == false);
+}

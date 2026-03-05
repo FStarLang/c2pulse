@@ -745,6 +745,13 @@ impl<'a> Emitter<'a> {
                             )
                         }
                         (TypeT::Bool, TypeT::SpecInt) => unaryfn(Doc::text("bool_to_int"), val_doc),
+                        (TypeT::SpecInt, TypeT::Bool) => parens(
+                            val_doc
+                                .append(Doc::line())
+                                .append("<>")
+                                .append(Doc::line())
+                                .append("0"),
+                        ),
                         // (TypeT::Bool, TypeT::SizeT) => todo!(),
                         (TypeT::Bool, TypeT::SLProp) => unaryfn(Doc::text("with_pure"), val_doc),
                         (TypeT::Int { signed, width }, TypeT::Bool) => {
