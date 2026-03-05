@@ -475,8 +475,12 @@ public:
       case UO_AddrOf:
         return mk_rvalue_ref(std::move(loc), trLValue(uo->getSubExpr()));
 
-      case UO_Not:
+      case UO_LNot:
         return mk_rvalue_unop(std::move(loc), ir::UnOp::Not(),
+                              trRValue(uo->getSubExpr()));
+
+      case UO_Not:
+        return mk_rvalue_unop(std::move(loc), ir::UnOp::BitNot(),
                               trRValue(uo->getSubExpr()));
 
       default:;
@@ -519,6 +523,16 @@ public:
                                trRValue(bo->getRHS()), trRValue(bo->getLHS()));
       case clang::BO_LOr:
         return m(ir::BinOp::LogOr());
+      case clang::BO_And:
+        return m(ir::BinOp::BitAnd());
+      case clang::BO_Or:
+        return m(ir::BinOp::BitOr());
+      case clang::BO_Xor:
+        return m(ir::BinOp::BitXor());
+      case clang::BO_Shl:
+        return m(ir::BinOp::Shl());
+      case clang::BO_Shr:
+        return m(ir::BinOp::Shr());
 
       default:;
         // continue to error case

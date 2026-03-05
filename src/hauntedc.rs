@@ -601,6 +601,13 @@ fn expr_parser<
                             .with_loc(sift.resolve_source_info(&extra.span()))
                             .into()
                     }),
+                punct(Punct::Tilde)
+                    .ignore_then(cast_expression.clone())
+                    .map_with(|e: Expr, extra| {
+                        ExprT::UnOp(UnOp::BitNot, e.to_rvalue())
+                            .with_loc(sift.resolve_source_info(&extra.span()))
+                            .into()
+                    }),
             ));
 
             and_then!(type_name.delimited_by(punct(Punct::LParen), punct(Punct::RParen)), {
@@ -629,7 +636,13 @@ fn expr_parser<
         })
         .boxed();
 
-        let shift_expression = additive_expression;
+        let shift_expression = left_rec_binop!(additive_expression, {
+            Shl(lhs, punct(Punct::LtLt), rhs) = e =>
+                mk_binop(BinOp::Shl, lhs, rhs, sift.resolve_source_info(&e.span())),
+            Shr(lhs, punct(Punct::GtGt), rhs) = e =>
+                mk_binop(BinOp::Shr, lhs, rhs, sift.resolve_source_info(&e.span())),
+        })
+        .boxed();
 
         let relational_expression = left_rec_binop!(shift_expression, {
             LEq(lhs, punct(Punct::LtEq), rhs) = e =>
@@ -654,10 +667,22 @@ fn expr_parser<
         })
         .boxed();
 
-        let and_expression = equality_expression;
+        let and_expression = left_rec_binop!(equality_expression, {
+            BitAnd(lhs, punct(Punct::Amp), rhs) = e =>
+                mk_binop(BinOp::BitAnd, lhs, rhs, sift.resolve_source_info(&e.span())),
+        })
+        .boxed();
 
-        let exclusive_or_expression = and_expression;
-        let inclusive_or_expression = exclusive_or_expression;
+        let exclusive_or_expression = left_rec_binop!(and_expression, {
+            BitXor(lhs, punct(Punct::Hat), rhs) = e =>
+                mk_binop(BinOp::BitXor, lhs, rhs, sift.resolve_source_info(&e.span())),
+        })
+        .boxed();
+        let inclusive_or_expression = left_rec_binop!(exclusive_or_expression, {
+            BitOr(lhs, punct(Punct::Pipe), rhs) = e =>
+                mk_binop(BinOp::BitOr, lhs, rhs, sift.resolve_source_info(&e.span())),
+        })
+        .boxed();
         let logical_and_expression = left_rec_binop!(inclusive_or_expression, {
             LogAnd(lhs, punct(Punct::AmpAmp), rhs) = e =>
                 mk_binop(BinOp::LogAnd, lhs, rhs, sift.resolve_source_info(&e.span())),

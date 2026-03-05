@@ -226,9 +226,19 @@ impl Env {
                 _,
                 _,
             ) => Some(TypeT::Bool.with_loc_core(expr.loc.clone()).into()),
-            ExprT::UnOp(UnOp::Neg, lhs)
+            ExprT::UnOp(UnOp::Neg | UnOp::BitNot, lhs)
             | ExprT::BinOp(
-                BinOp::LogAnd | BinOp::Mul | BinOp::Div | BinOp::Mod | BinOp::Add | BinOp::Sub,
+                BinOp::LogAnd
+                | BinOp::Mul
+                | BinOp::Div
+                | BinOp::Mod
+                | BinOp::Add
+                | BinOp::Sub
+                | BinOp::BitAnd
+                | BinOp::BitOr
+                | BinOp::BitXor
+                | BinOp::Shl
+                | BinOp::Shr,
                 lhs,
                 _,
             ) => self.infer_expr(lhs),

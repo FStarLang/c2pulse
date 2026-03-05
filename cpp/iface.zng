@@ -88,6 +88,7 @@ mod crate::ir {
         #layout(size=1, align=1);
         constructor Not;
         constructor Neg;
+        constructor BitNot;
     }
 
     type BinOp {
@@ -103,6 +104,11 @@ mod crate::ir {
         constructor Mod;
         constructor Add;
         constructor Sub;
+        constructor BitAnd;
+        constructor BitOr;
+        constructor BitXor;
+        constructor Shl;
+        constructor Shr;
     }
 }
 

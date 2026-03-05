@@ -593,6 +593,10 @@ fn emit_unop(env: &Env, op: UnOp, ty: MaybeRc<Type>) -> Option<Doc> {
             Doc::text(format!("{}.sub {}.zero", modu, modu))
         }
         (UnOp::Neg, _) => return None,
+        (UnOp::BitNot, TypeT::Int { signed, width }) => {
+            Doc::text(format!("{}.lognot", get_int_mod(signed, width)?))
+        }
+        (UnOp::BitNot, _) => return None,
     })
 }
 
@@ -649,6 +653,22 @@ fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
         }
         (BinOp::Sub, TypeT::SizeT) => Doc::text("`SizeT.sub`"),
 
+        (BinOp::BitAnd, TypeT::Int { signed, width }) => {
+            Doc::text(format!("`{}.logand`", get_int_mod(signed, width)?))
+        }
+        (BinOp::BitOr, TypeT::Int { signed, width }) => {
+            Doc::text(format!("`{}.logor`", get_int_mod(signed, width)?))
+        }
+        (BinOp::BitXor, TypeT::Int { signed, width }) => {
+            Doc::text(format!("`{}.logxor`", get_int_mod(signed, width)?))
+        }
+        (BinOp::Shl, TypeT::Int { signed, width }) => {
+            Doc::text(format!("`{}.shift_left`", get_int_mod(signed, width)?))
+        }
+        (BinOp::Shr, TypeT::Int { signed, width }) => {
+            Doc::text(format!("`{}.shift_right`", get_int_mod(signed, width)?))
+        }
+
         (BinOp::LEq, TypeT::SpecInt) => Doc::text("<="),
         (BinOp::Lt, TypeT::SpecInt) => Doc::text("<"),
         (BinOp::Mul, TypeT::SpecInt) => Doc::text("`op_Multiply`"),
@@ -659,6 +679,12 @@ fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
         (BinOp::LogAnd, TypeT::SpecInt) => todo_binop!(),
         (BinOp::LogOr, TypeT::SpecInt) => todo_binop!(),
         (BinOp::Implies, TypeT::SpecInt) => todo_binop!(),
+        (
+            BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor | BinOp::Shl | BinOp::Shr,
+            TypeT::SpecInt,
+        ) => {
+            todo_binop!()
+        }
 
         (
             op,
@@ -667,13 +693,28 @@ fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
 
         (_, TypeT::TypeRef(_)) => return None,
         (
-            BinOp::LEq | BinOp::Lt | BinOp::Mul | BinOp::Div | BinOp::Mod | BinOp::Add | BinOp::Sub,
+            BinOp::LEq
+            | BinOp::Lt
+            | BinOp::Mul
+            | BinOp::Div
+            | BinOp::Mod
+            | BinOp::Add
+            | BinOp::Sub
+            | BinOp::BitAnd
+            | BinOp::BitOr
+            | BinOp::BitXor
+            | BinOp::Shl
+            | BinOp::Shr,
             TypeT::Pointer(..),
         )
         | (_, TypeT::Void)
         | (
             BinOp::LogAnd | BinOp::LogOr | BinOp::Implies,
             TypeT::Int { .. } | TypeT::SizeT | TypeT::Pointer(..),
+        )
+        | (
+            BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor | BinOp::Shl | BinOp::Shr,
+            TypeT::Bool | TypeT::SizeT,
         )
         | (_, TypeT::SLProp)
         | (_, TypeT::Error) => return None,

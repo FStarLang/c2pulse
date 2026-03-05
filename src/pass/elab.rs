@@ -192,7 +192,7 @@ impl<'a> Elaborator<'a> {
                 self.elab_rvalue(env, Rc::make_mut(arg));
                 match un_op {
                     UnOp::Not => self.cast_to_bool(env, arg),
-                    UnOp::Neg => {}
+                    UnOp::Neg | UnOp::BitNot => {}
                 }
             }
             ExprT::BinOp(bin_op, lhs, rhs) => {
@@ -226,7 +226,12 @@ impl<'a> Elaborator<'a> {
                     | BinOp::Sub
                     | BinOp::LogAnd
                     | BinOp::LogOr
-                    | BinOp::Implies => {
+                    | BinOp::Implies
+                    | BinOp::BitAnd
+                    | BinOp::BitOr
+                    | BinOp::BitXor
+                    | BinOp::Shl
+                    | BinOp::Shr => {
                         if let Some(meet_type) = env.meet_type(lhs_ty.clone(), rhs_ty.clone()) {
                             if !env.vtype_eq(lhs_ty, meet_type.clone()) {
                                 cast_to(lhs, meet_type.clone().to_rc())

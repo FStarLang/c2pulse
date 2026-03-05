@@ -210,7 +210,7 @@ impl<'a> Checker<'a> {
                                 &rval.loc,
                             ),
                         },
-                        UnOp::Neg => {}
+                        UnOp::Neg | UnOp::BitNot => {}
                     }
                 }
             }
@@ -257,7 +257,12 @@ impl<'a> Checker<'a> {
                         | BinOp::Div
                         | BinOp::Mod
                         | BinOp::Add
-                        | BinOp::Sub => check_eq(self),
+                        | BinOp::Sub
+                        | BinOp::BitAnd
+                        | BinOp::BitOr
+                        | BinOp::BitXor
+                        | BinOp::Shl
+                        | BinOp::Shr => check_eq(self),
                     }
                 }
             }

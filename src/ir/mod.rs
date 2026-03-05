@@ -162,6 +162,7 @@ pub enum TypeRefKind {
 pub enum UnOp {
     Not,
     Neg,
+    BitNot,
 }
 
 impl UnOp {
@@ -169,6 +170,7 @@ impl UnOp {
         match self {
             UnOp::Not => "!",
             UnOp::Neg => "-",
+            UnOp::BitNot => "~",
         }
     }
 }
@@ -192,6 +194,11 @@ pub enum BinOp {
     Mod,
     Add,
     Sub,
+    BitAnd,
+    BitOr,
+    BitXor,
+    Shl,
+    Shr,
 }
 
 impl BinOp {
@@ -208,6 +215,11 @@ impl BinOp {
             BinOp::Mod => "%",
             BinOp::Add => "+",
             BinOp::Sub => "-",
+            BinOp::BitAnd => "&",
+            BinOp::BitOr => "|",
+            BinOp::BitXor => "^",
+            BinOp::Shl => "<<",
+            BinOp::Shr => ">>",
         }
     }
 }
