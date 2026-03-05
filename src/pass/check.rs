@@ -22,18 +22,17 @@ impl<'a> Checker<'a> {
         });
     }
 
-    fn infer_rvalue(&mut self, env: &Env, rval: &Expr) -> Option<MaybeRc<Type>> {
-        env.infer_rvalue(rval).or_else(|| {
-            self.report(format!("cannot infer type of {}", rval), &rval.loc);
-            None
-        })
-    }
-
-    fn infer_lvalue(&mut self, env: &Env, lval: &Expr) -> Option<MaybeRc<Type>> {
-        env.infer_lvalue(lval).or_else(|| {
-            self.report(format!("cannot infer type of {}", lval), &lval.loc);
-            None
-        })
+    fn infer_expr(&mut self, env: &Env, rval: &Expr) -> Option<MaybeRc<Type>> {
+        match env.infer_expr(rval) {
+            Ok(ty) => Some(ty),
+            Err(error) => {
+                self.report(
+                    format!("cannot infer type of {}: {}\n{}", rval, error, env),
+                    &rval.loc,
+                );
+                None
+            }
+        }
     }
 
     fn check_type_eq(&mut self, env: &Env, actual: MaybeRc<Type>, expected: MaybeRc<Type>) {
@@ -47,7 +46,7 @@ impl<'a> Checker<'a> {
 
     fn check_has_type(&mut self, env: &Env, rval: &Expr, expected: MaybeRc<Type>) {
         if self.check_types
-            && let Some(ty) = self.infer_rvalue(env, rval)
+            && let Some(ty) = self.infer_expr(env, rval)
             && !env.vtype_eq(ty.clone().into(), expected.clone())
         {
             self.report(
@@ -135,7 +134,7 @@ impl<'a> Checker<'a> {
             ExprT::Deref(inner) => {
                 self.check_rvalue(env, inner);
                 if self.check_types
-                    && let Some(rval_ty) = self.infer_rvalue(env, inner)
+                    && let Some(rval_ty) = self.infer_expr(env, inner)
                     && !self.is_pointer_type(env, rval_ty.clone())
                 {
                     self.report(format!("not a pointer type: {}", rval_ty), &inner.loc)
@@ -144,7 +143,7 @@ impl<'a> Checker<'a> {
             ExprT::Member(x, a) => {
                 self.check_rvalue(env, x);
                 if self.check_types
-                    && let Some(t) = self.infer_rvalue(env, x)
+                    && let Some(t) = self.infer_expr(env, x)
                 {
                     let t = env.vtype_whnf(t);
                     match &t.val {
@@ -170,7 +169,7 @@ impl<'a> Checker<'a> {
                 self.check_rvalue(env, arr);
                 self.check_rvalue(env, idx);
                 if self.check_types {
-                    if let Some(arr_ty) = self.infer_rvalue(env, arr) {
+                    if let Some(arr_ty) = self.infer_expr(env, arr) {
                         let arr_ty = env.vtype_whnf(arr_ty);
                         match &arr_ty.val {
                             TypeT::Pointer(_, PointerKind::Array) => {}
@@ -178,7 +177,7 @@ impl<'a> Checker<'a> {
                             _ => self.report(format!("not an array type: {}", arr_ty), &rval.loc),
                         }
                     }
-                    if let Some(idx_ty) = self.infer_rvalue(env, idx) {
+                    if let Some(idx_ty) = self.infer_expr(env, idx) {
                         let idx_ty = env.vtype_whnf(idx_ty);
                         match &idx_ty.val {
                             TypeT::SizeT => {}
@@ -200,7 +199,7 @@ impl<'a> Checker<'a> {
             ExprT::UnOp(un_op, arg) => {
                 self.check_rvalue(env, arg);
                 if self.check_types
-                    && let Some(arg_ty) = self.infer_rvalue(env, arg)
+                    && let Some(arg_ty) = self.infer_expr(env, arg)
                 {
                     match un_op {
                         UnOp::Not => match &env.vtype_whnf(arg_ty.clone().into()).val {
@@ -219,7 +218,7 @@ impl<'a> Checker<'a> {
                 self.check_rvalue(env, rhs);
                 if self.check_types
                     && let (Some(lhs_ty), Some(rhs_ty)) =
-                        (self.infer_rvalue(env, lhs), self.infer_rvalue(env, rhs))
+                        (self.infer_expr(env, lhs), self.infer_expr(env, rhs))
                 {
                     let check_eq = {
                         let lhs_ty = lhs_ty.clone();
@@ -387,7 +386,7 @@ impl<'a> Checker<'a> {
                 self.check_rvalue(env, v);
                 if self.check_types
                     && let (Some(x_ty), Some(v_ty)) =
-                        (self.infer_lvalue(env, x), self.infer_rvalue(env, v))
+                        (self.infer_expr(env, x), self.infer_expr(env, v))
                 {
                     self.check_type_eq(env, v_ty.into(), x_ty.into());
                 }

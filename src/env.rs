@@ -1,4 +1,5 @@
-use crate::{ir::*, mayberc::MaybeRc};
+use crate::impl_display_using_prettyir;
+use crate::{ir::pretty::PrettyIR, ir::*, mayberc::MaybeRc};
 use std::{collections::HashMap, rc::Rc};
 
 #[derive(Clone, Debug, Default)]
@@ -37,6 +38,68 @@ macro_rules! both_sides {
     ($t:pat) => {
         ($t, $t)
     };
+}
+
+#[derive(Debug, Clone)]
+pub enum InferError {
+    CannotDeref(MaybeRc<Type>),
+    CannotAccessMember(MaybeRc<Type>),
+    VariableNotFound(Rc<Ident>),
+    NotAField(Rc<Ident>, Rc<Ident>),
+    NotAFunction(Rc<Ident>),
+    CannotIndex(MaybeRc<Type>),
+}
+
+impl_display_using_prettyir!(InferError);
+impl PrettyIR for InferError {
+    fn to_doc(&self) -> ::pretty::RcDoc<'_, ()> {
+        use ::pretty::*;
+        (match self {
+            InferError::CannotDeref(ty) => docs![
+                &RcAllocator,
+                "cannot dereference",
+                RcDoc::line(),
+                ty.to_doc(),
+            ],
+            InferError::CannotAccessMember(ty) => docs![
+                &RcAllocator,
+                ty.to_doc(),
+                RcDoc::line(),
+                "has no members (not a structure)",
+            ],
+            InferError::VariableNotFound(name) => docs![
+                &RcAllocator,
+                "variable",
+                RcDoc::line(),
+                name.to_doc(),
+                RcDoc::line(),
+                "not found",
+            ],
+            InferError::NotAField(struct_name, field_name) => docs![
+                &RcAllocator,
+                struct_name.to_doc(),
+                RcDoc::line(),
+                "does not have a field",
+                RcDoc::line(),
+                field_name.to_doc(),
+            ],
+            InferError::NotAFunction(name) => docs![
+                &RcAllocator,
+                name.to_doc(),
+                RcDoc::line(),
+                "is not a function",
+            ],
+            InferError::CannotIndex(ty) => docs![
+                &RcAllocator,
+                "cannot index into",
+                RcDoc::line(),
+                ty.to_doc(),
+            ],
+        })
+        .group()
+        .nest(2)
+        .into_doc()
+    }
 }
 
 impl Env {
@@ -159,73 +222,73 @@ impl Env {
         id
     }
 
-    pub fn infer_rvalue(&self, rvalue: &Expr) -> Option<MaybeRc<Type>> {
-        self.infer_expr(rvalue)
-    }
-
-    pub fn infer_lvalue(&self, lvalue: &Expr) -> Option<MaybeRc<Type>> {
-        self.infer_expr(lvalue)
-    }
-
-    pub fn infer_expr(&self, expr: &Expr) -> Option<MaybeRc<Type>> {
+    pub fn infer_expr(&self, expr: &Expr) -> Result<MaybeRc<Type>, InferError> {
         match &expr.val {
-            ExprT::Var(ident) => Some(self.lookup_var_type(ident)?.clone().into()),
+            ExprT::Var(ident) => {
+                let Some(var_type) = self.lookup_var_type(ident) else {
+                    return Err(InferError::VariableNotFound(ident.clone()));
+                };
+                Ok(var_type.clone().into())
+            }
             ExprT::Deref(x) => {
                 let x_ty = self.vtype_whnf(self.infer_expr(x)?);
                 match &x_ty.val {
-                    TypeT::Pointer(to, _) => Some(to.clone().into()),
-                    _ => None,
+                    TypeT::Pointer(to, _) => Ok(to.clone().into()),
+                    _ => Err(InferError::CannotDeref(x_ty)),
                 }
             }
             ExprT::Member(x, a) => {
                 let x_ty = self.vtype_whnf(self.infer_expr(x)?);
                 match &x_ty.val {
                     TypeT::Pointer(_, PointerKind::Array) if &*a.val == "_length" => {
-                        Some(TypeT::SpecInt.with_loc_core(expr.loc.clone()).into())
+                        Ok(TypeT::SpecInt.with_loc_core(expr.loc.clone()).into())
                     }
-                    TypeT::TypeRef(TypeRefKind::Struct(s)) => {
-                        Some(self.lookup_struct(s)?.get_field(a)?.clone().into())
+                    TypeT::TypeRef(TypeRefKind::Struct(s_name)) => {
+                        let Some(s) = self.lookup_struct(s_name) else {
+                            return Err(InferError::CannotAccessMember(x_ty.clone()));
+                        };
+                        let Some(f) = s.get_field(a) else {
+                            return Err(InferError::NotAField(s_name.clone(), a.clone()));
+                        };
+                        Ok(f.clone().into())
                     }
-                    _ => None,
+                    _ => Err(InferError::CannotAccessMember(x_ty)),
                 }
             }
             ExprT::Index(arr, _idx) => {
                 let arr_ty = self.vtype_whnf(self.infer_expr(arr)?);
                 match &arr_ty.val {
-                    TypeT::Pointer(elem, PointerKind::Array) => Some(elem.clone().into()),
-                    _ => None,
+                    TypeT::Pointer(elem, PointerKind::Array) => Ok(elem.clone().into()),
+                    _ => Err(InferError::CannotIndex(arr_ty)),
                 }
             }
-            ExprT::IntLit(_, ty) => Some(ty.clone().into()),
-            ExprT::Ref(v) => Some(
-                expr.reuse_loc(TypeT::Pointer(
+            ExprT::IntLit(_, ty) => Ok(ty.clone().into()),
+            ExprT::Ref(v) => Ok(expr
+                .reuse_loc(TypeT::Pointer(
                     self.infer_expr(v)?.to_rc(),
                     PointerKind::Ref,
                 ))
-                .into(),
-            ),
+                .into()),
             ExprT::FnCall(f, _args) => match self.globals.fns.get(&f.val) {
-                Some(f_decl) => Some(f_decl.ret_type.clone().into()),
-                None => None,
+                Some(f_decl) => Ok(f_decl.ret_type.clone().into()),
+                None => Err(InferError::NotAFunction(f.clone())),
             },
-            ExprT::Cast(_, ty) => Some(ty.clone().into()),
-            ExprT::Error(ty) => Some(ty.clone().into()),
-            ExprT::Malloc(ty) => Some(
-                expr.reuse_loc(TypeT::Pointer(ty.clone(), PointerKind::Ref))
-                    .into(),
-            ),
-            ExprT::MallocArray(ty, _) => Some(
-                expr.reuse_loc(TypeT::Pointer(ty.clone(), PointerKind::Array))
-                    .into(),
-            ),
-            ExprT::Free(_) => Some(TypeT::Void.with_loc_core(expr.loc.clone()).into()),
-            ExprT::InlinePulse(_, ty) => Some(ty.clone().into()),
+            ExprT::Cast(_, ty) => Ok(ty.clone().into()),
+            ExprT::Error(ty) => Ok(ty.clone().into()),
+            ExprT::Malloc(ty) => Ok(expr
+                .reuse_loc(TypeT::Pointer(ty.clone(), PointerKind::Ref))
+                .into()),
+            ExprT::MallocArray(ty, _) => Ok(expr
+                .reuse_loc(TypeT::Pointer(ty.clone(), PointerKind::Array))
+                .into()),
+            ExprT::Free(_) => Ok(TypeT::Void.with_loc_core(expr.loc.clone()).into()),
+            ExprT::InlinePulse(_, ty) => Ok(ty.clone().into()),
             ExprT::UnOp(UnOp::Not, _)
             | ExprT::BinOp(
                 BinOp::Eq | BinOp::LEq | BinOp::Lt | BinOp::LogOr | BinOp::Implies,
                 _,
                 _,
-            ) => Some(TypeT::Bool.with_loc_core(expr.loc.clone()).into()),
+            ) => Ok(TypeT::Bool.with_loc_core(expr.loc.clone()).into()),
             ExprT::UnOp(UnOp::Neg | UnOp::BitNot, lhs)
             | ExprT::BinOp(
                 BinOp::LogAnd
@@ -242,14 +305,13 @@ impl Env {
                 lhs,
                 _,
             ) => self.infer_expr(lhs),
-            ExprT::BoolLit(_) => Some(TypeT::Bool.with_loc_core(expr.loc.clone()).into()),
-            ExprT::Live(_) => Some(TypeT::SLProp.with_loc_core(expr.loc.clone()).into()),
+            ExprT::BoolLit(_) => Ok(TypeT::Bool.with_loc_core(expr.loc.clone()).into()),
+            ExprT::Live(_) => Ok(TypeT::SLProp.with_loc_core(expr.loc.clone()).into()),
             ExprT::Old(v) => self.infer_expr(v),
             ExprT::Forall(_, _, body) | ExprT::Exists(_, _, body) => self.infer_expr(body),
-            ExprT::StructInit(name, _) => Some(
-                expr.reuse_loc(TypeT::TypeRef(TypeRefKind::Struct(name.clone())))
-                    .into(),
-            ),
+            ExprT::StructInit(name, _) => Ok(expr
+                .reuse_loc(TypeT::TypeRef(TypeRefKind::Struct(name.clone())))
+                .into()),
         }
     }
 
@@ -401,5 +463,36 @@ impl Env {
             ExprT::Error(_) => true,
             _ => false,
         }
+    }
+}
+
+impl_display_using_prettyir!(Env);
+
+impl PrettyIR for Env {
+    fn to_doc(&self) -> ::pretty::RcDoc<'_, ()> {
+        use ::pretty::*;
+        RcDoc::intersperse(
+            self.locals.iter().map(|(local, LocalDecl { ty, kind })| {
+                local
+                    .to_doc()
+                    .append(RcDoc::space())
+                    .append(":")
+                    .append(RcDoc::line())
+                    .append(ty.to_doc())
+                    .group()
+                    .append(
+                        RcDoc::line()
+                            .append(match kind {
+                                LocalDeclKind::LValue => "(lvalue)",
+                                LocalDeclKind::RValue => "(rvalue)",
+                            })
+                            .group(),
+                    )
+                    .nest(2)
+                    .group()
+            }),
+            RcDoc::hardline(),
+        )
+        .group()
     }
 }

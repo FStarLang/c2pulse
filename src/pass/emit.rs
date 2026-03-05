@@ -4,8 +4,8 @@ use std::{
     rc::Rc,
 };
 
+use ::pretty::{RcDoc, Render, RenderAnnotated};
 use num_bigint::BigInt;
-use pretty::{RcDoc, Render, RenderAnnotated};
 
 use crate::{
     diag::{Diagnostic, DiagnosticLevel, Diagnostics},
@@ -488,7 +488,7 @@ impl<'a> Emitter<'a> {
                 ExprKind::LValue(annotated(v, self.emit_expr(env, inner).to_rvalue()))
             }
             ExprT::Member(x, a) => match env.infer_expr(x) {
-                Some(ty) => {
+                Ok(ty) => {
                     let ty = env.vtype_whnf(ty);
                     match &ty.val {
                         TypeT::Pointer(_, PointerKind::Array) if &*a.val == "_length" => {
@@ -532,8 +532,11 @@ impl<'a> Emitter<'a> {
                         }
                     }
                 }
-                None => {
-                    self.report(format!("cannot infer type of {}", x), &v.loc);
+                Err(error) => {
+                    self.report(
+                        format!("cannot infer type of {}: {}\n{}", x, error, env),
+                        &x.loc,
+                    );
                     ExprKind::RValue(annotated(v, Doc::text("(admit())")))
                 }
             },
@@ -756,11 +759,11 @@ impl<'a> Emitter<'a> {
                 ExprT::Ref(v) => self.emit_lvalue(env, v),
                 ExprT::Cast(val, to_ty) => {
                     let val_doc = self.emit_rvalue(env, val);
-                    let from_ty = env.infer_rvalue(val).map(|t| env.vtype_whnf(t));
+                    let from_ty = env.infer_expr(val).map(|t| env.vtype_whnf(t));
                     let to_ty = env.vtype_whnf(to_ty.clone().into());
                     let from_ty = match &from_ty {
-                        Some(ty) => &ty.val,
-                        None => &TypeT::Error,
+                        Ok(ty) => &ty.val,
+                        Err(_) => &TypeT::Error,
                     };
                     // Special case: integer literal cast to SizeT → emit Nsz
                     if matches!(&to_ty.val, TypeT::SizeT) {
@@ -916,7 +919,7 @@ impl<'a> Emitter<'a> {
                     }
                 }))),
                 ExprT::BinOp(BinOp::LogAnd, lhs, rhs) => {
-                    if let Some(ty) = env.infer_rvalue(lhs) {
+                    if let Ok(ty) = env.infer_expr(lhs) {
                         if ty.val == TypeT::SLProp {
                             return binop(
                                 self.emit_rvalue(env, lhs),
@@ -937,7 +940,7 @@ impl<'a> Emitter<'a> {
                     self.emit_rvalue(env, rhs),
                 ),
                 ExprT::BinOp(BinOp::Eq, lhs, rhs) => {
-                    if let Some(ty) = env.infer_rvalue(lhs) {
+                    if let Ok(ty) = env.infer_expr(lhs) {
                         let ty = env.vtype_whnf(ty);
                         match (&ty.val, &rhs.val) {
                             (
@@ -965,7 +968,7 @@ impl<'a> Emitter<'a> {
                     )
                 }
                 ExprT::UnOp(op, arg) => {
-                    if let Some(ty) = env.infer_rvalue(&arg)
+                    if let Ok(ty) = env.infer_expr(&arg)
                         && let Some(op) = emit_unop(env, *op, ty)
                     {
                         unaryfn(op, self.emit_rvalue(env, arg))
@@ -975,7 +978,7 @@ impl<'a> Emitter<'a> {
                     }
                 }
                 ExprT::BinOp(op, lhs, rhs) => {
-                    if let Some(ty) = env.infer_rvalue(&lhs)
+                    if let Ok(ty) = env.infer_expr(&lhs)
                         && let Some(op) = emit_binop(env, *op, ty)
                     {
                         binop(self.emit_rvalue(env, lhs), op, self.emit_rvalue(env, rhs))
@@ -1007,7 +1010,7 @@ impl<'a> Emitter<'a> {
                     env.push_var_decl(var, ty.clone(), LocalDeclKind::RValue);
                     let keyword = match &v.val {
                         ExprT::Forall(..) => {
-                            if let Some(body_ty) = env.infer_rvalue(body)
+                            if let Ok(body_ty) = env.infer_expr(body)
                                 && matches!(env.vtype_whnf(body_ty).val, TypeT::SLProp)
                             {
                                 "forall*"
@@ -1016,7 +1019,7 @@ impl<'a> Emitter<'a> {
                             }
                         }
                         _ => {
-                            if let Some(body_ty) = env.infer_rvalue(body)
+                            if let Ok(body_ty) = env.infer_expr(body)
                                 && matches!(env.vtype_whnf(body_ty).val, TypeT::SLProp)
                             {
                                 "exists*"
@@ -1318,7 +1321,10 @@ fn mk_rvar(n: &Rc<Ident>) -> Rc<Expr> {
 }
 
 impl<'a> Emitter<'a> {
-    fn emit_typedef(&mut self, env: &Env, TypeDefn { name, body }: &TypeDefn) -> Doc {
+    fn emit_typedef(&mut self, env: &Env, decl @ TypeDefn { name, body }: &TypeDefn) -> Doc {
+        let env = &mut env.clone();
+        env.push_typedef(decl.clone());
+
         let k = &TypeRefKind::Typedef(name.clone());
         let t = self.nm.emit(Name::TypeRef(k.into()));
         let ty_decl = mk_let(t.clone(), &[], Doc::text("Type"), self.emit_type(env, body));
@@ -1377,7 +1383,14 @@ fn mk_thunk(body: Doc) -> Doc {
 }
 
 impl<'a> Emitter<'a> {
-    fn emit_structdefn(&mut self, env: &Env, StructDefn { name, fields }: &StructDefn) -> Doc {
+    fn emit_structdefn(
+        &mut self,
+        env: &Env,
+        decl @ StructDefn { name, fields }: &StructDefn,
+    ) -> Doc {
+        let env = &mut env.clone();
+        env.push_struct(decl.clone());
+
         let k = &TypeRefKind::Struct(name.clone());
         let struct_type_name = self.nm.emit(Name::TypeRef(k.into()));
         let pts_to_name = self.nm.emit(Name::TypeRefPred(k.into()));

@@ -23,11 +23,17 @@ impl<'a> Elaborator<'a> {
         });
     }
 
-    fn infer_rvalue(&mut self, env: &Env, rval: &Expr) -> Option<MaybeRc<Type>> {
-        env.infer_rvalue(rval).or_else(|| {
-            self.report(format!("cannot infer type of {}", rval), &rval.loc);
-            None
-        })
+    fn infer_expr(&mut self, env: &Env, rval: &Expr) -> Option<MaybeRc<Type>> {
+        match env.infer_expr(rval) {
+            Ok(ty) => Some(ty),
+            Err(error) => {
+                self.report(
+                    format!("cannot infer type of {}: {}\n{}", rval, error, env),
+                    &rval.loc,
+                );
+                None
+            }
+        }
     }
 
     fn elab_type(&mut self, env: &Env, ty: &mut Type) {
@@ -74,7 +80,8 @@ impl<'a> Elaborator<'a> {
 
     fn cast_to_slprop(&mut self, env: &Env, rval: &mut Rc<Expr>) {
         if env
-            .infer_rvalue(rval)
+            .infer_expr(rval)
+            .ok()
             .filter(|p| env.is_slprop(p.clone()))
             .is_none()
         {
@@ -85,7 +92,8 @@ impl<'a> Elaborator<'a> {
 
     fn cast_to_bool(&mut self, env: &Env, rval: &mut Rc<Expr>) {
         if env
-            .infer_rvalue(rval)
+            .infer_expr(rval)
+            .ok()
             .filter(|p| env.is_bool(p.clone()))
             .is_none()
         {
@@ -100,7 +108,7 @@ impl<'a> Elaborator<'a> {
             ExprT::Deref(v) => self.elab_rvalue(env, Rc::make_mut(v)),
             ExprT::Member(x, a) => {
                 self.elab_rvalue(env, Rc::make_mut(x));
-                if let Some(t) = env.infer_expr(x) {
+                if let Ok(t) = env.infer_expr(x) {
                     let t = env.vtype_whnf(t);
                     match &t.val {
                         TypeT::Pointer(_, PointerKind::Array) if &*a.val == "_length" => {}
@@ -125,7 +133,7 @@ impl<'a> Elaborator<'a> {
                 self.elab_rvalue(env, Rc::make_mut(arr));
                 self.elab_rvalue(env, Rc::make_mut(idx));
                 // Cast index to SizeT for Pulse array operations
-                if let Some(idx_ty) = env.infer_rvalue(idx) {
+                if let Ok(idx_ty) = env.infer_expr(idx) {
                     let idx_ty_whnf = env.vtype_whnf(idx_ty);
                     if !matches!(idx_ty_whnf.val, TypeT::SizeT) {
                         cast_to(idx, TypeT::SizeT.with_loc(idx.loc.clone()));
@@ -148,7 +156,7 @@ impl<'a> Elaborator<'a> {
                         fn_decl.args.iter().map(|(_, ty)| ty.clone()).collect();
                     for (arg, param_ty) in args.iter_mut().zip(param_types.iter()) {
                         let expected_ty = env.vtype_whnf(param_ty.clone().into());
-                        if let Some(actual_ty) = env.infer_rvalue(arg) {
+                        if let Ok(actual_ty) = env.infer_expr(arg) {
                             if !env.vtype_eq(actual_ty, expected_ty.clone()) {
                                 cast_to(arg, (*expected_ty).clone().into());
                             }
@@ -160,7 +168,7 @@ impl<'a> Elaborator<'a> {
                 let val = Rc::make_mut(val);
                 self.elab_type(env, Rc::make_mut(ty));
                 self.elab_rvalue(env, val);
-                let _actual_ty = env.infer_rvalue(val);
+                let _actual_ty = env.infer_expr(val);
                 // TODO: check that actual_ty can be casted to ty
             }
             ExprT::Error(ty) => self.elab_type(env, Rc::make_mut(ty)),
@@ -169,7 +177,7 @@ impl<'a> Elaborator<'a> {
                 self.elab_type(env, Rc::make_mut(ty));
                 self.elab_rvalue(env, Rc::make_mut(count));
                 // alloc_array expects SizeT count
-                if let Some(count_ty) = env.infer_rvalue(count) {
+                if let Ok(count_ty) = env.infer_expr(count) {
                     if !matches!(&env.vtype_whnf(count_ty).val, TypeT::SizeT) {
                         cast_to(count, TypeT::SizeT.with_loc(count.loc.clone()));
                     }
@@ -198,10 +206,10 @@ impl<'a> Elaborator<'a> {
             ExprT::BinOp(bin_op, lhs, rhs) => {
                 self.elab_rvalue(env, Rc::make_mut(lhs));
                 self.elab_rvalue(env, Rc::make_mut(rhs));
-                let Some(lhs_ty) = self.infer_rvalue(env, lhs) else {
+                let Some(lhs_ty) = self.infer_expr(env, lhs) else {
                     return;
                 };
-                let Some(rhs_ty) = self.infer_rvalue(env, rhs) else {
+                let Some(rhs_ty) = self.infer_expr(env, rhs) else {
                     return;
                 };
                 if *bin_op == BinOp::Eq {
@@ -274,10 +282,10 @@ impl<'a> Elaborator<'a> {
             StmtT::Assign(x, v) => {
                 self.elab_lvalue(env, Rc::make_mut(x));
                 self.elab_rvalue(env, Rc::make_mut(v));
-                let Some(x_ty) = env.infer_lvalue(x) else {
+                let Ok(x_ty) = env.infer_expr(x) else {
                     return;
                 };
-                let Some(v_ty) = env.infer_rvalue(v) else {
+                let Ok(v_ty) = env.infer_expr(v) else {
                     return;
                 };
                 if !env.vtype_eq(x_ty.clone(), v_ty.clone()) {
@@ -327,7 +335,7 @@ impl<'a> Elaborator<'a> {
                 if let Some(x) = x {
                     self.elab_rvalue(env, Rc::make_mut(x));
                     if let Some(ret_ty) = &env.return_type {
-                        if let Some(v_ty) = env.infer_rvalue(x) {
+                        if let Ok(v_ty) = env.infer_expr(x) {
                             if !env.vtype_eq(v_ty, ret_ty.clone().into()) {
                                 cast_to(x, ret_ty.clone());
                             }
@@ -373,7 +381,7 @@ impl<'a> Elaborator<'a> {
             // Refine pointer kind: if Assign from MallocArray, update the preceding Decl
             let refinement = if let StmtT::Assign(x, v) = &stmts[i].val {
                 if let ExprT::Var(var_name) = &x.val {
-                    if let Some(v_ty) = env.infer_rvalue(v) {
+                    if let Ok(v_ty) = env.infer_expr(v) {
                         if let TypeT::Pointer(_, rhs_kind) = &env.vtype_whnf(v_ty).val {
                             if *rhs_kind != PointerKind::Unknown {
                                 Some((var_name.val.clone(), rhs_kind.clone()))

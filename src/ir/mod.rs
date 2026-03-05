@@ -1,7 +1,7 @@
 use num_bigint::BigInt;
 use std::fmt::{Debug, Display};
 use std::rc::Rc;
-mod pretty;
+pub mod pretty;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, PartialOrd, Ord)]
 pub struct Position {

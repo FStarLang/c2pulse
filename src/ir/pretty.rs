@@ -19,9 +19,10 @@ fn inline_pulse_code_to_doc<'a>(code: &'a InlinePulseCode) -> RcDoc<'a, ()> {
     }))
 }
 
+#[macro_export]
 macro_rules! impl_display_using_prettyir {
     ($t:ty) => {
-        impl Display for $t {
+        impl ::std::fmt::Display for $t {
             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                 write!(f, "{}", self.to_doc().pretty(80))
             }

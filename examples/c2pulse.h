@@ -14,10 +14,10 @@
 #define _assert(p) ({ __attribute__((annotate("c2pulse-assert", __capture_args(p)))) {} })
 #define _ghost_stmt(args) ({ __attribute__((annotate("c2pulse-ghost-stmt", __capture_args(args)))) {} })
 
-#define _plain [[clang::annotate("c2pulse-plain")]]
-#define _consumes [[clang::annotate("c2pulse-consumes")]]
-#define _array [[clang::annotate("c2pulse-array")]]
-#define _pure [[clang::annotate("c2pulse-pure")]]
+#define _plain __attribute__((annotate("c2pulse-plain")))
+#define _consumes __attribute__((annotate("c2pulse-consumes")))
+#define _array __attribute((annotate("c2pulse-array")))
+#define _pure __attribute((annotate("c2pulse-pure")))
 
 #define _inline_pulse(args) _inline_pulse(__capture_args(args))
 
