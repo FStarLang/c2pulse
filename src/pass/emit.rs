@@ -1725,6 +1725,47 @@ fn append_rest(block_stmts: &[Rc<Stmt>], rest: &[Rc<Stmt>]) -> Vec<Rc<Stmt>> {
 }
 
 impl<'a> Emitter<'a> {
+    /// Emit a pure function spec prop: strip the outer Cast(_, SLProp) wrapper
+    /// and emit the inner boolean expression directly.
+    fn emit_pure_prop(&mut self, env: &Env, expr: &Expr) -> Doc {
+        match &expr.val {
+            ExprT::Cast(inner, ty) if matches!(ty.val, TypeT::SLProp) => {
+                self.emit_rvalue(env, inner)
+            }
+            _ => {
+                self.report(
+                    format!("pure function spec must be a boolean expression"),
+                    &expr.loc,
+                );
+                Doc::text("True")
+            }
+        }
+    }
+
+    /// Check that a parameter type is valid for a pure function (no pointers, arrays, etc.)
+    fn check_pure_type(&mut self, ty: &Type) {
+        match &ty.val {
+            TypeT::Void
+            | TypeT::Bool
+            | TypeT::Int { .. }
+            | TypeT::SizeT
+            | TypeT::SpecInt
+            | TypeT::SLProp
+            | TypeT::Error
+            | TypeT::TypeRef(_) => {}
+            TypeT::Pointer(_, _) => {
+                self.report(
+                    format!("pointer parameters are not supported in pure functions"),
+                    &ty.loc,
+                );
+            }
+            TypeT::Requires(inner, _)
+            | TypeT::Ensures(inner, _)
+            | TypeT::Consumes(inner)
+            | TypeT::Plain(inner) => self.check_pure_type(inner),
+        }
+    }
+
     fn emit_pure_body(&mut self, env: &Env, stmts: &[Rc<Stmt>]) -> Doc {
         if stmts.is_empty() {
             return Doc::text("()");
@@ -1809,7 +1850,7 @@ impl<'a> Emitter<'a> {
 
             _ => {
                 self.report(
-                    format!("unsupported statement in pure function: {:?}", stmts[0].val),
+                    format!("unsupported statement in pure function: {}", stmts[0]),
                     &stmts[0].loc,
                 );
                 Doc::text("(admit())")
@@ -1840,13 +1881,68 @@ impl<'a> Emitter<'a> {
             params.push(Doc::text("()"));
         }
 
+        let requires_props: Vec<Doc> = decl
+            .requires
+            .iter()
+            .map(|r| self.emit_pure_prop(env, r))
+            .collect();
+        // Reject non-bool type-level specs on parameters
+        for (_n, ty) in &decl.args {
+            self.check_pure_type(ty);
+        }
+
         let ret_type_doc = self.emit_type(env, &decl.ret_type);
+
+        let return_id = env
+            .push_return(decl.ret_type.clone())
+            .with_loc(decl.ret_type.loc.clone());
+        let ensures_props: Vec<Doc> = decl
+            .ensures
+            .iter()
+            .map(|e| self.emit_pure_prop(env, e))
+            .collect();
+
         let body_doc = self.emit_pure_body(env, body);
+
+        let has_specs = !requires_props.is_empty() || !ensures_props.is_empty();
+
+        let ty_doc = if has_specs {
+            let req_doc = if requires_props.is_empty() {
+                Doc::text("True")
+            } else {
+                Doc::intersperse(requires_props, Doc::text(" /\\ "))
+            };
+            let ens_doc = if ensures_props.is_empty() {
+                Doc::text("True")
+            } else {
+                Doc::intersperse(ensures_props, Doc::text(" /\\ "))
+            };
+            naryfn([
+                Doc::text("Pure"),
+                ret_type_doc,
+                parens(Doc::text("requires").append(Doc::line()).append(req_doc)),
+                parens(
+                    Doc::text("ensures").append(Doc::line()).append(parens(
+                        Doc::text("fun")
+                            .append(Doc::line())
+                            .append(self.nm.emit(Name::Var(return_id.val.clone())))
+                            .append(Doc::line())
+                            .append("->")
+                            .group()
+                            .nest(2)
+                            .append(Doc::line())
+                            .append(ens_doc),
+                    )),
+                ),
+            ])
+        } else {
+            ret_type_doc
+        };
 
         mk_let(
             self.nm.emit(Name::Fn(decl.name.val.clone())),
             &params,
-            ret_type_doc,
+            ty_doc,
             body_doc,
         )
     }

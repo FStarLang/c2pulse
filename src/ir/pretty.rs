@@ -235,6 +235,8 @@ fn pretty_block(stmts: &Stmts) -> RcDoc<'_, ()> {
     }
 }
 
+impl_display_using_prettyir!(StmtT);
+
 impl PrettyIR for StmtT {
     fn to_doc(&self) -> RcDoc<'_, ()> {
         match self {

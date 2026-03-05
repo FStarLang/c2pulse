@@ -1,7 +1,9 @@
 #include "c2pulse.h"
 #include <stdbool.h>
 
-_pure bool pure_not(bool x) {
+_pure bool pure_not(bool x)
+        _ensures(return == !x)
+{
     if (x) {
         return false;
     } else {
@@ -29,6 +31,13 @@ _pure bool pure_let(bool x) {
     bool y;
     y = x;
     return y;
+}
+
+_pure bool pure_id(bool x)
+        _requires(x)
+        _ensures(return == x)
+{
+    return x;
 }
 
 void test() {
