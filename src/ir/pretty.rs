@@ -465,6 +465,28 @@ impl PrettyIR for IncludeDecl {
     }
 }
 
+impl PrettyIR for GlobalVar {
+    fn to_doc(&self) -> RcDoc<'_, ()> {
+        let prefix = if self.is_pure {
+            RcDoc::text("_pure ")
+        } else {
+            RcDoc::nil()
+        };
+        let init = match &self.init {
+            Some(e) => RcDoc::text(" = ").append(e.to_doc()),
+            None => RcDoc::nil(),
+        };
+        prefix
+            .append(self.ty.to_doc())
+            .append(RcDoc::line())
+            .append(self.name.to_doc())
+            .append(init)
+            .append(";")
+            .group()
+            .nest(2)
+    }
+}
+
 impl PrettyIR for DeclT {
     fn to_doc(&self) -> RcDoc<'_, ()> {
         match self {
@@ -473,6 +495,7 @@ impl PrettyIR for DeclT {
             DeclT::Typedef(type_defn) => type_defn.to_doc(),
             DeclT::StructDefn(struct_defn) => struct_defn.to_doc(),
             DeclT::IncludeDecl(include_decl) => include_decl.to_doc(),
+            DeclT::GlobalVar(global_var) => global_var.to_doc(),
         }
     }
 }

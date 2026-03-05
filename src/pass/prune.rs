@@ -59,6 +59,7 @@ enum DeclName {
     Fn(Rc<str>),
     Struct(Rc<str>),
     Typedef(Rc<str>),
+    GlobalVar(Rc<str>),
     Include(Rc<SourceInfo>),
 }
 
@@ -238,6 +239,7 @@ fn decl_name(decl: &Decl) -> DeclName {
         DeclT::Typedef(type_defn) => DeclName::Typedef(type_defn.name.val.clone()),
         DeclT::StructDefn(struct_defn) => DeclName::Struct(struct_defn.name.val.clone()),
         DeclT::IncludeDecl(_) => DeclName::Include(decl.loc.clone()),
+        DeclT::GlobalVar(gv) => DeclName::GlobalVar(gv.name.val.clone()),
     }
 }
 
@@ -285,6 +287,18 @@ fn scan_translation_unit(deps: &mut Deps<DeclName>, tu: &TranslationUnit) {
                 }
             }
             DeclT::IncludeDecl(_) => {}
+            DeclT::GlobalVar(GlobalVar {
+                name: _,
+                ty,
+                init,
+                is_pure: _,
+            }) => {
+                let ds = deps.deps_for(n);
+                scan_type(ds, ty);
+                if let Some(init) = init {
+                    scan_expr(ds, init);
+                }
+            }
         }
     }
 }

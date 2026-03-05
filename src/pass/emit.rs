@@ -480,6 +480,8 @@ impl<'a> Emitter<'a> {
                 }) = env.lookup_var(x)
                 {
                     ExprKind::RValue(annotated(v, self.emit_var(x)))
+                } else if env.lookup_global_var(x).is_some() {
+                    ExprKind::RValue(annotated(v, self.emit_var(x)))
                 } else {
                     ExprKind::LValue(annotated(v, self.emit_var(x)))
                 }
@@ -2001,6 +2003,36 @@ impl<'a> Emitter<'a> {
         )
     }
 
+    fn emit_global_var(&mut self, env: &Env, gv: &GlobalVar) -> Doc {
+        if !gv.is_pure {
+            self.report(
+                "non-pure global variables are not yet supported".to_string(),
+                &gv.name.loc,
+            );
+            return Doc::nil();
+        }
+        let name = self.nm.emit(Name::Var(gv.name.val.clone()));
+        let ty = self.emit_type(env, &gv.ty);
+        match &gv.init {
+            Some(init) => {
+                let init_doc = self.emit_rvalue(env, init);
+                Doc::text("let ")
+                    .append(name)
+                    .append(" : ")
+                    .append(ty)
+                    .append(" = ")
+                    .append(init_doc)
+            }
+            None => {
+                self.report(
+                    "pure global variable must have an initializer".to_string(),
+                    &gv.name.loc,
+                );
+                Doc::nil()
+            }
+        }
+    }
+
     fn emit_decl(&mut self, env: &Env, decl: &Decl) -> Doc {
         annotated(decl, {
             match &decl.val {
@@ -2033,6 +2065,7 @@ impl<'a> Emitter<'a> {
                 DeclT::Typedef(typedef) => self.emit_typedef(env, typedef),
                 DeclT::StructDefn(struct_defn) => self.emit_structdefn(env, struct_defn),
                 DeclT::IncludeDecl(include_decl) => emit_inline_code(&include_decl.code),
+                DeclT::GlobalVar(gv) => self.emit_global_var(env, gv),
             }
         })
     }

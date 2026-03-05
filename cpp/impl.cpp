@@ -16,6 +16,7 @@ using rust::std::rc::Rc;
 using rust::std::vec::Vec;
 using namespace rust::crate::clang;
 namespace ir = rust::crate::ir;
+using OptExpr = rust::core::option::Option<Rc<ir::Expr>>;
 
 llvm::StringRef toStringRef(Ref<rust::Str> str) {
   return llvm::StringRef((char const *)str.as_ptr(), str.len());
@@ -829,6 +830,22 @@ public:
         // TODO: forward struct decls
       }
       return {};
+    } else if (auto *VD = dyn_cast<VarDecl>(D)) {
+      auto loc = getRange(VD->getSourceRange());
+      auto id = ctx.mk_ident(toStr(VD->getName()), loc.clone());
+      auto ty = trQualType(VD->getType(), VD->getSourceRange());
+      OptExpr init = VD->hasInit() ? OptExpr::Some(trRValue(VD->getInit()))
+                                   : OptExpr::None();
+      bool is_pure = false;
+      for (auto attr : VD->getAttrs()) {
+        if (auto ann = dyn_cast<AnnotateAttr>(attr);
+            ann && ann->getAnnotation() == "c2pulse-pure" &&
+            ann->args_size() == 0) {
+          is_pure = true;
+        }
+      }
+      return ctx.add_global_var(std::move(loc), std::move(id), std::move(ty),
+                                std::move(init), is_pure);
     }
 
     reportUnsupported(D->getSourceRange(), getRange(D->getSourceRange()),

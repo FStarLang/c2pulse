@@ -7,6 +7,7 @@ struct Globals {
     fns: HashMap<Rc<str>, FnDecl>,
     typedefs: HashMap<Rc<str>, TypeDefn>,
     structs: HashMap<Rc<str>, StructDefn>,
+    vars: HashMap<Rc<str>, GlobalVar>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -137,6 +138,12 @@ impl Env {
             .insert(decl.name.val.clone(), decl);
     }
 
+    pub fn push_global_var(&mut self, gv: GlobalVar) {
+        Rc::make_mut(&mut self.globals)
+            .vars
+            .insert(gv.name.val.clone(), gv);
+    }
+
     pub fn push_decl(&mut self, decl: &Decl) {
         match &decl.val {
             DeclT::FnDefn(fn_defn) => self.push_fn_decl(fn_defn.decl.clone()),
@@ -144,6 +151,7 @@ impl Env {
             DeclT::Typedef(defn) => self.push_typedef(defn.clone()),
             DeclT::StructDefn(struct_defn) => self.push_struct(struct_defn.clone()),
             DeclT::IncludeDecl(_) => {}
+            DeclT::GlobalVar(gv) => self.push_global_var(gv.clone()),
         }
     }
 
@@ -187,8 +195,14 @@ impl Env {
         self.locals.get(&ident.val)
     }
 
+    pub fn lookup_global_var(&self, ident: &Ident) -> Option<&GlobalVar> {
+        self.globals.vars.get(&ident.val)
+    }
+
     pub fn lookup_var_type(&self, ident: &Ident) -> Option<&Rc<Type>> {
-        self.lookup_var(ident).map(|decl| &decl.ty)
+        self.lookup_var(ident)
+            .map(|decl| &decl.ty)
+            .or_else(|| self.lookup_global_var(ident).map(|gv| &gv.ty))
     }
 
     pub fn push_stmt(&mut self, stmt: &Stmt) {

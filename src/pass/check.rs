@@ -368,7 +368,17 @@ impl<'a> Checker<'a> {
 
     fn check_var(&mut self, env: &Env, n: &Ident, needs_lvalue: bool) {
         match env.lookup_var(n) {
-            None => self.report(format!("unknown local variable {}", n.val), &n.loc),
+            None => match env.lookup_global_var(n) {
+                Some(_) => {
+                    if needs_lvalue {
+                        self.report(
+                            format!("need lvalue, but global {} is rvalue", n.val),
+                            &n.loc,
+                        );
+                    }
+                }
+                None => self.report(format!("unknown local variable {}", n.val), &n.loc),
+            },
             Some(ldecl) => {
                 if ldecl.kind == LocalDeclKind::RValue && needs_lvalue {
                     self.report(format!("need lvalue, but {} is rvalue", n.val), &n.loc);
@@ -529,6 +539,17 @@ impl<'a> Checker<'a> {
                 }
             }
             DeclT::IncludeDecl(_) => {}
+            DeclT::GlobalVar(GlobalVar {
+                name: _,
+                ty,
+                init,
+                is_pure: _,
+            }) => {
+                self.check_type(env, ty);
+                if let Some(init) = init {
+                    self.check_rvalue(env, init);
+                }
+            }
         }
     }
 

@@ -466,6 +466,17 @@ impl<'a> Elaborator<'a> {
                 }
             }
             DeclT::IncludeDecl(_) => {}
+            DeclT::GlobalVar(GlobalVar {
+                name: _,
+                ty,
+                init,
+                is_pure: _,
+            }) => {
+                self.elab_type(env, Rc::make_mut(ty));
+                if let Some(init) = init {
+                    self.elab_rvalue(env, Rc::make_mut(init));
+                }
+            }
         }
     }
 }

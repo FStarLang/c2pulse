@@ -119,6 +119,25 @@ impl<'a> Ctx<'a> {
         })
     }
 
+    fn add_global_var(
+        &mut self,
+        loc: Rc<SourceInfo>,
+        name: Rc<Ident>,
+        ty: Rc<Type>,
+        init: Option<Rc<Expr>>,
+        is_pure: bool,
+    ) {
+        self.translation_unit.decls.push(Ast {
+            loc,
+            val: DeclT::GlobalVar(GlobalVar {
+                name,
+                ty,
+                init,
+                is_pure,
+            }),
+        })
+    }
+
     fn add_include(&mut self, loc: Rc<SourceInfo>, idx: u32, snippets: &SnippetMap) {
         match snippets.snippets.get(&idx) {
             Some(code) => self.translation_unit.decls.push(Ast {

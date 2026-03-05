@@ -18,6 +18,7 @@ type bool {
 use ::num_bigint::BigInt as BigInt;
 use ::std::rc::Rc as Rc;
 use ::core::result::Result as Result;
+use ::core::option::Option as Option;
 use ::std::vec::Vec as Vec;
 use crate::ir::Ident as Ident;
 use crate::ir::SourceInfo as SourceInfo;
@@ -60,6 +61,12 @@ mod crate::ir {
         #heap_allocated;
         fn new() -> Vec<Rc<Expr>>;
         fn push(&mut self, Rc<Expr>);
+    }
+
+    type Option<Rc<Expr>> {
+        #layout(size=8, align=8);
+        constructor None;
+        constructor Some(Rc<Expr>);
     }
 
     type Rc<Stmt> {
@@ -158,6 +165,7 @@ mod crate::clang {
         fn add_fn_defn(&mut self, DeclBuilder, Vec<Rc<Stmt>>);
         fn add_typedef(&mut self, Rc<SourceInfo>, Rc<Ident>, Rc<Type>);
         fn add_struct(&mut self, DeclBuilder);
+        fn add_global_var(&mut self, Rc<SourceInfo>, Rc<Ident>, Rc<Type>, Option<Rc<Expr>>, bool);
         fn add_include(&mut self, Rc<SourceInfo>, u32, &SnippetMap);
 
         fn mk_ghost_stmt(&mut self, Rc<SourceInfo>, u32, &SnippetMap) -> Rc<Stmt>;

@@ -380,6 +380,14 @@ pub struct IncludeDecl {
     pub code: InlineCode,
 }
 
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub struct GlobalVar {
+    pub name: Rc<Ident>,
+    pub ty: Rc<Type>,
+    pub init: Option<Rc<Expr>>,
+    pub is_pure: bool,
+}
+
 pub type Decl = Ast<DeclT>;
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum DeclT {
@@ -388,6 +396,7 @@ pub enum DeclT {
     Typedef(TypeDefn),
     StructDefn(StructDefn),
     IncludeDecl(IncludeDecl),
+    GlobalVar(GlobalVar),
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
