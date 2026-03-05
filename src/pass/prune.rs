@@ -250,6 +250,7 @@ fn scan_translation_unit(deps: &mut Deps<DeclName>, tu: &TranslationUnit) {
             args,
             requires,
             ensures,
+            is_pure: _,
         }: &FnDecl,
     ) {
         for (_name, ty) in args {

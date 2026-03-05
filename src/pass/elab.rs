@@ -410,6 +410,7 @@ impl<'a> Elaborator<'a> {
             args,
             requires,
             ensures,
+            is_pure: _,
         }: &mut FnDecl,
     ) {
         let env = &mut env.clone();

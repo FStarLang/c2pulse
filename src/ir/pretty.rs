@@ -377,8 +377,13 @@ impl PrettyIR for StructDefn {
 
 impl PrettyIR for FnDecl {
     fn to_doc(&self) -> RcDoc<'_, ()> {
-        self.ret_type
-            .to_doc()
+        let pure_prefix = if self.is_pure {
+            RcDoc::text("_pure").append(RcDoc::line())
+        } else {
+            RcDoc::nil()
+        };
+        pure_prefix
+            .append(self.ret_type.to_doc())
             .append(RcDoc::line())
             .append(self.name.to_doc())
             .append("(")

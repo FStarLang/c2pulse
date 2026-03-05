@@ -308,6 +308,7 @@ pub struct FnDecl {
     pub args: Vec<FnArg>,
     pub requires: Exprs,
     pub ensures: Exprs,
+    pub is_pure: bool,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]

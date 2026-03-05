@@ -80,6 +80,7 @@ impl<'a> Ctx<'a> {
                 args: builder.args,
                 requires: builder.requires,
                 ensures: builder.ensures,
+                is_pure: builder.is_pure,
             }),
         })
     }
@@ -94,6 +95,7 @@ impl<'a> Ctx<'a> {
                     args: builder.args,
                     requires: builder.requires,
                     ensures: builder.ensures,
+                    is_pure: builder.is_pure,
                 },
                 body: body,
             }),
@@ -187,6 +189,7 @@ struct DeclBuilder {
     fields: Vec<(Ident, Rc<Type>)>,
     requires: Vec<Rc<Expr>>,
     ensures: Vec<Rc<Expr>>,
+    is_pure: bool,
 }
 
 impl DeclBuilder {
@@ -199,6 +202,7 @@ impl DeclBuilder {
             fields: vec![],
             requires: vec![],
             ensures: vec![],
+            is_pure: false,
         }
     }
 
@@ -222,6 +226,9 @@ impl DeclBuilder {
     }
     fn ensures(&mut self, p: Rc<Expr>) {
         self.ensures.push(p)
+    }
+    fn set_pure(&mut self) {
+        self.is_pure = true;
     }
 }
 

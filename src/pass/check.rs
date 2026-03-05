@@ -493,6 +493,7 @@ impl<'a> Checker<'a> {
             args,
             requires,
             ensures,
+            is_pure: _,
         }: &FnDecl,
     ) {
         let env = &mut env.clone();

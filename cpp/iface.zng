@@ -172,6 +172,7 @@ mod crate::clang {
         fn field(&mut self, Rc<Ident>, Rc<Type>);
         fn requires(&mut self, Rc<Expr>);
         fn ensures(&mut self, Rc<Expr>);
+        fn set_pure(&mut self);
     }
 
     type InlineCodeBuilder {

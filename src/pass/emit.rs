@@ -1615,6 +1615,7 @@ impl<'a> Emitter<'a> {
             args,
             requires,
             ensures,
+            is_pure: _,
         }: &FnDecl,
     ) -> Doc {
         let env = &mut env.clone();
@@ -1711,11 +1712,145 @@ fn emit_inline_code(code: &InlineCode) -> Doc {
     }))
 }
 
+/// Append remaining statements to a block (for if/else continuation in pure functions).
+fn append_rest(block_stmts: &[Rc<Stmt>], rest: &[Rc<Stmt>]) -> Vec<Rc<Stmt>> {
+    block_stmts.iter().chain(rest.iter()).cloned().collect()
+}
+
 impl<'a> Emitter<'a> {
+    fn emit_pure_body(&mut self, env: &Env, stmts: &[Rc<Stmt>]) -> Doc {
+        if stmts.is_empty() {
+            return Doc::text("()");
+        }
+
+        match &stmts[0].val {
+            StmtT::Return(Some(e)) if stmts.len() == 1 => self.emit_rvalue(env, e),
+            StmtT::Return(None) if stmts.len() == 1 => Doc::text("()"),
+
+            StmtT::If(cond, then_body, else_body) => {
+                let rest = &stmts[1..];
+                let then_stmts = append_rest(then_body, rest);
+                let else_stmts = append_rest(else_body, rest);
+                let mut env_then = env.clone();
+                for s in &**then_body {
+                    env_then.push_stmt(s);
+                }
+                let mut env_else = env.clone();
+                for s in &**else_body {
+                    env_else.push_stmt(s);
+                }
+                parens(
+                    Doc::text("if")
+                        .append(Doc::line())
+                        .append(self.emit_rvalue(env, cond))
+                        .group()
+                        .append(Doc::line())
+                        .append("then")
+                        .append(
+                            Doc::line()
+                                .append(self.emit_pure_body(&env_then, &then_stmts))
+                                .nest(2),
+                        )
+                        .append(Doc::line())
+                        .append("else")
+                        .append(
+                            Doc::line()
+                                .append(self.emit_pure_body(&env_else, &else_stmts))
+                                .nest(2),
+                        ),
+                )
+            }
+
+            StmtT::Decl(x, ty) => {
+                // Look for the assignment to this variable in the next statement
+                if stmts.len() >= 3 {
+                    if let StmtT::Assign(lhs, rhs) = &stmts[1].val {
+                        if let ExprT::Var(v) = &lhs.val {
+                            if v.val == x.val {
+                                let mut env = env.clone();
+                                env.push_var_decl(x, ty.clone(), LocalDeclKind::RValue);
+                                let rest_expr = self.emit_pure_body(&env, &stmts[2..]);
+                                return parens(
+                                    Doc::text("let")
+                                        .append(Doc::line())
+                                        .append(self.nm.emit(Name::Var(x.val.clone())))
+                                        .append(Doc::line())
+                                        .append(":")
+                                        .append(Doc::line())
+                                        .append(self.emit_type(&env, ty))
+                                        .append(Doc::line())
+                                        .append("=")
+                                        .group()
+                                        .nest(2)
+                                        .append(
+                                            Doc::line().append(self.emit_rvalue(&env, rhs)).nest(2),
+                                        )
+                                        .append(Doc::line())
+                                        .append("in")
+                                        .append(Doc::line().append(rest_expr).nest(2)),
+                                );
+                            }
+                        }
+                    }
+                }
+                self.report(
+                    format!("unsupported declaration without assignment in pure function"),
+                    &stmts[0].loc,
+                );
+                Doc::text("(admit())")
+            }
+
+            _ => {
+                self.report(
+                    format!("unsupported statement in pure function: {:?}", stmts[0].val),
+                    &stmts[0].loc,
+                );
+                Doc::text("(admit())")
+            }
+        }
+    }
+
+    fn emit_pure_fn(&mut self, env: &Env, decl: &FnDecl, body: &Stmts) -> Doc {
+        let env = &mut env.clone();
+
+        let mut params = vec![];
+        for (i, arg @ (n0, ty)) in decl.args.iter().enumerate() {
+            let n: Rc<Ident> = n0.clone().unwrap_or_else(|| {
+                Rc::<str>::from(format!("_unnamed{}", i)).with_loc(ty.loc.clone())
+            });
+
+            params.push(parens(
+                annotated(&n, self.nm.emit(Name::Var(n.val.clone())))
+                    .append(":")
+                    .append(Doc::line())
+                    .append(self.emit_type(env, ty)),
+            ));
+
+            env.push_arg(arg, LocalDeclKind::RValue);
+        }
+
+        if params.is_empty() {
+            params.push(Doc::text("()"));
+        }
+
+        let ret_type_doc = self.emit_type(env, &decl.ret_type);
+        let body_doc = self.emit_pure_body(env, body);
+
+        mk_let(
+            self.nm.emit(Name::Fn(decl.name.val.clone())),
+            &params,
+            ret_type_doc,
+            body_doc,
+        )
+    }
+
     fn emit_decl(&mut self, env: &Env, decl: &Decl) -> Doc {
         annotated(decl, {
             match &decl.val {
                 DeclT::FnDefn(FnDefn { decl, body }) => {
+                    if decl.is_pure {
+                        return self.emit_pure_fn(env, decl, body);
+                    }
                     let decl_doc = self.emit_fn_decl(env, decl).nest(2).append(Doc::hardline());
                     let arg_redecl_as_mut = Doc::concat(decl.args.iter().filter_map(|(n, _)| {
                         n.as_ref().map(|n| {
