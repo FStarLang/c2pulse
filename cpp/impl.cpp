@@ -302,18 +302,12 @@ public:
     for (auto it = attrs.rbegin(); it != attrs.rend(); ++it) {
       if (auto ann = dyn_cast<AnnotateAttr>(*it)) {
         auto loc = getRange(ann->getRange());
-        if (auto req = isUnaryAttrOf(ann, "c2pulse-requires")) {
-          ty = mk_type_requires(std::move(loc), std::move(ty),
-                                std::move(req.value()));
-        } else if (auto ens = isUnaryAttrOf(ann, "c2pulse-ensures")) {
-          ty = mk_type_ensures(std::move(loc), std::move(ty),
-                               std::move(ens.value()));
+        if (auto ref = isUnaryAttrOf(ann, "c2pulse-refine")) {
+          ty = mk_type_refine(std::move(loc), std::move(ty),
+                              std::move(ref.value()));
         } else if (ann->getAnnotation() == "c2pulse-plain" &&
                    ann->args_size() == 0) {
           ty = mk_type_plain(std::move(loc), std::move(ty));
-        } else if (ann->getAnnotation() == "c2pulse-consumes" &&
-                   ann->args_size() == 0) {
-          ty = mk_type_consumes(std::move(loc), std::move(ty));
         } else if (ann->getAnnotation() == "c2pulse-array" &&
                    ann->args_size() == 0) {
           ty = mk_type_array(std::move(loc), std::move(ty));
@@ -321,6 +315,18 @@ public:
       }
     }
     return ty;
+  }
+
+  bool hasConsumesAttr(AttrVec const &attrs) {
+    for (auto it = attrs.rbegin(); it != attrs.rend(); ++it) {
+      if (auto ann = dyn_cast<AnnotateAttr>(*it)) {
+        if (ann->getAnnotation() == "c2pulse-consumes" &&
+            ann->args_size() == 0) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   bool isBoolType(QualType t) {
@@ -783,13 +789,16 @@ public:
       for (auto param : FD->parameters()) {
         auto ty = trQualType(param->getType(), param->getSourceRange());
         ty = trTypeAttrs(param->getAttrs(), std::move(ty));
+        auto mode = hasConsumesAttr(param->getAttrs())
+                        ? ir::ParamMode::Consumed()
+                        : ir::ParamMode::Regular();
         if (param->getDeclName().isIdentifier() &&
             param->getName().size() > 0) {
           builder.arg(ctx.mk_ident(toStr(param->getName()),
                                    getRange(param->getSourceRange())),
-                      std::move(ty));
+                      std::move(ty), std::move(mode));
         } else {
-          builder.arg_anon(std::move(ty));
+          builder.arg_anon(std::move(ty), std::move(mode));
         }
       }
       builder.return_type(

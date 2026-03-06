@@ -111,21 +111,11 @@ impl PrettyIR for TypeT {
             TypeT::SpecInt => RcDoc::text("_specint"),
             TypeT::SLProp => RcDoc::text("_slprop"),
             TypeT::TypeRef(n) => n.to_doc(),
-            TypeT::Requires(ty, p) => RcDoc::text("_requires(")
+            TypeT::Refine(ty, p) => RcDoc::text("_refine(")
                 .append(p.to_doc())
                 .append(")")
                 .group()
                 .nest(2)
-                .append(RcDoc::line())
-                .append(ty.to_doc()),
-            TypeT::Ensures(ty, p) => RcDoc::text("_ensures(")
-                .append(p.to_doc())
-                .append(")")
-                .group()
-                .nest(2)
-                .append(RcDoc::line())
-                .append(ty.to_doc()),
-            TypeT::Consumes(ty) => RcDoc::text("_consumes")
                 .append(RcDoc::line())
                 .append(ty.to_doc()),
             TypeT::Plain(ty) => RcDoc::text("_plain")
@@ -411,9 +401,14 @@ impl PrettyIR for FnDecl {
             .append("(")
             .append(
                 RcDoc::intersperse(
-                    self.args.iter().map(|(n, ty)| {
-                        ty.to_doc()
-                            .append(match n {
+                    self.args.iter().map(|arg| {
+                        let mode_prefix = match arg.mode {
+                            ParamMode::Consumed => RcDoc::text("_consumes").append(RcDoc::line()),
+                            ParamMode::Regular => RcDoc::nil(),
+                        };
+                        mode_prefix
+                            .append(arg.ty.to_doc())
+                            .append(match &arg.name {
                                 Some(n) => RcDoc::line().append(n.to_doc()),
                                 None => RcDoc::nil(),
                             })

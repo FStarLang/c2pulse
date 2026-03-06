@@ -59,7 +59,7 @@ impl<'a> Elaborator<'a> {
 
             TypeT::TypeRef(_) => {}
 
-            TypeT::Requires(ty, p) | TypeT::Ensures(ty, p) => {
+            TypeT::Refine(ty, p) => {
                 self.elab_type(env, Rc::make_mut(ty));
 
                 let env = &mut env.clone();
@@ -67,7 +67,7 @@ impl<'a> Elaborator<'a> {
                 self.elab_rvalue(env, Rc::make_mut(p));
                 self.cast_to_slprop(env, p);
             }
-            TypeT::Consumes(ty) | TypeT::Plain(ty) => self.elab_type(env, Rc::make_mut(ty)),
+            TypeT::Plain(ty) => self.elab_type(env, Rc::make_mut(ty)),
         }
     }
 
@@ -171,7 +171,7 @@ impl<'a> Elaborator<'a> {
                 }
                 if let Some(fn_decl) = env.lookup_fn(f) {
                     let param_types: Vec<_> =
-                        fn_decl.args.iter().map(|(_, ty)| ty.clone()).collect();
+                        fn_decl.args.iter().map(|arg| arg.ty.clone()).collect();
                     for (arg, param_ty) in args.iter_mut().zip(param_types.iter()) {
                         let expected_ty = env.vtype_whnf(param_ty.clone().into());
                         if let Ok(actual_ty) = env.infer_expr(arg) {
@@ -448,8 +448,7 @@ impl<'a> Elaborator<'a> {
     ) {
         let env = &mut env.clone();
         for arg in args {
-            let (_, ty) = arg;
-            self.elab_type(env, Rc::make_mut(ty));
+            self.elab_type(env, Rc::make_mut(&mut arg.ty));
             env.push_arg(arg, LocalDeclKind::RValue);
         }
         self.elab_slprops(env, requires);

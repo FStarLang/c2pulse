@@ -41,7 +41,7 @@ void struct_arr(uptr_struct a)
 }
 
 typedef struct {
-  _preserves(this._length == 32) _array unsigned char *x;
+  _refine(this._length == 32) _array unsigned char *x;
 } b32_struct;
 void b32_arr(b32_struct a)
   _ensures(a.x[10] == 67)
@@ -49,7 +49,7 @@ void b32_arr(b32_struct a)
   a.x[10] = 67;
 }
 
-_preserves(this.x._length == 32)
+_refine(this.x._length == 32)
 typedef struct {
   _array unsigned char *x;
 } b32_struct_alt;

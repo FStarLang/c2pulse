@@ -233,11 +233,19 @@ impl DeclBuilder {
         self.ret_type = Some(ret_type);
     }
 
-    fn arg(&mut self, name: Rc<Ident>, ty: Rc<Type>) {
-        self.args.push((Some(name), ty))
+    fn arg(&mut self, name: Rc<Ident>, ty: Rc<Type>, mode: ParamMode) {
+        self.args.push(FnArg {
+            name: Some(name),
+            ty,
+            mode,
+        })
     }
-    fn arg_anon(&mut self, ty: Rc<Type>) {
-        self.args.push((None, ty))
+    fn arg_anon(&mut self, ty: Rc<Type>, mode: ParamMode) {
+        self.args.push(FnArg {
+            name: None,
+            ty,
+            mode,
+        })
     }
 
     fn field(&mut self, name: Rc<Ident>, ty: Rc<Type>) {
@@ -337,14 +345,8 @@ fn mk_type_struct(loc: Rc<SourceInfo>, n: Rc<Ident>) -> Rc<Type> {
 fn mk_type_typedef(loc: Rc<SourceInfo>, n: Rc<Ident>) -> Rc<Type> {
     mk_ast(loc, TypeT::TypeRef(TypeRefKind::Typedef(n)))
 }
-fn mk_type_requires(loc: Rc<SourceInfo>, ty: Rc<Type>, p: Rc<Expr>) -> Rc<Type> {
-    TypeT::Requires(ty, p).with_loc(loc)
-}
-fn mk_type_ensures(loc: Rc<SourceInfo>, ty: Rc<Type>, p: Rc<Expr>) -> Rc<Type> {
-    TypeT::Ensures(ty, p).with_loc(loc)
-}
-fn mk_type_consumes(loc: Rc<SourceInfo>, ty: Rc<Type>) -> Rc<Type> {
-    TypeT::Consumes(ty).with_loc(loc)
+fn mk_type_refine(loc: Rc<SourceInfo>, ty: Rc<Type>, p: Rc<Expr>) -> Rc<Type> {
+    TypeT::Refine(ty, p).with_loc(loc)
 }
 fn mk_type_plain(loc: Rc<SourceInfo>, ty: Rc<Type>) -> Rc<Type> {
     TypeT::Plain(ty).with_loc(loc)

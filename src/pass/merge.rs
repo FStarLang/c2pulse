@@ -19,8 +19,8 @@ fn types_match(env: &Env, decl: &FnDecl, defn: &FnDecl) -> bool {
     if decl.args.len() != defn.args.len() {
         return false;
     }
-    for ((_, ty_a), (_, ty_b)) in decl.args.iter().zip(defn.args.iter()) {
-        if !env.vtype_eq(ty_a.clone().into(), ty_b.clone().into()) {
+    for (arg_a, arg_b) in decl.args.iter().zip(defn.args.iter()) {
+        if !env.vtype_eq(arg_a.ty.clone().into(), arg_b.ty.clone().into()) {
             return false;
         }
     }

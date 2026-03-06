@@ -144,9 +144,7 @@ pub enum TypeT {
 
     TypeRef(TypeRefKind),
 
-    Requires(Rc<Type>, Rc<Expr>),
-    Ensures(Rc<Type>, Rc<Expr>),
-    Consumes(Rc<Type>),
+    Refine(Rc<Type>, Rc<Expr>),
     Plain(Rc<Type>),
 
     Error,
@@ -311,7 +309,18 @@ impl StructDefn {
     }
 }
 
-pub type FnArg = (Option<Rc<Ident>>, Rc<Type>);
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+pub enum ParamMode {
+    Regular,
+    Consumed,
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub struct FnArg {
+    pub name: Option<Rc<Ident>>,
+    pub ty: Rc<Type>,
+    pub mode: ParamMode,
+}
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct FnDecl {

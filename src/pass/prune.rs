@@ -92,11 +92,11 @@ fn scan_type(deps: &mut HashSet<DeclName>, ty: &Type) {
                 TypeRefKind::Struct(n) => DeclName::Struct(n.val.clone()),
             });
         }
-        TypeT::Requires(ty, p) | TypeT::Ensures(ty, p) => {
+        TypeT::Refine(ty, p) => {
             scan_type(deps, ty);
             scan_expr(deps, p);
         }
-        TypeT::Consumes(ty) | TypeT::Plain(ty) => scan_type(deps, ty),
+        TypeT::Plain(ty) => scan_type(deps, ty),
         TypeT::SpecInt => {}
     }
 }
@@ -262,8 +262,8 @@ fn scan_translation_unit(deps: &mut Deps<DeclName>, tu: &TranslationUnit) {
             is_pure: _,
         }: &FnDecl,
     ) {
-        for (_name, ty) in args {
-            scan_type(ds, ty)
+        for arg in args {
+            scan_type(ds, &arg.ty)
         }
         scan_type(ds, &ret_type);
 

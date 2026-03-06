@@ -93,13 +93,13 @@ impl<'a> Checker<'a> {
                     self.report(format!("unknown struct {}", n), &ty.loc)
                 }
             }
-            TypeT::Requires(ty, p) | TypeT::Ensures(ty, p) => {
+            TypeT::Refine(ty, p) => {
                 self.check_type(env, ty);
                 let env = &mut env.clone();
                 env.push_this(ty.clone());
                 self.check_slprop(env, p);
             }
-            TypeT::Consumes(ty) | TypeT::Plain(ty) => self.check_type(env, ty),
+            TypeT::Plain(ty) => self.check_type(env, ty),
             TypeT::Error => {}
         }
     }
@@ -114,9 +114,7 @@ impl<'a> Checker<'a> {
             TypeT::SpecInt => true,
             TypeT::SLProp => true, // true/false
             TypeT::TypeRef(_) => false,
-            TypeT::Requires(..) | TypeT::Ensures(..) | TypeT::Consumes(..) | TypeT::Plain(..) => {
-                false
-            }
+            TypeT::Refine(..) | TypeT::Plain(..) => false,
             TypeT::Error => true,
         }
     }
@@ -315,7 +313,7 @@ impl<'a> Checker<'a> {
                     );
                 }
                 for (decl_arg, arg) in fn_decl.args.iter().zip(args.iter()) {
-                    self.check_has_type(env, arg, decl_arg.1.clone().into());
+                    self.check_has_type(env, arg, decl_arg.ty.clone().into());
                 }
             }
             ExprT::Cast(rval, ty) => {
@@ -525,8 +523,7 @@ impl<'a> Checker<'a> {
     ) {
         let env = &mut env.clone();
         for arg in args {
-            let (_, ty) = arg;
-            self.check_type(env, ty);
+            self.check_type(env, &arg.ty);
             env.push_arg(arg, LocalDeclKind::RValue);
         }
         self.check_slprops(env, requires);

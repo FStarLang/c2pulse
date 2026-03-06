@@ -166,9 +166,8 @@ impl Env {
     }
 
     pub fn push_arg(&mut self, arg: &FnArg, is_rvalue: LocalDeclKind) {
-        match arg {
-            (Some(n), ty) => self.push_var_decl(n, ty.clone(), is_rvalue),
-            (None, _) => {}
+        if let Some(n) = &arg.name {
+            self.push_var_decl(n, arg.ty.clone(), is_rvalue)
         }
     }
 
@@ -389,9 +388,7 @@ impl Env {
 
             either_side!(TypeT::TypeRef(_)) => None,
 
-            either_side!(
-                TypeT::Requires(..) | TypeT::Ensures(..) | TypeT::Consumes(..) | TypeT::Plain(..)
-            ) => None,
+            either_side!(TypeT::Refine(..) | TypeT::Plain(..)) => None,
         }
     }
 
@@ -419,10 +416,7 @@ impl Env {
             }
             TypeT::TypeRef(TypeRefKind::Struct(_)) => None,
 
-            TypeT::Requires(ty, _)
-            | TypeT::Ensures(ty, _)
-            | TypeT::Consumes(ty)
-            | TypeT::Plain(ty) => Some(ty.clone().into()),
+            TypeT::Refine(ty, _) | TypeT::Plain(ty) => Some(ty.clone().into()),
         }
     }
 

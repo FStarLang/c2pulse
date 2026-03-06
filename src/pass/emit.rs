@@ -162,7 +162,6 @@ enum Name {
     Fn(Rc<IdentT>),
     TypeRef(TypeRef),
     TypeRefPred(TypeRef),
-    TypeRefPredPost(TypeRef),
 
     StructFieldProj(Rc<IdentT>, Rc<IdentT>),
     StructDirectFieldName(Rc<IdentT>, Rc<IdentT>),
@@ -190,7 +189,6 @@ impl Name {
             Name::TypeRef(TypeRef::Struct(str)) => format!("struct_{}", str),
             Name::TypeRef(TypeRef::Typedef(ty)) => format!("ty_{}", ty),
             Name::TypeRefPred(type_ref) => format!("{}__pred", typeref_to_string(type_ref)),
-            Name::TypeRefPredPost(type_ref) => format!("{}__post", typeref_to_string(type_ref)),
             Name::StructFieldProj(str, fld) => format!("{}__get_{}", struct_to_string(str), fld),
             Name::StructDirectFieldName(str, fld) => format!("{}__{}", struct_to_string(str), fld),
             Name::StructGhostFieldProj(str, fld) => format!("{}__{}", struct_to_string(str), fld),
@@ -318,10 +316,7 @@ impl<'a> Emitter<'a> {
                 TypeT::SLProp => Doc::text("slprop"),
                 TypeT::SpecInt => Doc::text("int"),
 
-                TypeT::Requires(ty, _)
-                | TypeT::Ensures(ty, _)
-                | TypeT::Consumes(ty)
-                | TypeT::Plain(ty) => self.emit_type(env, ty),
+                TypeT::Refine(ty, _) | TypeT::Plain(ty) => self.emit_type(env, ty),
             }
         })
     }
@@ -439,14 +434,7 @@ impl<'a> Emitter<'a> {
         }))
     }
 
-    fn emit_type_slprop(
-        &mut self,
-        env: &Env,
-        ty: &Type,
-        req: &mut Vec<Doc>,
-        ens: &mut Vec<Doc>,
-        this: &Rc<Expr>,
-    ) {
+    fn emit_type_slprop(&mut self, env: &Env, ty: &Type, props: &mut Vec<Doc>, this: &Rc<Expr>) {
         match &ty.val {
             TypeT::Void
             | TypeT::Bool
@@ -456,43 +444,27 @@ impl<'a> Emitter<'a> {
             | TypeT::SLProp => {}
             TypeT::Pointer(pointee_ty, kind) => {
                 let live = annotated(ty, unaryfn(Doc::text("live"), self.emit_rvalue(env, this)));
-                req.push(live.clone());
-                ens.push(live);
+                props.push(live);
 
                 match kind {
                     PointerKind::Ref => {
                         let derefed = ExprT::Deref(this.clone()).with_loc(this.loc.clone());
-                        self.emit_type_slprop(env, pointee_ty, req, ens, &derefed);
+                        self.emit_type_slprop(env, pointee_ty, props, &derefed);
                     }
                     _ => {} // TODO
                 }
             }
             TypeT::TypeRef(n) => {
                 let this = self.emit_rvalue(env, this);
-                req.push(unaryfn(
-                    self.nm.emit(Name::TypeRefPred(n.into())),
-                    this.clone(),
-                ));
-                ens.push(unaryfn(
-                    self.nm.emit(Name::TypeRefPredPost(n.into())),
-                    this.clone(),
-                ));
+                props.push(unaryfn(self.nm.emit(Name::TypeRefPred(n.into())), this));
             }
-            TypeT::Requires(ty, p) => {
-                self.emit_type_slprop(env, ty, req, ens, this);
+            TypeT::Refine(ty, p) => {
+                self.emit_type_slprop(env, ty, props, this);
 
                 let p = &mut p.clone();
                 self.subst_this_rvalue(env, Rc::make_mut(p), this);
-                req.push(self.emit_rvalue(env, p));
+                props.push(self.emit_rvalue(env, p));
             }
-            TypeT::Ensures(ty, p) => {
-                self.emit_type_slprop(env, ty, req, ens, this);
-
-                let p = &mut p.clone();
-                self.subst_this_rvalue(env, Rc::make_mut(p), this);
-                ens.push(self.emit_rvalue(env, p));
-            }
-            TypeT::Consumes(ty) => self.emit_type_slprop(env, ty, req, &mut vec![], this),
             TypeT::Plain(_) => {}
             TypeT::Error => {}
         }
@@ -732,10 +704,7 @@ fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
             todo_binop!()
         }
 
-        (
-            op,
-            TypeT::Requires(ty, _) | TypeT::Ensures(ty, _) | TypeT::Consumes(ty) | TypeT::Plain(ty),
-        ) => emit_binop(env, op, ty.clone().into())?,
+        (op, TypeT::Refine(ty, _) | TypeT::Plain(ty)) => emit_binop(env, op, ty.clone().into())?,
 
         (_, TypeT::TypeRef(_)) => return None,
         (
@@ -1361,20 +1330,14 @@ impl<'a> Emitter<'a> {
             .with_loc(name.loc.clone());
         let this_doc = self.nm.emit(Name::Var(this.val.clone()));
         let this_args = vec![parens(this_doc.append(":").append(Doc::line()).append(t))];
-        let mut req = vec![];
-        let mut ens = vec![];
-        self.emit_type_slprop(env, body, &mut req, &mut ens, &mk_rvar(&this));
-        let pre_decl = mk_eager_unfold_slprop(
+        let mut props = vec![];
+        self.emit_type_slprop(env, body, &mut props, &mk_rvar(&this));
+        let pred_decl = mk_eager_unfold_slprop(
             self.nm.emit(Name::TypeRefPred(k.into())),
             &this_args,
-            mk_star(req),
+            mk_star(props),
         );
-        let post_decl = mk_eager_unfold_slprop(
-            self.nm.emit(Name::TypeRefPredPost(k.into())),
-            &this_args,
-            mk_star(ens),
-        );
-        Doc::intersperse(vec![ty_decl, pre_decl, post_decl], Doc::line())
+        Doc::intersperse(vec![ty_decl, pred_decl], Doc::line())
     }
 } // impl Emitter (group D)
 
@@ -1421,7 +1384,6 @@ impl<'a> Emitter<'a> {
         let k = &TypeRefKind::Struct(name.clone());
         let struct_type_name = self.nm.emit(Name::TypeRef(k.into()));
         let pts_to_name = self.nm.emit(Name::TypeRefPred(k.into()));
-        let pts_to_name_post = self.nm.emit(Name::TypeRefPredPost(k.into()));
         let ref_struct_type = unaryfn(Doc::text("ref"), struct_type_name.clone());
 
         let direct_fld =
@@ -1456,7 +1418,7 @@ impl<'a> Emitter<'a> {
                 .group(),
         );
 
-        // Generate struct pred/post by gathering slprops from fields
+        // Generate struct pred by gathering slprops from fields
         let env = &mut env.clone();
         let this = env
             .push_this(TypeT::TypeRef(k.clone()).with_loc(name.loc.clone()))
@@ -1468,22 +1430,16 @@ impl<'a> Emitter<'a> {
                 .append(Doc::line())
                 .append(struct_type_name.clone()),
         )];
-        let mut req = vec![];
-        let mut ens = vec![];
+        let mut props = vec![];
         for (fld, fld_ty) in fields {
             let field_expr =
                 ExprT::Member(mk_rvar(&this), fld.clone().into()).with_loc(fld.loc.clone());
-            self.emit_type_slprop(env, fld_ty, &mut req, &mut ens, &field_expr);
+            self.emit_type_slprop(env, fld_ty, &mut props, &field_expr);
         }
         ses.push(mk_eager_unfold_slprop(
             pts_to_name.clone(),
             &this_args,
-            mk_star(req),
-        ));
-        ses.push(mk_eager_unfold_slprop(
-            pts_to_name_post.clone(),
-            &this_args,
-            mk_star(ens),
+            mk_star(props),
         ));
 
         let unfolded_tok = self
@@ -1711,26 +1667,30 @@ impl<'a> Emitter<'a> {
         let mut requires_props = vec![];
         let mut ensures_props = vec![];
         let mut params = vec![];
-        for (i, arg @ (n0, ty)) in args.iter().enumerate() {
-            let n: Rc<Ident> = n0.clone().unwrap_or_else(|| {
-                Rc::<str>::from(format!("_unnamed{}", i)).with_loc(ty.loc.clone())
+        for (i, arg) in args.iter().enumerate() {
+            let n: Rc<Ident> = arg.name.clone().unwrap_or_else(|| {
+                Rc::<str>::from(format!("_unnamed{}", i)).with_loc(arg.ty.loc.clone())
             });
 
             params.push(parens(
                 annotated(&n, self.nm.emit(Name::Var(n.val.clone())))
                     .append(":")
                     .append(Doc::line())
-                    .append(self.emit_type(env, ty)),
+                    .append(self.emit_type(env, &arg.ty)),
             ));
 
             env.push_arg(arg, LocalDeclKind::RValue);
-            self.emit_type_slprop(
-                env,
-                ty,
-                &mut requires_props,
-                &mut ensures_props,
-                &mk_rvar(&n),
-            );
+            let mut type_props = vec![];
+            self.emit_type_slprop(env, &arg.ty, &mut type_props, &mk_rvar(&n));
+            match arg.mode {
+                ParamMode::Regular => {
+                    requires_props.extend(type_props.iter().cloned());
+                    ensures_props.extend(type_props);
+                }
+                ParamMode::Consumed => {
+                    requires_props.extend(type_props);
+                }
+            }
         }
 
         if params.is_empty() {
@@ -1742,13 +1702,9 @@ impl<'a> Emitter<'a> {
         let return_id = env
             .push_return(ret_type.clone())
             .with_loc(ret_type.loc.clone());
-        self.emit_type_slprop(
-            env,
-            &ret_type,
-            &mut ensures_props,
-            &mut vec![],
-            &mk_rvar(&return_id),
-        );
+        let mut ret_props = vec![];
+        self.emit_type_slprop(env, &ret_type, &mut ret_props, &mk_rvar(&return_id));
+        ensures_props.extend(ret_props);
         let ret_type_doc = self.emit_type(env, ret_type);
 
         ensures_props.extend(ensures.iter().map(|r| self.emit_rvalue(env, r)));
@@ -1834,10 +1790,7 @@ impl<'a> Emitter<'a> {
                     &ty.loc,
                 );
             }
-            TypeT::Requires(inner, _)
-            | TypeT::Ensures(inner, _)
-            | TypeT::Consumes(inner)
-            | TypeT::Plain(inner) => self.check_pure_type(inner),
+            TypeT::Refine(inner, _) | TypeT::Plain(inner) => self.check_pure_type(inner),
         }
     }
 
@@ -1937,16 +1890,16 @@ impl<'a> Emitter<'a> {
         let env = &mut env.clone();
 
         let mut params = vec![];
-        for (i, arg @ (n0, ty)) in decl.args.iter().enumerate() {
-            let n: Rc<Ident> = n0.clone().unwrap_or_else(|| {
-                Rc::<str>::from(format!("_unnamed{}", i)).with_loc(ty.loc.clone())
+        for (i, arg) in decl.args.iter().enumerate() {
+            let n: Rc<Ident> = arg.name.clone().unwrap_or_else(|| {
+                Rc::<str>::from(format!("_unnamed{}", i)).with_loc(arg.ty.loc.clone())
             });
 
             params.push(parens(
                 annotated(&n, self.nm.emit(Name::Var(n.val.clone())))
                     .append(":")
                     .append(Doc::line())
-                    .append(self.emit_type(env, ty)),
+                    .append(self.emit_type(env, &arg.ty)),
             ));
 
             env.push_arg(arg, LocalDeclKind::RValue);
@@ -1962,8 +1915,8 @@ impl<'a> Emitter<'a> {
             .map(|r| self.emit_pure_prop(env, r))
             .collect();
         // Reject non-bool type-level specs on parameters
-        for (_n, ty) in &decl.args {
-            self.check_pure_type(ty);
+        for arg in &decl.args {
+            self.check_pure_type(&arg.ty);
         }
 
         let ret_type_doc = self.emit_type(env, &decl.ret_type);
@@ -2060,8 +2013,8 @@ impl<'a> Emitter<'a> {
                         return self.emit_pure_fn(env, decl, body);
                     }
                     let decl_doc = self.emit_fn_decl(env, decl).nest(2).append(Doc::hardline());
-                    let arg_redecl_as_mut = Doc::concat(decl.args.iter().filter_map(|(n, _)| {
-                        n.as_ref().map(|n| {
+                    let arg_redecl_as_mut = Doc::concat(decl.args.iter().filter_map(|arg| {
+                        arg.name.as_ref().map(|n| {
                             Doc::line().append(annotated(
                                 n,
                                 Doc::group({
