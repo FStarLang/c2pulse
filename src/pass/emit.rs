@@ -424,7 +424,7 @@ impl<'a> Emitter<'a> {
                 field_name.val.clone(),
             ))),
             InlinePulseToken::Declare { ident, ty } => {
-                env.push_var_decl(ident, ty.clone(), LocalDeclKind::LValue);
+                env.push_var_decl(ident, ty.clone(), LocalDeclKind::RValue);
                 Doc::nil()
             }
         }))

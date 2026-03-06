@@ -121,6 +121,25 @@ impl<'a> Checker<'a> {
         }
     }
 
+    fn check_inline_pulse_code(&mut self, env: &Env, code: &InlinePulseCode) {
+        let env = &mut env.clone();
+        for tok in &code.tokens {
+            match tok {
+                InlinePulseToken::RValueAntiquot { expr, .. }
+                | InlinePulseToken::LValueAntiquot { expr, .. } => self.check_rvalue(env, expr),
+                InlinePulseToken::TypeAntiquot { ty, .. } => self.check_type(env, ty),
+                InlinePulseToken::Declare { ident, ty, .. } => {
+                    self.check_type(env, ty);
+                    env.push_var_decl(ident, ty.clone(), LocalDeclKind::RValue);
+                }
+                InlinePulseToken::Verbatim(_) => {}
+                InlinePulseToken::FieldAntiquot { .. } => {
+                    // TODO: check that field exists
+                }
+            }
+        }
+    }
+
     fn check_rvalue(&mut self, env: &Env, rval: &Expr) {
         match &rval.val {
             ExprT::BoolLit(_) => {}
@@ -293,17 +312,7 @@ impl<'a> Checker<'a> {
             }
             ExprT::InlinePulse(code, ty) => {
                 self.check_type(env, ty);
-                for tok in &code.tokens {
-                    match tok {
-                        InlinePulseToken::RValueAntiquot { expr, .. }
-                        | InlinePulseToken::LValueAntiquot { expr, .. } => {
-                            self.check_rvalue(env, expr)
-                        }
-                        InlinePulseToken::TypeAntiquot { ty, .. }
-                        | InlinePulseToken::Declare { ty, .. } => self.check_type(env, ty),
-                        InlinePulseToken::Verbatim(_) | InlinePulseToken::FieldAntiquot { .. } => {}
-                    }
-                }
+                self.check_inline_pulse_code(env, code);
             }
             ExprT::Live(lval) => self.check_rvalue(env, lval),
             ExprT::Old(rval) => self.check_rvalue(env, rval),
@@ -455,19 +464,7 @@ impl<'a> Checker<'a> {
                 }
             }
             StmtT::Assert(v) => self.check_slprop(env, v),
-            StmtT::GhostStmt(code) => {
-                for tok in &code.tokens {
-                    match tok {
-                        InlinePulseToken::RValueAntiquot { expr, .. }
-                        | InlinePulseToken::LValueAntiquot { expr, .. } => {
-                            self.check_rvalue(env, expr)
-                        }
-                        InlinePulseToken::TypeAntiquot { ty, .. }
-                        | InlinePulseToken::Declare { ty, .. } => self.check_type(env, ty),
-                        InlinePulseToken::Verbatim(_) | InlinePulseToken::FieldAntiquot { .. } => {}
-                    }
-                }
-            }
+            StmtT::GhostStmt(code) => self.check_inline_pulse_code(env, code),
             StmtT::Goto(_) => {}
             StmtT::Label { ensures, .. } => {
                 for e in &**ensures {

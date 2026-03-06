@@ -131,7 +131,10 @@ fn scan_expr(deps: &mut HashSet<DeclName>, rv: &Expr) {
                     | InlinePulseToken::LValueAntiquot { expr, .. } => scan_expr(deps, expr),
                     InlinePulseToken::TypeAntiquot { ty, .. }
                     | InlinePulseToken::Declare { ty, .. } => scan_type(deps, ty),
-                    InlinePulseToken::Verbatim(_) | InlinePulseToken::FieldAntiquot { .. } => {}
+                    InlinePulseToken::Verbatim(_) => {}
+                    InlinePulseToken::FieldAntiquot { struct_name, .. } => {
+                        deps.insert(DeclName::Struct(struct_name.val.clone()));
+                    }
                 }
             }
         }

@@ -102,6 +102,24 @@ impl<'a> Elaborator<'a> {
         }
     }
 
+    fn elab_inline_pulse_code(&mut self, env: &Env, code: &mut InlinePulseCode) {
+        let env = &mut env.clone();
+        for tok in &mut code.tokens {
+            match tok {
+                InlinePulseToken::RValueAntiquot { expr, .. }
+                | InlinePulseToken::LValueAntiquot { expr, .. } => {
+                    self.elab_rvalue(env, Rc::make_mut(expr))
+                }
+                InlinePulseToken::TypeAntiquot { ty, .. } => self.elab_type(env, Rc::make_mut(ty)),
+                InlinePulseToken::Declare { ident, ty, .. } => {
+                    self.elab_type(env, Rc::make_mut(ty));
+                    env.push_var_decl(ident, ty.clone(), LocalDeclKind::RValue);
+                }
+                InlinePulseToken::Verbatim(_) | InlinePulseToken::FieldAntiquot { .. } => {}
+            }
+        }
+    }
+
     fn elab_rvalue(&mut self, env: &Env, rval: &mut Expr) {
         match &mut rval.val {
             ExprT::Var(_) => {}
@@ -186,19 +204,7 @@ impl<'a> Elaborator<'a> {
             ExprT::Free(val) => self.elab_rvalue(env, Rc::make_mut(val)),
             ExprT::InlinePulse(code, ty) => {
                 self.elab_type(env, Rc::make_mut(ty));
-                for tok in &mut Rc::make_mut(code).tokens {
-                    match tok {
-                        InlinePulseToken::RValueAntiquot { expr, .. }
-                        | InlinePulseToken::LValueAntiquot { expr, .. } => {
-                            self.elab_rvalue(env, Rc::make_mut(expr))
-                        }
-                        InlinePulseToken::TypeAntiquot { ty, .. }
-                        | InlinePulseToken::Declare { ty, .. } => {
-                            self.elab_type(env, Rc::make_mut(ty))
-                        }
-                        InlinePulseToken::Verbatim(_) | InlinePulseToken::FieldAntiquot { .. } => {}
-                    }
-                }
+                self.elab_inline_pulse_code(env, Rc::make_mut(code));
             }
             ExprT::UnOp(un_op, arg) => {
                 self.elab_rvalue(env, Rc::make_mut(arg));
@@ -351,21 +357,7 @@ impl<'a> Elaborator<'a> {
                 self.elab_rvalue(env, Rc::make_mut(v));
                 self.cast_to_slprop(env, v);
             }
-            StmtT::GhostStmt(code) => {
-                for tok in &mut Rc::make_mut(code).tokens {
-                    match tok {
-                        InlinePulseToken::RValueAntiquot { expr, .. }
-                        | InlinePulseToken::LValueAntiquot { expr, .. } => {
-                            self.elab_rvalue(env, Rc::make_mut(expr))
-                        }
-                        InlinePulseToken::TypeAntiquot { ty, .. }
-                        | InlinePulseToken::Declare { ty, .. } => {
-                            self.elab_type(env, Rc::make_mut(ty))
-                        }
-                        InlinePulseToken::Verbatim(_) | InlinePulseToken::FieldAntiquot { .. } => {}
-                    }
-                }
-            }
+            StmtT::GhostStmt(code) => self.elab_inline_pulse_code(env, Rc::make_mut(code)),
             StmtT::Goto(_) => {}
             StmtT::Label { ensures, .. } => {
                 self.elab_slprops(env, Rc::make_mut(ensures));
