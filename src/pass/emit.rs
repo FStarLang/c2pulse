@@ -892,7 +892,7 @@ impl<'a> Emitter<'a> {
                                     abbrev(*s2, *w2)
                                 )),
                                 val_doc,
-                                self.emit_type(env, &*to_ty)
+                                self.emit_type(env, &*to_ty),
                             )
                         }
                         (TypeT::SizeT, TypeT::SpecInt) => unaryfn(Doc::text("SizeT.v"), val_doc),
