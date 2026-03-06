@@ -123,6 +123,7 @@ mk_punct_table! {
     Pipe => "|",
 
     Question => "?",
+    ColonColon => "::",
     Colon => ":",
     Semi => ";",
 
@@ -131,8 +132,6 @@ mk_punct_table! {
     Comma => ",",
     HashHash => "##",
     Hash => "#",
-
-    ColonColon => "::",
 
     Dollar => "$",
 }
@@ -323,6 +322,108 @@ fn mk_binop(binop: BinOp, lhs: Expr, rhs: Expr, loc: Rc<SourceInfo>) -> Expr {
 }
 
 type Extra<'tokens, 'src> = extra::Err<Rich<'tokens, Token<'src>, SimpleSpan>>;
+
+fn type_parser<
+    'tokens,
+    'src: 'tokens,
+    I: ValueInput<'tokens, Token = Token<'src>, Span = SimpleSpan>,
+    SIFT: SourceInfoForTokens,
+>(
+    sift: &'src SIFT,
+    target_widths: &'src TargetIntWidths,
+) -> impl Parser<'tokens, I, Rc<crate::ir::Type>, Extra<'tokens, 'src>> + Clone {
+    let signedness = select! {
+        Token::Ident("signed") => true,
+        Token::Ident("unsigned") => false,
+    }
+    .padded_by(ws());
+
+    let size_modifier = select! {
+        Token::Ident("short") => 0u8,
+        Token::Ident("long") => 1u8,
+    }
+    .padded_by(ws())
+    .then(
+        select! { Token::Ident("long") => () }
+            .padded_by(ws())
+            .or_not(),
+    )
+    .map(|(m, extra_long)| match (m, extra_long) {
+        (0, _) => 0u8,
+        (1, None) => 1u8,
+        (1, Some(())) => 2u8,
+        _ => unreachable!(),
+    });
+
+    let int_or_char = select! {
+        Token::Ident("int") => false,
+        Token::Ident("char") => true,
+    }
+    .padded_by(ws());
+
+    let tw = *target_widths;
+    let integer_type = signedness
+        .or_not()
+        .then(size_modifier.or_not())
+        .then(int_or_char.or_not())
+        .try_map(move |((sign_opt, size_opt), base_opt), span| {
+            if sign_opt.is_none() && size_opt.is_none() && base_opt.is_none() {
+                return Err(Rich::custom(span, "expected type specifier"));
+            }
+            let signed = sign_opt.unwrap_or(true);
+            let is_char = base_opt == Some(true);
+            let width = if is_char {
+                tw.char_width
+            } else {
+                match size_opt {
+                    Some(0) => tw.short_width,
+                    Some(1) => tw.long_width,
+                    Some(2) => tw.long_long_width,
+                    None | Some(_) => tw.int_width,
+                }
+            };
+            Ok(TypeT::Int { signed, width })
+        });
+
+    let ident = select! { Token::Ident(ident) => ident }
+        .map_with(|ident, e| Rc::<str>::from(ident).with_loc(sift.resolve_source_info(&e.span())))
+        .padded_by(ws());
+
+    let struct_type = select! { Token::Ident("struct") => () }
+        .padded_by(ws())
+        .ignore_then(ident.clone())
+        .map(|name| TypeT::TypeRef(TypeRefKind::Struct(name)));
+
+    let base_type = choice((
+        select! {
+            Token::Ident("_slprop") => TypeT::SLProp,
+            Token::Ident("_specint") => TypeT::SpecInt,
+            Token::Ident("void") => TypeT::Void,
+            Token::Ident("size_t") => TypeT::SizeT,
+        }
+        .padded_by(ws()),
+        select! {
+            Token::Ident("bool") => TypeT::Bool,
+            Token::Ident("_Bool") => TypeT::Bool,
+        }
+        .padded_by(ws()),
+        struct_type,
+        integer_type,
+        ident
+            .clone()
+            .map(|name| TypeT::TypeRef(TypeRefKind::Typedef(name))),
+    ));
+
+    base_type
+        .map_with(|ty, e| ty.with_loc(sift.resolve_source_info(&e.span())))
+        .then(punct(Punct::Star).repeated().collect::<Vec<_>>())
+        .map_with(|(base_ty, stars), e| {
+            let loc = sift.resolve_source_info(&e.span());
+            stars.into_iter().fold(base_ty, |inner, _| {
+                TypeT::Pointer(inner, PointerKind::Unknown).with_loc(loc.clone())
+            })
+        })
+}
 
 fn expr_parser<
     'tokens,
@@ -812,21 +913,39 @@ fn relex_inline_code<'a>(diagnostics: &mut Diagnostics, code: &'a InlineCode) ->
         },
     ) in code.tokens.iter().enumerate()
     {
-        let result = lex_core_token().parse(token);
-        diagnostics
-            .diags
-            .extend(result.errors().map(|err| Diagnostic {
-                loc: loc.location().clone(),
-                level: DiagnosticLevel::Error,
-                msg: format!("{}", err),
-            }));
         if !before.is_empty() {
             tokens.push((Token::Whitespace, (i..i).into()))
         }
-        tokens.push((
-            *result.output().unwrap_or(&Token::Error),
-            (i..(i + 1)).into(),
-        ));
+        // Split tokens starting with '$' (clang merges $ident into one token)
+        if token.starts_with('$') && token.len() > 1 {
+            tokens.push((Token::Punct(Punct::Dollar), (i..i).into()));
+            let rest = &token[1..];
+            let result = lex_core_token().parse(rest);
+            diagnostics
+                .diags
+                .extend(result.errors().map(|err| Diagnostic {
+                    loc: loc.location().clone(),
+                    level: DiagnosticLevel::Error,
+                    msg: format!("{}", err),
+                }));
+            tokens.push((
+                *result.output().unwrap_or(&Token::Error),
+                (i..(i + 1)).into(),
+            ));
+        } else {
+            let result = lex_core_token().parse(token);
+            diagnostics
+                .diags
+                .extend(result.errors().map(|err| Diagnostic {
+                    loc: loc.location().clone(),
+                    level: DiagnosticLevel::Error,
+                    msg: format!("{}", err),
+                }));
+            tokens.push((
+                *result.output().unwrap_or(&Token::Error),
+                (i..(i + 1)).into(),
+            ));
+        }
         source_infos.push(loc.clone());
     }
     // Merge adjacent EqEq + Gt tokens (no whitespace between) into EqEqGt.
@@ -880,6 +999,39 @@ pub fn parse_expr(
     output
 }
 
+fn parse_type_inner(
+    diagnostics: &mut Diagnostics,
+    fallback_loc: &Rc<SourceInfo>,
+    code: &InlineCode,
+    target_widths: &TargetIntWidths,
+) -> Rc<crate::ir::Type> {
+    let RelexedTokens {
+        tokens,
+        source_infos,
+    } = relex_inline_code(diagnostics, code);
+    let source_infos = TokenSI {
+        source_infos,
+        fallback: fallback_loc.clone(),
+    };
+    let result = type_parser(&source_infos, target_widths).parse(IterInput::new(
+        tokens.iter().map(Clone::clone),
+        (tokens.len()..tokens.len()).into(),
+    ));
+    match result.output() {
+        Some(output) => output.clone(),
+        None => {
+            diagnostics
+                .diags
+                .extend(result.errors().map(|err| Diagnostic {
+                    loc: source_infos.resolve_error_location(err.span()),
+                    level: DiagnosticLevel::Error,
+                    msg: format!("{}", err),
+                }));
+            TypeT::Error.with_loc(fallback_loc.clone())
+        }
+    }
+}
+
 pub fn process_inline_pulse(
     fallback_loc: &Rc<SourceInfo>,
     code: &InlineCode,
@@ -899,6 +1051,18 @@ pub fn process_inline_pulse(
         Verbatim(SimpleSpan),
         Antiquot {
             is_lvalue: bool,
+            dollar_span: SimpleSpan,
+            body_span: SimpleSpan,
+        },
+        TypeAntiquot {
+            dollar_span: SimpleSpan,
+            body_span: SimpleSpan,
+        },
+        FieldAntiquot {
+            dollar_span: SimpleSpan,
+            body_span: SimpleSpan,
+        },
+        DeclareAntiquot {
             dollar_span: SimpleSpan,
             body_span: SimpleSpan,
         },
@@ -931,10 +1095,37 @@ pub fn process_inline_pulse(
                 .map(|amp| amp.is_some()),
         )
         .then_ignore(just(Token::Punct(Punct::LParen)))
-        .then(balanced_inner)
+        .then(balanced_inner.clone())
         .then_ignore(just(Token::Punct(Punct::RParen)))
         .map(|((dollar_span, is_lvalue), body_span)| RawToken::Antiquot {
             is_lvalue,
+            dollar_span,
+            body_span,
+        });
+
+    let dollar_keyword = |kw| {
+        just(Token::Punct(Punct::Dollar))
+            .map_with(|_, extra| extra.span())
+            .then_ignore(just(Token::Ident(kw)).padded_by(ws()))
+            .then_ignore(just(Token::Punct(Punct::LParen)))
+            .then(balanced_inner.clone())
+            .then_ignore(just(Token::Punct(Punct::RParen)))
+    };
+
+    let type_antiquot =
+        dollar_keyword("type").map(|(dollar_span, body_span)| RawToken::TypeAntiquot {
+            dollar_span,
+            body_span,
+        });
+
+    let field_antiquot =
+        dollar_keyword("field").map(|(dollar_span, body_span)| RawToken::FieldAntiquot {
+            dollar_span,
+            body_span,
+        });
+
+    let declare_antiquot =
+        dollar_keyword("declare").map(|(dollar_span, body_span)| RawToken::DeclareAntiquot {
             dollar_span,
             body_span,
         });
@@ -943,10 +1134,16 @@ pub fn process_inline_pulse(
         .filter(|t: &Token| *t != Token::Whitespace)
         .map_with(|_, extra| RawToken::Verbatim(extra.span()));
 
-    let inline_pulse_parser = choice((antiquot, verbatim))
-        .padded_by(ws())
-        .repeated()
-        .collect::<Vec<_>>();
+    let inline_pulse_parser = choice((
+        type_antiquot,
+        field_antiquot,
+        declare_antiquot,
+        antiquot,
+        verbatim,
+    ))
+    .padded_by(ws())
+    .repeated()
+    .collect::<Vec<_>>();
 
     let parse_result = inline_pulse_parser.parse(IterInput::new(
         relexed.iter().map(Clone::clone),
@@ -981,6 +1178,99 @@ pub fn process_inline_pulse(
                     InlinePulseToken::LValueAntiquot { before, expr }
                 } else {
                     InlinePulseToken::RValueAntiquot { before, expr }
+                }
+            }
+            RawToken::TypeAntiquot {
+                dollar_span,
+                body_span,
+            } => {
+                let before = code.tokens[dollar_span.start].before;
+                let inner_code = InlineCode {
+                    tokens: code.tokens[body_span.start..body_span.end].to_vec(),
+                };
+                let mut inner_diags = Diagnostics::empty();
+                let ty =
+                    parse_type_inner(&mut inner_diags, fallback_loc, &inner_code, target_widths);
+                InlinePulseToken::TypeAntiquot { before, ty }
+            }
+            RawToken::FieldAntiquot {
+                dollar_span,
+                body_span,
+            } => {
+                let before = code.tokens[dollar_span.start].before;
+                let inner_code = InlineCode {
+                    tokens: code.tokens[body_span.start..body_span.end].to_vec(),
+                };
+                let mut inner_diags = Diagnostics::empty();
+                let RelexedTokens {
+                    tokens: inner_relexed,
+                    source_infos: inner_si,
+                } = relex_inline_code(&mut inner_diags, &inner_code);
+                let inner_sift = TokenSI {
+                    source_infos: inner_si,
+                    fallback: fallback_loc.clone(),
+                };
+                let mk_ident = select! { Token::Ident(ident) => ident }
+                    .map_with(|ident, e| {
+                        Rc::<str>::from(ident).with_loc(inner_sift.resolve_source_info(&e.span()))
+                    })
+                    .padded_by(ws());
+                let field_parser = type_parser(&inner_sift, target_widths)
+                    .then_ignore(just(Token::Punct(Punct::ColonColon)))
+                    .then(mk_ident);
+                let result = field_parser.parse(IterInput::new(
+                    inner_relexed.iter().map(Clone::clone),
+                    (inner_relexed.len()..inner_relexed.len()).into(),
+                ));
+                match result.output() {
+                    Some((ty, f)) => InlinePulseToken::FieldAntiquot {
+                        before,
+                        ty: ty.clone(),
+                        field_name: f.clone(),
+                    },
+                    _ => InlinePulseToken::Verbatim(code.tokens[dollar_span.start].clone()),
+                }
+            }
+            RawToken::DeclareAntiquot {
+                dollar_span,
+                body_span,
+            } => {
+                let before = code.tokens[dollar_span.start].before;
+                let inner_code = InlineCode {
+                    tokens: code.tokens[body_span.start..body_span.end].to_vec(),
+                };
+                // Parse as type followed by identifier
+                let mut inner_diags = Diagnostics::empty();
+                let RelexedTokens {
+                    tokens: inner_relexed,
+                    source_infos: inner_si,
+                } = relex_inline_code(&mut inner_diags, &inner_code);
+                let inner_sift = TokenSI {
+                    source_infos: inner_si,
+                    fallback: fallback_loc.clone(),
+                };
+                let decl_parser = type_parser(&inner_sift, target_widths).then(
+                    select! { Token::Ident(ident) => ident }
+                        .map_with(|ident, e| {
+                            Rc::<str>::from(ident)
+                                .with_loc(inner_sift.resolve_source_info(&e.span()))
+                        })
+                        .padded_by(ws()),
+                );
+                let result = decl_parser.parse(IterInput::new(
+                    inner_relexed.iter().map(Clone::clone),
+                    (inner_relexed.len()..inner_relexed.len()).into(),
+                ));
+                match result.output() {
+                    Some((ty, ident)) => InlinePulseToken::Declare {
+                        ident: ident.clone(),
+                        ty: ty.clone(),
+                    },
+                    None => {
+                        // Fallback: emit nothing
+                        let _ = before;
+                        InlinePulseToken::Verbatim(code.tokens[dollar_span.start].clone())
+                    }
                 }
             }
         })

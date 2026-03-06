@@ -389,13 +389,56 @@ impl<'a> Emitter<'a> {
     ) {
         for tok in &mut val.tokens {
             match tok {
-                InlinePulseToken::Verbatim(_) => {}
+                InlinePulseToken::Verbatim(_)
+                | InlinePulseToken::TypeAntiquot { .. }
+                | InlinePulseToken::FieldAntiquot { .. }
+                | InlinePulseToken::Declare { .. } => {}
                 InlinePulseToken::RValueAntiquot { expr, .. }
                 | InlinePulseToken::LValueAntiquot { expr, .. } => {
                     self.subst_this_rvalue(env, Rc::make_mut(expr), this);
                 }
             }
         }
+    }
+
+    fn emit_inline_pulse_tokens(&mut self, env: &mut Env, code: &InlinePulseCode) -> Doc {
+        Doc::concat(code.tokens.iter().map(|tok| match tok {
+            InlinePulseToken::Verbatim(ct) => {
+                Doc::text(ct.before).append(annotated(&ct.text, Doc::text(ct.text.val.to_string())))
+            }
+            InlinePulseToken::RValueAntiquot { before, expr } => {
+                Doc::text(*before).append(self.emit_rvalue(env, expr))
+            }
+            InlinePulseToken::LValueAntiquot { before, expr } => {
+                Doc::text(*before).append(self.emit_expr(env, expr).into_doc())
+            }
+            InlinePulseToken::TypeAntiquot { before, ty } => {
+                Doc::text(*before).append(self.emit_type(env, ty))
+            }
+            InlinePulseToken::FieldAntiquot {
+                before,
+                ty,
+                field_name,
+            } => {
+                let resolved = env.vtype_whnf(ty.clone().into());
+                match &resolved.val {
+                    TypeT::TypeRef(TypeRefKind::Struct(struct_name)) => {
+                        Doc::text(*before).append(self.nm.emit(Name::StructDirectFieldName(
+                            struct_name.val.clone(),
+                            field_name.val.clone(),
+                        )))
+                    }
+                    _ => {
+                        self.report(format!("$field: expected struct type, got {}", ty), &ty.loc);
+                        Doc::text(*before).append("(* $field: not a struct type *)")
+                    }
+                }
+            }
+            InlinePulseToken::Declare { ident, ty } => {
+                env.push_var_decl(ident, ty.clone(), LocalDeclKind::RValue);
+                Doc::nil()
+            }
+        }))
     }
 
     fn emit_type_slprop(
@@ -908,18 +951,10 @@ impl<'a> Emitter<'a> {
                     }
                 }
                 ExprT::Error(_ty) => Doc::text("(admit())"),
-                ExprT::InlinePulse(val, _) => parens(Doc::concat(val.tokens.iter().map(|tok| {
-                    match tok {
-                        InlinePulseToken::Verbatim(ct) => Doc::text(ct.before)
-                            .append(annotated(&ct.text, Doc::text(ct.text.val.to_string()))),
-                        InlinePulseToken::RValueAntiquot { before, expr } => {
-                            Doc::text(*before).append(self.emit_rvalue(env, expr))
-                        }
-                        InlinePulseToken::LValueAntiquot { before, expr } => {
-                            Doc::text(*before).append(self.emit_expr(env, expr).into_doc())
-                        }
-                    }
-                }))),
+                ExprT::InlinePulse(val, _) => {
+                    let env = &mut env.clone();
+                    parens(self.emit_inline_pulse_tokens(env, val))
+                }
                 ExprT::BinOp(BinOp::LogAnd, lhs, rhs) => {
                     if let Ok(ty) = env.infer_expr(lhs) {
                         if ty.val == TypeT::SLProp {
@@ -1199,19 +1234,10 @@ impl<'a> Emitter<'a> {
                     .append(";")
                     .group()
                     .nest(2),
-                StmtT::GhostStmt(code) => Doc::concat(code.tokens.iter().map(|tok| {
-                    match tok {
-                        InlinePulseToken::Verbatim(ct) => Doc::text(ct.before)
-                            .append(annotated(&ct.text, Doc::text(ct.text.val.to_string()))),
-                        InlinePulseToken::RValueAntiquot { before, expr } => {
-                            Doc::text(*before).append(self.emit_rvalue(env, expr))
-                        }
-                        InlinePulseToken::LValueAntiquot { before, expr } => {
-                            Doc::text(*before).append(self.emit_expr(env, expr).into_doc())
-                        }
-                    }
-                }))
-                .append(";"),
+                StmtT::GhostStmt(code) => {
+                    let env = &mut env.clone();
+                    self.emit_inline_pulse_tokens(env, code).append(";")
+                }
                 StmtT::Goto(label) => Doc::text("goto ")
                     .append(self.nm.emit(Name::Var(label.val.clone())))
                     .append(";"),
@@ -1769,12 +1795,6 @@ impl<'a> Emitter<'a> {
     }
 } // impl Emitter (group E)
 
-fn emit_inline_code(code: &InlineCode) -> Doc {
-    Doc::concat(code.tokens.iter().map(|tok| {
-        Doc::text(tok.before).append(annotated(&tok.text, Doc::text(tok.text.val.to_string())))
-    }))
-}
-
 /// Append remaining statements to a block (for if/else continuation in pure functions).
 fn append_rest(block_stmts: &[Rc<Stmt>], rest: &[Rc<Stmt>]) -> Vec<Rc<Stmt>> {
     block_stmts.iter().chain(rest.iter()).cloned().collect()
@@ -2064,7 +2084,10 @@ impl<'a> Emitter<'a> {
                 DeclT::FnDecl(fn_decl) => self.emit_fn_decl(&mut env.clone(), fn_decl),
                 DeclT::Typedef(typedef) => self.emit_typedef(env, typedef),
                 DeclT::StructDefn(struct_defn) => self.emit_structdefn(env, struct_defn),
-                DeclT::IncludeDecl(include_decl) => emit_inline_code(&include_decl.code),
+                DeclT::IncludeDecl(include_decl) => {
+                    let env = &mut env.clone();
+                    self.emit_inline_pulse_tokens(env, &include_decl.code)
+                }
                 DeclT::GlobalVar(gv) => self.emit_global_var(env, gv),
             }
         })

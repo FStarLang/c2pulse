@@ -346,17 +346,6 @@ pub struct InlineCode {
     pub tokens: Vec<CodeToken>,
 }
 
-impl InlineCode {
-    pub fn to_string(&self) -> String {
-        let mut result = String::new();
-        for tok in &self.tokens {
-            result.push_str(tok.before);
-            result.push_str(&*tok.text.val);
-        }
-        result
-    }
-}
-
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum InlinePulseToken {
     Verbatim(CodeToken),
@@ -368,6 +357,19 @@ pub enum InlinePulseToken {
         before: &'static str,
         expr: Rc<Expr>,
     },
+    TypeAntiquot {
+        before: &'static str,
+        ty: Rc<Type>,
+    },
+    FieldAntiquot {
+        before: &'static str,
+        ty: Rc<Type>,
+        field_name: Rc<Ident>,
+    },
+    Declare {
+        ident: Rc<Ident>,
+        ty: Rc<Type>,
+    },
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
@@ -377,7 +379,7 @@ pub struct InlinePulseCode {
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct IncludeDecl {
-    pub code: InlineCode,
+    pub code: InlinePulseCode,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]

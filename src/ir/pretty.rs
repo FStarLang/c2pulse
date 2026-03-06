@@ -15,6 +15,25 @@ fn inline_pulse_code_to_doc<'a>(code: &'a InlinePulseCode) -> RcDoc<'a, ()> {
                 .append("$&(")
                 .append(expr.to_doc())
                 .append(")"),
+            InlinePulseToken::TypeAntiquot { before, ty } => RcDoc::text(*before)
+                .append("$type(")
+                .append(ty.to_doc())
+                .append(")"),
+            InlinePulseToken::FieldAntiquot {
+                before,
+                ty,
+                field_name,
+            } => RcDoc::text(*before)
+                .append("$field(")
+                .append(ty.to_doc())
+                .append("::")
+                .append(field_name.to_doc())
+                .append(")"),
+            InlinePulseToken::Declare { ident, ty } => RcDoc::text("$declare(")
+                .append(ty.to_doc())
+                .append(" ")
+                .append(ident.to_doc())
+                .append(")"),
         }
     }))
 }
@@ -457,7 +476,7 @@ impl PrettyIR for IncludeDecl {
     fn to_doc(&self) -> RcDoc<'_, ()> {
         RcDoc::text("_include_pulse(")
             .append(RcDoc::hardline())
-            .append(self.code.to_string())
+            .append(inline_pulse_code_to_doc(&self.code))
             .group()
             .nest(2)
             .append(RcDoc::hardline())
