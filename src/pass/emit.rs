@@ -159,6 +159,7 @@ impl From<&TypeRefKind> for TypeRef {
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 enum Name {
     Var(Rc<IdentT>),
+    Val(Rc<IdentT>, u32),
     Fn(Rc<IdentT>),
     TypeRef(TypeRef),
     TypeRefPred(TypeRef),
@@ -184,6 +185,10 @@ impl Name {
                     "this" | "return" => v.into(),
                     _ => format!("var_{}", v),
                 }
+            }
+            Name::Val(v, idx) => {
+                let v: &str = v;
+                format!("val_{}_{}", v, idx)
             }
             Name::Fn(v) => format!("func_{}", v),
             Name::TypeRef(TypeRef::Struct(str)) => format!("struct_{}", str),
@@ -270,7 +275,6 @@ impl NameMangling {
 }
 
 struct ExBinding {
-    name_str: String,
     name: Doc,
     ty: Doc,
 }
@@ -291,42 +295,12 @@ impl<'a> Emitter<'a> {
     }
 }
 
-fn extract_base_name(this: &Rc<Expr>) -> String {
+fn extract_base_ident(this: &Rc<Expr>) -> Rc<IdentT> {
     match &this.val {
-        ExprT::Var(x) => {
-            let s: &str = &x.val;
-            s.to_string()
-        }
-        ExprT::Deref(inner) => extract_base_name(inner),
-        ExprT::Member(_, field) => {
-            let s: &str = &field.val;
-            s.to_string()
-        }
-        _ => "v".to_string(),
-    }
-}
-
-fn mk_val_name(bindings: &[ExBinding], this: &Rc<Expr>) -> ExBinding {
-    let base = extract_base_name(this);
-    let candidate = format!("val_{}", base);
-    if !bindings.iter().any(|b| b.name_str == candidate) {
-        ExBinding {
-            name_str: candidate.clone(),
-            name: Doc::text(candidate),
-            ty: Doc::nil(),
-        }
-    } else {
-        for i in 1.. {
-            let candidate = format!("val_{}_{}", base, i);
-            if !bindings.iter().any(|b| b.name_str == candidate) {
-                return ExBinding {
-                    name_str: candidate.clone(),
-                    name: Doc::text(candidate),
-                    ty: Doc::nil(),
-                };
-            }
-        }
-        unreachable!()
+        ExprT::Var(x) => x.val.clone(),
+        ExprT::Deref(inner) => extract_base_ident(inner),
+        ExprT::Member(_, field) => field.val.clone(),
+        _ => Rc::from("v"),
     }
 }
 
@@ -518,9 +492,10 @@ impl<'a> Emitter<'a> {
             | TypeT::SpecInt
             | TypeT::SLProp => {}
             TypeT::Pointer(pointee_ty, kind) => {
-                let mut binding = mk_val_name(bindings, this);
+                let idx = bindings.len() as u32;
+                let val_name = self.nm.emit(Name::Val(extract_base_ident(this), idx));
                 let pointee_type_doc = self.emit_type(env, pointee_ty);
-                binding.ty = match kind {
+                let val_ty = match kind {
                     PointerKind::Array => unaryfn(Doc::text("Seq.seq"), pointee_type_doc),
                     _ => pointee_type_doc,
                 };
@@ -529,11 +504,14 @@ impl<'a> Emitter<'a> {
                     naryfn([
                         Doc::text("pts_to"),
                         self.emit_rvalue(env, this),
-                        binding.name.clone(),
+                        val_name.clone(),
                     ]),
                 );
                 props.push(pts_to);
-                bindings.push(binding);
+                bindings.push(ExBinding {
+                    name: val_name,
+                    ty: val_ty,
+                });
 
                 match kind {
                     PointerKind::Ref => {
@@ -552,10 +530,13 @@ impl<'a> Emitter<'a> {
                     .unwrap_or_default();
                 let mut val_args: Vec<Doc> = vec![];
                 for vp_type in &val_param_types {
-                    let mut binding = mk_val_name(bindings, this);
-                    binding.ty = vp_type.clone();
-                    val_args.push(binding.name.clone());
-                    bindings.push(binding);
+                    let idx = bindings.len() as u32;
+                    let val_name = self.nm.emit(Name::Val(extract_base_ident(this), idx));
+                    val_args.push(val_name.clone());
+                    bindings.push(ExBinding {
+                        name: val_name,
+                        ty: vp_type.clone(),
+                    });
                 }
                 let pred = self.nm.emit(Name::TypeRefPred(n.into()));
                 let args: Vec<Doc> = std::iter::once(pred)
@@ -2212,7 +2193,7 @@ pub fn emit(
     };
     let mut output: Vec<Doc> = vec![];
     output.push(Doc::text(format!(
-        "module {}\nopen Pulse\nopen Pulse.Lib.C\nopen Pulse.Class.PtsTo\n#lang-pulse",
+        "module {}\nopen Pulse\nopen Pulse.Lib.C\n#lang-pulse",
         module_name
     )));
     for decl in &tu.decls {
