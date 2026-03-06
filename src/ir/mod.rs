@@ -346,17 +346,6 @@ pub struct InlineCode {
     pub tokens: Vec<CodeToken>,
 }
 
-impl InlineCode {
-    pub fn to_string(&self) -> String {
-        let mut result = String::new();
-        for tok in &self.tokens {
-            result.push_str(tok.before);
-            result.push_str(&*tok.text.val);
-        }
-        result
-    }
-}
-
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum InlinePulseToken {
     Verbatim(CodeToken),
