@@ -14,3 +14,11 @@ fn alloc_array u#a (#a:Type u#a) (sz:SizeT.t)
 fn free_array u#a (#a:Type u#a) (r:array a)
   requires A.pts_to_uninit_post r
   requires freeable_array r
+
+fn update_arr_with (#a:Type0) (arr: array a) (idx: SizeT.t) (f: (a -> a))
+  requires live arr
+  requires with_pure (SizeT.v idx < Seq.length (value_of arr))
+  returns _r : unit
+  ensures live arr
+  ensures with_pure (Seq.length (value_of arr) = old (Seq.length (value_of arr)))
+  ensures with_pure (Seq.index (value_of arr) (SizeT.v idx) == f (old (Seq.index (value_of arr) (SizeT.v idx))))
