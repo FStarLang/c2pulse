@@ -36,3 +36,15 @@ uint32_t test_shr(uint32_t a, uint32_t b)
 {
     return a >> b;
 }
+
+uint64_t test_shl64(uint64_t a, uint32_t b)
+    _requires(b < 64u)
+{
+    return a << b;
+}
+
+uint64_t test_shr64(uint64_t a, uint32_t b)
+    _requires(b < 64u)
+{
+    return a >> b;
+}
