@@ -21,11 +21,11 @@ fn inline_pulse_code_to_doc<'a>(code: &'a InlinePulseCode) -> RcDoc<'a, ()> {
                 .append(")"),
             InlinePulseToken::FieldAntiquot {
                 before,
-                struct_name,
+                ty,
                 field_name,
             } => RcDoc::text(*before)
                 .append("$field(")
-                .append(struct_name.to_doc())
+                .append(ty.to_doc())
                 .append("::")
                 .append(field_name.to_doc())
                 .append(")"),

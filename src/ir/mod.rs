@@ -363,7 +363,7 @@ pub enum InlinePulseToken {
     },
     FieldAntiquot {
         before: &'static str,
-        struct_name: Rc<Ident>,
+        ty: Rc<Type>,
         field_name: Rc<Ident>,
     },
     Declare {

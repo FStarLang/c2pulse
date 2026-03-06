@@ -417,12 +417,23 @@ impl<'a> Emitter<'a> {
             }
             InlinePulseToken::FieldAntiquot {
                 before,
-                struct_name,
+                ty,
                 field_name,
-            } => Doc::text(*before).append(self.nm.emit(Name::StructDirectFieldName(
-                struct_name.val.clone(),
-                field_name.val.clone(),
-            ))),
+            } => {
+                let resolved = env.vtype_whnf(ty.clone().into());
+                match &resolved.val {
+                    TypeT::TypeRef(TypeRefKind::Struct(struct_name)) => {
+                        Doc::text(*before).append(self.nm.emit(Name::StructDirectFieldName(
+                            struct_name.val.clone(),
+                            field_name.val.clone(),
+                        )))
+                    }
+                    _ => {
+                        self.report(format!("$field: expected struct type, got {}", ty), &ty.loc);
+                        Doc::text(*before).append("(* $field: not a struct type *)")
+                    }
+                }
+            }
             InlinePulseToken::Declare { ident, ty } => {
                 env.push_var_decl(ident, ty.clone(), LocalDeclKind::RValue);
                 Doc::nil()

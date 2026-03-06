@@ -409,6 +409,9 @@ fn type_parser<
         .padded_by(ws()),
         struct_type,
         integer_type,
+        ident
+            .clone()
+            .map(|name| TypeT::TypeRef(TypeRefKind::Typedef(name))),
     ));
 
     base_type
@@ -1212,8 +1215,7 @@ pub fn process_inline_pulse(
                         Rc::<str>::from(ident).with_loc(inner_sift.resolve_source_info(&e.span()))
                     })
                     .padded_by(ws());
-                let field_parser = mk_ident
-                    .clone()
+                let field_parser = type_parser(&inner_sift, target_widths)
                     .then_ignore(just(Token::Punct(Punct::ColonColon)))
                     .then(mk_ident);
                 let result = field_parser.parse(IterInput::new(
@@ -1221,9 +1223,9 @@ pub fn process_inline_pulse(
                     (inner_relexed.len()..inner_relexed.len()).into(),
                 ));
                 match result.output() {
-                    Some((s, f)) => InlinePulseToken::FieldAntiquot {
+                    Some((ty, f)) => InlinePulseToken::FieldAntiquot {
                         before,
-                        struct_name: s.clone(),
+                        ty: ty.clone(),
                         field_name: f.clone(),
                     },
                     _ => InlinePulseToken::Verbatim(code.tokens[dollar_span.start].clone()),
