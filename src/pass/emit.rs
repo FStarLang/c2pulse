@@ -269,9 +269,16 @@ impl NameMangling {
     }
 }
 
+struct ExBinding {
+    name_str: String,
+    name: Doc,
+    ty: Doc,
+}
+
 struct Emitter<'a> {
     nm: NameMangling,
     diags: &'a mut Diagnostics,
+    type_val_params: HashMap<TypeRef, Vec<Doc>>,
 }
 
 impl<'a> Emitter<'a> {
@@ -282,6 +289,67 @@ impl<'a> Emitter<'a> {
             msg,
         });
     }
+}
+
+fn extract_base_name(this: &Rc<Expr>) -> String {
+    match &this.val {
+        ExprT::Var(x) => {
+            let s: &str = &x.val;
+            s.to_string()
+        }
+        ExprT::Deref(inner) => extract_base_name(inner),
+        ExprT::Member(_, field) => {
+            let s: &str = &field.val;
+            s.to_string()
+        }
+        _ => "v".to_string(),
+    }
+}
+
+fn mk_val_name(bindings: &[ExBinding], this: &Rc<Expr>) -> ExBinding {
+    let base = extract_base_name(this);
+    let candidate = format!("val_{}", base);
+    if !bindings.iter().any(|b| b.name_str == candidate) {
+        ExBinding {
+            name_str: candidate.clone(),
+            name: Doc::text(candidate),
+            ty: Doc::nil(),
+        }
+    } else {
+        for i in 1.. {
+            let candidate = format!("val_{}_{}", base, i);
+            if !bindings.iter().any(|b| b.name_str == candidate) {
+                return ExBinding {
+                    name_str: candidate.clone(),
+                    name: Doc::text(candidate),
+                    ty: Doc::nil(),
+                };
+            }
+        }
+        unreachable!()
+    }
+}
+
+fn wrap_exists(bindings: &[ExBinding], props: Vec<Doc>) -> Doc {
+    let star = mk_star(props);
+    if bindings.is_empty() {
+        return star;
+    }
+    let binding_docs = Doc::concat(bindings.iter().map(|b| {
+        Doc::line().append(parens(
+            b.name
+                .clone()
+                .append(":")
+                .append(Doc::line())
+                .append(b.ty.clone()),
+        ))
+    }));
+    Doc::text("exists*")
+        .append(binding_docs)
+        .append(Doc::text("."))
+        .group()
+        .append(Doc::line())
+        .append(star)
 }
 
 impl<'a> Emitter<'a> {
@@ -434,7 +502,14 @@ impl<'a> Emitter<'a> {
         }))
     }
 
-    fn emit_type_slprop(&mut self, env: &Env, ty: &Type, props: &mut Vec<Doc>, this: &Rc<Expr>) {
+    fn emit_type_slprop(
+        &mut self,
+        env: &Env,
+        ty: &Type,
+        bindings: &mut Vec<ExBinding>,
+        props: &mut Vec<Doc>,
+        this: &Rc<Expr>,
+    ) {
         match &ty.val {
             TypeT::Void
             | TypeT::Bool
@@ -443,23 +518,54 @@ impl<'a> Emitter<'a> {
             | TypeT::SpecInt
             | TypeT::SLProp => {}
             TypeT::Pointer(pointee_ty, kind) => {
-                let live = annotated(ty, unaryfn(Doc::text("live"), self.emit_rvalue(env, this)));
-                props.push(live);
+                let mut binding = mk_val_name(bindings, this);
+                let pointee_type_doc = self.emit_type(env, pointee_ty);
+                binding.ty = match kind {
+                    PointerKind::Array => unaryfn(Doc::text("Seq.seq"), pointee_type_doc),
+                    _ => pointee_type_doc,
+                };
+                let pts_to = annotated(
+                    ty,
+                    naryfn([
+                        Doc::text("pts_to"),
+                        self.emit_rvalue(env, this),
+                        binding.name.clone(),
+                    ]),
+                );
+                props.push(pts_to);
+                bindings.push(binding);
 
                 match kind {
                     PointerKind::Ref => {
                         let derefed = ExprT::Deref(this.clone()).with_loc(this.loc.clone());
-                        self.emit_type_slprop(env, pointee_ty, props, &derefed);
+                        self.emit_type_slprop(env, pointee_ty, bindings, props, &derefed);
                     }
-                    _ => {} // TODO
+                    _ => {}
                 }
             }
             TypeT::TypeRef(n) => {
-                let this = self.emit_rvalue(env, this);
-                props.push(unaryfn(self.nm.emit(Name::TypeRefPred(n.into())), this));
+                let this_doc = self.emit_rvalue(env, this);
+                let val_param_types = self
+                    .type_val_params
+                    .get(&TypeRef::from(n))
+                    .cloned()
+                    .unwrap_or_default();
+                let mut val_args: Vec<Doc> = vec![];
+                for vp_type in &val_param_types {
+                    let mut binding = mk_val_name(bindings, this);
+                    binding.ty = vp_type.clone();
+                    val_args.push(binding.name.clone());
+                    bindings.push(binding);
+                }
+                let pred = self.nm.emit(Name::TypeRefPred(n.into()));
+                let args: Vec<Doc> = std::iter::once(pred)
+                    .chain(std::iter::once(this_doc))
+                    .chain(val_args)
+                    .collect();
+                props.push(naryfn(args));
             }
             TypeT::Refine(ty, p) => {
-                self.emit_type_slprop(env, ty, props, this);
+                self.emit_type_slprop(env, ty, bindings, props, this);
 
                 let p = &mut p.clone();
                 self.subst_this_rvalue(env, Rc::make_mut(p), this);
@@ -1329,12 +1435,26 @@ impl<'a> Emitter<'a> {
             .push_this(TypeT::TypeRef(k.clone()).with_loc(name.loc.clone()))
             .with_loc(name.loc.clone());
         let this_doc = self.nm.emit(Name::Var(this.val.clone()));
-        let this_args = vec![parens(this_doc.append(":").append(Doc::line()).append(t))];
+        let mut all_args = vec![parens(this_doc.append(":").append(Doc::line()).append(t))];
+        let mut bindings = vec![];
         let mut props = vec![];
-        self.emit_type_slprop(env, body, &mut props, &mk_rvar(&this));
+        self.emit_type_slprop(env, body, &mut bindings, &mut props, &mk_rvar(&this));
+        self.type_val_params.insert(
+            TypeRef::from(k),
+            bindings.iter().map(|b| b.ty.clone()).collect(),
+        );
+        for b in &bindings {
+            all_args.push(parens(
+                b.name
+                    .clone()
+                    .append(":")
+                    .append(Doc::line())
+                    .append(b.ty.clone()),
+            ));
+        }
         let pred_decl = mk_eager_unfold_slprop(
             self.nm.emit(Name::TypeRefPred(k.into())),
-            &this_args,
+            &all_args,
             mk_star(props),
         );
         Doc::intersperse(vec![ty_decl, pred_decl], Doc::line())
@@ -1423,22 +1543,36 @@ impl<'a> Emitter<'a> {
         let this = env
             .push_this(TypeT::TypeRef(k.clone()).with_loc(name.loc.clone()))
             .with_loc(name.loc.clone());
-        let this_args = vec![parens(
+        let mut all_args = vec![parens(
             Doc::text("[@@@mkey] ")
                 .append(self.nm.emit(Name::Var(this.val.clone())))
                 .append(":")
                 .append(Doc::line())
                 .append(struct_type_name.clone()),
         )];
+        let mut bindings = vec![];
         let mut props = vec![];
         for (fld, fld_ty) in fields {
             let field_expr =
                 ExprT::Member(mk_rvar(&this), fld.clone().into()).with_loc(fld.loc.clone());
-            self.emit_type_slprop(env, fld_ty, &mut props, &field_expr);
+            self.emit_type_slprop(env, fld_ty, &mut bindings, &mut props, &field_expr);
+        }
+        self.type_val_params.insert(
+            TypeRef::from(k),
+            bindings.iter().map(|b| b.ty.clone()).collect(),
+        );
+        for b in &bindings {
+            all_args.push(parens(
+                b.name
+                    .clone()
+                    .append(":")
+                    .append(Doc::line())
+                    .append(b.ty.clone()),
+            ));
         }
         ses.push(mk_eager_unfold_slprop(
             pts_to_name.clone(),
-            &this_args,
+            &all_args,
             mk_star(props),
         ));
 
@@ -1680,15 +1814,25 @@ impl<'a> Emitter<'a> {
             ));
 
             env.push_arg(arg, LocalDeclKind::RValue);
+            let mut type_bindings = vec![];
             let mut type_props = vec![];
-            self.emit_type_slprop(env, &arg.ty, &mut type_props, &mk_rvar(&n));
-            match arg.mode {
-                ParamMode::Regular => {
-                    requires_props.extend(type_props.iter().cloned());
-                    ensures_props.extend(type_props);
-                }
-                ParamMode::Consumed => {
-                    requires_props.extend(type_props);
+            self.emit_type_slprop(
+                env,
+                &arg.ty,
+                &mut type_bindings,
+                &mut type_props,
+                &mk_rvar(&n),
+            );
+            if !type_props.is_empty() {
+                let wrapped = wrap_exists(&type_bindings, type_props);
+                match arg.mode {
+                    ParamMode::Regular => {
+                        requires_props.push(wrapped.clone());
+                        ensures_props.push(wrapped);
+                    }
+                    ParamMode::Consumed => {
+                        requires_props.push(wrapped);
+                    }
                 }
             }
         }
@@ -1702,9 +1846,18 @@ impl<'a> Emitter<'a> {
         let return_id = env
             .push_return(ret_type.clone())
             .with_loc(ret_type.loc.clone());
+        let mut ret_bindings = vec![];
         let mut ret_props = vec![];
-        self.emit_type_slprop(env, &ret_type, &mut ret_props, &mk_rvar(&return_id));
-        ensures_props.extend(ret_props);
+        self.emit_type_slprop(
+            env,
+            &ret_type,
+            &mut ret_bindings,
+            &mut ret_props,
+            &mk_rvar(&return_id),
+        );
+        if !ret_props.is_empty() {
+            ensures_props.push(wrap_exists(&ret_bindings, ret_props));
+        }
         let ret_type_doc = self.emit_type(env, ret_type);
 
         ensures_props.extend(ensures.iter().map(|r| self.emit_rvalue(env, r)));
@@ -2055,10 +2208,11 @@ pub fn emit(
     let emitter = &mut Emitter {
         nm: NameMangling::new(),
         diags,
+        type_val_params: HashMap::new(),
     };
     let mut output: Vec<Doc> = vec![];
     output.push(Doc::text(format!(
-        "module {}\nopen Pulse\nopen Pulse.Lib.C\n#lang-pulse",
+        "module {}\nopen Pulse\nopen Pulse.Lib.C\nopen Pulse.Class.PtsTo\n#lang-pulse",
         module_name
     )));
     for decl in &tu.decls {
