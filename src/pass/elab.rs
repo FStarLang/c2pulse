@@ -192,7 +192,11 @@ impl<'a> Elaborator<'a> {
                         | InlinePulseToken::LValueAntiquot { expr, .. } => {
                             self.elab_rvalue(env, Rc::make_mut(expr))
                         }
-                        InlinePulseToken::Verbatim(_) => {}
+                        InlinePulseToken::TypeAntiquot { ty, .. }
+                        | InlinePulseToken::Declare { ty, .. } => {
+                            self.elab_type(env, Rc::make_mut(ty))
+                        }
+                        InlinePulseToken::Verbatim(_) | InlinePulseToken::FieldAntiquot { .. } => {}
                     }
                 }
             }
@@ -354,7 +358,11 @@ impl<'a> Elaborator<'a> {
                         | InlinePulseToken::LValueAntiquot { expr, .. } => {
                             self.elab_rvalue(env, Rc::make_mut(expr))
                         }
-                        InlinePulseToken::Verbatim(_) => {}
+                        InlinePulseToken::TypeAntiquot { ty, .. }
+                        | InlinePulseToken::Declare { ty, .. } => {
+                            self.elab_type(env, Rc::make_mut(ty))
+                        }
+                        InlinePulseToken::Verbatim(_) | InlinePulseToken::FieldAntiquot { .. } => {}
                     }
                 }
             }

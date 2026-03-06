@@ -129,7 +129,9 @@ fn scan_expr(deps: &mut HashSet<DeclName>, rv: &Expr) {
                 match tok {
                     InlinePulseToken::RValueAntiquot { expr, .. }
                     | InlinePulseToken::LValueAntiquot { expr, .. } => scan_expr(deps, expr),
-                    InlinePulseToken::Verbatim(_) => {}
+                    InlinePulseToken::TypeAntiquot { ty, .. }
+                    | InlinePulseToken::Declare { ty, .. } => scan_type(deps, ty),
+                    InlinePulseToken::Verbatim(_) | InlinePulseToken::FieldAntiquot { .. } => {}
                 }
             }
         }
@@ -202,7 +204,9 @@ fn scan_stmt(deps: &mut HashSet<DeclName>, stmt: &Stmt) {
                 match tok {
                     InlinePulseToken::RValueAntiquot { expr, .. }
                     | InlinePulseToken::LValueAntiquot { expr, .. } => scan_expr(deps, expr),
-                    InlinePulseToken::Verbatim(_) => {}
+                    InlinePulseToken::TypeAntiquot { ty, .. }
+                    | InlinePulseToken::Declare { ty, .. } => scan_type(deps, ty),
+                    InlinePulseToken::Verbatim(_) | InlinePulseToken::FieldAntiquot { .. } => {}
                 }
             }
         }

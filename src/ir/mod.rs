@@ -368,6 +368,19 @@ pub enum InlinePulseToken {
         before: &'static str,
         expr: Rc<Expr>,
     },
+    TypeAntiquot {
+        before: &'static str,
+        ty: Rc<Type>,
+    },
+    FieldAntiquot {
+        before: &'static str,
+        struct_name: Rc<Ident>,
+        field_name: Rc<Ident>,
+    },
+    Declare {
+        ident: Rc<Ident>,
+        ty: Rc<Type>,
+    },
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
@@ -377,7 +390,7 @@ pub struct InlinePulseCode {
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct IncludeDecl {
-    pub code: InlineCode,
+    pub code: InlinePulseCode,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]

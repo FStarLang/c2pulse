@@ -299,7 +299,9 @@ impl<'a> Checker<'a> {
                         | InlinePulseToken::LValueAntiquot { expr, .. } => {
                             self.check_rvalue(env, expr)
                         }
-                        InlinePulseToken::Verbatim(_) => {}
+                        InlinePulseToken::TypeAntiquot { ty, .. }
+                        | InlinePulseToken::Declare { ty, .. } => self.check_type(env, ty),
+                        InlinePulseToken::Verbatim(_) | InlinePulseToken::FieldAntiquot { .. } => {}
                     }
                 }
             }
@@ -460,7 +462,9 @@ impl<'a> Checker<'a> {
                         | InlinePulseToken::LValueAntiquot { expr, .. } => {
                             self.check_rvalue(env, expr)
                         }
-                        InlinePulseToken::Verbatim(_) => {}
+                        InlinePulseToken::TypeAntiquot { ty, .. }
+                        | InlinePulseToken::Declare { ty, .. } => self.check_type(env, ty),
+                        InlinePulseToken::Verbatim(_) | InlinePulseToken::FieldAntiquot { .. } => {}
                     }
                 }
             }
