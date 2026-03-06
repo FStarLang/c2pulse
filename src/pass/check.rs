@@ -280,16 +280,15 @@ impl<'a> Checker<'a> {
                         | BinOp::BitOr
                         | BinOp::BitXor => check_eq(self),
                         BinOp::Shl | BinOp::Shr => {
-                            let u32_ty: MaybeRc<Type> =
-                                TypeT::Int { signed: false, width: 32 }
-                                    .with_loc(rhs.loc.clone())
-                                    .into();
+                            let u32_ty: MaybeRc<Type> = TypeT::Int {
+                                signed: false,
+                                width: 32,
+                            }
+                            .with_loc(rhs.loc.clone())
+                            .into();
                             if !env.vtype_eq(rhs_ty.clone().into(), u32_ty) {
                                 self.report(
-                                    format!(
-                                        "shift amount must be uint32_t, not {}",
-                                        rhs_ty
-                                    ),
+                                    format!("shift amount must be uint32_t, not {}", rhs_ty),
                                     &rval.loc,
                                 )
                             }

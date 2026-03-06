@@ -266,10 +266,12 @@ impl<'a> Elaborator<'a> {
                         }
                     }
                     BinOp::Shl | BinOp::Shr => {
-                        let u32_ty: MaybeRc<Type> =
-                            TypeT::Int { signed: false, width: 32 }
-                                .with_loc(rhs.loc.clone())
-                                .into();
+                        let u32_ty: MaybeRc<Type> = TypeT::Int {
+                            signed: false,
+                            width: 32,
+                        }
+                        .with_loc(rhs.loc.clone())
+                        .into();
                         if !env.vtype_eq(rhs_ty, u32_ty.clone()) {
                             cast_to(rhs, u32_ty.to_rc())
                         }
