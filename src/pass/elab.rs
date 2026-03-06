@@ -247,9 +247,7 @@ impl<'a> Elaborator<'a> {
                     | BinOp::Implies
                     | BinOp::BitAnd
                     | BinOp::BitOr
-                    | BinOp::BitXor
-                    | BinOp::Shl
-                    | BinOp::Shr => {
+                    | BinOp::BitXor => {
                         if let Some(meet_type) = env.meet_type(lhs_ty.clone(), rhs_ty.clone()) {
                             if !env.vtype_eq(lhs_ty, meet_type.clone()) {
                                 cast_to(lhs, meet_type.clone().to_rc())
@@ -265,6 +263,17 @@ impl<'a> Elaborator<'a> {
                                 ),
                                 &rval.loc,
                             );
+                        }
+                    }
+                    BinOp::Shl | BinOp::Shr => {
+                        let u32_ty: MaybeRc<Type> = TypeT::Int {
+                            signed: false,
+                            width: 32,
+                        }
+                        .with_loc(rhs.loc.clone())
+                        .into();
+                        if !env.vtype_eq(rhs_ty, u32_ty.clone()) {
+                            cast_to(rhs, u32_ty.to_rc())
                         }
                     }
                 }
