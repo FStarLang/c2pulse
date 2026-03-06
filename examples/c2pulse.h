@@ -1,3 +1,5 @@
+#pragma once
+
 #ifdef C2PULSE
 
 #define __c2pulse_concat_ind(x, y) x ## y

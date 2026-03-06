@@ -131,17 +131,15 @@ fn naryfn<T: IntoIterator<Item = Doc>>(args: T) -> Doc {
     parens(Doc::intersperse(args.into_iter(), Doc::line()))
 }
 
+// Many F* functions encode their specifications as refinements in the return type.
+// This breaks type inference in interesting ways, so we wrap it in `id #desired_type ...`.
+// Note: `(... <: desired_type)` doesn't work as well since it is normalized somewhere.
+fn with_type(t: Doc, ty: Doc) -> Doc {
+    naryfn([Doc::text("id"), Doc::text("#").append(ty), t])
+}
+
 fn unaryfn_with_type(f: Doc, arg: Doc, ty: Doc) -> Doc {
-    parens(
-        f.append(Doc::line()).append(arg).append(
-            Doc::line()
-                .append("<:")
-                .append(Doc::space())
-                .append(ty)
-                .nest(2)
-                .group(),
-        ),
-    )
+    with_type(unaryfn(f, arg), ty)
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
@@ -887,13 +885,14 @@ impl<'a> Emitter<'a> {
                             fn abbrev(s: bool, w: u32) -> String {
                                 format!("{}int{}", if s { "" } else { "u" }, w)
                             }
-                            unaryfn(
+                            unaryfn_with_type(
                                 Doc::text(format!(
                                     "Int.Cast.{}_to_{}",
                                     abbrev(*s1, *w1),
                                     abbrev(*s2, *w2)
                                 )),
                                 val_doc,
+                                self.emit_type(env, &*to_ty)
                             )
                         }
                         (TypeT::SizeT, TypeT::SpecInt) => unaryfn(Doc::text("SizeT.v"), val_doc),
