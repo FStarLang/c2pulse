@@ -2402,6 +2402,25 @@ impl<'a> Emitter<'a> {
                 )
             }
 
+            StmtT::GhostStmt(code) => {
+                let env = &mut env.clone();
+                let ghost_doc = self.emit_inline_pulse_tokens(env, code);
+                let rest = self.emit_pure_body(env, &stmts[1..]);
+                parens(
+                    Doc::text("let")
+                        .append(Doc::line())
+                        .append("_")
+                        .append(Doc::line())
+                        .append("=")
+                        .group()
+                        .nest(2)
+                        .append(Doc::line().append(ghost_doc).nest(2))
+                        .append(Doc::line())
+                        .append("in")
+                        .append(Doc::line().append(rest).nest(2)),
+                )
+            }
+
             StmtT::Decl(x, ty) => {
                 // Look for the assignment to this variable in the next statement
                 if stmts.len() >= 3 {
