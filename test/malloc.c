@@ -23,8 +23,7 @@ point_ptr mk_point()
     return p;
 }
 
-// TODO: > INT32_MIN
-#define INT32_FITS(x) ((x) >= 0 && (x) < INT32_MAX)
+#define INT32_FITS(x) (INT32_MIN <= (x) && (x) <= INT32_MAX)
 
 int sum_point(const point_ptr p)
     _requires(INT32_FITS((_specint) p->x + p->y))
