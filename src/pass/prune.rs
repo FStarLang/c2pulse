@@ -119,8 +119,8 @@ fn scan_expr(deps: &mut HashSet<DeclName>, rv: &Expr) {
             scan_type(deps, ty);
         }
         ExprT::Error(ty) => scan_type(deps, ty),
-        ExprT::Malloc(ty) => scan_type(deps, ty),
-        ExprT::MallocArray(ty, count) => {
+        ExprT::Malloc(ty) | ExprT::Calloc(ty) => scan_type(deps, ty),
+        ExprT::MallocArray(ty, count) | ExprT::CallocArray(ty, count) => {
             scan_type(deps, ty);
             scan_expr(deps, count);
         }

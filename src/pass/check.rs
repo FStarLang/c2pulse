@@ -393,8 +393,8 @@ impl<'a> Checker<'a> {
                     self.check_has_type(env, fld_val, fld_ty.clone().into());
                 }
             }
-            ExprT::Malloc(ty) => self.check_type(env, ty),
-            ExprT::MallocArray(ty, count) => {
+            ExprT::Malloc(ty) | ExprT::Calloc(ty) => self.check_type(env, ty),
+            ExprT::MallocArray(ty, count) | ExprT::CallocArray(ty, count) => {
                 self.check_type(env, ty);
                 self.check_rvalue(env, count);
             }

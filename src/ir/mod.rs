@@ -256,6 +256,8 @@ pub enum ExprT {
     UnionInit(Rc<Ident>, Rc<Ident>, Rc<Expr>),
     Malloc(Rc<Type>),
     MallocArray(Rc<Type>, Rc<Expr>),
+    Calloc(Rc<Type>),
+    CallocArray(Rc<Type>, Rc<Expr>),
     Free(Rc<Expr>),
     Error(Rc<Type>),
 }

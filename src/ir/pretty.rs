@@ -218,6 +218,14 @@ impl PrettyIR for ExprT {
                 .append(") * ")
                 .append(count.to_doc())
                 .append(")"),
+            ExprT::Calloc(ty) => RcDoc::text("calloc(1, sizeof(")
+                .append(ty.to_doc())
+                .append("))"),
+            ExprT::CallocArray(ty, count) => RcDoc::text("calloc(")
+                .append(count.to_doc())
+                .append(", sizeof(")
+                .append(ty.to_doc())
+                .append("))"),
             ExprT::Free(val) => RcDoc::text("free(").append(val.to_doc()).append(")"),
             ExprT::StructInit(name, fields) => RcDoc::text("(")
                 .append(name.to_doc())

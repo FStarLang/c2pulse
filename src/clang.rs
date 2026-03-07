@@ -421,6 +421,12 @@ fn mk_malloc(loc: Rc<SourceInfo>, ty: Rc<Type>) -> Rc<Expr> {
 fn mk_malloc_array(loc: Rc<SourceInfo>, ty: Rc<Type>, count: Rc<Expr>) -> Rc<Expr> {
     mk_ast(loc, ExprT::MallocArray(ty, count))
 }
+fn mk_calloc(loc: Rc<SourceInfo>, ty: Rc<Type>) -> Rc<Expr> {
+    mk_ast(loc, ExprT::Calloc(ty))
+}
+fn mk_calloc_array(loc: Rc<SourceInfo>, ty: Rc<Type>, count: Rc<Expr>) -> Rc<Expr> {
+    mk_ast(loc, ExprT::CallocArray(ty, count))
+}
 fn mk_free(loc: Rc<SourceInfo>, val: Rc<Expr>) -> Rc<Expr> {
     mk_ast(loc, ExprT::Free(val))
 }

@@ -309,10 +309,10 @@ impl Env {
             },
             ExprT::Cast(_, ty) => Ok(ty.clone().into()),
             ExprT::Error(ty) => Ok(ty.clone().into()),
-            ExprT::Malloc(ty) => Ok(expr
+            ExprT::Malloc(ty) | ExprT::Calloc(ty) => Ok(expr
                 .reuse_loc(TypeT::Pointer(ty.clone(), PointerKind::Ref))
                 .into()),
-            ExprT::MallocArray(ty, _) => Ok(expr
+            ExprT::MallocArray(ty, _) | ExprT::CallocArray(ty, _) => Ok(expr
                 .reuse_loc(TypeT::Pointer(ty.clone(), PointerKind::Array))
                 .into()),
             ExprT::Free(_) => Ok(TypeT::Void.with_loc_core(expr.loc.clone()).into()),

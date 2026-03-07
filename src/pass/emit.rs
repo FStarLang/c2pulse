@@ -176,6 +176,8 @@ enum Name {
     UnionGhostFieldProj(Rc<IdentT>, Rc<IdentT>),
     UnionFieldProj(Rc<IdentT>, Rc<IdentT>),
     UnionAuxFn(Rc<IdentT>, String),
+
+    TypeRefDefault(TypeRef),
 }
 impl Name {
     fn to_string(&self) -> String {
@@ -220,6 +222,9 @@ impl Name {
             Name::UnionGhostFieldProj(u, fld) => format!("{}__{}", union_to_string(u), fld),
             Name::UnionFieldProj(u, fld) => format!("{}__get_{}", union_to_string(u), fld),
             Name::UnionAuxFn(u, f) => format!("{}__aux_{}", union_to_string(u), f),
+            Name::TypeRefDefault(type_ref) => {
+                format!("has_zero_default_{}", typeref_to_string(type_ref))
+            }
         }
     }
 }
@@ -391,6 +396,31 @@ impl<'a> Emitter<'a> {
         })
     }
 
+    /// Emit the zero-default value for a C type (corresponding to the zero bitpattern).
+    fn emit_type_default(&mut self, env: &Env, ty: &Type) -> Doc {
+        match &ty.val {
+            TypeT::Int { signed, width } => {
+                let (modu, ctor) = if *signed {
+                    (format!("Int{}", width), "int_to_t")
+                } else {
+                    (format!("UInt{}", width), "uint_to_t")
+                };
+                parens(Doc::text(format!("{}.{} 0", modu, ctor)))
+            }
+            TypeT::Bool => Doc::text("false"),
+            TypeT::SizeT => Doc::text("0sz"),
+            TypeT::Pointer(_, PointerKind::Ref | PointerKind::Unknown) => Doc::text("null"),
+            TypeT::Pointer(_, PointerKind::Array) => Doc::text("zero_default"),
+            TypeT::Void => Doc::text("()"),
+            TypeT::TypeRef(_) => Doc::text("zero_default"),
+            TypeT::Refine(ty, _) | TypeT::Plain(ty) => self.emit_type_default(env, ty),
+            _ => {
+                self.report(format!("no zero default for type {}", ty), &ty.loc);
+                Doc::text("(admit())")
+            }
+        }
+    }
+
     fn subst_this_rvalue(&mut self, env: &Env, rvalue: &mut Expr, this: &Rc<Expr>) {
         match &mut rvalue.val {
             ExprT::Var(x) => {
@@ -435,8 +465,8 @@ impl<'a> Emitter<'a> {
             ExprT::UnionInit(_, _, val) => {
                 self.subst_this_rvalue(env, Rc::make_mut(val), this);
             }
-            ExprT::Malloc(_) => {}
-            ExprT::MallocArray(_, count) => {
+            ExprT::Malloc(_) | ExprT::Calloc(_) => {}
+            ExprT::MallocArray(_, count) | ExprT::CallocArray(_, count) => {
                 self.subst_this_rvalue(env, Rc::make_mut(count), this);
             }
             ExprT::Free(val) => self.subst_this_rvalue(env, Rc::make_mut(val), this),
@@ -1241,8 +1271,24 @@ impl<'a> Emitter<'a> {
                         .append(Doc::line())
                         .append("()"),
                 ),
+                ExprT::Calloc(ty) => parens(
+                    Doc::text("Pulse.Lib.C.Ref.alloc_ref")
+                        .append(Doc::line())
+                        .append(Doc::text("#"))
+                        .append(self.emit_type(env, ty))
+                        .append(Doc::line())
+                        .append("()"),
+                ),
                 ExprT::MallocArray(ty, count) => parens(
                     Doc::text("Pulse.Lib.C.Array.alloc_array")
+                        .append(Doc::line())
+                        .append(Doc::text("#"))
+                        .append(self.emit_type(env, ty))
+                        .append(Doc::line())
+                        .append(self.emit_rvalue(env, count)),
+                ),
+                ExprT::CallocArray(ty, count) => parens(
+                    Doc::text("Pulse.Lib.C.Array.calloc_array")
                         .append(Doc::line())
                         .append(Doc::text("#"))
                         .append(self.emit_type(env, ty))
@@ -1446,7 +1492,27 @@ impl<'a> Emitter<'a> {
     fn emit_stmts(&mut self, env: &Env, stmts: &Vec<Rc<Stmt>>) -> Doc {
         let mut env = env.clone();
         Doc::concat(stmts.iter().map(|stmt| {
-            let doc = Doc::line().append(self.emit_stmt(&env, stmt));
+            let mut doc = Doc::line().append(self.emit_stmt(&env, stmt));
+            // After calloc ref assignment, emit zero_default initialization
+            if let StmtT::Assign(x, t) = &stmt.val {
+                if let ExprT::Calloc(ty) = &t.val {
+                    let default_val = self.emit_type_default(&env, ty);
+                    let deref_x: Rc<Expr> = ExprT::Deref(x.clone().into())
+                        .with_loc(x.loc.clone())
+                        .into();
+                    doc = doc.append(Doc::line()).append(
+                        self.emit_lvalue(&env, &deref_x)
+                            .append(Doc::line())
+                            .append(":=")
+                            .group()
+                            .append(Doc::line())
+                            .append(default_val)
+                            .append(";")
+                            .group()
+                            .nest(2),
+                    );
+                }
+            }
             env.push_stmt(stmt);
             doc
         }))
@@ -1561,7 +1627,35 @@ impl<'a> Emitter<'a> {
             &all_args,
             mk_star(props),
         );
-        Doc::intersperse(vec![ty_decl, pred_decl], Doc::line())
+
+        // has_zero_default instance
+        let default_name = self.nm.emit(Name::TypeRefDefault(k.into()));
+        let type_name = self.nm.emit(Name::TypeRef(k.into()));
+        let default_decl = Doc::text("instance")
+            .append(Doc::line())
+            .append(default_name)
+            .append(Doc::line())
+            .append(":")
+            .append(Doc::line())
+            .append(unaryfn(Doc::text("has_zero_default"), type_name))
+            .append(Doc::line())
+            .append("=")
+            .append(Doc::line())
+            .append("{")
+            .group()
+            .append(Doc::line())
+            .append(
+                Doc::text("zero_default =")
+                    .append(Doc::line())
+                    .append(self.emit_type_default(env, body))
+                    .group(),
+            )
+            .nest(2)
+            .append(Doc::line())
+            .append("}")
+            .group();
+
+        Doc::intersperse(vec![ty_decl, pred_decl, default_decl], Doc::line())
     }
 } // impl Emitter (group D)
 
@@ -1904,6 +1998,44 @@ impl<'a> Emitter<'a> {
             ))
         }
 
+        // has_zero_default instance
+        let default_name = self.nm.emit(Name::TypeRefDefault(k.into()));
+        ses.push(
+            Doc::text("instance")
+                .append(Doc::line())
+                .append(default_name)
+                .append(Doc::line())
+                .append(":")
+                .append(Doc::line())
+                .append(unaryfn(
+                    Doc::text("has_zero_default"),
+                    struct_type_name.clone(),
+                ))
+                .append(Doc::line())
+                .append("=")
+                .append(Doc::line())
+                .append("{")
+                .group()
+                .append(Doc::line())
+                .append(Doc::text("zero_default = {"))
+                .append(Doc::concat(fields.iter().map(|(fld, fld_ty)| {
+                    Doc::line()
+                        .append(self.nm.emit(direct_fld(fld)))
+                        .append(" =")
+                        .append(Doc::line())
+                        .append(self.emit_type_default(env, fld_ty))
+                        .append(";")
+                        .group()
+                        .nest(2)
+                })))
+                .nest(2)
+                .append(Doc::line())
+                .append("}")
+                .append(Doc::line())
+                .append("}")
+                .group(),
+        );
+
         Doc::intersperse(ses.into_iter().map(|se| se.group()), Doc::hardline())
     }
 
@@ -2154,6 +2286,46 @@ impl<'a> Emitter<'a> {
                     ),
                 ]),
             ))
+        }
+
+        // has_zero_default instance (uses first field's constructor)
+        if let Some((first_fld, first_fld_ty)) = fields.first() {
+            let default_name = self.nm.emit(Name::TypeRefDefault(k.into()));
+            let first_ctor = self.nm.emit(Name::UnionFieldConstructor(
+                name.val.clone(),
+                first_fld.val.clone(),
+            ));
+            ses.push(
+                Doc::text("instance")
+                    .append(Doc::line())
+                    .append(default_name)
+                    .append(Doc::line())
+                    .append(":")
+                    .append(Doc::line())
+                    .append(unaryfn(
+                        Doc::text("has_zero_default"),
+                        union_type_name.clone(),
+                    ))
+                    .append(Doc::line())
+                    .append("=")
+                    .append(Doc::line())
+                    .append("{")
+                    .group()
+                    .append(Doc::line())
+                    .append(
+                        Doc::text("zero_default =")
+                            .append(Doc::line())
+                            .append(unaryfn(
+                                first_ctor,
+                                self.emit_type_default(env, first_fld_ty),
+                            ))
+                            .group(),
+                    )
+                    .nest(2)
+                    .append(Doc::line())
+                    .append("}")
+                    .group(),
+            );
         }
 
         Doc::intersperse(ses.into_iter().map(|se| se.group()), Doc::hardline())
@@ -2561,11 +2733,13 @@ impl<'a> Emitter<'a> {
                     .append(init_doc)
             }
             None => {
-                self.report(
-                    "pure global variable must have an initializer".to_string(),
-                    &gv.name.loc,
-                );
-                Doc::nil()
+                let default_doc = self.emit_type_default(env, &gv.ty);
+                Doc::text("let ")
+                    .append(name)
+                    .append(" : ")
+                    .append(ty)
+                    .append(" = ")
+                    .append(default_doc)
             }
         }
     }
