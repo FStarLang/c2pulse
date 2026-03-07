@@ -960,30 +960,23 @@ impl<'a> Emitter<'a> {
                 ExprT::Ref(v) => self.emit_lvalue(env, v),
                 ExprT::Cast(val, to_ty) => {
                     let val_doc = self.emit_rvalue(env, val);
-                    let from_ty = env.infer_expr(val).map(|t| env.vtype_whnf(t));
-                    let to_ty = env.vtype_whnf(to_ty.clone().into());
-                    let from_ty = match &from_ty {
-                        Ok(ty) => &ty.val,
-                        Err(_) => &TypeT::Error,
+                    let Ok(from_ty) = env.infer_expr(val).map(|t| env.vtype_whnf(t)) else {
+                        // If we can't infer the type, we should have logged an error somewhere else.
+                        return val_doc;
                     };
+                    let to_ty = env.vtype_whnf(to_ty.clone().into());
                     // Special case: integer literal cast to SizeT → emit Nsz
                     if matches!(&to_ty.val, TypeT::SizeT) {
                         if let ExprT::IntLit(n, _) = &val.val {
                             return Doc::text(format!("{}sz", n));
                         }
                     }
+                    if env.vtype_eq(from_ty.clone(), to_ty.clone()) {
+                        // Same underlying type, no cast necessary.
+                        return val_doc;
+                    }
                     let default_msg = format!("unsupported cast from {} to {}", from_ty, to_ty);
-                    match (from_ty, &to_ty.val) {
-                        (
-                            TypeT::TypeRef(TypeRefKind::Struct(a)),
-                            TypeT::TypeRef(TypeRefKind::Struct(b)),
-                        ) if a.val == b.val => val_doc,
-                        (
-                            TypeT::TypeRef(TypeRefKind::Union(a)),
-                            TypeT::TypeRef(TypeRefKind::Union(b)),
-                        ) if a.val == b.val => val_doc,
-                        (TypeT::Void, TypeT::Void) => val_doc,
-                        (TypeT::Bool, TypeT::Bool) => val_doc,
+                    match (&from_ty.val, &to_ty.val) {
                         (TypeT::Bool, TypeT::Int { signed, width }) => {
                             fn abbrev(s: &bool, w: &u32) -> String {
                                 format!("{}int{}", if *s { "" } else { "u" }, w)
@@ -1092,16 +1085,9 @@ impl<'a> Emitter<'a> {
                         // (TypeT::Int { signed, width }, TypeT::SLProp) => todo!(),
                         // (TypeT::SizeT, TypeT::Bool) => todo!(),
                         // (TypeT::SizeT, TypeT::Int { signed, width }) => todo!(),
-                        (TypeT::SizeT, TypeT::SizeT) => val_doc,
-                        (TypeT::SpecInt, TypeT::SpecInt) => val_doc,
                         // (TypeT::SizeT, TypeT::SLProp) => todo!(),
                         // (TypeT::Pointer { to, kind }, TypeT::Bool) => todo!(),
                         // (TypeT::Pointer { to, kind }, TypeT::SizeT) => todo!(),
-                        (TypeT::Pointer(t1, k1), TypeT::Pointer(t2, k2))
-                            if t1 == t2 && k1 == k2 =>
-                        {
-                            val_doc
-                        }
                         // (TypeT::Pointer { to:t1, kind:k1 }, TypeT::Pointer { to:t2, kind:k2 }) if t1 == t2 => todo!(),
                         // (TypeT::Pointer { to, kind }, TypeT::SLProp) => todo!(),
                         (TypeT::Error, _) | (_, TypeT::Error) => val_doc,

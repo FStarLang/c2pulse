@@ -157,6 +157,18 @@ pub enum TypeRefKind {
     Union(Rc<Ident>),
 }
 
+impl TypeRefKind {
+    // Equality ignoring positions
+    pub fn alpha_eq(&self, b: &Self) -> bool {
+        match (self, b) {
+            (TypeRefKind::Typedef(a), TypeRefKind::Typedef(b))
+            | (TypeRefKind::Struct(a), TypeRefKind::Struct(b))
+            | (TypeRefKind::Union(a), TypeRefKind::Union(b)) => a.val == b.val,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum UnOp {
     Not,

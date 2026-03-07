@@ -463,9 +463,9 @@ impl Env {
             (TypeT::Pointer(t1, k1), TypeT::Pointer(t2, k2)) => {
                 k1 == k2 && self.vtype_eq(t1.clone().into(), t2.clone().into())
             }
-            (TypeT::TypeRef(t1), TypeT::TypeRef(t2)) => t1 == t2,
             (TypeT::SpecInt, TypeT::SpecInt) => true,
             (TypeT::SLProp, TypeT::SLProp) => true,
+            (TypeT::TypeRef(t1), TypeT::TypeRef(t2)) => t1.alpha_eq(t2),
             (TypeT::Error, _) | (_, TypeT::Error) => true,
             _ => false,
         }
