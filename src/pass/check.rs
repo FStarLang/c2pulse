@@ -93,6 +93,11 @@ impl<'a> Checker<'a> {
                     self.report(format!("unknown struct {}", n), &ty.loc)
                 }
             }
+            TypeT::TypeRef(TypeRefKind::Union(n)) => {
+                if let None = env.lookup_union(n) {
+                    self.report(format!("unknown union {}", n), &ty.loc)
+                }
+            }
             TypeT::Refine(ty, p) => {
                 self.check_type(env, ty);
                 let env = &mut env.clone();
@@ -174,6 +179,15 @@ impl<'a> Checker<'a> {
                                     format!("no field {} in structure {}", a, n),
                                     &rval.loc,
                                 );
+                            };
+                        }
+                        TypeT::TypeRef(TypeRefKind::Union(n)) => {
+                            let Some(u) = env.lookup_union(n) else {
+                                return self.report(format!("unknown union {}", n), &rval.loc);
+                            };
+                            let Some(_f) = u.get_field(a) else {
+                                return self
+                                    .report(format!("no field {} in union {}", a, n), &rval.loc);
                             };
                         }
                         _ => {
@@ -544,6 +558,11 @@ impl<'a> Checker<'a> {
             DeclT::FnDecl(fn_decl) => self.check_fn_decl(env, fn_decl),
             DeclT::Typedef(TypeDefn { name: _, body }) => self.check_type(env, body),
             DeclT::StructDefn(StructDefn { name: _, fields }) => {
+                for (_n, ty) in fields {
+                    self.check_type(env, ty)
+                }
+            }
+            DeclT::UnionDefn(UnionDefn { name: _, fields }) => {
                 for (_n, ty) in fields {
                     self.check_type(env, ty)
                 }

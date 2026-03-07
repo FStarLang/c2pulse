@@ -227,6 +227,19 @@ public:
                                              liftStructs)));
       }
       ctx.add_struct(std::move(builder));
+    } else if (decl->getTagKind() == TagTypeKind::Union) {
+      for (auto f : decl->fields()) {
+        auto floc = getRange(f->getSourceRange());
+        if (!f->getIdentifier()) {
+          reportUnsupported(f->getSourceRange(), floc,
+                            "unsupported anonymous field names", "");
+        }
+        builder.field(ctx.mk_ident(toStr(f->getName()), std::move(floc)),
+                      trTypeAttrs(f->getAttrs(),
+                                  trQualType(f->getType(), f->getSourceRange(),
+                                             liftStructs)));
+      }
+      ctx.add_union(std::move(builder));
     } else {
       reportUnsupported(decl->getSourceRange(), loc, "unsupported record kind",
                         "");
@@ -275,6 +288,9 @@ public:
       switch (decl->getTagKind()) {
       case TagTypeKind::Struct: {
         return mk_type_struct(std::move(loc), std::move(name));
+      }
+      case TagTypeKind::Union: {
+        return mk_type_union(std::move(loc), std::move(name));
       }
       default: {
         reportUnsupported(range, loc, "unsupported record kind", "");

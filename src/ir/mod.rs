@@ -154,6 +154,7 @@ pub enum TypeT {
 pub enum TypeRefKind {
     Typedef(Rc<Ident>),
     Struct(Rc<Ident>),
+    Union(Rc<Ident>),
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -309,6 +310,21 @@ impl StructDefn {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub struct UnionDefn {
+    pub name: Rc<Ident>,
+    pub fields: Vec<(Ident, Rc<Type>)>,
+}
+
+impl UnionDefn {
+    pub fn get_field(&self, name: &Ident) -> Option<&Rc<Type>> {
+        self.fields
+            .iter()
+            .find(|(field_name, _)| name.val == field_name.val)
+            .map(|(_, ty)| ty)
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum ParamMode {
     Regular,
@@ -407,6 +423,7 @@ pub enum DeclT {
     FnDecl(FnDecl),
     Typedef(TypeDefn),
     StructDefn(StructDefn),
+    UnionDefn(UnionDefn),
     IncludeDecl(IncludeDecl),
     GlobalVar(GlobalVar),
 }

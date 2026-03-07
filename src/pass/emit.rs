@@ -146,12 +146,14 @@ fn unaryfn_with_type(f: Doc, arg: Doc, ty: Doc) -> Doc {
 enum TypeRef {
     Typedef(Rc<IdentT>),
     Struct(Rc<IdentT>),
+    Union(Rc<IdentT>),
 }
 impl From<&TypeRefKind> for TypeRef {
     fn from(tr: &TypeRefKind) -> Self {
         match tr {
             TypeRefKind::Typedef(t) => TypeRef::Typedef(t.val.clone()),
             TypeRefKind::Struct(s) => TypeRef::Struct(s.val.clone()),
+            TypeRefKind::Union(u) => TypeRef::Union(u.val.clone()),
         }
     }
 }
@@ -169,11 +171,19 @@ enum Name {
     StructDirectFieldName(Rc<IdentT>, Rc<IdentT>),
     StructGhostFieldProj(Rc<IdentT>, Rc<IdentT>),
     StructAuxFn(Rc<IdentT>, String),
+
+    UnionFieldConstructor(Rc<IdentT>, Rc<IdentT>),
+    UnionGhostFieldProj(Rc<IdentT>, Rc<IdentT>),
+    UnionFieldProj(Rc<IdentT>, Rc<IdentT>),
+    UnionAuxFn(Rc<IdentT>, String),
 }
 impl Name {
     fn to_string(&self) -> String {
         fn struct_to_string(ident: &Rc<IdentT>) -> String {
             Name::TypeRef(TypeRef::Struct(ident.clone())).to_string()
+        }
+        fn union_to_string(ident: &Rc<IdentT>) -> String {
+            Name::TypeRef(TypeRef::Union(ident.clone())).to_string()
         }
         fn typeref_to_string(typeref: &TypeRef) -> String {
             Name::TypeRef(typeref.clone()).to_string()
@@ -197,12 +207,19 @@ impl Name {
             }
             Name::Fn(v) => format!("func_{}", v),
             Name::TypeRef(TypeRef::Struct(str)) => format!("struct_{}", str),
+            Name::TypeRef(TypeRef::Union(str)) => format!("union_{}", str),
             Name::TypeRef(TypeRef::Typedef(ty)) => format!("ty_{}", ty),
             Name::TypeRefPred(type_ref) => format!("{}__pred", typeref_to_string(type_ref)),
             Name::StructFieldProj(str, fld) => format!("{}__get_{}", struct_to_string(str), fld),
             Name::StructDirectFieldName(str, fld) => format!("{}__{}", struct_to_string(str), fld),
             Name::StructGhostFieldProj(str, fld) => format!("{}__{}", struct_to_string(str), fld),
             Name::StructAuxFn(str, f) => format!("{}__aux_{}", struct_to_string(str), f),
+            Name::UnionFieldConstructor(u, fld) => {
+                format!("Field_{}__{}", u, fld)
+            }
+            Name::UnionGhostFieldProj(u, fld) => format!("{}__{}", union_to_string(u), fld),
+            Name::UnionFieldProj(u, fld) => format!("{}__get_{}", union_to_string(u), fld),
+            Name::UnionAuxFn(u, f) => format!("{}__aux_{}", union_to_string(u), f),
         }
     }
 }
@@ -268,7 +285,13 @@ impl NameMangling {
             return mangled.clone();
         }
 
-        let mangled = self.pick_new(name.to_string().to_lowercase());
+        let base = name.to_string();
+        // Union field constructors must start uppercase (F* inductive requirement)
+        let mangled = if matches!(name, Name::UnionFieldConstructor(..)) {
+            self.pick_new(base)
+        } else {
+            self.pick_new(base.to_lowercase())
+        };
         self.used.insert(mangled.clone());
         self.map.insert(name.clone(), mangled.clone());
         mangled
@@ -641,6 +664,32 @@ impl<'a> Emitter<'a> {
                                             a.val.clone(),
                                         ),
                                     )),
+                                )),
+                            }
+                        }
+                        TypeT::TypeRef(TypeRefKind::Union(union_name)) => {
+                            match self.emit_expr(env, x) {
+                                ExprKind::LValue(x_doc) => ExprKind::LValue(annotated(
+                                    v,
+                                    unaryfn(
+                                        self.nm.emit(Name::UnionFieldProj(
+                                            union_name.val.clone(),
+                                            a.val.clone(),
+                                        )),
+                                        x_doc,
+                                    ),
+                                )),
+                                ExprKind::RValue(x_doc) => ExprKind::RValue(annotated(
+                                    v,
+                                    self.nm
+                                        .emit(Name::UnionFieldConstructor(
+                                            union_name.val.clone(),
+                                            a.val.clone(),
+                                        ))
+                                        .append("?._0")
+                                        .append(Doc::line())
+                                        .append(x_doc)
+                                        .group(),
                                 )),
                             }
                         }
@@ -1238,6 +1287,37 @@ impl<'a> Emitter<'a> {
                             .append(";")
                             .group()
                             .nest(2)
+                    } else if let ExprT::Member(base, fld) = &x.val {
+                        // Check if base is a union type — if so, emit x := Ctor val
+                        if let Ok(base_ty) = env.infer_expr(base) {
+                            let base_ty = env.vtype_whnf(base_ty);
+                            if let TypeT::TypeRef(TypeRefKind::Union(union_name)) = &base_ty.val {
+                                let ctor = self.nm.emit(Name::UnionFieldConstructor(
+                                    union_name.val.clone(),
+                                    fld.val.clone(),
+                                ));
+                                return self
+                                    .emit_lvalue(env, base)
+                                    .append(Doc::line())
+                                    .append(":=")
+                                    .group()
+                                    .append(Doc::line())
+                                    .append(unaryfn(ctor, self.emit_rvalue(env, t)))
+                                    .append(";")
+                                    .group()
+                                    .nest(2);
+                            }
+                        }
+                        // Fall through to normal assignment for struct members
+                        self.emit_lvalue(env, x)
+                            .append(Doc::line())
+                            .append(":=")
+                            .group()
+                            .append(Doc::line())
+                            .append(self.emit_rvalue(env, t))
+                            .append(";")
+                            .group()
+                            .nest(2)
                     } else {
                         self.emit_lvalue(env, x)
                             .append(Doc::line())
@@ -1812,6 +1892,258 @@ impl<'a> Emitter<'a> {
         Doc::intersperse(ses.into_iter().map(|se| se.group()), Doc::hardline())
     }
 
+    fn emit_uniondefn(&mut self, env: &Env, decl @ UnionDefn { name, fields }: &UnionDefn) -> Doc {
+        let env = &mut env.clone();
+        env.push_union(decl.clone());
+
+        let k = &TypeRefKind::Union(name.clone());
+        let union_type_name = self.nm.emit(Name::TypeRef(k.into()));
+        let pts_to_name = self.nm.emit(Name::TypeRefPred(k.into()));
+        let ref_union_type = unaryfn(Doc::text("ref"), union_type_name.clone());
+
+        let field_ctor =
+            |fld: &Ident| Name::UnionFieldConstructor(name.val.clone(), fld.val.clone());
+        let ghost_fld = |fld: &Ident| Name::UnionGhostFieldProj(name.val.clone(), fld.val.clone());
+
+        let mut ses = vec![];
+
+        // Emit inductive type: noeq type union_foo = | Field_foo__x : Int32.t -> union_foo | ...
+        ses.push(
+            Doc::text("noeq type")
+                .append(Doc::line())
+                .append(union_type_name.clone())
+                .append(Doc::line())
+                .append("=")
+                .append(Doc::concat(fields.iter().map(|(fld, fld_ty)| {
+                    Doc::hardline().append(
+                        Doc::text("| ")
+                            .append(self.nm.emit(field_ctor(fld)))
+                            .append(Doc::text(" :"))
+                            .append(Doc::line())
+                            .append(self.emit_type(env, fld_ty))
+                            .append(Doc::text(" ->"))
+                            .append(Doc::line())
+                            .append(union_type_name.clone())
+                            .group()
+                            .nest(2),
+                    )
+                })))
+                .group(),
+        );
+
+        // Emit predicate (emp for MVP)
+        let env = &mut env.clone();
+        let this = env
+            .push_this(TypeT::TypeRef(k.clone()).with_loc(name.loc.clone()))
+            .with_loc(name.loc.clone());
+        let all_args = vec![
+            parens(
+                Doc::text("[@@@mkey] ")
+                    .append(self.nm.emit(Name::Var(this.val.clone())))
+                    .append(":")
+                    .append(Doc::line())
+                    .append(union_type_name.clone()),
+            ),
+            parens(Doc::text("p: perm")),
+        ];
+        self.type_val_params.insert(TypeRef::from(k), vec![]);
+        ses.push(mk_eager_unfold_slprop(
+            pts_to_name.clone(),
+            &all_args,
+            Doc::text("emp"),
+        ));
+
+        // Emit unfolded token
+        let unfolded_tok = self
+            .nm
+            .emit(Name::UnionAuxFn(name.val.clone(), "raw_unfolded".into()));
+        ses.push(mk_assume_val(
+            unfolded_tok.clone(),
+            &[parens(
+                Doc::text("x:")
+                    .append(Doc::line())
+                    .append(ref_union_type.clone()),
+            )],
+            Doc::text("slprop"),
+        ));
+
+        // Emit ghost field projections
+        for (fld, fld_ty) in fields {
+            let ll_type = self.emit_type(env, fld_ty);
+            ses.push(mk_assume_val(
+                self.nm.emit(ghost_fld(fld)),
+                &[parens(
+                    Doc::text("x:")
+                        .append(Doc::line())
+                        .append(ref_union_type.clone()),
+                )],
+                Doc::text("GTot")
+                    .append(Doc::line())
+                    .append(unaryfn(Doc::text("ref"), ll_type))
+                    .group(),
+            ));
+        }
+
+        // Per-field unfold: requires pts_to x #p vx ** pure (Field_foo__x? vx)
+        // gives back unfolded token + pts_to of the field ref
+        for (fld, fld_ty) in fields {
+            let ll_type = self.emit_type(env, fld_ty);
+            let ctor_name = self.nm.emit(field_ctor(fld));
+            // vx has refined type: (vx: union_foo{Ctor? vx})
+            let vx_refined_ty = parens(
+                Doc::text("vx:").append(Doc::line()).append(
+                    union_type_name
+                        .clone()
+                        .append("{")
+                        .append(ctor_name.clone())
+                        .append("?")
+                        .append(Doc::line())
+                        .append("vx}")
+                        .group(),
+                ),
+            );
+            ses.push(
+                Doc::text("[@@pulse_intro]")
+                    .append(Doc::line())
+                    .append(mk_assume_val(
+                        self.nm.emit(Name::UnionAuxFn(
+                            name.val.clone(),
+                            format!("raw_unfold_{}", fld),
+                        )),
+                        &[
+                            parens(
+                                Doc::text("x:")
+                                    .append(Doc::line())
+                                    .append(ref_union_type.clone()),
+                            ),
+                            parens(Doc::text("#p: perm")),
+                            vx_refined_ty,
+                        ],
+                        naryfn([
+                            Doc::text("stt_ghost"),
+                            Doc::text("unit"),
+                            Doc::text("emp_inames"),
+                            naryfn([
+                                Doc::text("Pulse.Lib.Reference.pts_to"),
+                                Doc::text("x"),
+                                Doc::text("#p"),
+                                Doc::text("vx"),
+                            ]),
+                            mk_thunk(mk_star([
+                                naryfn([unfolded_tok.clone(), Doc::text("x")]),
+                                naryfn([
+                                    Doc::text("Pulse.Lib.Reference.pts_to"),
+                                    unaryfn(self.nm.emit(ghost_fld(fld)), Doc::text("x")),
+                                    Doc::text("#p"),
+                                    parens(
+                                        ctor_name
+                                            .clone()
+                                            .append("?._0")
+                                            .append(Doc::line())
+                                            .append("vx")
+                                            .group(),
+                                    ),
+                                ]),
+                            ])),
+                        ]),
+                    )),
+            );
+
+            // Per-field fold: takes unfolded token + field pts_to, gives back pts_to x (Ctor val)
+            ses.push(
+                Doc::text("[@@pulse_intro]")
+                    .append(Doc::line())
+                    .append(mk_assume_val(
+                        self.nm.emit(Name::UnionAuxFn(
+                            name.val.clone(),
+                            format!("raw_fold_{}", fld),
+                        )),
+                        &[
+                            parens(
+                                Doc::text("x:")
+                                    .append(Doc::line())
+                                    .append(ref_union_type.clone()),
+                            ),
+                            parens(Doc::text("#p: perm")),
+                            parens(
+                                Doc::text(format!("v_{}:", fld))
+                                    .append(Doc::line())
+                                    .append(ll_type.clone()),
+                            ),
+                        ],
+                        naryfn([
+                            Doc::text("stt_ghost"),
+                            Doc::text("unit"),
+                            Doc::text("emp_inames"),
+                            mk_star([
+                                naryfn([unfolded_tok.clone(), Doc::text("x")]),
+                                naryfn([
+                                    Doc::text("Pulse.Lib.Reference.pts_to"),
+                                    unaryfn(self.nm.emit(ghost_fld(fld)), Doc::text("x")),
+                                    Doc::text("#p"),
+                                    Doc::text(format!("v_{}", fld)),
+                                ]),
+                            ]),
+                            mk_thunk(naryfn([
+                                Doc::text("Pulse.Lib.Reference.pts_to"),
+                                Doc::text("x"),
+                                Doc::text("#p"),
+                                unaryfn(ctor_name.clone(), Doc::text(format!("v_{}", fld))),
+                            ])),
+                        ]),
+                    )),
+            );
+        }
+
+        // Field getter functions (stt_atomic, like structs)
+        for (fld, fld_ty) in fields {
+            let ll_ty = self.emit_type(env, fld_ty);
+            let fld_pts_to = naryfn([
+                Doc::text("pts_to"),
+                unaryfn(self.nm.emit(ghost_fld(fld)), Doc::text("x")),
+                Doc::text("#p"),
+                Doc::text("vx"),
+            ]);
+            ses.push(mk_assume_val(
+                self.nm
+                    .emit(Name::UnionFieldProj(name.val.clone(), fld.val.clone())),
+                &[
+                    parens(
+                        Doc::text("x:")
+                            .append(Doc::line())
+                            .append(ref_union_type.clone()),
+                    ),
+                    parens(Doc::text("#p: perm")),
+                    parens(
+                        Doc::text("#vx:")
+                            .append(Doc::line())
+                            .append(unaryfn(Doc::text("erased"), ll_ty.clone())),
+                    ),
+                ],
+                naryfn([
+                    Doc::text("stt_atomic"),
+                    unaryfn(Doc::text("ref"), ll_ty),
+                    Doc::text("#PulseCore.Observability.Neutral"),
+                    Doc::text("emp_inames"),
+                    fld_pts_to.clone(),
+                    mk_fun(
+                        Doc::text("vx'"),
+                        mk_star([
+                            fld_pts_to,
+                            naryfn([
+                                Doc::text("rewrites_to"),
+                                Doc::text("vx'"),
+                                unaryfn(self.nm.emit(ghost_fld(fld)), Doc::text("x")),
+                            ]),
+                        ]),
+                    ),
+                ]),
+            ))
+        }
+
+        Doc::intersperse(ses.into_iter().map(|se| se.group()), Doc::hardline())
+    }
+
     fn emit_fn_decl(
         &mut self,
         env: &Env,
@@ -2254,6 +2586,7 @@ impl<'a> Emitter<'a> {
                 DeclT::FnDecl(fn_decl) => self.emit_fn_decl(&mut env.clone(), fn_decl),
                 DeclT::Typedef(typedef) => self.emit_typedef(env, typedef),
                 DeclT::StructDefn(struct_defn) => self.emit_structdefn(env, struct_defn),
+                DeclT::UnionDefn(union_defn) => self.emit_uniondefn(env, union_defn),
                 DeclT::IncludeDecl(include_decl) => {
                     let env = &mut env.clone();
                     self.emit_inline_pulse_tokens(env, &include_decl.code)

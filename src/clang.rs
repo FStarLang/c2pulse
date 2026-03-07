@@ -119,6 +119,16 @@ impl<'a> Ctx<'a> {
         })
     }
 
+    fn add_union(&mut self, builder: DeclBuilder) {
+        self.translation_unit.decls.push(Ast {
+            loc: builder.loc,
+            val: DeclT::UnionDefn(UnionDefn {
+                name: builder.name,
+                fields: builder.fields,
+            }),
+        })
+    }
+
     fn add_global_var(
         &mut self,
         loc: Rc<SourceInfo>,
@@ -341,6 +351,9 @@ fn mk_pointer_array(loc: Rc<SourceInfo>, to: Rc<Type>) -> Rc<Type> {
 }
 fn mk_type_struct(loc: Rc<SourceInfo>, n: Rc<Ident>) -> Rc<Type> {
     mk_ast(loc, TypeT::TypeRef(TypeRefKind::Struct(n)))
+}
+fn mk_type_union(loc: Rc<SourceInfo>, n: Rc<Ident>) -> Rc<Type> {
+    mk_ast(loc, TypeT::TypeRef(TypeRefKind::Union(n)))
 }
 fn mk_type_typedef(loc: Rc<SourceInfo>, n: Rc<Ident>) -> Rc<Type> {
     mk_ast(loc, TypeT::TypeRef(TypeRefKind::Typedef(n)))

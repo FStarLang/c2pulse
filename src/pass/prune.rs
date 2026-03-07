@@ -58,6 +58,7 @@ impl<'a, T: Eq + Hash> PropagatedDeps<'a, T> {
 enum DeclName {
     Fn(Rc<str>),
     Struct(Rc<str>),
+    Union(Rc<str>),
     Typedef(Rc<str>),
     GlobalVar(Rc<str>),
     Include(Rc<SourceInfo>),
@@ -90,6 +91,7 @@ fn scan_type(deps: &mut HashSet<DeclName>, ty: &Type) {
             deps.insert(match n {
                 TypeRefKind::Typedef(n) => DeclName::Typedef(n.val.clone()),
                 TypeRefKind::Struct(n) => DeclName::Struct(n.val.clone()),
+                TypeRefKind::Union(n) => DeclName::Union(n.val.clone()),
             });
         }
         TypeT::Refine(ty, p) => {
@@ -245,6 +247,7 @@ fn decl_name(decl: &Decl) -> DeclName {
         DeclT::FnDecl(fn_decl) => DeclName::Fn(fn_decl.name.val.clone()),
         DeclT::Typedef(type_defn) => DeclName::Typedef(type_defn.name.val.clone()),
         DeclT::StructDefn(struct_defn) => DeclName::Struct(struct_defn.name.val.clone()),
+        DeclT::UnionDefn(union_defn) => DeclName::Union(union_defn.name.val.clone()),
         DeclT::IncludeDecl(_) => DeclName::Include(decl.loc.clone()),
         DeclT::GlobalVar(gv) => DeclName::GlobalVar(gv.name.val.clone()),
     }
@@ -288,6 +291,12 @@ fn scan_translation_unit(deps: &mut Deps<DeclName>, tu: &TranslationUnit) {
             }
             DeclT::Typedef(TypeDefn { name: _, body }) => scan_type(deps.deps_for(n), body),
             DeclT::StructDefn(StructDefn { name: _, fields }) => {
+                let ds = deps.deps_for(n);
+                for (_name, ty) in fields {
+                    scan_type(ds, ty)
+                }
+            }
+            DeclT::UnionDefn(UnionDefn { name: _, fields }) => {
                 let ds = deps.deps_for(n);
                 for (_name, ty) in fields {
                     scan_type(ds, ty)

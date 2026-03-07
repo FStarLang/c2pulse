@@ -141,6 +141,15 @@ impl<'a> Elaborator<'a> {
                                 );
                             };
                         }
+                        TypeT::TypeRef(TypeRefKind::Union(n)) => {
+                            let Some(u) = env.lookup_union(n) else {
+                                return self.report(format!("unknown union {}", n), &rval.loc);
+                            };
+                            let Some(_f) = u.get_field(a) else {
+                                return self
+                                    .report(format!("no field {} in union {}", a, n), &rval.loc);
+                            };
+                        }
                         _ => {
                             return self.report(format!("not a structure type: {}", t), &rval.loc);
                         }
@@ -469,6 +478,11 @@ impl<'a> Elaborator<'a> {
             DeclT::FnDecl(fn_decl) => self.elab_fn_decl(env, fn_decl),
             DeclT::Typedef(typedef) => self.elab_type(env, Rc::make_mut(&mut typedef.body)),
             DeclT::StructDefn(StructDefn { name: _, fields }) => {
+                for (_n, ty) in fields {
+                    self.elab_type(env, Rc::make_mut(ty))
+                }
+            }
+            DeclT::UnionDefn(UnionDefn { name: _, fields }) => {
                 for (_n, ty) in fields {
                     self.elab_type(env, Rc::make_mut(ty))
                 }
