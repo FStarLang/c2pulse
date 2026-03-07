@@ -123,6 +123,7 @@ mod crate::ir {
         #layout(size=1, align=1);
         constructor Regular;
         constructor Consumed;
+        constructor Const;
     }
 }
 

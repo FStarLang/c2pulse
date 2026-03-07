@@ -405,6 +405,7 @@ public:
         return mk_rvalue_lvalue(std::move(loc), trLValue(ic->getSubExpr()));
 
       case CK_NoOp:
+        return trRValue(ic->getSubExpr());
       case CK_IntegralCast:
       case CK_IntegralToBoolean:
         return mk_rvalue_cast(std::move(loc), trRValue(ic->getSubExpr()),
@@ -791,7 +792,14 @@ public:
         ty = trTypeAttrs(param->getAttrs(), std::move(ty));
         auto mode = hasConsumesAttr(param->getAttrs())
                         ? ir::ParamMode::Consumed()
-                        : ir::ParamMode::Regular();
+                    : [&]() {
+                        auto qt = param->getType().IgnoreParens();
+                        if (auto ptr = dyn_cast<PointerType>(qt)) {
+                          if (ptr->getPointeeType().isConstQualified())
+                            return ir::ParamMode::Const();
+                        }
+                        return ir::ParamMode::Regular();
+                      }();
         if (param->getDeclName().isIdentifier() &&
             param->getName().size() > 0) {
           builder.arg(ctx.mk_ident(toStr(param->getName()),

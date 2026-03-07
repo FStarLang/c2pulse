@@ -313,6 +313,7 @@ impl StructDefn {
 pub enum ParamMode {
     Regular,
     Consumed,
+    Const,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
