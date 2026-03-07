@@ -9,6 +9,6 @@ int read_val(const int *x)
 int call_read_val() {
     int x = 67;
     int y = read_val(&x);
-    _assert(y == x);
+    _assert(y == x && x == 67);
     return y;
 }
