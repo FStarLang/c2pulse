@@ -794,6 +794,8 @@ public:
                         ? ir::ParamMode::Consumed()
                         : [&]() {
                             auto qt = param->getType().IgnoreParens();
+                            if (qt.isConstQualified())
+                              return ir::ParamMode::Const();
                             if (auto ptr = dyn_cast<PointerType>(qt)) {
                               if (ptr->getPointeeType().isConstQualified())
                                 return ir::ParamMode::Const();

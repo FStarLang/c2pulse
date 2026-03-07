@@ -1638,6 +1638,7 @@ impl<'a> Emitter<'a> {
                                 .append(Doc::line())
                                 .append(ref_struct_type.clone()),
                         ),
+                        parens(Doc::text("#p: perm")),
                         parens(
                             Doc::text("vx:")
                                 .append(Doc::line())
@@ -1652,6 +1653,7 @@ impl<'a> Emitter<'a> {
                         naryfn([
                             Doc::text("Pulse.Lib.Reference.pts_to"),
                             Doc::text("x"),
+                            Doc::text("#p"),
                             Doc::text("vx"),
                         ]),
                         {
@@ -1660,6 +1662,7 @@ impl<'a> Emitter<'a> {
                                 post.push(naryfn([
                                     Doc::text("Pulse.Lib.Reference.pts_to"),
                                     unaryfn(self.nm.emit(ghost_fld(fld)), Doc::text("x")),
+                                    Doc::text("#p"),
                                     Doc::text("vx.").append(self.nm.emit(direct_fld(fld))),
                                 ]));
                             }
@@ -1677,11 +1680,14 @@ impl<'a> Emitter<'a> {
                     self.nm
                         .emit(Name::StructAuxFn(name.val.clone(), "raw_fold".into())),
                     &{
-                        let mut args = vec![parens(
-                            Doc::text("x:")
-                                .append(Doc::line())
-                                .append(ref_struct_type.clone()),
-                        )];
+                        let mut args = vec![
+                            parens(
+                                Doc::text("x:")
+                                    .append(Doc::line())
+                                    .append(ref_struct_type.clone()),
+                            ),
+                            parens(Doc::text("#p: perm")),
+                        ];
                         for (fld, _) in fields {
                             args.push(fold_arg_name(fld))
                         }
@@ -1697,6 +1703,7 @@ impl<'a> Emitter<'a> {
                                 pre.push(naryfn([
                                     Doc::text("Pulse.Lib.Reference.pts_to"),
                                     unaryfn(self.nm.emit(ghost_fld(fld)), Doc::text("x")),
+                                    Doc::text("#p"),
                                     fold_arg_name(fld),
                                 ]));
                             }
@@ -1705,6 +1712,7 @@ impl<'a> Emitter<'a> {
                         mk_thunk(naryfn([
                             Doc::text("Pulse.Lib.Reference.pts_to"),
                             Doc::text("x"),
+                            Doc::text("#p"),
                             Doc::text("{")
                                 .append(Doc::concat(fields.iter().map(|(fld, _)| {
                                     Doc::line()
@@ -1761,6 +1769,7 @@ impl<'a> Emitter<'a> {
             let fld_pts_to = naryfn([
                 Doc::text("pts_to"),
                 unaryfn(self.nm.emit(ghost_fld(fld)), Doc::text("x")),
+                Doc::text("#p"),
                 Doc::text("vx"),
             ]);
             ses.push(mk_assume_val(
@@ -1772,6 +1781,7 @@ impl<'a> Emitter<'a> {
                             .append(Doc::line())
                             .append(ref_struct_type.clone()),
                     ),
+                    parens(Doc::text("#p: perm")),
                     parens(
                         Doc::text("#vx:")
                             .append(Doc::line())
