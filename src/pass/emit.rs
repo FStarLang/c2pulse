@@ -1272,7 +1272,7 @@ impl<'a> Emitter<'a> {
                         .append("()"),
                 ),
                 ExprT::Calloc(ty) => parens(
-                    Doc::text("Pulse.Lib.C.Ref.alloc_ref")
+                    Doc::text("Pulse.Lib.C.Ref.calloc_ref")
                         .append(Doc::line())
                         .append(Doc::text("#"))
                         .append(self.emit_type(env, ty))
@@ -1334,34 +1334,6 @@ impl<'a> Emitter<'a> {
                         .group()
                 }
                 StmtT::Assign(x, t) => {
-                    if let ExprT::Calloc(ty) = &t.val {
-                        // Calloc ref: alloc + zero-initialize
-                        let alloc_doc = self
-                            .emit_lvalue(env, x)
-                            .append(Doc::line())
-                            .append(":=")
-                            .group()
-                            .append(Doc::line())
-                            .append(self.emit_rvalue(env, t))
-                            .append(";")
-                            .group()
-                            .nest(2);
-                        let default_val = self.emit_type_default(env, ty);
-                        let deref_x: Rc<Expr> = ExprT::Deref(x.clone().into())
-                            .with_loc(x.loc.clone())
-                            .into();
-                        let init_doc = self
-                            .emit_lvalue(env, &deref_x)
-                            .append(Doc::line())
-                            .append(":=")
-                            .group()
-                            .append(Doc::line())
-                            .append(default_val)
-                            .append(";")
-                            .group()
-                            .nest(2);
-                        return alloc_doc.append(Doc::line()).append(init_doc);
-                    }
                     if let ExprT::Index(arr, idx) = &x.val {
                         // Array write: arr.(idx) <- val;
                         self.emit_rvalue(env, arr)

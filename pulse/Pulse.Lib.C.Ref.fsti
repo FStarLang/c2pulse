@@ -29,6 +29,11 @@ fn alloc_ref u#a (#a: Type u#a) ()
   ensures  pts_to_uninit r
   ensures  freeable r
 
+fn calloc_ref u#a (#a: Type u#a) {| has_zero_default a |} ()
+  returns  r : ref a
+  ensures  pts_to r zero_default
+  ensures  freeable r
+
 fn free_ref u#a (#a: Type u#a) (r:ref a)
   requires freeable r
   requires pts_to_uninit r
