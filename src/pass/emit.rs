@@ -1334,6 +1334,34 @@ impl<'a> Emitter<'a> {
                         .group()
                 }
                 StmtT::Assign(x, t) => {
+                    if let ExprT::Calloc(ty) = &t.val {
+                        // Calloc ref: alloc + zero-initialize
+                        let alloc_doc = self
+                            .emit_lvalue(env, x)
+                            .append(Doc::line())
+                            .append(":=")
+                            .group()
+                            .append(Doc::line())
+                            .append(self.emit_rvalue(env, t))
+                            .append(";")
+                            .group()
+                            .nest(2);
+                        let default_val = self.emit_type_default(env, ty);
+                        let deref_x: Rc<Expr> = ExprT::Deref(x.clone().into())
+                            .with_loc(x.loc.clone())
+                            .into();
+                        let init_doc = self
+                            .emit_lvalue(env, &deref_x)
+                            .append(Doc::line())
+                            .append(":=")
+                            .group()
+                            .append(Doc::line())
+                            .append(default_val)
+                            .append(";")
+                            .group()
+                            .nest(2);
+                        return alloc_doc.append(Doc::line()).append(init_doc);
+                    }
                     if let ExprT::Index(arr, idx) = &x.val {
                         // Array write: arr.(idx) <- val;
                         self.emit_rvalue(env, arr)
@@ -1492,27 +1520,7 @@ impl<'a> Emitter<'a> {
     fn emit_stmts(&mut self, env: &Env, stmts: &Vec<Rc<Stmt>>) -> Doc {
         let mut env = env.clone();
         Doc::concat(stmts.iter().map(|stmt| {
-            let mut doc = Doc::line().append(self.emit_stmt(&env, stmt));
-            // After calloc ref assignment, emit zero_default initialization
-            if let StmtT::Assign(x, t) = &stmt.val {
-                if let ExprT::Calloc(ty) = &t.val {
-                    let default_val = self.emit_type_default(&env, ty);
-                    let deref_x: Rc<Expr> = ExprT::Deref(x.clone().into())
-                        .with_loc(x.loc.clone())
-                        .into();
-                    doc = doc.append(Doc::line()).append(
-                        self.emit_lvalue(&env, &deref_x)
-                            .append(Doc::line())
-                            .append(":=")
-                            .group()
-                            .append(Doc::line())
-                            .append(default_val)
-                            .append(";")
-                            .group()
-                            .nest(2),
-                    );
-                }
-            }
+            let doc = Doc::line().append(self.emit_stmt(&env, stmt));
             env.push_stmt(stmt);
             doc
         }))

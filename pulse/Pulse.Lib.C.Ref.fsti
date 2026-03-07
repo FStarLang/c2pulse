@@ -14,11 +14,11 @@ instance has_zero_default_ref (a:Type) : Pulse.Lib.C.Inhabited.has_zero_default 
 }
 
 instance inhabited_array (a:Type) : Pulse.Lib.C.Inhabited.inhabited (array a) = {
-  witness = magic(); // update to Array.null once it's added
+  witness = Pulse.Lib.Array.null
 }
 
 instance has_zero_default_array (a:Type) : Pulse.Lib.C.Inhabited.has_zero_default (array a) = {
-  zero_default = magic(); // update to Array.null once it's added
+  zero_default = Pulse.Lib.Array.null
 }
 
 
