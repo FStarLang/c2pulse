@@ -1861,9 +1861,9 @@ impl<'a> Emitter<'a> {
                     }
                 }
                 ParamMode::Const => {
-                    let perm_name =
-                        self.nm
-                            .emit(Name::Perm(extract_base_ident(&mk_rvar(&n)), 0));
+                    let perm_name = self
+                        .nm
+                        .emit(Name::Perm(extract_base_ident(&mk_rvar(&n)), 0));
                     let perm_doc = Doc::text("'").append(perm_name);
                     let mut type_bindings = vec![];
                     let mut type_props = vec![];

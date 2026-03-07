@@ -792,14 +792,14 @@ public:
         ty = trTypeAttrs(param->getAttrs(), std::move(ty));
         auto mode = hasConsumesAttr(param->getAttrs())
                         ? ir::ParamMode::Consumed()
-                    : [&]() {
-                        auto qt = param->getType().IgnoreParens();
-                        if (auto ptr = dyn_cast<PointerType>(qt)) {
-                          if (ptr->getPointeeType().isConstQualified())
-                            return ir::ParamMode::Const();
-                        }
-                        return ir::ParamMode::Regular();
-                      }();
+                        : [&]() {
+                            auto qt = param->getType().IgnoreParens();
+                            if (auto ptr = dyn_cast<PointerType>(qt)) {
+                              if (ptr->getPointeeType().isConstQualified())
+                                return ir::ParamMode::Const();
+                            }
+                            return ir::ParamMode::Regular();
+                          }();
         if (param->getDeclName().isIdentifier() &&
             param->getName().size() > 0) {
           builder.arg(ctx.mk_ident(toStr(param->getName()),
