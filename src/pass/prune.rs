@@ -103,6 +103,22 @@ fn scan_type(deps: &mut HashSet<DeclName>, ty: &Type) {
     }
 }
 
+fn scan_inline_pulse_code(deps: &mut HashSet<DeclName>, code: &InlinePulseCode) {
+    for tok in &code.tokens {
+        match tok {
+            InlinePulseToken::RValueAntiquot { expr, .. }
+            | InlinePulseToken::LValueAntiquot { expr, .. } => scan_expr(deps, expr),
+            InlinePulseToken::TypeAntiquot { ty, .. } | InlinePulseToken::Declare { ty, .. } => {
+                scan_type(deps, ty)
+            }
+            InlinePulseToken::Verbatim(_) => {}
+            InlinePulseToken::FieldAntiquot { ty, .. } => {
+                scan_type(deps, ty);
+            }
+        }
+    }
+}
+
 fn scan_expr(deps: &mut HashSet<DeclName>, rv: &Expr) {
     match &rv.val {
         ExprT::Var(_) => {}
@@ -127,18 +143,7 @@ fn scan_expr(deps: &mut HashSet<DeclName>, rv: &Expr) {
         ExprT::Free(val) => scan_expr(deps, val),
         ExprT::InlinePulse(code, ty) => {
             scan_type(deps, ty);
-            for tok in &code.tokens {
-                match tok {
-                    InlinePulseToken::RValueAntiquot { expr, .. }
-                    | InlinePulseToken::LValueAntiquot { expr, .. } => scan_expr(deps, expr),
-                    InlinePulseToken::TypeAntiquot { ty, .. }
-                    | InlinePulseToken::Declare { ty, .. } => scan_type(deps, ty),
-                    InlinePulseToken::Verbatim(_) => {}
-                    InlinePulseToken::FieldAntiquot { ty, .. } => {
-                        scan_type(deps, ty);
-                    }
-                }
-            }
+            scan_inline_pulse_code(deps, code);
         }
         ExprT::UnOp(_, arg) => scan_expr(deps, arg),
         ExprT::BinOp(_, lhs, rhs) => {
@@ -208,17 +213,7 @@ fn scan_stmt(deps: &mut HashSet<DeclName>, stmt: &Stmt) {
             }
         }
         StmtT::Assert(v) => scan_expr(deps, v),
-        StmtT::GhostStmt(code) => {
-            for tok in &code.tokens {
-                match tok {
-                    InlinePulseToken::RValueAntiquot { expr, .. }
-                    | InlinePulseToken::LValueAntiquot { expr, .. } => scan_expr(deps, expr),
-                    InlinePulseToken::TypeAntiquot { ty, .. }
-                    | InlinePulseToken::Declare { ty, .. } => scan_type(deps, ty),
-                    InlinePulseToken::Verbatim(_) | InlinePulseToken::FieldAntiquot { .. } => {}
-                }
-            }
-        }
+        StmtT::GhostStmt(code) => scan_inline_pulse_code(deps, code),
         StmtT::Goto(_) => {}
         StmtT::Label { ensures, .. } => {
             for e in &**ensures {
@@ -306,7 +301,10 @@ fn scan_translation_unit(deps: &mut Deps<DeclName>, tu: &TranslationUnit) {
                     scan_type(ds, ty)
                 }
             }
-            DeclT::IncludeDecl(_) => {}
+            DeclT::IncludeDecl(code) => {
+                let ds = deps.deps_for(n);
+                scan_inline_pulse_code(ds, &code.code);
+            }
             DeclT::GlobalVar(GlobalVar {
                 name: _,
                 ty,
