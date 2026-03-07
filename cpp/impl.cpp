@@ -381,19 +381,41 @@ public:
                          trQualType(e->getType(), e->getSourceRange()));
   }
 
-  Rc<ir::Expr> trStructInitList(InitListExpr *init, SourceRange range,
-                                Rc<ir::SourceInfo> loc) {
+  Rc<ir::Expr> trInitList(InitListExpr *init, SourceRange range,
+                          Rc<ir::SourceInfo> loc) {
     auto qt = init->getType().getDesugaredType(*astCtx);
     auto *rec = dyn_cast<RecordType>(qt.getTypePtr());
-    if (!rec || rec->getDecl()->getTagKind() != TagTypeKind::Struct) {
+    if (!rec) {
       reportUnsupported(range, loc,
-                        "unsupported initializer list for non-struct type", "");
+                        "unsupported initializer list for non-record type", "");
       return mk_rvalue_err(std::move(loc), trQualType(init->getType(), range));
     }
     auto *decl = rec->getDecl();
     auto it = structNames.find(decl);
     if (it == structNames.end()) {
-      reportUnsupported(range, loc, "unknown struct in initializer list", "");
+      reportUnsupported(range, loc, "unknown record in initializer list", "");
+      return mk_rvalue_err(std::move(loc), trQualType(init->getType(), range));
+    }
+
+    if (decl->getTagKind() == TagTypeKind::Union) {
+      if (init->getNumInits() != 1) {
+        reportUnsupported(range, loc,
+                          "union initializer must have exactly one field", "");
+        return mk_rvalue_err(std::move(loc),
+                             trQualType(init->getType(), range));
+      }
+      auto unionName = ctx.mk_ident(toStr(it->second), loc.clone());
+      auto *fieldInit = init->getInit(0);
+      auto *field = init->getInitializedFieldInUnion();
+      auto floc = getRange(fieldInit->getSourceRange());
+      auto fieldName = ctx.mk_ident(toStr(field->getName()), std::move(floc));
+      return mk_union_init(std::move(loc), std::move(unionName),
+                           std::move(fieldName), trRValue(fieldInit));
+    }
+
+    if (decl->getTagKind() != TagTypeKind::Struct) {
+      reportUnsupported(range, loc,
+                        "unsupported initializer list for non-struct type", "");
       return mk_rvalue_err(std::move(loc), trQualType(init->getType(), range));
     }
     auto structName = ctx.mk_ident(toStr(it->second), loc.clone());
@@ -590,9 +612,9 @@ public:
         return mk_rvalue_err(std::move(loc),
                              trQualType(e->getType(), e->getSourceRange()));
       }
-      return trStructInitList(init, e->getSourceRange(), std::move(loc));
+      return trInitList(init, e->getSourceRange(), std::move(loc));
     } else if (auto *init = dyn_cast<InitListExpr>(e)) {
-      return trStructInitList(init, e->getSourceRange(), std::move(loc));
+      return trInitList(init, e->getSourceRange(), std::move(loc));
     }
 
     reportUnsupported(e->getSourceRange(), loc,

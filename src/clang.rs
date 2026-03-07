@@ -449,6 +449,10 @@ impl StructInitBuilder {
     }
 }
 
+fn mk_union_init(loc: Rc<SourceInfo>, name: Rc<Ident>, fld: Rc<Ident>, val: Rc<Expr>) -> Rc<Expr> {
+    ExprT::UnionInit(name, fld, val).with_loc(loc)
+}
+
 fn mk_lvalue_var(loc: Rc<SourceInfo>, name: Rc<Ident>) -> Rc<Expr> {
     mk_ast(loc, ExprT::Var(name))
 }

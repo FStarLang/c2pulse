@@ -376,6 +376,23 @@ impl<'a> Checker<'a> {
                     }
                 }
             }
+            ExprT::UnionInit(name, fld_name, fld_val) => {
+                let Some(u) = env.lookup_union(name) else {
+                    self.report(format!("unknown union {}", name), &rval.loc);
+                    return;
+                };
+                if self.check_types {
+                    self.check_rvalue(env, fld_val);
+                    let Some(fld_ty) = u.get_field(fld_name) else {
+                        self.report(
+                            format!("no field {} in union {}", fld_name, name),
+                            &rval.loc,
+                        );
+                        return;
+                    };
+                    self.check_has_type(env, fld_val, fld_ty.clone().into());
+                }
+            }
             ExprT::Malloc(ty) => self.check_type(env, ty),
             ExprT::MallocArray(ty, count) => {
                 self.check_type(env, ty);

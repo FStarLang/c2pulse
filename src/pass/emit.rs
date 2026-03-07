@@ -432,6 +432,9 @@ impl<'a> Emitter<'a> {
                     self.subst_this_rvalue(env, Rc::make_mut(val), this);
                 }
             }
+            ExprT::UnionInit(_, _, val) => {
+                self.subst_this_rvalue(env, Rc::make_mut(val), this);
+            }
             ExprT::Malloc(_) => {}
             ExprT::MallocArray(_, count) => {
                 self.subst_this_rvalue(env, Rc::make_mut(count), this);
@@ -944,6 +947,10 @@ impl<'a> Emitter<'a> {
                             TypeT::TypeRef(TypeRefKind::Struct(a)),
                             TypeT::TypeRef(TypeRefKind::Struct(b)),
                         ) if a.val == b.val => val_doc,
+                        (
+                            TypeT::TypeRef(TypeRefKind::Union(a)),
+                            TypeT::TypeRef(TypeRefKind::Union(b)),
+                        ) if a.val == b.val => val_doc,
                         (TypeT::Void, TypeT::Void) => val_doc,
                         (TypeT::Bool, TypeT::Bool) => val_doc,
                         (TypeT::Bool, TypeT::Int { signed, width }) => {
@@ -1218,6 +1225,13 @@ impl<'a> Emitter<'a> {
                     .append(Doc::line())
                     .append("}")
                     .group(),
+                ExprT::UnionInit(name, fld, val) => unaryfn(
+                    self.nm.emit(Name::UnionFieldConstructor(
+                        name.val.clone(),
+                        fld.val.clone(),
+                    )),
+                    self.emit_rvalue(env, val),
+                ),
                 ExprT::Malloc(ty) => parens(
                     Doc::text("Pulse.Lib.C.Ref.alloc_ref")
                         .append(Doc::line())

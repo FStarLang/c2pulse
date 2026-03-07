@@ -253,6 +253,7 @@ pub enum ExprT {
     Forall(Rc<Ident>, Rc<Type>, Rc<Expr>),
     Exists(Rc<Ident>, Rc<Type>, Rc<Expr>),
     StructInit(Rc<Ident>, Vec<(Rc<Ident>, Rc<Expr>)>),
+    UnionInit(Rc<Ident>, Rc<Ident>, Rc<Expr>),
     Malloc(Rc<Type>),
     MallocArray(Rc<Type>, Rc<Expr>),
     Free(Rc<Expr>),

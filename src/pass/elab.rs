@@ -300,6 +300,9 @@ impl<'a> Elaborator<'a> {
                     self.elab_rvalue(env, Rc::make_mut(fld_val));
                 }
             }
+            ExprT::UnionInit(_, _, fld_val) => {
+                self.elab_rvalue(env, Rc::make_mut(fld_val));
+            }
         }
     }
 

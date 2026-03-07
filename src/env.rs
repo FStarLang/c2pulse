@@ -346,6 +346,9 @@ impl Env {
             ExprT::StructInit(name, _) => Ok(expr
                 .reuse_loc(TypeT::TypeRef(TypeRefKind::Struct(name.clone())))
                 .into()),
+            ExprT::UnionInit(name, _, _) => Ok(expr
+                .reuse_loc(TypeT::TypeRef(TypeRefKind::Union(name.clone())))
+                .into()),
         }
     }
 

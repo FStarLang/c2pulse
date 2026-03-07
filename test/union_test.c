@@ -15,3 +15,13 @@ void set_y(union foo *f) {
     f->y = 1;
     _assert(f->y);
 }
+
+void compound_literal(union foo *f) {
+    *f = (union foo) { .x = 67 };
+    _assert(f->x == 67);
+}
+
+void initializer() {
+    union foo f = { .x = 67 };
+    _assert(f.x == 67);
+}

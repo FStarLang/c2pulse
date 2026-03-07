@@ -232,6 +232,13 @@ impl PrettyIR for ExprT {
                     RcDoc::text(",").append(RcDoc::line()),
                 ))
                 .append("}"),
+            ExprT::UnionInit(name, fld, val) => RcDoc::text("(union ")
+                .append(name.to_doc())
+                .append("){.")
+                .append(fld.to_doc())
+                .append(" = ")
+                .append(val.to_doc())
+                .append("}"),
         }
     }
 }
