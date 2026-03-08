@@ -1,0 +1,81 @@
+#include <stddef.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdint.h>
+#include "c2pulse.h"
+#include <stdbool.h>
+
+
+typedef struct _profile_descriptor_t {
+    char* name;
+    uint32_t dpe_spec_version;
+    uint32_t max_message_size;
+    bool uses_multi_part_messages;
+    bool supports_concurrent_operations;
+    bool supports_encrypted_sessions;
+    bool supports_derived_sessions;
+    size_t max_sessions;
+    char *session_protocol;
+    bool supports_session_sync;
+    char *session_sync_policy; 
+    char *session_migration_protocol;
+    bool supports_default_context;
+    bool supports_context_handles;
+    size_t max_contexts_per_session;
+    size_t max_context_handle_size; 
+    bool supports_auto_init; 
+    bool supports_simulation; 
+    bool supports_attestation; 
+    bool supports_sealing; 
+    bool supports_get_profile; 
+    bool supports_open_session; 
+    bool supports_close_session; 
+    bool supports_sync_session; 
+    bool supports_export_session;
+    bool supports_import_session; 
+    bool supports_init_context; 
+    bool supports_certify_key; 
+    bool supports_sign; 
+    bool supports_seal; 
+    bool supports_unseal; 
+    bool supports_sealing_public; 
+    bool supports_rotate_context_handle;
+    char *dice_derivation;
+    char *asymmetric_derivation;
+    char *symmetric_derivation;
+    bool supports_any_label; 
+    char *supported_labels;
+    char *initial_derivation;
+    char *input_format;
+    bool supports_internal_inputs; 
+    bool supports_internal_dpe_info;
+    bool supports_internal_dpe_dice; 
+    char *internal_dpe_info_type;
+    char *internal_dpe_dice_type;
+    char *internal_inputs;
+    bool supports_certificates;
+    size_t max_certificate_size; 
+    size_t max_certificate_chain_size;
+    bool appends_more_certificates; 
+    bool supports_certificate_policies; 
+    bool supports_policy_identity_init;
+    bool supports_policy_identity_loc; 
+    bool supports_policy_attest_init;
+    bool supports_policy_attest_loc;
+    bool supports_policy_assert_init; 
+    bool supports_policy_assert_loc; 
+    char *certificate_policies;
+    bool supports_eca_certificates;
+    char* eca_certificate_format;
+    char *leaf_certificate_format;
+    char *public_key_format;
+    bool supports_external_key;
+    char *to_be_signed_format;
+    char *signature_format;
+    bool supports_symmetric_sign; 
+    bool supports_asymmetric_unseal;
+    bool supports_unseal_policy;
+    char *unseal_policy_format;
+} profile_descriptor_t;
+
+
