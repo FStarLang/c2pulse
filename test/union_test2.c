@@ -23,14 +23,12 @@ void test1(u_context_t ctx)
     _requires(_is_uds(ctx))
 {
     uint8_t *uds_buf = ctx.uds;
-    _ghost_stmt(union__u_context_t__aux_raw_fold_uds $&(ctx) _);
 }
 
 void test2(u_context_t *ctx)
     _requires(_is_uds(*ctx))
 {
     uint8_t *uds_buf = ctx->uds;
-    _ghost_stmt(union__u_context_t__aux_raw_fold_uds $(ctx) _);
 }
 
 void test3a(context_t ctx)
@@ -38,7 +36,6 @@ void test3a(context_t ctx)
 {
     u_context_t *payload = &ctx.payload;
     uint8_t *uds_buf = payload->uds;
-    _ghost_stmt(union__u_context_t__aux_raw_fold_uds _ _);
 }
 
 
@@ -46,12 +43,10 @@ void test3(context_t ctx)
     _requires(_is_uds(ctx.payload))
 {
     uint8_t *uds_buf = ctx.payload.uds;
-    _ghost_stmt(union__u_context_t__aux_raw_fold_uds _ _);
 }
 
 void test4(context_t *ctx)
     _requires(_is_uds(ctx->payload))
 {
     uint8_t *uds_buf = ctx->payload.uds;
-    _ghost_stmt(union__u_context_t__aux_raw_fold_uds _ _);
 }

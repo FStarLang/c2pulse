@@ -714,15 +714,17 @@ impl<'a> Emitter<'a> {
                                 )),
                                 ExprKind::RValue(x_doc) => ExprKind::RValue(annotated(
                                     v,
-                                    self.nm
-                                        .emit(Name::UnionFieldConstructor(
-                                            union_name.val.clone(),
-                                            a.val.clone(),
-                                        ))
-                                        .append("?._0")
-                                        .append(Doc::line())
-                                        .append(x_doc)
-                                        .group(),
+                                    parens(
+                                        self.nm
+                                            .emit(Name::UnionFieldConstructor(
+                                                union_name.val.clone(),
+                                                a.val.clone(),
+                                            ))
+                                            .append("?._0")
+                                            .append(Doc::line())
+                                            .append(x_doc)
+                                            .group(),
+                                    ),
                                 )),
                             }
                         }
@@ -1556,7 +1558,13 @@ impl<'a> Emitter<'a> {
 
         let k = &TypeRefKind::Typedef(name.clone());
         let t = self.nm.emit(Name::TypeRef(k.into()));
-        let ty_decl = mk_let(t.clone(), &[], Doc::text("Type"), self.emit_type(env, body));
+        // The unfold here is important to trigger the loop detection in the Pulse prover
+        let ty_decl = Doc::text("unfold").append(Doc::line()).append(mk_let(
+            t.clone(),
+            &[],
+            Doc::text("Type"),
+            self.emit_type(env, body),
+        ));
         let env = &mut env.clone();
         let this = env
             .push_this(TypeT::TypeRef(k.clone()).with_loc(name.loc.clone()))
