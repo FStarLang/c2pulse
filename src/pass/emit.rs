@@ -2314,7 +2314,7 @@ impl<'a> Emitter<'a> {
         Doc::intersperse(ses.into_iter().map(|se| se.group()), Doc::hardline())
     }
 
-    fn emit_fn_decl(
+    fn emit_fn_sig(
         &mut self,
         env: &Env,
         FnDecl {
@@ -2467,6 +2467,39 @@ impl<'a> Emitter<'a> {
             )
         })))
         .group()
+    }
+
+    fn emit_fn_decl(&mut self, env: &Env, decl: &FnDecl) -> Doc {
+        self.emit_fn_sig(env, decl)
+            .nest(2)
+            .append(Doc::hardline())
+            // add a (warning-free) body so that we can call it
+            .append("{ assume pure False; unreachable () }")
+    }
+
+    fn emit_fn_defn(&mut self, env: &Env, FnDefn { decl, body }: &FnDefn) -> Doc {
+        if decl.is_pure {
+            return self.emit_pure_fn(env, decl, body);
+        }
+        let decl_doc = self.emit_fn_sig(env, decl).nest(2).append(Doc::hardline());
+        let arg_redecl_as_mut = Doc::concat(decl.args.iter().filter_map(|arg| {
+            arg.name.as_ref().map(|n| {
+                Doc::line().append(annotated(
+                    n,
+                    Doc::group({
+                        let n = self.nm.emit(Name::Var(n.val.clone()));
+                        Doc::text("let mut ")
+                            .append(n.clone())
+                            .append(" = ")
+                            .append(n)
+                            .append(";")
+                    }),
+                ))
+            })
+        }));
+        let env = &mut env.clone();
+        env.push_fn_decl_args_for_body(decl);
+        decl_doc.append(block(arg_redecl_as_mut.append(self.emit_stmts(env, body))).group())
     }
 } // impl Emitter (group E)
 
@@ -2730,32 +2763,8 @@ impl<'a> Emitter<'a> {
     fn emit_decl(&mut self, env: &Env, decl: &Decl) -> Doc {
         annotated(decl, {
             match &decl.val {
-                DeclT::FnDefn(FnDefn { decl, body }) => {
-                    if decl.is_pure {
-                        return self.emit_pure_fn(env, decl, body);
-                    }
-                    let decl_doc = self.emit_fn_decl(env, decl).nest(2).append(Doc::hardline());
-                    let arg_redecl_as_mut = Doc::concat(decl.args.iter().filter_map(|arg| {
-                        arg.name.as_ref().map(|n| {
-                            Doc::line().append(annotated(
-                                n,
-                                Doc::group({
-                                    let n = self.nm.emit(Name::Var(n.val.clone()));
-                                    Doc::text("let mut ")
-                                        .append(n.clone())
-                                        .append(" = ")
-                                        .append(n)
-                                        .append(";")
-                                }),
-                            ))
-                        })
-                    }));
-                    let env = &mut env.clone();
-                    env.push_fn_decl_args_for_body(decl);
-                    decl_doc
-                        .append(block(arg_redecl_as_mut.append(self.emit_stmts(env, body))).group())
-                }
-                DeclT::FnDecl(fn_decl) => self.emit_fn_decl(&mut env.clone(), fn_decl),
+                DeclT::FnDefn(fn_defn) => self.emit_fn_defn(env, fn_defn),
+                DeclT::FnDecl(fn_decl) => self.emit_fn_decl(env, fn_decl),
                 DeclT::Typedef(typedef) => self.emit_typedef(env, typedef),
                 DeclT::StructDefn(struct_defn) => self.emit_structdefn(env, struct_defn),
                 DeclT::UnionDefn(union_defn) => self.emit_uniondefn(env, union_defn),
