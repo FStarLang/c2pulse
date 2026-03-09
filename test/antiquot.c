@@ -42,3 +42,15 @@ void test_declare(my_pair *x)
   _ghost_stmt(assert pure (test_access_2 $(*x) == 0l));
   return;
 }
+
+typedef union {
+  int a;
+  char b;
+} my_union;
+
+_include_pulse(
+  $declare(my_union x)
+
+  let my_fun =
+    $field(my_union::a)?
+)

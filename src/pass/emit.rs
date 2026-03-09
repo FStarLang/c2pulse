@@ -524,9 +524,18 @@ impl<'a> Emitter<'a> {
                             field_name.val.clone(),
                         )))
                     }
+                    TypeT::TypeRef(TypeRefKind::Union(union_name)) => {
+                        Doc::text(*before).append(self.nm.emit(Name::UnionFieldConstructor(
+                            union_name.val.clone(),
+                            field_name.val.clone(),
+                        )))
+                    }
                     _ => {
-                        self.report(format!("$field: expected struct type, got {}", ty), &ty.loc);
-                        Doc::text(*before).append("(* $field: not a struct type *)")
+                        self.report(
+                            format!("$field: expected struct or union type, got {}", ty),
+                            &ty.loc,
+                        );
+                        Doc::text(*before).append("(* $field: not a struct or union type *)")
                     }
                 }
             }
