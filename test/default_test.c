@@ -25,5 +25,6 @@ void test_calloc_array() {
     point *array = (point *) calloc(1 + 0, sizeof(point));
     _assert(array._length == 1);
     _assert(array[0].x == 0);
+    array[0] = (point) {.x=67, .y=42};
     free(array);
 }
