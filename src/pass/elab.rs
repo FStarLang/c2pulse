@@ -397,43 +397,41 @@ impl<'a> Elaborator<'a> {
     fn elab_stmts(&mut self, env: &Env, stmts: &mut Vec<Rc<Stmt>>) {
         let mut env = env.clone();
         for i in 0..stmts.len() {
-            self.elab_stmt(&env, Rc::make_mut(&mut stmts[i]));
-            // Refine pointer kind: if Assign from MallocArray, update the preceding Decl
-            let refinement = if let StmtT::Assign(x, v) = &stmts[i].val {
-                if let ExprT::Var(var_name) = &x.val {
-                    if let Ok(v_ty) = env.infer_expr(v) {
-                        if let TypeT::Pointer(_, rhs_kind) = &env.vtype_whnf(v_ty).val {
-                            if *rhs_kind != PointerKind::Unknown {
-                                Some((var_name.val.clone(), rhs_kind.clone()))
-                            } else {
-                                None
-                            }
-                        } else {
-                            None
-                        }
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            } else {
-                None
-            };
-            if let Some((var_name, new_kind)) = refinement {
-                for j in (0..i).rev() {
-                    if let StmtT::Decl(decl_name, decl_ty) = &mut Rc::make_mut(&mut stmts[j]).val {
-                        if decl_name.val == var_name {
-                            if let TypeT::Pointer(_, kind) = &mut Rc::make_mut(decl_ty).val {
-                                if *kind == PointerKind::Unknown || *kind == PointerKind::Ref {
-                                    *kind = new_kind;
+            // Look ahead: if this is a Decl and a later Assign refines the pointer kind,
+            // update the Decl type before elaborating so the env gets the right type.
+            if let StmtT::Decl(decl_name, _) = &stmts[i].val {
+                let var_name = decl_name.val.clone();
+                for j in (i + 1)..stmts.len() {
+                    if let StmtT::Assign(x, v) = &stmts[j].val {
+                        if let ExprT::Var(assign_name) = &x.val {
+                            if assign_name.val == var_name {
+                                // Infer the RHS type in current env (before Decl is pushed)
+                                if let Ok(v_ty) = env.infer_expr(v) {
+                                    if let TypeT::Pointer(_, rhs_kind) = &env.vtype_whnf(v_ty).val {
+                                        if *rhs_kind != PointerKind::Unknown {
+                                            if let StmtT::Decl(_, decl_ty) =
+                                                &mut Rc::make_mut(&mut stmts[i]).val
+                                            {
+                                                if let TypeT::Pointer(_, kind) =
+                                                    &mut Rc::make_mut(decl_ty).val
+                                                {
+                                                    if *kind == PointerKind::Unknown
+                                                        || *kind == PointerKind::Ref
+                                                    {
+                                                        *kind = rhs_kind.clone();
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
+                                break;
                             }
-                            break;
                         }
                     }
                 }
             }
+            self.elab_stmt(&env, Rc::make_mut(&mut stmts[i]));
             env.push_stmt(&stmts[i]);
         }
     }
