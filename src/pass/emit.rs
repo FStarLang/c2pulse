@@ -750,10 +750,12 @@ impl<'a> Emitter<'a> {
                 let idx_doc = self.emit_rvalue(env, idx);
                 ExprKind::RValue(annotated(
                     v,
-                    arr_doc
-                        .append(Doc::text(".("))
-                        .append(idx_doc)
-                        .append(Doc::text(")")),
+                    parens(
+                        arr_doc
+                            .append(Doc::text(".("))
+                            .append(idx_doc)
+                            .append(Doc::text(")")),
+                    ),
                 ))
             }
             _ => ExprKind::RValue(self.emit_rvalue_inner(env, v)),
