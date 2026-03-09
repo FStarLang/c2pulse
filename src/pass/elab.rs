@@ -436,6 +436,7 @@ impl<'a> Elaborator<'a> {
         let mut env = env.clone();
         for i in 0..stmts.len() {
             Self::refine_decl_pointer_kind(&env, stmts, i);
+
             self.elab_stmt(&env, Rc::make_mut(&mut stmts[i]));
             env.push_stmt(&stmts[i]);
         }

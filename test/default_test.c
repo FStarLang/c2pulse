@@ -23,5 +23,6 @@ void test_calloc_ref(void) {
 
 void test_calloc_array() {
     point *array = (point *) calloc(1 + 0, sizeof(point));
+    _assert(array._length == 1);
     free(array);
 }
