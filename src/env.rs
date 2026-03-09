@@ -263,6 +263,21 @@ impl Env {
                 }
             }
             ExprT::Member(x, a) => {
+                // u.x._active: check if union field x is active
+                if &*a.val == "_active" {
+                    if let ExprT::Member(base, fld) = &x.val {
+                        let base_ty = self.vtype_whnf(self.infer_expr(base)?);
+                        if let TypeT::TypeRef(TypeRefKind::Union(u_name)) = &base_ty.val {
+                            let Some(u) = self.lookup_union(u_name) else {
+                                return Err(InferError::CannotAccessMember(base_ty.clone()));
+                            };
+                            if u.get_field(fld).is_none() {
+                                return Err(InferError::NotAField(u_name.clone(), fld.clone()));
+                            }
+                            return Ok(TypeT::Bool.with_loc_core(expr.loc.clone()).into());
+                        }
+                    }
+                }
                 let x_ty = self.vtype_whnf(self.infer_expr(x)?);
                 match &x_ty.val {
                     TypeT::Pointer(_, PointerKind::Array) if &*a.val == "_length" => {

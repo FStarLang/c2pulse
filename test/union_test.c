@@ -25,3 +25,8 @@ void initializer() {
     union foo f = { .x = 67 };
     _assert(f.x == 67);
 }
+
+void check_active(union foo *f) {
+    f->x = 42;
+    _assert(f->x._active);
+}

@@ -164,6 +164,26 @@ impl<'a> Checker<'a> {
             }
             ExprT::Member(x, a) => {
                 self.check_rvalue(env, x);
+                // u.x._active: discriminator check on union field
+                if &*a.val == "_active" {
+                    if let ExprT::Member(base, fld) = &x.val {
+                        if let Some(t) = self.infer_expr(env, base) {
+                            let t = env.vtype_whnf(t);
+                            if let TypeT::TypeRef(TypeRefKind::Union(n)) = &t.val {
+                                let Some(u) = env.lookup_union(n) else {
+                                    return self.report(format!("unknown union {}", n), &rval.loc);
+                                };
+                                if u.get_field(fld).is_none() {
+                                    return self.report(
+                                        format!("no field {} in union {}", fld, n),
+                                        &rval.loc,
+                                    );
+                                }
+                                return;
+                            }
+                        }
+                    }
+                }
                 if self.check_types
                     && let Some(t) = self.infer_expr(env, x)
                 {

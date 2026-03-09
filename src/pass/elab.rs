@@ -126,6 +126,17 @@ impl<'a> Elaborator<'a> {
             ExprT::Deref(v) => self.elab_rvalue(env, Rc::make_mut(v)),
             ExprT::Member(x, a) => {
                 self.elab_rvalue(env, Rc::make_mut(x));
+                // u.x._active: discriminator check — just validate
+                if &*a.val == "_active" {
+                    if let ExprT::Member(base, _) = &x.val {
+                        if let Ok(t) = env.infer_expr(base) {
+                            let t = env.vtype_whnf(t);
+                            if matches!(&t.val, TypeT::TypeRef(TypeRefKind::Union(_))) {
+                                return;
+                            }
+                        }
+                    }
+                }
                 if let Ok(t) = env.infer_expr(x) {
                     let t = env.vtype_whnf(t);
                     match &t.val {

@@ -675,6 +675,32 @@ impl<'a> Emitter<'a> {
             }
             ExprT::Member(x, a) => match env.infer_expr(x) {
                 Ok(ty) => {
+                    // u.x._active: emit Field_foo__x? u
+                    if &*a.val == "_active" {
+                        if let ExprT::Member(base, fld) = &x.val {
+                            if let Ok(base_ty) = env.infer_expr(base) {
+                                let base_ty = env.vtype_whnf(base_ty);
+                                if let TypeT::TypeRef(TypeRefKind::Union(union_name)) = &base_ty.val
+                                {
+                                    let base_doc = self.emit_rvalue(env, base);
+                                    return ExprKind::RValue(annotated(
+                                        v,
+                                        parens(
+                                            self.nm
+                                                .emit(Name::UnionFieldConstructor(
+                                                    union_name.val.clone(),
+                                                    fld.val.clone(),
+                                                ))
+                                                .append("?")
+                                                .append(Doc::line())
+                                                .append(base_doc)
+                                                .group(),
+                                        ),
+                                    ));
+                                }
+                            }
+                        }
+                    }
                     let ty = env.vtype_whnf(ty);
                     match &ty.val {
                         TypeT::Pointer(_, PointerKind::Array) if &*a.val == "_length" => {
