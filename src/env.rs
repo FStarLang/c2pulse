@@ -263,26 +263,8 @@ impl Env {
                 }
             }
             ExprT::Member(x, a) => {
-                // u.x._active: check if union field x is active
-                if &*a.val == "_active" {
-                    if let ExprT::Member(base, fld) = &x.val {
-                        let base_ty = self.vtype_whnf(self.infer_expr(base)?);
-                        if let TypeT::TypeRef(TypeRefKind::Union(u_name)) = &base_ty.val {
-                            let Some(u) = self.lookup_union(u_name) else {
-                                return Err(InferError::CannotAccessMember(base_ty.clone()));
-                            };
-                            if u.get_field(fld).is_none() {
-                                return Err(InferError::NotAField(u_name.clone(), fld.clone()));
-                            }
-                            return Ok(TypeT::Bool.with_loc_core(expr.loc.clone()).into());
-                        }
-                    }
-                }
                 let x_ty = self.vtype_whnf(self.infer_expr(x)?);
                 match &x_ty.val {
-                    TypeT::Pointer(_, PointerKind::Array) if &*a.val == "_length" => {
-                        Ok(TypeT::SpecInt.with_loc_core(expr.loc.clone()).into())
-                    }
                     TypeT::TypeRef(TypeRefKind::Struct(s_name)) => {
                         let Some(s) = self.lookup_struct(s_name) else {
                             return Err(InferError::CannotAccessMember(x_ty.clone()));
@@ -303,6 +285,12 @@ impl Env {
                     }
                     _ => Err(InferError::CannotAccessMember(x_ty)),
                 }
+            }
+            ExprT::VAttr(VAttr::Length, _) => {
+                Ok(TypeT::SpecInt.with_loc_core(expr.loc.clone()).into())
+            }
+            ExprT::VAttr(VAttr::Active(_), _) => {
+                Ok(TypeT::Bool.with_loc_core(expr.loc.clone()).into())
             }
             ExprT::Index(arr, _idx) => {
                 let arr_ty = self.vtype_whnf(self.infer_expr(arr)?);

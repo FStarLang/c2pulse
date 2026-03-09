@@ -126,12 +126,22 @@ impl<'a> Elaborator<'a> {
             ExprT::Deref(v) => self.elab_rvalue(env, Rc::make_mut(v)),
             ExprT::Member(x, a) => {
                 self.elab_rvalue(env, Rc::make_mut(x));
-                // u.x._active: discriminator check — just validate
+                // Convert _active on union member → VAttr::Active
                 if &*a.val == "_active" {
-                    if let ExprT::Member(base, _) = &x.val {
+                    if let ExprT::Member(base, fld) = &x.val {
                         if let Ok(t) = env.infer_expr(base) {
                             let t = env.vtype_whnf(t);
-                            if matches!(&t.val, TypeT::TypeRef(TypeRefKind::Union(_))) {
+                            if let TypeT::TypeRef(TypeRefKind::Union(n)) = &t.val {
+                                let Some(u) = env.lookup_union(n) else {
+                                    return self.report(format!("unknown union {}", n), &rval.loc);
+                                };
+                                if u.get_field(fld).is_none() {
+                                    return self.report(
+                                        format!("no field {} in union {}", fld, n),
+                                        &rval.loc,
+                                    );
+                                }
+                                rval.val = ExprT::VAttr(VAttr::Active(fld.clone()), base.clone());
                                 return;
                             }
                         }
@@ -140,7 +150,10 @@ impl<'a> Elaborator<'a> {
                 if let Ok(t) = env.infer_expr(x) {
                     let t = env.vtype_whnf(t);
                     match &t.val {
-                        TypeT::Pointer(_, PointerKind::Array) if &*a.val == "_length" => {}
+                        // Convert _length on array → VAttr::Length
+                        TypeT::Pointer(_, PointerKind::Array) if &*a.val == "_length" => {
+                            rval.val = ExprT::VAttr(VAttr::Length, x.clone());
+                        }
                         TypeT::TypeRef(TypeRefKind::Struct(n)) => {
                             let Some(s) = env.lookup_struct(n) else {
                                 return self.report(format!("unknown structure {}", n), &rval.loc);
@@ -166,6 +179,9 @@ impl<'a> Elaborator<'a> {
                         }
                     }
                 }
+            }
+            ExprT::VAttr(_, x) => {
+                self.elab_rvalue(env, Rc::make_mut(x));
             }
             ExprT::Index(arr, idx) => {
                 self.elab_rvalue(env, Rc::make_mut(arr));

@@ -470,6 +470,7 @@ impl<'a> Emitter<'a> {
                 self.subst_this_rvalue(env, Rc::make_mut(count), this);
             }
             ExprT::Free(val) => self.subst_this_rvalue(env, Rc::make_mut(val), this),
+            ExprT::VAttr(_, x) => self.subst_this_rvalue(env, Rc::make_mut(x), this),
             ExprT::Index(arr, idx) => {
                 self.subst_this_rvalue(env, Rc::make_mut(arr), this);
                 self.subst_this_rvalue(env, Rc::make_mut(idx), this);
@@ -675,43 +676,8 @@ impl<'a> Emitter<'a> {
             }
             ExprT::Member(x, a) => match env.infer_expr(x) {
                 Ok(ty) => {
-                    // u.x._active: emit Field_foo__x? u
-                    if &*a.val == "_active" {
-                        if let ExprT::Member(base, fld) = &x.val {
-                            if let Ok(base_ty) = env.infer_expr(base) {
-                                let base_ty = env.vtype_whnf(base_ty);
-                                if let TypeT::TypeRef(TypeRefKind::Union(union_name)) = &base_ty.val
-                                {
-                                    let base_doc = self.emit_rvalue(env, base);
-                                    return ExprKind::RValue(annotated(
-                                        v,
-                                        parens(
-                                            self.nm
-                                                .emit(Name::UnionFieldConstructor(
-                                                    union_name.val.clone(),
-                                                    fld.val.clone(),
-                                                ))
-                                                .append("?")
-                                                .append(Doc::line())
-                                                .append(base_doc)
-                                                .group(),
-                                        ),
-                                    ));
-                                }
-                            }
-                        }
-                    }
                     let ty = env.vtype_whnf(ty);
                     match &ty.val {
-                        TypeT::Pointer(_, PointerKind::Array) if &*a.val == "_length" => {
-                            ExprKind::RValue(annotated(
-                                v,
-                                unaryfn(
-                                    Doc::text("Seq.length"),
-                                    unaryfn(Doc::text("value_of"), self.emit_rvalue(env, x)),
-                                ),
-                            ))
-                        }
                         TypeT::TypeRef(TypeRefKind::Struct(struct_name)) => {
                             match self.emit_expr(env, x) {
                                 ExprKind::LValue(x_doc) => ExprKind::LValue(annotated(
@@ -780,6 +746,34 @@ impl<'a> Emitter<'a> {
                     ExprKind::RValue(annotated(v, Doc::text("(admit())")))
                 }
             },
+            ExprT::VAttr(VAttr::Length, x) => ExprKind::RValue(annotated(
+                v,
+                unaryfn(
+                    Doc::text("Seq.length"),
+                    unaryfn(Doc::text("value_of"), self.emit_rvalue(env, x)),
+                ),
+            )),
+            ExprT::VAttr(VAttr::Active(fld), base) => {
+                let base_ty = env.vtype_whnf(env.infer_expr(base).unwrap());
+                let TypeT::TypeRef(TypeRefKind::Union(union_name)) = &base_ty.val else {
+                    unreachable!()
+                };
+                let base_doc = self.emit_rvalue(env, base);
+                ExprKind::RValue(annotated(
+                    v,
+                    parens(
+                        self.nm
+                            .emit(Name::UnionFieldConstructor(
+                                union_name.val.clone(),
+                                fld.val.clone(),
+                            ))
+                            .append("?")
+                            .append(Doc::line())
+                            .append(base_doc)
+                            .group(),
+                    ),
+                ))
+            }
             ExprT::Index(arr, idx) => {
                 let arr_doc = self.emit_rvalue(env, arr);
                 let idx_doc = self.emit_rvalue(env, idx);
@@ -992,9 +986,13 @@ impl<'a> Emitter<'a> {
                         Doc::text(format!("(admit()) (* {} *)", val))
                     }
                 },
-                ExprT::Var(_) | ExprT::Deref(_) | ExprT::Member(_, _) | ExprT::Index(_, _) => {
-                    // These are lvalue variants; handled by emit_expr
-                    unreachable!("lvalue variants should be handled by emit_expr")
+                ExprT::Var(_)
+                | ExprT::Deref(_)
+                | ExprT::Member(_, _)
+                | ExprT::VAttr(_, _)
+                | ExprT::Index(_, _) => {
+                    // These are lvalue/vattr variants; handled by emit_expr
+                    unreachable!("lvalue/vattr variants should be handled by emit_expr")
                 }
                 ExprT::Ref(v) => self.emit_lvalue(env, v),
                 ExprT::Cast(val, to_ty) => {

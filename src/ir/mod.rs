@@ -241,6 +241,14 @@ impl Display for BinOp {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub enum VAttr {
+    /// `array._length` — length of an array
+    Length,
+    /// `union.field._active` — whether the named field is active
+    Active(Rc<Ident>),
+}
+
 pub type Expr = Ast<ExprT>;
 pub type Exprs = Vec<Rc<Expr>>;
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
@@ -250,6 +258,9 @@ pub enum ExprT {
     Deref(Rc<Expr>),
     Member(Rc<Expr>, Rc<Ident>),
     Index(Rc<Expr>, Rc<Expr>),
+
+    // Virtual attribute (introduced by elab)
+    VAttr(VAttr, Rc<Expr>),
 
     // RValue variants
     BoolLit(bool),
