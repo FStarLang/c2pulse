@@ -23,7 +23,7 @@ freeable_u32_pair_ptr new_u32_pair()
   _ensures(return->second == 1u)
 {
   u32_pair *x = (u32_pair *)malloc(sizeof(u32_pair));
-  _ghost_stmt(admit());
+  _ghost_stmt(struct_u32_pair_anon_1__aux_raw_unfold_uninit $(x));
   x->first = 0ul;
   x->second = 1ul;
   return x;
