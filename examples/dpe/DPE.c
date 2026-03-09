@@ -14,9 +14,9 @@ _include_pulse(
 
   let tag_relation ($(s): $type(context_t)) (h: context_full_data) : prop =
     match $(s.tag) with
-    | 0uy -> Field__u_context_t__uds? $(s.payload) /\ PL_Engine? h
-    | 1uy -> Field__u_context_t__cdi? $(s.payload) /\ PL_L0? h
-    | 2uy -> Field__u_context_t__l1_context? $(s.payload) /\ PL_L1? h
+    | 0uy -> $field(u_context_t::uds)? $(s.payload) /\ PL_Engine? h
+    | 1uy -> $field(u_context_t::cdi)? $(s.payload) /\ PL_L0? h
+    | 2uy -> $field(u_context_t::l1_context)? $(s.payload) /\ PL_L1? h
     | _ -> False
 )
 
@@ -25,11 +25,11 @@ _include_pulse(
 
   let context_full_pred ([@@@mkey] $(s): $type(context_t)) (h: context_full_data) : slprop =
     match $(s.payload), h with
-    | Field__u_context_t__uds uds_ptr, PL_Engine uds_data ->
+    | $field(u_context_t::uds) uds_ptr, PL_Engine uds_data ->
       uds_ptr |-> uds_data ** freeable_array uds_ptr
-    | Field__u_context_t__cdi cdi_ptr, PL_L0 cdi_data ->
+    | $field(u_context_t::cdi) cdi_ptr, PL_L0 cdi_data ->
       cdi_ptr |-> cdi_data ** freeable_array cdi_ptr
-    | Field__u_context_t__l1_context _, PL_L1 ->
+    | $field(u_context_t::l1_context) _, PL_L1 ->
       emp
     | _ -> pure False
 
@@ -43,7 +43,7 @@ _include_pulse(
     ensures freeable_array $(s.payload.uds)
   {
     unfold context_full_pred;
-    rewrite each $(s.payload) as Field__u_context_t__uds $(s.payload.uds);
+    rewrite each $(s.payload) as $field(u_context_t::uds) $(s.payload.uds);
     rewrite each h as PL_Engine (PL_Engine?._0 h);
   }
   
@@ -54,7 +54,7 @@ _include_pulse(
     ensures freeable_array $(s.payload.cdi)
   {
     unfold context_full_pred;
-    rewrite each $(s.payload) as Field__u_context_t__cdi $(s.payload.cdi);
+    rewrite each $(s.payload) as $field(u_context_t::cdi) $(s.payload.cdi);
     rewrite each h as PL_L0 (PL_L0?._0 h);
   }
   
@@ -63,7 +63,7 @@ _include_pulse(
     requires context_full_pred $(s) h
   {
     unfold context_full_pred;
-    rewrite each $(s.payload) as Field__u_context_t__l1_context $(s.payload.l1_context);
+    rewrite each $(s.payload) as $field(u_context_t::l1_context) $(s.payload.l1_context);
     rewrite each h as PL_L1;
   }
 
