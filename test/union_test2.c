@@ -16,23 +16,20 @@ typedef struct {
   u_context_t payload;
 } context_t;
 
-// TODO
-#define _is_uds(ctx) ((bool) _inline_pulse(Field__u_context_t__uds? $(ctx)))
-
 void test1(u_context_t ctx)
-    _requires(_is_uds(ctx))
+    _requires(ctx.uds._active)
 {
     uint8_t *uds_buf = ctx.uds;
 }
 
 void test2(u_context_t *ctx)
-    _requires(_is_uds(*ctx))
+    _requires(ctx->uds._active)
 {
     uint8_t *uds_buf = ctx->uds;
 }
 
 void test3a(context_t ctx)
-    _requires(_is_uds(ctx.payload))
+    _requires(ctx.payload.uds._active)
 {
     u_context_t *payload = &ctx.payload;
     uint8_t *uds_buf = payload->uds;
@@ -40,13 +37,13 @@ void test3a(context_t ctx)
 
 
 void test3(context_t ctx)
-    _requires(_is_uds(ctx.payload))
+    _requires(ctx.payload.uds._active)
 {
     uint8_t *uds_buf = ctx.payload.uds;
 }
 
 void test4(context_t *ctx)
-    _requires(_is_uds(ctx->payload))
+    _requires(ctx->payload.uds._active)
 {
     uint8_t *uds_buf = ctx->payload.uds;
 }

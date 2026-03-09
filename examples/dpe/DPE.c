@@ -14,9 +14,9 @@ _include_pulse(
 
   let tag_relation ($(s): $type(context_t)) (h: context_full_data) : prop =
     match $(s.tag) with
-    | 0uy -> $field(u_context_t::uds)? $(s.payload) /\ PL_Engine? h
-    | 1uy -> $field(u_context_t::cdi)? $(s.payload) /\ PL_L0? h
-    | 2uy -> $field(u_context_t::l1_context)? $(s.payload) /\ PL_L1? h
+    | 0uy -> $(s.payload.uds._active) /\ PL_Engine? h
+    | 1uy -> $(s.payload.cdi._active) /\ PL_L0? h
+    | 2uy -> $(s.payload.l1_context._active) /\ PL_L1? h
     | _ -> False
 )
 
