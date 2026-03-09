@@ -96,11 +96,6 @@ void memcpy_(size_t len, _array const uint8_t *a1, _array uint8_t *a2)
   _ghost_stmt(admit());
 }
 
-void free_(_consumes _allocated_array _array uint8_t *arr)
-{
-  _ghost_stmt(admit());
-}
-
 _refine((_slprop) _inline_pulse(
   exists* state.
     pure (tag_relation $(*this) state) **
@@ -138,7 +133,7 @@ void init_l0_context(context_obj ctx, const dice_digest cdi)
   memcpy_(DICE_DIGEST_LEN, cdi, cdi_buf);
   _ghost_stmt(elim_context_full_pred_uds $(*ctx));
   uint8_t* uds_buf = ctx->payload.uds;
-  free_(uds_buf);
+  free(uds_buf);
   ctx->tag = 1;
   ctx->payload.cdi = cdi_buf;
   _ghost_stmt(intro_context_full_pred_cdi $(*ctx));
@@ -150,7 +145,7 @@ void destroy_uds_context(_consumes _allocated context_obj ctx)
 {
   _ghost_stmt(elim_context_full_pred_uds $(*ctx));
   uint8_t* uds_buf = ctx->payload.uds;
-  free_(uds_buf);
+  free(uds_buf);
   free(ctx);
   return;
 }
@@ -162,7 +157,7 @@ void mk_l0_context(context_obj ctx, _consumes _allocated_array dice_digest cdi)
   _assert(cdi._length == DICE_DIGEST_LEN);
   _ghost_stmt(elim_context_full_pred_uds $(*ctx));
   uint8_t* uds_buf = ctx->payload.uds;
-  free_(uds_buf);
+  free(uds_buf);
   ctx->tag = 1;
   ctx->payload.cdi = cdi;
   _ghost_stmt(intro_context_full_pred_cdi $(*ctx));
@@ -183,7 +178,7 @@ bool derive_child_from_context(context_obj ctx, const engine_record_t *record)
     return true;
   } else {
     _ghost_stmt(intro_context_full_pred_uds $(*ctx));
-    free_(cdi_buf);
+    free(cdi_buf);
     return false;
   }
 }

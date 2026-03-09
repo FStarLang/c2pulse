@@ -20,3 +20,8 @@ void test_calloc_ref(void) {
     _assert(*p == 0);
     free(p);
 }
+
+void test_calloc_array() {
+    point *array = (point *) calloc(1 + 0, sizeof(point));
+    free(array);
+}

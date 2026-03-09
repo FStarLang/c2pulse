@@ -15,12 +15,6 @@ bool compare(size_t len, const _array uint8_t *a1, const _array uint8_t *a2)
     return false;
 }
 
-void free_(_consumes _allocated_array _array uint8_t *arr)
-{
-    _ghost_stmt(admit());
-}
-
-
 bool authenticate_l0_image(const engine_record_t *record)
 {
     bool valid_header_sig = ed25519_verify(record->l0_image_auth_pubkey, record->l0_image_header, record->l0_image_header_size, record->l0_image_header_sig);
@@ -31,7 +25,7 @@ bool authenticate_l0_image(const engine_record_t *record)
         //allocate a scratch of size DICE_HASH_ALG here and use it
         hacl_hash(DICE_HASH_ALG, record->l0_binary_size, record->l0_binary, scratch);
         bool res = compare(DICE_DIGEST_LEN, scratch, record->l0_binary_hash);
-        free_(scratch);
+        free(scratch);
         return res;
     }
     else
@@ -48,8 +42,8 @@ void compute_cdi(dice_digest cdi, const uds_array uds, const engine_record_t *re
     hacl_hash(DICE_HASH_ALG, UDS_LEN, uds, uds_digest);
     hacl_hash(DICE_HASH_ALG, record->l0_binary_size, record->l0_binary, l0_digest);
     hacl_hmac(DICE_HASH_ALG, cdi, uds_digest, DICE_DIGEST_LEN, l0_digest, DICE_DIGEST_LEN);
-    free_(uds_digest);
-    free_(l0_digest);
+    free(uds_digest);
+    free(l0_digest);
 }
 
 bool engine_main(dice_digest cdi, const uds_array uds, const engine_record_t *record) {
