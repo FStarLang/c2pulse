@@ -1949,6 +1949,41 @@ impl<'a> Emitter<'a> {
                 ])),
             ]),
         ));
+        ses.push(mk_assume_val(
+            vec![],
+            self.nm.emit(Name::StructAuxFn(
+                name.val.clone(),
+                "raw_unfold_uninit".into(),
+            )),
+            &[parens(
+                Doc::text("x:")
+                    .append(Doc::line())
+                    .append(ref_struct_type.clone()),
+            )],
+            naryfn([
+                Doc::text("stt_ghost"),
+                Doc::text("unit"),
+                Doc::text("emp_inames"),
+                naryfn([
+                    Doc::text("Pulse.Lib.Reference.pts_to_uninit"),
+                    Doc::text("x"),
+                ]),
+                mk_thunk({
+                    let mut post = vec![naryfn([
+                        unfolded_tok.clone(),
+                        Doc::text("x"),
+                        Doc::text("1.0R"),
+                    ])];
+                    for (fld, _) in fields {
+                        post.push(naryfn([
+                            Doc::text("Pulse.Lib.Reference.pts_to_uninit"),
+                            unaryfn(self.nm.emit(ghost_fld(fld)), Doc::text("x")),
+                        ]));
+                    }
+                    mk_star(post)
+                }),
+            ]),
+        ));
 
         for (fld, fld_ty) in fields {
             let ll_ty = self.emit_type(env, fld_ty);
