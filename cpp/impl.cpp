@@ -501,6 +501,29 @@ public:
                 }
               }
             }
+            // Detect calloc(n, sizeof(T))
+            if (callee->getName() == "calloc" && call->getNumArgs() == 2) {
+              auto *countArg = call->getArg(0)->IgnoreParenImpCasts();
+              auto *sizeArg = call->getArg(1)->IgnoreParenImpCasts();
+              if (auto *sizeofExpr =
+                      dyn_cast<UnaryExprOrTypeTraitExpr>(sizeArg)) {
+                if (sizeofExpr->getKind() == UETT_SizeOf &&
+                    sizeofExpr->isArgumentType()) {
+                  auto allocTy = trQualType(sizeofExpr->getArgumentType(),
+                                            sizeofExpr->getSourceRange());
+                  // calloc(1, sizeof(T)) → single ref
+                  if (auto *intLit = dyn_cast<IntegerLiteral>(countArg)) {
+                    if (intLit->getValue() == 1) {
+                      return mk_calloc(std::move(loc), std::move(allocTy));
+                    }
+                  }
+                  // calloc(n, sizeof(T)) → array
+                  auto countExpr = trRValue(countArg);
+                  return mk_calloc_array(std::move(loc), std::move(allocTy),
+                                         std::move(countExpr));
+                }
+              }
+            }
           }
         }
 

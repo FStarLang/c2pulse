@@ -9,8 +9,16 @@ instance inhabited_ref (a:Type) : Pulse.Lib.C.Inhabited.inhabited (ref a) = {
   witness = null
 }
 
+instance has_zero_default_ref (a:Type) : Pulse.Lib.C.Inhabited.has_zero_default (ref a) = {
+  zero_default = null
+}
+
 instance inhabited_array (a:Type) : Pulse.Lib.C.Inhabited.inhabited (array a) = {
-  witness = magic(); // update to Array.null once it's added
+  witness = Pulse.Lib.Array.null
+}
+
+instance has_zero_default_array (a:Type) : Pulse.Lib.C.Inhabited.has_zero_default (array a) = {
+  zero_default = Pulse.Lib.Array.null
 }
 
 
@@ -19,6 +27,11 @@ val freeable (#a: Type u#a) ([@@@mkey] r:ref a) : slprop
 fn alloc_ref u#a (#a: Type u#a) ()
   returns  r : ref a
   ensures  pts_to_uninit r
+  ensures  freeable r
+
+fn calloc_ref u#a (#a: Type u#a) {| has_zero_default a |} ()
+  returns  r : ref a
+  ensures  pts_to r zero_default
   ensures  freeable r
 
 fn free_ref u#a (#a: Type u#a) (r:ref a)

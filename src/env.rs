@@ -309,10 +309,10 @@ impl Env {
             },
             ExprT::Cast(_, ty) => Ok(ty.clone().into()),
             ExprT::Error(ty) => Ok(ty.clone().into()),
-            ExprT::Malloc(ty) => Ok(expr
+            ExprT::Malloc(ty) | ExprT::Calloc(ty) => Ok(expr
                 .reuse_loc(TypeT::Pointer(ty.clone(), PointerKind::Ref))
                 .into()),
-            ExprT::MallocArray(ty, _) => Ok(expr
+            ExprT::MallocArray(ty, _) | ExprT::CallocArray(ty, _) => Ok(expr
                 .reuse_loc(TypeT::Pointer(ty.clone(), PointerKind::Array))
                 .into()),
             ExprT::Free(_) => Ok(TypeT::Void.with_loc_core(expr.loc.clone()).into()),
@@ -463,9 +463,9 @@ impl Env {
             (TypeT::Pointer(t1, k1), TypeT::Pointer(t2, k2)) => {
                 k1 == k2 && self.vtype_eq(t1.clone().into(), t2.clone().into())
             }
-            (TypeT::TypeRef(t1), TypeT::TypeRef(t2)) => t1 == t2,
             (TypeT::SpecInt, TypeT::SpecInt) => true,
             (TypeT::SLProp, TypeT::SLProp) => true,
+            (TypeT::TypeRef(t1), TypeT::TypeRef(t2)) => t1.alpha_eq(t2),
             (TypeT::Error, _) | (_, TypeT::Error) => true,
             _ => false,
         }

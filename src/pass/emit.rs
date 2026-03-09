@@ -175,7 +175,9 @@ enum Name {
     UnionFieldConstructor(Rc<IdentT>, Rc<IdentT>),
     UnionGhostFieldProj(Rc<IdentT>, Rc<IdentT>),
     UnionFieldProj(Rc<IdentT>, Rc<IdentT>),
-    UnionAuxFn(Rc<IdentT>, String),
+    UnionAuxFn(Rc<IdentT>, &'static str, Rc<IdentT>),
+
+    TypeRefDefault(TypeRef),
 }
 impl Name {
     fn to_string(&self) -> String {
@@ -219,7 +221,10 @@ impl Name {
             }
             Name::UnionGhostFieldProj(u, fld) => format!("{}__{}", union_to_string(u), fld),
             Name::UnionFieldProj(u, fld) => format!("{}__get_{}", union_to_string(u), fld),
-            Name::UnionAuxFn(u, f) => format!("{}__aux_{}", union_to_string(u), f),
+            Name::UnionAuxFn(u, f, fld) => format!("{}__aux_{}_{}", union_to_string(u), f, fld),
+            Name::TypeRefDefault(type_ref) => {
+                format!("has_zero_default_{}", typeref_to_string(type_ref))
+            }
         }
     }
 }
@@ -391,6 +396,31 @@ impl<'a> Emitter<'a> {
         })
     }
 
+    /// Emit the zero-default value for a C type (corresponding to the zero bitpattern).
+    fn emit_type_default(&mut self, env: &Env, ty: &Type) -> Doc {
+        match &ty.val {
+            TypeT::Int { signed, width } => {
+                let (modu, ctor) = if *signed {
+                    (format!("Int{}", width), "int_to_t")
+                } else {
+                    (format!("UInt{}", width), "uint_to_t")
+                };
+                parens(Doc::text(format!("{}.{} 0", modu, ctor)))
+            }
+            TypeT::Bool => Doc::text("false"),
+            TypeT::SizeT => Doc::text("0sz"),
+            TypeT::Pointer(_, PointerKind::Ref | PointerKind::Unknown) => Doc::text("null"),
+            TypeT::Pointer(_, PointerKind::Array) => Doc::text("zero_default"),
+            TypeT::Void => Doc::text("()"),
+            TypeT::TypeRef(_) => Doc::text("zero_default"),
+            TypeT::Refine(ty, _) | TypeT::Plain(ty) => self.emit_type_default(env, ty),
+            _ => {
+                self.report(format!("no zero default for type {}", ty), &ty.loc);
+                Doc::text("(admit())")
+            }
+        }
+    }
+
     fn subst_this_rvalue(&mut self, env: &Env, rvalue: &mut Expr, this: &Rc<Expr>) {
         match &mut rvalue.val {
             ExprT::Var(x) => {
@@ -435,8 +465,8 @@ impl<'a> Emitter<'a> {
             ExprT::UnionInit(_, _, val) => {
                 self.subst_this_rvalue(env, Rc::make_mut(val), this);
             }
-            ExprT::Malloc(_) => {}
-            ExprT::MallocArray(_, count) => {
+            ExprT::Malloc(_) | ExprT::Calloc(_) => {}
+            ExprT::MallocArray(_, count) | ExprT::CallocArray(_, count) => {
                 self.subst_this_rvalue(env, Rc::make_mut(count), this);
             }
             ExprT::Free(val) => self.subst_this_rvalue(env, Rc::make_mut(val), this),
@@ -684,15 +714,17 @@ impl<'a> Emitter<'a> {
                                 )),
                                 ExprKind::RValue(x_doc) => ExprKind::RValue(annotated(
                                     v,
-                                    self.nm
-                                        .emit(Name::UnionFieldConstructor(
-                                            union_name.val.clone(),
-                                            a.val.clone(),
-                                        ))
-                                        .append("?._0")
-                                        .append(Doc::line())
-                                        .append(x_doc)
-                                        .group(),
+                                    parens(
+                                        self.nm
+                                            .emit(Name::UnionFieldConstructor(
+                                                union_name.val.clone(),
+                                                a.val.clone(),
+                                            ))
+                                            .append("?._0")
+                                            .append(Doc::line())
+                                            .append(x_doc)
+                                            .group(),
+                                    ),
                                 )),
                             }
                         }
@@ -930,30 +962,23 @@ impl<'a> Emitter<'a> {
                 ExprT::Ref(v) => self.emit_lvalue(env, v),
                 ExprT::Cast(val, to_ty) => {
                     let val_doc = self.emit_rvalue(env, val);
-                    let from_ty = env.infer_expr(val).map(|t| env.vtype_whnf(t));
-                    let to_ty = env.vtype_whnf(to_ty.clone().into());
-                    let from_ty = match &from_ty {
-                        Ok(ty) => &ty.val,
-                        Err(_) => &TypeT::Error,
+                    let Ok(from_ty) = env.infer_expr(val).map(|t| env.vtype_whnf(t)) else {
+                        // If we can't infer the type, we should have logged an error somewhere else.
+                        return val_doc;
                     };
+                    let to_ty = env.vtype_whnf(to_ty.clone().into());
                     // Special case: integer literal cast to SizeT → emit Nsz
                     if matches!(&to_ty.val, TypeT::SizeT) {
                         if let ExprT::IntLit(n, _) = &val.val {
                             return Doc::text(format!("{}sz", n));
                         }
                     }
+                    if env.vtype_eq(from_ty.clone(), to_ty.clone()) {
+                        // Same underlying type, no cast necessary.
+                        return val_doc;
+                    }
                     let default_msg = format!("unsupported cast from {} to {}", from_ty, to_ty);
-                    match (from_ty, &to_ty.val) {
-                        (
-                            TypeT::TypeRef(TypeRefKind::Struct(a)),
-                            TypeT::TypeRef(TypeRefKind::Struct(b)),
-                        ) if a.val == b.val => val_doc,
-                        (
-                            TypeT::TypeRef(TypeRefKind::Union(a)),
-                            TypeT::TypeRef(TypeRefKind::Union(b)),
-                        ) if a.val == b.val => val_doc,
-                        (TypeT::Void, TypeT::Void) => val_doc,
-                        (TypeT::Bool, TypeT::Bool) => val_doc,
+                    match (&from_ty.val, &to_ty.val) {
                         (TypeT::Bool, TypeT::Int { signed, width }) => {
                             fn abbrev(s: &bool, w: &u32) -> String {
                                 format!("{}int{}", if *s { "" } else { "u" }, w)
@@ -1062,16 +1087,9 @@ impl<'a> Emitter<'a> {
                         // (TypeT::Int { signed, width }, TypeT::SLProp) => todo!(),
                         // (TypeT::SizeT, TypeT::Bool) => todo!(),
                         // (TypeT::SizeT, TypeT::Int { signed, width }) => todo!(),
-                        (TypeT::SizeT, TypeT::SizeT) => val_doc,
-                        (TypeT::SpecInt, TypeT::SpecInt) => val_doc,
                         // (TypeT::SizeT, TypeT::SLProp) => todo!(),
                         // (TypeT::Pointer { to, kind }, TypeT::Bool) => todo!(),
                         // (TypeT::Pointer { to, kind }, TypeT::SizeT) => todo!(),
-                        (TypeT::Pointer(t1, k1), TypeT::Pointer(t2, k2))
-                            if t1 == t2 && k1 == k2 =>
-                        {
-                            val_doc
-                        }
                         // (TypeT::Pointer { to:t1, kind:k1 }, TypeT::Pointer { to:t2, kind:k2 }) if t1 == t2 => todo!(),
                         // (TypeT::Pointer { to, kind }, TypeT::SLProp) => todo!(),
                         (TypeT::Error, _) | (_, TypeT::Error) => val_doc,
@@ -1241,8 +1259,24 @@ impl<'a> Emitter<'a> {
                         .append(Doc::line())
                         .append("()"),
                 ),
+                ExprT::Calloc(ty) => parens(
+                    Doc::text("Pulse.Lib.C.Ref.calloc_ref")
+                        .append(Doc::line())
+                        .append(Doc::text("#"))
+                        .append(self.emit_type(env, ty))
+                        .append(Doc::line())
+                        .append("()"),
+                ),
                 ExprT::MallocArray(ty, count) => parens(
                     Doc::text("Pulse.Lib.C.Array.alloc_array")
+                        .append(Doc::line())
+                        .append(Doc::text("#"))
+                        .append(self.emit_type(env, ty))
+                        .append(Doc::line())
+                        .append(self.emit_rvalue(env, count)),
+                ),
+                ExprT::CallocArray(ty, count) => parens(
+                    Doc::text("Pulse.Lib.C.Array.calloc_array")
                         .append(Doc::line())
                         .append(Doc::text("#"))
                         .append(self.emit_type(env, ty))
@@ -1524,7 +1558,13 @@ impl<'a> Emitter<'a> {
 
         let k = &TypeRefKind::Typedef(name.clone());
         let t = self.nm.emit(Name::TypeRef(k.into()));
-        let ty_decl = mk_let(t.clone(), &[], Doc::text("Type"), self.emit_type(env, body));
+        // The unfold here is important to trigger the loop detection in the Pulse prover
+        let ty_decl = Doc::text("unfold").append(Doc::line()).append(mk_let(
+            t.clone(),
+            &[],
+            Doc::text("Type"),
+            self.emit_type(env, body),
+        ));
         let env = &mut env.clone();
         let this = env
             .push_this(TypeT::TypeRef(k.clone()).with_loc(name.loc.clone()))
@@ -1561,12 +1601,53 @@ impl<'a> Emitter<'a> {
             &all_args,
             mk_star(props),
         );
-        Doc::intersperse(vec![ty_decl, pred_decl], Doc::line())
+
+        // has_zero_default instance
+        let default_name = self.nm.emit(Name::TypeRefDefault(k.into()));
+        let type_name = self.nm.emit(Name::TypeRef(k.into()));
+        let default_decl = Doc::text("instance")
+            .append(Doc::line())
+            .append(default_name)
+            .append(Doc::line())
+            .append(":")
+            .append(Doc::line())
+            .append(unaryfn(Doc::text("has_zero_default"), type_name))
+            .append(Doc::line())
+            .append("=")
+            .append(Doc::line())
+            .append("{")
+            .group()
+            .append(Doc::line())
+            .append(
+                Doc::text("zero_default =")
+                    .append(Doc::line())
+                    .append(self.emit_type_default(env, body))
+                    .group(),
+            )
+            .nest(2)
+            .append(Doc::line())
+            .append("}")
+            .group();
+
+        Doc::intersperse(vec![ty_decl, pred_decl, default_decl], Doc::line())
     }
 } // impl Emitter (group D)
 
-fn mk_assume_val(n: Doc, args: &[Doc], ty: Doc) -> Doc {
-    (Doc::text("assume val").append(Doc::line()).append(n))
+fn mk_attrs(attrs: Vec<Doc>) -> Doc {
+    if attrs.is_empty() {
+        return Doc::nil();
+    }
+    Doc::text("[@@")
+        .append(Doc::intersperse(attrs, Doc::text(";").append(Doc::line())))
+        .append("]")
+        .group()
+        .nest(2)
+        .append(Doc::line())
+}
+
+fn mk_assume_val(attrs: Vec<Doc>, n: Doc, args: &[Doc], ty: Doc) -> Doc {
+    mk_attrs(attrs)
+        .append(Doc::text("assume val").append(Doc::line()).append(n))
         .append(
             Doc::concat(args.iter().map(|arg| Doc::line().append(arg.clone())))
                 .append(Doc::line().append(":"))
@@ -1693,12 +1774,16 @@ impl<'a> Emitter<'a> {
             .nm
             .emit(Name::StructAuxFn(name.val.clone(), "raw_unfolded".into()));
         ses.push(mk_assume_val(
+            vec![],
             unfolded_tok.clone(),
-            &[parens(
-                Doc::text("x:")
-                    .append(Doc::line())
-                    .append(ref_struct_type.clone()),
-            )],
+            &[
+                parens(
+                    Doc::text("[@@@mkey] x:")
+                        .append(Doc::line())
+                        .append(ref_struct_type.clone()),
+                ),
+                parens(Doc::text("p: perm")),
+            ],
             Doc::text("slprop"),
         ));
 
@@ -1708,6 +1793,7 @@ impl<'a> Emitter<'a> {
             let ll_type = self.emit_type(env, fld_ty);
 
             ses.push(mk_assume_val(
+                vec![],
                 self.nm.emit(ghost_fld(fld)),
                 &[parens(
                     Doc::text("x:")
@@ -1721,153 +1807,152 @@ impl<'a> Emitter<'a> {
             ));
         }
 
-        ses.push(
-            Doc::text("[@@pulse_intro]")
-                .append(Doc::line())
-                .append(mk_assume_val(
-                    self.nm
-                        .emit(Name::StructAuxFn(name.val.clone(), "raw_unfold".into())),
-                    &[
-                        parens(
-                            Doc::text("x:")
-                                .append(Doc::line())
-                                .append(ref_struct_type.clone()),
-                        ),
-                        parens(Doc::text("#p: perm")),
-                        parens(
-                            Doc::text("vx:")
-                                .append(Doc::line())
-                                .append(struct_type_name.clone()),
-                        ),
-                    ],
-                    naryfn([
-                        Doc::text("stt_ghost"),
-                        Doc::text("unit"),
-                        Doc::text("emp_inames"),
-                        // pre
-                        naryfn([
+        ses.push(mk_assume_val(
+            vec![Doc::text("pulse_intro")],
+            self.nm
+                .emit(Name::StructAuxFn(name.val.clone(), "raw_unfold".into())),
+            &[
+                parens(
+                    Doc::text("x:")
+                        .append(Doc::line())
+                        .append(ref_struct_type.clone()),
+                ),
+                parens(Doc::text("#p: perm")),
+                parens(
+                    Doc::text("vx:")
+                        .append(Doc::line())
+                        .append(struct_type_name.clone()),
+                ),
+            ],
+            naryfn([
+                Doc::text("stt_ghost"),
+                Doc::text("unit"),
+                Doc::text("emp_inames"),
+                // pre
+                naryfn([
+                    Doc::text("Pulse.Lib.Reference.pts_to"),
+                    Doc::text("x"),
+                    Doc::text("#p"),
+                    Doc::text("vx"),
+                ]),
+                {
+                    let mut post = vec![naryfn([
+                        unfolded_tok.clone(),
+                        Doc::text("x"),
+                        Doc::text("p"),
+                    ])];
+                    for (fld, _) in fields {
+                        post.push(naryfn([
                             Doc::text("Pulse.Lib.Reference.pts_to"),
-                            Doc::text("x"),
+                            unaryfn(self.nm.emit(ghost_fld(fld)), Doc::text("x")),
                             Doc::text("#p"),
-                            Doc::text("vx"),
-                        ]),
-                        {
-                            let mut post = vec![naryfn([unfolded_tok.clone(), Doc::text("x")])];
-                            for (fld, _) in fields {
-                                post.push(naryfn([
-                                    Doc::text("Pulse.Lib.Reference.pts_to"),
-                                    unaryfn(self.nm.emit(ghost_fld(fld)), Doc::text("x")),
-                                    Doc::text("#p"),
-                                    Doc::text("vx.").append(self.nm.emit(direct_fld(fld))),
-                                ]));
-                            }
-                            mk_thunk(mk_star(post))
-                        },
-                    ]),
-                )),
-        );
+                            Doc::text("vx.").append(self.nm.emit(direct_fld(fld))),
+                        ]));
+                    }
+                    mk_thunk(mk_star(post))
+                },
+            ]),
+        ));
 
         let fold_arg_name = |fld: &Ident| Doc::text(format!("v_{}", fld));
-        ses.push(
-            Doc::text("[@@pulse_intro]")
-                .append(Doc::line())
-                .append(mk_assume_val(
-                    self.nm
-                        .emit(Name::StructAuxFn(name.val.clone(), "raw_fold".into())),
-                    &{
-                        let mut args = vec![
-                            parens(
-                                Doc::text("x:")
-                                    .append(Doc::line())
-                                    .append(ref_struct_type.clone()),
-                            ),
-                            parens(Doc::text("#p: perm")),
-                        ];
-                        for (fld, _) in fields {
-                            args.push(fold_arg_name(fld))
-                        }
-                        args
-                    },
-                    naryfn([
-                        Doc::text("stt_ghost"),
-                        Doc::text("unit"),
-                        Doc::text("emp_inames"),
-                        {
-                            let mut pre = vec![naryfn([unfolded_tok.clone(), Doc::text("x")])];
-                            for (fld, _) in fields {
-                                pre.push(naryfn([
-                                    Doc::text("Pulse.Lib.Reference.pts_to"),
-                                    unaryfn(self.nm.emit(ghost_fld(fld)), Doc::text("x")),
-                                    Doc::text("#p"),
-                                    fold_arg_name(fld),
-                                ]));
-                            }
-                            mk_star(pre)
-                        },
-                        mk_thunk(naryfn([
-                            Doc::text("Pulse.Lib.Reference.pts_to"),
-                            Doc::text("x"),
-                            Doc::text("#p"),
-                            Doc::text("{")
-                                .append(Doc::concat(fields.iter().map(|(fld, _)| {
-                                    Doc::line()
-                                        .append(self.nm.emit(direct_fld(fld)))
-                                        .append("=")
-                                        .append(fold_arg_name(fld))
-                                        .append(";")
-                                })))
-                                .nest(2)
-                                .append(Doc::line())
-                                .append("}")
-                                .group(),
-                        ])),
-                    ]),
-                )),
-        );
-        ses.push(
-            Doc::text("[@@pulse_intro]")
-                .append(Doc::line())
-                .append(mk_assume_val(
-                    self.nm.emit(Name::StructAuxFn(
-                        name.val.clone(),
-                        "raw_fold_uninit".into(),
-                    )),
-                    &[parens(
+        ses.push(mk_assume_val(
+            vec![Doc::text("pulse_intro")],
+            self.nm
+                .emit(Name::StructAuxFn(name.val.clone(), "raw_fold".into())),
+            &{
+                let mut args = vec![
+                    parens(
                         Doc::text("x:")
                             .append(Doc::line())
                             .append(ref_struct_type.clone()),
-                    )],
-                    naryfn([
-                        Doc::text("stt_ghost"),
-                        Doc::text("unit"),
-                        Doc::text("emp_inames"),
-                        {
-                            let mut pre = vec![naryfn([unfolded_tok.clone(), Doc::text("x")])];
-                            for (fld, _) in fields {
-                                pre.push(naryfn([
-                                    Doc::text("Pulse.Lib.Reference.pts_to_uninit"),
-                                    unaryfn(self.nm.emit(ghost_fld(fld)), Doc::text("x")),
-                                ]));
-                            }
-                            mk_star(pre)
-                        },
-                        mk_thunk(naryfn([
+                    ),
+                    parens(Doc::text("#p: perm")),
+                ];
+                for (fld, _) in fields {
+                    args.push(fold_arg_name(fld))
+                }
+                args
+            },
+            naryfn([
+                Doc::text("stt_ghost"),
+                Doc::text("unit"),
+                Doc::text("emp_inames"),
+                {
+                    let mut pre = vec![naryfn([
+                        unfolded_tok.clone(),
+                        Doc::text("x"),
+                        Doc::text("p"),
+                    ])];
+                    for (fld, _) in fields {
+                        pre.push(naryfn([
+                            Doc::text("Pulse.Lib.Reference.pts_to"),
+                            unaryfn(self.nm.emit(ghost_fld(fld)), Doc::text("x")),
+                            Doc::text("#p"),
+                            fold_arg_name(fld),
+                        ]));
+                    }
+                    mk_star(pre)
+                },
+                mk_thunk(naryfn([
+                    Doc::text("Pulse.Lib.Reference.pts_to"),
+                    Doc::text("x"),
+                    Doc::text("#p"),
+                    Doc::text("{")
+                        .append(Doc::concat(fields.iter().map(|(fld, _)| {
+                            Doc::line()
+                                .append(self.nm.emit(direct_fld(fld)))
+                                .append("=")
+                                .append(fold_arg_name(fld))
+                                .append(";")
+                        })))
+                        .nest(2)
+                        .append(Doc::line())
+                        .append("}")
+                        .group(),
+                ])),
+            ]),
+        ));
+        ses.push(mk_assume_val(
+            vec![Doc::text("pulse_intro")],
+            self.nm.emit(Name::StructAuxFn(
+                name.val.clone(),
+                "raw_fold_uninit".into(),
+            )),
+            &[parens(
+                Doc::text("x:")
+                    .append(Doc::line())
+                    .append(ref_struct_type.clone()),
+            )],
+            naryfn([
+                Doc::text("stt_ghost"),
+                Doc::text("unit"),
+                Doc::text("emp_inames"),
+                {
+                    let mut pre = vec![naryfn([
+                        unfolded_tok.clone(),
+                        Doc::text("x"),
+                        Doc::text("1.0R"),
+                    ])];
+                    for (fld, _) in fields {
+                        pre.push(naryfn([
                             Doc::text("Pulse.Lib.Reference.pts_to_uninit"),
-                            Doc::text("x"),
-                        ])),
-                    ]),
-                )),
-        );
+                            unaryfn(self.nm.emit(ghost_fld(fld)), Doc::text("x")),
+                        ]));
+                    }
+                    mk_star(pre)
+                },
+                mk_thunk(naryfn([
+                    Doc::text("Pulse.Lib.Reference.pts_to_uninit"),
+                    Doc::text("x"),
+                ])),
+            ]),
+        ));
 
         for (fld, fld_ty) in fields {
             let ll_ty = self.emit_type(env, fld_ty);
-            let fld_pts_to = naryfn([
-                Doc::text("pts_to"),
-                unaryfn(self.nm.emit(ghost_fld(fld)), Doc::text("x")),
-                Doc::text("#p"),
-                Doc::text("vx"),
-            ]);
+            let unfolded = naryfn([unfolded_tok.clone(), Doc::text("x"), Doc::text("p")]);
             ses.push(mk_assume_val(
+                vec![Doc::text("pulse_impure_spec_no_proof_required")],
                 self.nm
                     .emit(Name::StructFieldProj(name.val.clone(), fld.val.clone())),
                 &[
@@ -1877,22 +1962,17 @@ impl<'a> Emitter<'a> {
                             .append(ref_struct_type.clone()),
                     ),
                     parens(Doc::text("#p: perm")),
-                    parens(
-                        Doc::text("#vx:")
-                            .append(Doc::line())
-                            .append(unaryfn(Doc::text("erased"), ll_ty.clone())),
-                    ),
                 ],
                 naryfn([
                     Doc::text("stt_atomic"),
                     unaryfn(Doc::text("ref"), ll_ty),
                     Doc::text("#PulseCore.Observability.Neutral"),
                     Doc::text("emp_inames"),
-                    fld_pts_to.clone(),
+                    unfolded.clone(),
                     mk_fun(
                         Doc::text("vx'"),
                         mk_star([
-                            fld_pts_to,
+                            unfolded,
                             naryfn([
                                 Doc::text("rewrites_to"),
                                 Doc::text("vx'"),
@@ -1903,6 +1983,44 @@ impl<'a> Emitter<'a> {
                 ]),
             ))
         }
+
+        // has_zero_default instance
+        let default_name = self.nm.emit(Name::TypeRefDefault(k.into()));
+        ses.push(
+            Doc::text("instance")
+                .append(Doc::line())
+                .append(default_name)
+                .append(Doc::line())
+                .append(":")
+                .append(Doc::line())
+                .append(unaryfn(
+                    Doc::text("has_zero_default"),
+                    struct_type_name.clone(),
+                ))
+                .append(Doc::line())
+                .append("=")
+                .append(Doc::line())
+                .append("{")
+                .group()
+                .append(Doc::line())
+                .append(Doc::text("zero_default = {"))
+                .append(Doc::concat(fields.iter().map(|(fld, fld_ty)| {
+                    Doc::line()
+                        .append(self.nm.emit(direct_fld(fld)))
+                        .append(" =")
+                        .append(Doc::line())
+                        .append(self.emit_type_default(env, fld_ty))
+                        .append(";")
+                        .group()
+                        .nest(2)
+                })))
+                .nest(2)
+                .append(Doc::line())
+                .append("}")
+                .append(Doc::line())
+                .append("}")
+                .group(),
+        );
 
         Doc::intersperse(ses.into_iter().map(|se| se.group()), Doc::hardline())
     }
@@ -1969,23 +2087,29 @@ impl<'a> Emitter<'a> {
         ));
 
         // Emit unfolded token
-        let unfolded_tok = self
-            .nm
-            .emit(Name::UnionAuxFn(name.val.clone(), "raw_unfolded".into()));
-        ses.push(mk_assume_val(
-            unfolded_tok.clone(),
-            &[parens(
-                Doc::text("x:")
-                    .append(Doc::line())
-                    .append(ref_union_type.clone()),
-            )],
-            Doc::text("slprop"),
-        ));
+        let unfolded_tok =
+            |fld: &Ident| Name::UnionAuxFn(name.val.clone(), "raw_unfolded", fld.val.clone());
+        for (fld, _) in fields {
+            ses.push(mk_assume_val(
+                vec![],
+                self.nm.emit(unfolded_tok(fld)),
+                &[
+                    parens(
+                        Doc::text("[@@@mkey] x:")
+                            .append(Doc::line())
+                            .append(ref_union_type.clone()),
+                    ),
+                    parens(Doc::text("p: perm")),
+                ],
+                Doc::text("slprop"),
+            ));
+        }
 
         // Emit ghost field projections
         for (fld, fld_ty) in fields {
             let ll_type = self.emit_type(env, fld_ty);
             ses.push(mk_assume_val(
+                vec![],
                 self.nm.emit(ghost_fld(fld)),
                 &[parens(
                     Doc::text("x:")
@@ -2017,109 +2141,113 @@ impl<'a> Emitter<'a> {
                         .group(),
                 ),
             );
-            ses.push(
-                Doc::text("[@@pulse_intro]")
-                    .append(Doc::line())
-                    .append(mk_assume_val(
-                        self.nm.emit(Name::UnionAuxFn(
-                            name.val.clone(),
-                            format!("raw_unfold_{}", fld),
-                        )),
-                        &[
-                            parens(
-                                Doc::text("x:")
-                                    .append(Doc::line())
-                                    .append(ref_union_type.clone()),
-                            ),
-                            parens(Doc::text("#p: perm")),
-                            vx_refined_ty,
-                        ],
+            ses.push(mk_assume_val(
+                vec![Doc::text("pulse_intro")],
+                self.nm.emit(Name::UnionAuxFn(
+                    name.val.clone(),
+                    "raw_unfold",
+                    fld.val.clone(),
+                )),
+                &[
+                    parens(
+                        Doc::text("x:")
+                            .append(Doc::line())
+                            .append(ref_union_type.clone()),
+                    ),
+                    parens(Doc::text("#p: perm")),
+                    vx_refined_ty,
+                ],
+                naryfn([
+                    Doc::text("stt_ghost"),
+                    Doc::text("unit"),
+                    Doc::text("emp_inames"),
+                    naryfn([
+                        Doc::text("Pulse.Lib.Reference.pts_to"),
+                        Doc::text("x"),
+                        Doc::text("#p"),
+                        Doc::text("vx"),
+                    ]),
+                    mk_thunk(mk_star([
                         naryfn([
-                            Doc::text("stt_ghost"),
-                            Doc::text("unit"),
-                            Doc::text("emp_inames"),
-                            naryfn([
-                                Doc::text("Pulse.Lib.Reference.pts_to"),
-                                Doc::text("x"),
-                                Doc::text("#p"),
-                                Doc::text("vx"),
-                            ]),
-                            mk_thunk(mk_star([
-                                naryfn([unfolded_tok.clone(), Doc::text("x")]),
-                                naryfn([
-                                    Doc::text("Pulse.Lib.Reference.pts_to"),
-                                    unaryfn(self.nm.emit(ghost_fld(fld)), Doc::text("x")),
-                                    Doc::text("#p"),
-                                    parens(
-                                        ctor_name
-                                            .clone()
-                                            .append("?._0")
-                                            .append(Doc::line())
-                                            .append("vx")
-                                            .group(),
-                                    ),
-                                ]),
-                            ])),
+                            self.nm.emit(unfolded_tok(fld)),
+                            Doc::text("x"),
+                            Doc::text("p"),
                         ]),
-                    )),
-            );
+                        naryfn([
+                            Doc::text("Pulse.Lib.Reference.pts_to"),
+                            unaryfn(self.nm.emit(ghost_fld(fld)), Doc::text("x")),
+                            Doc::text("#p"),
+                            parens(
+                                ctor_name
+                                    .clone()
+                                    .append("?._0")
+                                    .append(Doc::line())
+                                    .append("vx")
+                                    .group(),
+                            ),
+                        ]),
+                    ])),
+                ]),
+            ));
 
             // Per-field fold: takes unfolded token + field pts_to, gives back pts_to x (Ctor val)
-            ses.push(
-                Doc::text("[@@pulse_intro]")
-                    .append(Doc::line())
-                    .append(mk_assume_val(
-                        self.nm.emit(Name::UnionAuxFn(
-                            name.val.clone(),
-                            format!("raw_fold_{}", fld),
-                        )),
-                        &[
-                            parens(
-                                Doc::text("x:")
-                                    .append(Doc::line())
-                                    .append(ref_union_type.clone()),
-                            ),
-                            parens(Doc::text("#p: perm")),
-                            parens(
-                                Doc::text(format!("v_{}:", fld))
-                                    .append(Doc::line())
-                                    .append(ll_type.clone()),
-                            ),
-                        ],
+            ses.push(mk_assume_val(
+                vec![Doc::text("pulse_intro")],
+                self.nm.emit(Name::UnionAuxFn(
+                    name.val.clone(),
+                    "raw_fold",
+                    fld.val.clone(),
+                )),
+                &[
+                    parens(
+                        Doc::text("x:")
+                            .append(Doc::line())
+                            .append(ref_union_type.clone()),
+                    ),
+                    parens(Doc::text("#p: perm")),
+                    parens(
+                        Doc::text(format!("v_{}:", fld))
+                            .append(Doc::line())
+                            .append(ll_type.clone()),
+                    ),
+                ],
+                naryfn([
+                    Doc::text("stt_ghost"),
+                    Doc::text("unit"),
+                    Doc::text("emp_inames"),
+                    mk_star([
                         naryfn([
-                            Doc::text("stt_ghost"),
-                            Doc::text("unit"),
-                            Doc::text("emp_inames"),
-                            mk_star([
-                                naryfn([unfolded_tok.clone(), Doc::text("x")]),
-                                naryfn([
-                                    Doc::text("Pulse.Lib.Reference.pts_to"),
-                                    unaryfn(self.nm.emit(ghost_fld(fld)), Doc::text("x")),
-                                    Doc::text("#p"),
-                                    Doc::text(format!("v_{}", fld)),
-                                ]),
-                            ]),
-                            mk_thunk(naryfn([
-                                Doc::text("Pulse.Lib.Reference.pts_to"),
-                                Doc::text("x"),
-                                Doc::text("#p"),
-                                unaryfn(ctor_name.clone(), Doc::text(format!("v_{}", fld))),
-                            ])),
+                            self.nm.emit(unfolded_tok(fld)),
+                            Doc::text("x"),
+                            Doc::text("p"),
                         ]),
-                    )),
-            );
+                        naryfn([
+                            Doc::text("Pulse.Lib.Reference.pts_to"),
+                            unaryfn(self.nm.emit(ghost_fld(fld)), Doc::text("x")),
+                            Doc::text("#p"),
+                            Doc::text(format!("v_{}", fld)),
+                        ]),
+                    ]),
+                    mk_thunk(naryfn([
+                        Doc::text("Pulse.Lib.Reference.pts_to"),
+                        Doc::text("x"),
+                        Doc::text("#p"),
+                        unaryfn(ctor_name.clone(), Doc::text(format!("v_{}", fld))),
+                    ])),
+                ]),
+            ));
         }
 
         // Field getter functions (stt_atomic, like structs)
         for (fld, fld_ty) in fields {
             let ll_ty = self.emit_type(env, fld_ty);
-            let fld_pts_to = naryfn([
-                Doc::text("pts_to"),
-                unaryfn(self.nm.emit(ghost_fld(fld)), Doc::text("x")),
-                Doc::text("#p"),
-                Doc::text("vx"),
+            let unfolded = naryfn([
+                self.nm.emit(unfolded_tok(fld)),
+                Doc::text("x"),
+                Doc::text("p"),
             ]);
             ses.push(mk_assume_val(
+                vec![Doc::text("pulse_impure_spec_no_proof_required")],
                 self.nm
                     .emit(Name::UnionFieldProj(name.val.clone(), fld.val.clone())),
                 &[
@@ -2129,22 +2257,17 @@ impl<'a> Emitter<'a> {
                             .append(ref_union_type.clone()),
                     ),
                     parens(Doc::text("#p: perm")),
-                    parens(
-                        Doc::text("#vx:")
-                            .append(Doc::line())
-                            .append(unaryfn(Doc::text("erased"), ll_ty.clone())),
-                    ),
                 ],
                 naryfn([
                     Doc::text("stt_atomic"),
                     unaryfn(Doc::text("ref"), ll_ty),
                     Doc::text("#PulseCore.Observability.Neutral"),
                     Doc::text("emp_inames"),
-                    fld_pts_to.clone(),
+                    unfolded.clone(),
                     mk_fun(
                         Doc::text("vx'"),
                         mk_star([
-                            fld_pts_to,
+                            unfolded,
                             naryfn([
                                 Doc::text("rewrites_to"),
                                 Doc::text("vx'"),
@@ -2156,10 +2279,50 @@ impl<'a> Emitter<'a> {
             ))
         }
 
+        // has_zero_default instance (uses first field's constructor)
+        if let Some((first_fld, first_fld_ty)) = fields.first() {
+            let default_name = self.nm.emit(Name::TypeRefDefault(k.into()));
+            let first_ctor = self.nm.emit(Name::UnionFieldConstructor(
+                name.val.clone(),
+                first_fld.val.clone(),
+            ));
+            ses.push(
+                Doc::text("instance")
+                    .append(Doc::line())
+                    .append(default_name)
+                    .append(Doc::line())
+                    .append(":")
+                    .append(Doc::line())
+                    .append(unaryfn(
+                        Doc::text("has_zero_default"),
+                        union_type_name.clone(),
+                    ))
+                    .append(Doc::line())
+                    .append("=")
+                    .append(Doc::line())
+                    .append("{")
+                    .group()
+                    .append(Doc::line())
+                    .append(
+                        Doc::text("zero_default =")
+                            .append(Doc::line())
+                            .append(unaryfn(
+                                first_ctor,
+                                self.emit_type_default(env, first_fld_ty),
+                            ))
+                            .group(),
+                    )
+                    .nest(2)
+                    .append(Doc::line())
+                    .append("}")
+                    .group(),
+            );
+        }
+
         Doc::intersperse(ses.into_iter().map(|se| se.group()), Doc::hardline())
     }
 
-    fn emit_fn_decl(
+    fn emit_fn_sig(
         &mut self,
         env: &Env,
         FnDecl {
@@ -2312,6 +2475,39 @@ impl<'a> Emitter<'a> {
             )
         })))
         .group()
+    }
+
+    fn emit_fn_decl(&mut self, env: &Env, decl: &FnDecl) -> Doc {
+        self.emit_fn_sig(env, decl)
+            .nest(2)
+            .append(Doc::hardline())
+            // add a (warning-free) body so that we can call it
+            .append("{ assume pure False; unreachable () }")
+    }
+
+    fn emit_fn_defn(&mut self, env: &Env, FnDefn { decl, body }: &FnDefn) -> Doc {
+        if decl.is_pure {
+            return self.emit_pure_fn(env, decl, body);
+        }
+        let decl_doc = self.emit_fn_sig(env, decl).nest(2).append(Doc::hardline());
+        let arg_redecl_as_mut = Doc::concat(decl.args.iter().filter_map(|arg| {
+            arg.name.as_ref().map(|n| {
+                Doc::line().append(annotated(
+                    n,
+                    Doc::group({
+                        let n = self.nm.emit(Name::Var(n.val.clone()));
+                        Doc::text("let mut ")
+                            .append(n.clone())
+                            .append(" = ")
+                            .append(n)
+                            .append(";")
+                    }),
+                ))
+            })
+        }));
+        let env = &mut env.clone();
+        env.push_fn_decl_args_for_body(decl);
+        decl_doc.append(block(arg_redecl_as_mut.append(self.emit_stmts(env, body))).group())
     }
 } // impl Emitter (group E)
 
@@ -2580,11 +2776,13 @@ impl<'a> Emitter<'a> {
                     .append(init_doc)
             }
             None => {
-                self.report(
-                    "pure global variable must have an initializer".to_string(),
-                    &gv.name.loc,
-                );
-                Doc::nil()
+                let default_doc = self.emit_type_default(env, &gv.ty);
+                Doc::text("let ")
+                    .append(name)
+                    .append(" : ")
+                    .append(ty)
+                    .append(" = ")
+                    .append(default_doc)
             }
         }
     }
@@ -2592,32 +2790,8 @@ impl<'a> Emitter<'a> {
     fn emit_decl(&mut self, env: &Env, decl: &Decl) -> Doc {
         annotated(decl, {
             match &decl.val {
-                DeclT::FnDefn(FnDefn { decl, body }) => {
-                    if decl.is_pure {
-                        return self.emit_pure_fn(env, decl, body);
-                    }
-                    let decl_doc = self.emit_fn_decl(env, decl).nest(2).append(Doc::hardline());
-                    let arg_redecl_as_mut = Doc::concat(decl.args.iter().filter_map(|arg| {
-                        arg.name.as_ref().map(|n| {
-                            Doc::line().append(annotated(
-                                n,
-                                Doc::group({
-                                    let n = self.nm.emit(Name::Var(n.val.clone()));
-                                    Doc::text("let mut ")
-                                        .append(n.clone())
-                                        .append(" = ")
-                                        .append(n)
-                                        .append(";")
-                                }),
-                            ))
-                        })
-                    }));
-                    let env = &mut env.clone();
-                    env.push_fn_decl_args_for_body(decl);
-                    decl_doc
-                        .append(block(arg_redecl_as_mut.append(self.emit_stmts(env, body))).group())
-                }
-                DeclT::FnDecl(fn_decl) => self.emit_fn_decl(&mut env.clone(), fn_decl),
+                DeclT::FnDefn(fn_defn) => self.emit_fn_defn(env, fn_defn),
+                DeclT::FnDecl(fn_decl) => self.emit_fn_decl(env, fn_decl),
                 DeclT::Typedef(typedef) => self.emit_typedef(env, typedef),
                 DeclT::StructDefn(struct_defn) => self.emit_structdefn(env, struct_defn),
                 DeclT::UnionDefn(union_defn) => self.emit_uniondefn(env, union_defn),
