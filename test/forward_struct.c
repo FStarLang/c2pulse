@@ -15,3 +15,7 @@ void use_point(struct point *p) {
     p->x = 1;
     p->y = 2;
 }
+
+struct opaque *use_opaque(_consumes struct opaque *o) {
+    return o;
+}
