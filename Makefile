@@ -55,6 +55,11 @@ endif
 lib: build-pulse
 	$(MAKE) -C pulse
 
+.PHONY: format-check
+format-check:
+	cargo fmt --check
+	clang-format --dry-run --Werror cpp/impl.cpp
+
 .PHONY: test
-test: rust lib
+test: rust lib format-check
 	$(MAKE) -C test

@@ -1,21 +1,22 @@
 .PHONY: all
 all: verify
 
-TESTS = $(wildcard *.c)
+TESTS := $(wildcard *.c)
 
 CACHE_DIR ?= _cache
 
-$(CACHE_DIR)/.depend: $(TESTS) Makefile
-	mkdir -p $(CACHE_DIR)
-	echo >$@
-	echo -n ALL_FST_FILES= >>$@
-	echo $(TESTS) | sed 's/ /\n/g' | sed 's/^\(.\)\(.*\)\..*/\U\1\E\2.fst/' | tr '\n' ' ' >>$@
-	echo >>$@
-	echo $(TESTS) | sed 's/ /\n/g' | sed 's;^\(.\)\(.*\)\..*;\U\1\E\2.fst: & $$(C2PULSE)\n;' >>$@
-
 C2PULSE ?= ../target/debug/c2pulse
 
-include $(CACHE_DIR)/.depend
+# Convert foo.c -> Foo.fst (capitalize first letter, change extension)
+c_to_fst = $(shell echo '$(1)' | sed 's/^\(.\)/\U\1/;s/\.c$$/.fst/')
+
+ALL_FST_FILES := $(foreach t,$(TESTS),$(call c_to_fst,$(t)))
+
+# Generate per-file rules: Foo.fst: foo.c $(C2PULSE) c2pulse.h
+define make_fst_rule
+$(call c_to_fst,$(1)): $(1) $$(C2PULSE) c2pulse.h
+endef
+$(foreach t,$(TESTS),$(eval $(call make_fst_rule,$(t))))
 
 ALL_CHECKED_FILES = $(addprefix $(CACHE_DIR)/,$(addsuffix .checked,$(ALL_FST_FILES)))
 
