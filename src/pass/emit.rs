@@ -166,6 +166,7 @@ enum Name {
     Fn(Rc<IdentT>),
     TypeRef(TypeRef),
     TypeRefPred(TypeRef),
+    TypeRefUninitPred(TypeRef),
 
     StructFieldProj(Rc<IdentT>, Rc<IdentT>),
     StructDirectFieldName(Rc<IdentT>, Rc<IdentT>),
@@ -212,6 +213,9 @@ impl Name {
             Name::TypeRef(TypeRef::Union(str)) => format!("union_{}", str),
             Name::TypeRef(TypeRef::Typedef(ty)) => format!("ty_{}", ty),
             Name::TypeRefPred(type_ref) => format!("{}__pred", typeref_to_string(type_ref)),
+            Name::TypeRefUninitPred(type_ref) => {
+                format!("{}__uninit_pred", typeref_to_string(type_ref))
+            }
             Name::StructFieldProj(str, fld) => format!("{}__get_{}", struct_to_string(str), fld),
             Name::StructDirectFieldName(str, fld) => format!("{}__{}", struct_to_string(str), fld),
             Name::StructGhostFieldProj(str, fld) => format!("{}__{}", struct_to_string(str), fld),
@@ -636,6 +640,51 @@ impl<'a> Emitter<'a> {
                 let p = &mut p.clone();
                 self.subst_this_rvalue(env, Rc::make_mut(p), this);
                 props.push(self.emit_rvalue(env, p));
+            }
+            TypeT::Plain(_) => {}
+            TypeT::Error => {}
+        }
+    }
+
+    /// Emit uninit slprops for a type — no value bindings, just ownership.
+    fn emit_type_slprop_uninit(
+        &mut self,
+        env: &Env,
+        ty: &Type,
+        props: &mut Vec<Doc>,
+        this: &Rc<Expr>,
+    ) {
+        match &ty.val {
+            TypeT::Void
+            | TypeT::Bool
+            | TypeT::Int { .. }
+            | TypeT::SizeT
+            | TypeT::SpecInt
+            | TypeT::SLProp => {}
+            TypeT::Pointer(_, kind) => {
+                let this_doc = self.emit_rvalue(env, this);
+                match kind {
+                    PointerKind::Ref | PointerKind::Unknown => {
+                        props.push(annotated(
+                            ty,
+                            unaryfn(Doc::text("Pulse.Lib.Reference.pts_to_uninit"), this_doc),
+                        ));
+                    }
+                    PointerKind::Array => {
+                        props.push(annotated(
+                            ty,
+                            unaryfn(Doc::text("Pulse.Lib.Array.pts_to_uninit"), this_doc),
+                        ));
+                    }
+                }
+            }
+            TypeT::TypeRef(n) => {
+                let this_doc = self.emit_rvalue(env, this);
+                let pred = self.nm.emit(Name::TypeRefUninitPred(n.into()));
+                props.push(naryfn([pred, this_doc]));
+            }
+            TypeT::Refine(ty, _) => {
+                self.emit_type_slprop_uninit(env, ty, props, this);
             }
             TypeT::Plain(_) => {}
             TypeT::Error => {}
@@ -1637,6 +1686,21 @@ impl<'a> Emitter<'a> {
             mk_star(props),
         );
 
+        // Generate uninit predicate
+        let uninit_pred_decl = {
+            let uninit_pred_name = self.nm.emit(Name::TypeRefUninitPred(k.into()));
+            let uninit_args = vec![parens(
+                self.nm
+                    .emit(Name::Var(this.val.clone()))
+                    .append(":")
+                    .append(Doc::line())
+                    .append(self.nm.emit(Name::TypeRef(k.into()))),
+            )];
+            let mut uninit_props = vec![];
+            self.emit_type_slprop_uninit(env, body, &mut uninit_props, &mk_rvar(&this));
+            mk_eager_unfold_slprop(uninit_pred_name, &uninit_args, mk_star(uninit_props))
+        };
+
         // has_zero_default instance
         let default_name = self.nm.emit(Name::TypeRefDefault(k.into()));
         let type_name = self.nm.emit(Name::TypeRef(k.into()));
@@ -1664,7 +1728,10 @@ impl<'a> Emitter<'a> {
             .append("}")
             .group();
 
-        Doc::intersperse(vec![ty_decl, pred_decl, default_decl], Doc::line())
+        Doc::intersperse(
+            vec![ty_decl, pred_decl, uninit_pred_decl, default_decl],
+            Doc::line(),
+        )
     }
 } // impl Emitter (group D)
 
@@ -1717,6 +1784,7 @@ impl<'a> Emitter<'a> {
         let k = &TypeRefKind::Struct(name.clone().into());
         let struct_type_name = self.nm.emit(Name::TypeRef(k.into()));
         let pts_to_name = self.nm.emit(Name::TypeRefPred(k.into()));
+        let uninit_pred_name = self.nm.emit(Name::TypeRefUninitPred(k.into()));
 
         Doc::intersperse(
             [
@@ -1732,11 +1800,23 @@ impl<'a> Emitter<'a> {
                     .append(Doc::line())
                     .append(":")
                     .append(Doc::line())
-                    .append(struct_type_name)
+                    .append(struct_type_name.clone())
                     .append(Doc::line())
                     .append("->")
                     .append(Doc::line())
                     .append("perm")
+                    .append(Doc::line())
+                    .append("->")
+                    .append(Doc::line())
+                    .append("slprop")
+                    .group(),
+                Doc::text("assume val")
+                    .append(Doc::line())
+                    .append(uninit_pred_name)
+                    .append(Doc::line())
+                    .append(":")
+                    .append(Doc::line())
+                    .append(struct_type_name)
                     .append(Doc::line())
                     .append("->")
                     .append(Doc::line())
@@ -1838,6 +1918,29 @@ impl<'a> Emitter<'a> {
             &all_args,
             mk_star(props),
         ));
+
+        // Generate uninit predicate
+        {
+            let uninit_pred_name = self.nm.emit(Name::TypeRefUninitPred(k.into()));
+            let uninit_args = vec![parens(
+                Doc::text("[@@@mkey] ")
+                    .append(self.nm.emit(Name::Var(this.val.clone())))
+                    .append(":")
+                    .append(Doc::line())
+                    .append(struct_type_name.clone()),
+            )];
+            let mut uninit_props = vec![];
+            for (fld, fld_ty) in fields {
+                let field_expr =
+                    ExprT::Member(mk_rvar(&this), fld.clone().into()).with_loc(fld.loc.clone());
+                self.emit_type_slprop_uninit(env, fld_ty, &mut uninit_props, &field_expr);
+            }
+            ses.push(mk_eager_unfold_slprop(
+                uninit_pred_name,
+                &uninit_args,
+                mk_star(uninit_props),
+            ));
+        }
 
         let unfolded_tok = self
             .nm
@@ -2190,6 +2293,23 @@ impl<'a> Emitter<'a> {
             Doc::text("emp"),
         ));
 
+        // Emit uninit predicate
+        {
+            let uninit_pred_name = self.nm.emit(Name::TypeRefUninitPred(k.into()));
+            let uninit_args = vec![parens(
+                Doc::text("[@@@mkey] ")
+                    .append(self.nm.emit(Name::Var(this.val.clone())))
+                    .append(":")
+                    .append(Doc::line())
+                    .append(union_type_name.clone()),
+            )];
+            ses.push(mk_eager_unfold_slprop(
+                uninit_pred_name,
+                &uninit_args,
+                Doc::text("emp"),
+            ));
+        }
+
         // Emit unfolded token
         let unfolded_tok =
             |fld: &Ident| Name::UnionAuxFn(name.val.clone(), "raw_unfolded", fld.val.clone());
@@ -2501,6 +2621,28 @@ impl<'a> Emitter<'a> {
                         true,
                     );
                     preserves_props.extend(type_props);
+                }
+                ParamMode::Out => {
+                    // Precondition: uninit slprop (no value bindings)
+                    let mut uninit_props = vec![];
+                    self.emit_type_slprop_uninit(env, &arg.ty, &mut uninit_props, &mk_rvar(&n));
+                    requires_props.extend(uninit_props);
+
+                    // Postcondition: normal initialized slprop
+                    let mut type_bindings = vec![];
+                    let mut type_props = vec![];
+                    self.emit_type_slprop(
+                        env,
+                        &arg.ty,
+                        &mut type_bindings,
+                        &mut type_props,
+                        &mk_rvar(&n),
+                        &Doc::text("1.0R"),
+                        false,
+                    );
+                    if !type_props.is_empty() {
+                        ensures_props.push(wrap_exists(&type_bindings, type_props));
+                    }
                 }
             }
         }

@@ -452,6 +452,7 @@ impl PrettyIR for FnDecl {
                         let mode_prefix = match arg.mode {
                             ParamMode::Consumed => RcDoc::text("_consumes").append(RcDoc::line()),
                             ParamMode::Const => RcDoc::text("_const").append(RcDoc::line()),
+                            ParamMode::Out => RcDoc::text("_out").append(RcDoc::line()),
                             ParamMode::Regular => RcDoc::nil(),
                         };
                         mode_prefix

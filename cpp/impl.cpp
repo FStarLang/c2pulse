@@ -349,6 +349,17 @@ public:
     return false;
   }
 
+  bool hasOutAttr(AttrVec const &attrs) {
+    for (auto it = attrs.rbegin(); it != attrs.rend(); ++it) {
+      if (auto ann = dyn_cast<AnnotateAttr>(*it)) {
+        if (ann->getAnnotation() == "c2pulse-out" && ann->args_size() == 0) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   bool isBoolType(QualType t) {
     return t->isUnsignedIntegerType() && astCtx->getIntWidth(t) == 1;
   }
@@ -857,6 +868,8 @@ public:
         ty = trTypeAttrs(param->getAttrs(), std::move(ty));
         auto mode = hasConsumesAttr(param->getAttrs())
                         ? ir::ParamMode::Consumed()
+                    : hasOutAttr(param->getAttrs())
+                        ? ir::ParamMode::Out()
                         : [&]() {
                             auto qt = param->getType().IgnoreParens();
                             if (qt.isConstQualified())

@@ -124,6 +124,7 @@ mod crate::ir {
         constructor Regular;
         constructor Consumed;
         constructor Const;
+        constructor Out;
     }
 }
 

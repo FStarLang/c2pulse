@@ -356,6 +356,7 @@ pub enum ParamMode {
     Regular,
     Consumed,
     Const,
+    Out,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]

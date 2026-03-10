@@ -19,6 +19,7 @@
 
 #define _plain __attribute__((annotate("c2pulse-plain")))
 #define _consumes __attribute__((annotate("c2pulse-consumes")))
+#define _out __attribute__((annotate("c2pulse-out")))
 #define _array __attribute((annotate("c2pulse-array")))
 #define _pure __attribute((annotate("c2pulse-pure")))
 
@@ -37,6 +38,7 @@
 
 #define _plain
 #define _consumes
+#define _out
 #define _array
 #define _pure
 
