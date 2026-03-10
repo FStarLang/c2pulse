@@ -520,7 +520,9 @@ impl<'a> Elaborator<'a> {
                     self.elab_type(env, Rc::make_mut(ty))
                 }
             }
-            DeclT::IncludeDecl(_) => {}
+            DeclT::IncludeDecl(include_decl) => {
+                self.elab_inline_pulse_code(env, &mut include_decl.code)
+            }
             DeclT::GlobalVar(GlobalVar {
                 name: _,
                 ty,

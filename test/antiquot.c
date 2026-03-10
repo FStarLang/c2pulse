@@ -45,7 +45,7 @@ void test_declare(my_pair *x)
 
 typedef union {
   int a;
-  char b;
+  long b;
 } my_union;
 
 _include_pulse(
@@ -53,4 +53,14 @@ _include_pulse(
 
   let my_fun =
     $field(my_union::a)?
+
+  let other_fun ($(x) : $type(my_union)) : prop =
+    $(x.a._active)
 )
+
+void test_union() {
+  my_union x;
+  x.b = 1;
+  _assert(!x.a._active);
+  _ghost_stmt(assert pure (~(other_fun $(x))));
+}
