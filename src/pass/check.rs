@@ -581,6 +581,7 @@ impl<'a> Checker<'a> {
                     self.check_type(env, ty)
                 }
             }
+            DeclT::StructDecl(_) => {}
             DeclT::UnionDefn(UnionDefn { name: _, fields }) => {
                 for (_n, ty) in fields {
                     self.check_type(env, ty)

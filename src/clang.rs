@@ -119,6 +119,13 @@ impl<'a> Ctx<'a> {
         })
     }
 
+    fn add_struct_decl(&mut self, loc: Rc<SourceInfo>, name: Rc<Ident>) {
+        self.translation_unit.decls.push(Ast {
+            loc,
+            val: DeclT::StructDecl(name),
+        })
+    }
+
     fn add_union(&mut self, builder: DeclBuilder) {
         self.translation_unit.decls.push(Ast {
             loc: builder.loc,

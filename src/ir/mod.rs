@@ -449,6 +449,7 @@ pub enum DeclT {
     FnDecl(FnDecl),
     Typedef(TypeDefn),
     StructDefn(StructDefn),
+    StructDecl(Rc<Ident>),
     UnionDefn(UnionDefn),
     IncludeDecl(IncludeDecl),
     GlobalVar(GlobalVar),

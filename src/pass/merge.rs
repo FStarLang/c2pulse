@@ -30,9 +30,17 @@ fn types_match(env: &Env, decl: &FnDecl, defn: &FnDecl) -> bool {
 pub fn merge(diags: &mut Diagnostics, tu: &mut TranslationUnit) {
     // Build index: fn name → position of its FnDefn in tu.decls
     let mut defn_indices: HashMap<Rc<str>, usize> = HashMap::new();
+    let mut struct_defn_names: std::collections::HashSet<Rc<str>> =
+        std::collections::HashSet::new();
     for (i, decl) in tu.decls.iter().enumerate() {
-        if let DeclT::FnDefn(fn_defn) = &decl.val {
-            defn_indices.insert(fn_defn.decl.name.val.clone(), i);
+        match &decl.val {
+            DeclT::FnDefn(fn_defn) => {
+                defn_indices.insert(fn_defn.decl.name.val.clone(), i);
+            }
+            DeclT::StructDefn(struct_defn) => {
+                struct_defn_names.insert(struct_defn.name.val.clone());
+            }
+            _ => {}
         }
     }
 
@@ -47,74 +55,84 @@ pub fn merge(diags: &mut Diagnostics, tu: &mut TranslationUnit) {
 
     // Match each FnDecl to its FnDefn
     for (i, decl) in tu.decls.iter().enumerate() {
-        if let DeclT::FnDecl(fn_decl) = &decl.val {
-            if let Some(&defn_idx) = defn_indices.get(&fn_decl.name.val) {
-                let defn = match &tu.decls[defn_idx].val {
-                    DeclT::FnDefn(fd) => fd,
-                    _ => unreachable!(),
-                };
+        match &decl.val {
+            DeclT::FnDecl(fn_decl) => {
+                if let Some(&defn_idx) = defn_indices.get(&fn_decl.name.val) {
+                    let defn = match &tu.decls[defn_idx].val {
+                        DeclT::FnDefn(fd) => fd,
+                        _ => unreachable!(),
+                    };
 
-                // Validate types match
-                if !types_match(&env, fn_decl, &defn.decl) {
-                    report(
-                        diags,
-                        format!(
-                            "declaration of {} has different types than its definition",
-                            fn_decl.name.val
-                        ),
-                        &fn_decl.name.loc,
-                    );
-                    continue;
-                }
-
-                let decl_has_specs = !fn_decl.requires.is_empty() || !fn_decl.ensures.is_empty();
-                let defn_has_specs =
-                    !defn.decl.requires.is_empty() || !defn.decl.ensures.is_empty();
-
-                if defn_has_specs && !decl_has_specs {
-                    // Specs on the definition but not on the declaration — error
-                    report(
-                        diags,
-                        format!(
-                            "definition of {} has specifications, but its declaration does not; \
-                             specifications should be on the declaration",
-                            fn_decl.name.val
-                        ),
-                        &defn.decl.name.loc,
-                    );
-                    continue;
-                }
-
-                if decl_has_specs && defn_has_specs {
-                    // Both have specs — they must match
-                    if fn_decl.requires != defn.decl.requires
-                        || fn_decl.ensures != defn.decl.ensures
-                    {
+                    // Validate types match
+                    if !types_match(&env, fn_decl, &defn.decl) {
                         report(
                             diags,
                             format!(
-                                "declaration and definition of {} have differing specifications",
+                                "declaration of {} has different types than its definition",
                                 fn_decl.name.val
                             ),
                             &fn_decl.name.loc,
                         );
                         continue;
                     }
-                }
 
-                // Mark FnDecl for removal — it will be merged into the FnDefn
-                to_remove.push(i);
+                    let decl_has_specs =
+                        !fn_decl.requires.is_empty() || !fn_decl.ensures.is_empty();
+                    let defn_has_specs =
+                        !defn.decl.requires.is_empty() || !defn.decl.ensures.is_empty();
+
+                    if defn_has_specs && !decl_has_specs {
+                        // Specs on the definition but not on the declaration — error
+                        report(
+                            diags,
+                            format!(
+                                "definition of {} has specifications, but its declaration does not; \
+                             specifications should be on the declaration",
+                                fn_decl.name.val
+                            ),
+                            &defn.decl.name.loc,
+                        );
+                        continue;
+                    }
+
+                    if decl_has_specs && defn_has_specs {
+                        // Both have specs — they must match
+                        if fn_decl.requires != defn.decl.requires
+                            || fn_decl.ensures != defn.decl.ensures
+                        {
+                            report(
+                                diags,
+                                format!(
+                                    "declaration and definition of {} have differing specifications",
+                                    fn_decl.name.val
+                                ),
+                                &fn_decl.name.loc,
+                            );
+                            continue;
+                        }
+                    }
+
+                    // Mark FnDecl for removal — it will be merged into the FnDefn
+                    to_remove.push(i);
+                }
             }
+            // Remove StructDecl when a matching StructDefn exists
+            DeclT::StructDecl(name) => {
+                if struct_defn_names.contains(&name.val) {
+                    to_remove.push(i);
+                }
+            }
+            _ => {}
         }
     }
 
     // Copy specs from declarations into definitions before removing them
     // (need a separate pass to avoid borrow conflicts)
     for &i in &to_remove {
-        let fn_decl = match &tu.decls[i].val {
-            DeclT::FnDecl(fd) => fd.clone(),
-            _ => unreachable!(),
+        let DeclT::FnDecl(fn_decl) = &tu.decls[i].val else {
+            continue;
         };
+        let fn_decl = fn_decl.clone();
         if let Some(&defn_idx) = defn_indices.get(&fn_decl.name.val) {
             if let DeclT::FnDefn(ref mut defn) = tu.decls[defn_idx].val {
                 if defn.decl.requires.is_empty() && defn.decl.ensures.is_empty() {

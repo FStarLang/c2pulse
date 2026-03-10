@@ -247,6 +247,7 @@ fn decl_name(decl: &Decl) -> DeclName {
         DeclT::FnDecl(fn_decl) => DeclName::Fn(fn_decl.name.val.clone()),
         DeclT::Typedef(type_defn) => DeclName::Typedef(type_defn.name.val.clone()),
         DeclT::StructDefn(struct_defn) => DeclName::Struct(struct_defn.name.val.clone()),
+        DeclT::StructDecl(name) => DeclName::Struct(name.val.clone()),
         DeclT::UnionDefn(union_defn) => DeclName::Union(union_defn.name.val.clone()),
         DeclT::IncludeDecl(_) => DeclName::Include(decl.loc.clone()),
         DeclT::GlobalVar(gv) => DeclName::GlobalVar(gv.name.val.clone()),
@@ -295,6 +296,9 @@ fn scan_translation_unit(deps: &mut Deps<DeclName>, tu: &TranslationUnit) {
                 for (_name, ty) in fields {
                     scan_type(ds, ty)
                 }
+            }
+            DeclT::StructDecl(_) => {
+                deps.deps_for(n);
             }
             DeclT::UnionDefn(UnionDefn { name: _, fields }) => {
                 let ds = deps.deps_for(n);

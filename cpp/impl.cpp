@@ -208,6 +208,10 @@ public:
   void trRecordDecl(Rc<ir::Ident> ident, RecordDecl *decl,
                     AnonNameGen *liftStructs) {
     if (!decl->isCompleteDefinition()) {
+      if (decl->getTagKind() == TagTypeKind::Struct) {
+        auto loc = getRange(decl->getSourceRange());
+        ctx.add_struct_decl(std::move(loc), std::move(ident));
+      }
       return;
     }
     if (!alreadyDefined.insert(decl).second)

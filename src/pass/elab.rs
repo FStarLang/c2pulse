@@ -515,6 +515,7 @@ impl<'a> Elaborator<'a> {
                     self.elab_type(env, Rc::make_mut(ty))
                 }
             }
+            DeclT::StructDecl(_) => {}
             DeclT::UnionDefn(UnionDefn { name: _, fields }) => {
                 for (_n, ty) in fields {
                     self.elab_type(env, Rc::make_mut(ty))

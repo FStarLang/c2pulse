@@ -556,6 +556,9 @@ impl PrettyIR for DeclT {
             DeclT::FnDecl(fn_decl) => fn_decl.to_doc(),
             DeclT::Typedef(type_defn) => type_defn.to_doc(),
             DeclT::StructDefn(struct_defn) => struct_defn.to_doc(),
+            DeclT::StructDecl(name) => RcDoc::text("struct ")
+                .append(name.to_doc())
+                .append(RcDoc::text(";")),
             DeclT::UnionDefn(union_defn) => union_defn.to_doc(),
             DeclT::IncludeDecl(include_decl) => include_decl.to_doc(),
             DeclT::GlobalVar(global_var) => global_var.to_doc(),

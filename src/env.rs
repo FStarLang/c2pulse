@@ -157,6 +157,14 @@ impl Env {
             DeclT::FnDecl(fn_decl) => self.push_fn_decl(fn_decl.clone()),
             DeclT::Typedef(defn) => self.push_typedef(defn.clone()),
             DeclT::StructDefn(struct_defn) => self.push_struct(struct_defn.clone()),
+            DeclT::StructDecl(name) => {
+                if !self.globals.structs.contains_key(&name.val) {
+                    self.push_struct(StructDefn {
+                        name: name.clone(),
+                        fields: vec![],
+                    });
+                }
+            }
             DeclT::UnionDefn(union_defn) => self.push_union(union_defn.clone()),
             DeclT::IncludeDecl(_) => {}
             DeclT::GlobalVar(gv) => self.push_global_var(gv.clone()),

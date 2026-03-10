@@ -1713,6 +1713,41 @@ fn mk_thunk(body: Doc) -> Doc {
 }
 
 impl<'a> Emitter<'a> {
+    fn emit_struct_decl(&mut self, _env: &Env, name: &Ident) -> Doc {
+        let k = &TypeRefKind::Struct(name.clone().into());
+        let struct_type_name = self.nm.emit(Name::TypeRef(k.into()));
+        let pts_to_name = self.nm.emit(Name::TypeRefPred(k.into()));
+
+        Doc::intersperse(
+            [
+                Doc::text("assume val")
+                    .append(Doc::line())
+                    .append(struct_type_name.clone())
+                    .append(Doc::line())
+                    .append(": Type0")
+                    .group(),
+                Doc::text("assume val")
+                    .append(Doc::line())
+                    .append(pts_to_name)
+                    .append(Doc::line())
+                    .append(": (ref")
+                    .append(Doc::line())
+                    .append(struct_type_name)
+                    .append(")")
+                    .append(Doc::line())
+                    .append("->")
+                    .append(Doc::line())
+                    .append("perm")
+                    .append(Doc::line())
+                    .append("->")
+                    .append(Doc::line())
+                    .append("slprop")
+                    .group(),
+            ],
+            Doc::hardline(),
+        )
+    }
+
     fn emit_structdefn(
         &mut self,
         env: &Env,
@@ -2864,6 +2899,7 @@ impl<'a> Emitter<'a> {
                 DeclT::FnDecl(fn_decl) => self.emit_fn_decl(env, fn_decl),
                 DeclT::Typedef(typedef) => self.emit_typedef(env, typedef),
                 DeclT::StructDefn(struct_defn) => self.emit_structdefn(env, struct_defn),
+                DeclT::StructDecl(name) => self.emit_struct_decl(env, name),
                 DeclT::UnionDefn(union_defn) => self.emit_uniondefn(env, union_defn),
                 DeclT::IncludeDecl(include_decl) => {
                     let env = &mut env.clone();
