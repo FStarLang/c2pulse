@@ -926,7 +926,11 @@ fn emit_unop(env: &Env, op: UnOp, ty: MaybeRc<Type>) -> Option<Doc> {
         (UnOp::Not, _) => Doc::text("not"),
         (UnOp::Neg, TypeT::Int { signed, width }) => {
             let modu = get_int_mod(signed, width)?;
-            Doc::text(format!("{}.sub {}.zero", modu, modu))
+            if *signed {
+                Doc::text(format!("{}.sub {}.zero", modu, modu))
+            } else {
+                Doc::text(format!("{}.minus", modu))
+            }
         }
         (UnOp::Neg, TypeT::SpecInt) => Doc::text("op_Minus"),
         (UnOp::Neg, _) => return None,
