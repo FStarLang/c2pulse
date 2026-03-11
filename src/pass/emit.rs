@@ -655,6 +655,7 @@ impl<'a> Emitter<'a> {
         &mut self,
         env: &Env,
         ty: &Type,
+        bindings: &mut Vec<ExBinding>,
         props: &mut Vec<Doc>,
         this: &Rc<Expr>,
     ) {
@@ -675,9 +676,19 @@ impl<'a> Emitter<'a> {
                         ));
                     }
                     PointerKind::Array => {
+                        let idx = bindings.len() as u32;
+                        let len_name = self.nm.emit(Name::Val(extract_base_ident(this), idx));
+                        bindings.push(ExBinding {
+                            name: len_name.clone(),
+                            ty: Doc::text("nat"),
+                        });
                         props.push(annotated(
                             ty,
-                            unaryfn(Doc::text("Pulse.Lib.Array.pts_to_uninit"), this_doc),
+                            naryfn([
+                                Doc::text("Pulse.Lib.Array.pts_to_uninit"),
+                                this_doc,
+                                len_name,
+                            ]),
                         ));
                     }
                 }
@@ -688,7 +699,7 @@ impl<'a> Emitter<'a> {
                 props.push(naryfn([pred, this_doc]));
             }
             TypeT::Refine(ty, _) => {
-                self.emit_type_slprop_uninit(env, ty, props, this);
+                self.emit_type_slprop_uninit(env, ty, bindings, props, this);
             }
             TypeT::Plain(_) => {}
             TypeT::Error => {}
@@ -1728,9 +1739,20 @@ impl<'a> Emitter<'a> {
                     .append(Doc::line())
                     .append(self.nm.emit(Name::TypeRef(k.into()))),
             )];
+            let mut uninit_bindings = vec![];
             let mut uninit_props = vec![];
-            self.emit_type_slprop_uninit(env, body, &mut uninit_props, &mk_rvar(&this));
-            mk_eager_unfold_slprop(uninit_pred_name, &uninit_args, mk_star(uninit_props))
+            self.emit_type_slprop_uninit(
+                env,
+                body,
+                &mut uninit_bindings,
+                &mut uninit_props,
+                &mk_rvar(&this),
+            );
+            mk_eager_unfold_slprop(
+                uninit_pred_name,
+                &uninit_args,
+                wrap_exists(&uninit_bindings, uninit_props),
+            )
         };
 
         // has_zero_default instance
@@ -1961,16 +1983,23 @@ impl<'a> Emitter<'a> {
                     .append(Doc::line())
                     .append(struct_type_name.clone()),
             )];
+            let mut uninit_bindings = vec![];
             let mut uninit_props = vec![];
             for (fld, fld_ty) in fields {
                 let field_expr =
                     ExprT::Member(mk_rvar(&this), fld.clone().into()).with_loc(fld.loc.clone());
-                self.emit_type_slprop_uninit(env, fld_ty, &mut uninit_props, &field_expr);
+                self.emit_type_slprop_uninit(
+                    env,
+                    fld_ty,
+                    &mut uninit_bindings,
+                    &mut uninit_props,
+                    &field_expr,
+                );
             }
             ses.push(mk_eager_unfold_slprop(
                 uninit_pred_name,
                 &uninit_args,
-                mk_star(uninit_props),
+                wrap_exists(&uninit_bindings, uninit_props),
             ));
         }
 
@@ -2655,10 +2684,19 @@ impl<'a> Emitter<'a> {
                     preserves_props.extend(type_props);
                 }
                 ParamMode::Out => {
-                    // Precondition: uninit slprop (no value bindings)
+                    // Precondition: uninit slprop
+                    let mut uninit_bindings = vec![];
                     let mut uninit_props = vec![];
-                    self.emit_type_slprop_uninit(env, &arg.ty, &mut uninit_props, &mk_rvar(&n));
-                    requires_props.extend(uninit_props);
+                    self.emit_type_slprop_uninit(
+                        env,
+                        &arg.ty,
+                        &mut uninit_bindings,
+                        &mut uninit_props,
+                        &mk_rvar(&n),
+                    );
+                    if !uninit_props.is_empty() {
+                        requires_props.push(wrap_exists(&uninit_bindings, uninit_props));
+                    }
 
                     // Postcondition: normal initialized slprop
                     let mut type_bindings = vec![];
