@@ -219,6 +219,18 @@ public:
     auto loc = getRange(decl->getSourceRange());
     auto builder = DeclBuilder::new_(loc.clone(), ident.clone());
     if (decl->getTagKind() == TagTypeKind::Struct) {
+      // Process nested record declarations (inner structs/unions)
+      for (auto *D : decl->decls()) {
+        if (auto *inner = dyn_cast<RecordDecl>(D)) {
+          if (inner->isCompleteDefinition() && inner->getIdentifier()) {
+            auto innerLoc = getRange(inner->getSourceRange());
+            auto innerName =
+                ctx.mk_ident(toStr(inner->getName()), innerLoc.clone());
+            auto innerAnon = AnonNameGen(inner->getName());
+            trRecordDecl(std::move(innerName), inner, &innerAnon);
+          }
+        }
+      }
       for (auto f : decl->fields()) {
         auto floc = getRange(f->getSourceRange());
         if (!f->getIdentifier()) {
@@ -232,6 +244,18 @@ public:
       }
       ctx.add_struct(std::move(builder));
     } else if (decl->getTagKind() == TagTypeKind::Union) {
+      // Process nested record declarations (inner structs/unions)
+      for (auto *D : decl->decls()) {
+        if (auto *inner = dyn_cast<RecordDecl>(D)) {
+          if (inner->isCompleteDefinition() && inner->getIdentifier()) {
+            auto innerLoc = getRange(inner->getSourceRange());
+            auto innerName =
+                ctx.mk_ident(toStr(inner->getName()), innerLoc.clone());
+            auto innerAnon = AnonNameGen(inner->getName());
+            trRecordDecl(std::move(innerName), inner, &innerAnon);
+          }
+        }
+      }
       for (auto f : decl->fields()) {
         auto floc = getRange(f->getSourceRange());
         if (!f->getIdentifier()) {

@@ -12,3 +12,7 @@ struct foo2 {
         int y;
     };
 };
+
+struct xy foo() {
+    return (struct xy) { .x = 42, .y = 67 };
+}
