@@ -368,6 +368,9 @@ fn mk_type_typedef(loc: Rc<SourceInfo>, n: Rc<Ident>) -> Rc<Type> {
 fn mk_type_refine(loc: Rc<SourceInfo>, ty: Rc<Type>, p: Rc<Expr>) -> Rc<Type> {
     TypeT::Refine(ty, p).with_loc(loc)
 }
+fn mk_type_refine_always(loc: Rc<SourceInfo>, ty: Rc<Type>, p: Rc<Expr>) -> Rc<Type> {
+    TypeT::RefineAlways(ty, p).with_loc(loc)
+}
 fn mk_type_plain(loc: Rc<SourceInfo>, ty: Rc<Type>) -> Rc<Type> {
     TypeT::Plain(ty).with_loc(loc)
 }

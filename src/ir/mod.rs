@@ -145,6 +145,7 @@ pub enum TypeT {
     TypeRef(TypeRefKind),
 
     Refine(Rc<Type>, Rc<Expr>),
+    RefineAlways(Rc<Type>, Rc<Expr>),
     Plain(Rc<Type>),
 
     Error,

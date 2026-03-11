@@ -12,6 +12,7 @@
 #define _requires(p) __attribute__((annotate("c2pulse-requires", __capture_args(p))))
 #define _ensures(p) __attribute__((annotate("c2pulse-ensures", __capture_args(p))))
 #define _refine(p) __attribute__((annotate("c2pulse-refine", __capture_args(p))))
+#define _refine_always(p) __attribute__((annotate("c2pulse-refine-always", __capture_args(p))))
 #define _invariant(p) __attribute__((annotate("c2pulse-invariant", __capture_args(p))))
 
 #define _assert(p) ({ __attribute__((annotate("c2pulse-assert", __capture_args(p)))) {} })
@@ -31,6 +32,7 @@
 #define _requires(p)
 #define _ensures(p)
 #define _refine(p)
+#define _refine_always(p)
 #define _invariant(p)
 
 #define _assert(p)

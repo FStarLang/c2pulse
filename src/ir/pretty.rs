@@ -123,6 +123,13 @@ impl PrettyIR for TypeT {
                 .nest(2)
                 .append(RcDoc::line())
                 .append(ty.to_doc()),
+            TypeT::RefineAlways(ty, p) => RcDoc::text("_refine_always(")
+                .append(p.to_doc())
+                .append(")")
+                .group()
+                .nest(2)
+                .append(RcDoc::line())
+                .append(ty.to_doc()),
             TypeT::Plain(ty) => RcDoc::text("_plain")
                 .append(RcDoc::line())
                 .append(ty.to_doc()),

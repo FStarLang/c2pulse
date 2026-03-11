@@ -59,7 +59,7 @@ impl<'a> Elaborator<'a> {
 
             TypeT::TypeRef(_) => {}
 
-            TypeT::Refine(ty, p) => {
+            TypeT::Refine(ty, p) | TypeT::RefineAlways(ty, p) => {
                 self.elab_type(env, Rc::make_mut(ty));
 
                 let env = &mut env.clone();

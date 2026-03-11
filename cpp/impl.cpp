@@ -350,6 +350,9 @@ public:
         if (auto ref = isUnaryAttrOf(ann, "c2pulse-refine")) {
           ty = mk_type_refine(std::move(loc), std::move(ty),
                               std::move(ref.value()));
+        } else if (auto ref = isUnaryAttrOf(ann, "c2pulse-refine-always")) {
+          ty = mk_type_refine_always(std::move(loc), std::move(ty),
+                                     std::move(ref.value()));
         } else if (ann->getAnnotation() == "c2pulse-plain" &&
                    ann->args_size() == 0) {
           ty = mk_type_plain(std::move(loc), std::move(ty));
