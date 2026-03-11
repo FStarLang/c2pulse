@@ -1493,6 +1493,43 @@ impl<'a> Emitter<'a> {
                         .nest(2)
                         .group()
                 }
+                StmtT::DeclStackArray {
+                    name,
+                    elem_type,
+                    size,
+                } => {
+                    let x = self.nm.emit(Name::Var(name.val.clone()));
+                    // Use type ascription to avoid refined literal type
+                    let default_doc = parens(
+                        self.emit_type_default(env, elem_type)
+                            .append(Doc::text(" <: "))
+                            .append(self.emit_type(env, elem_type)),
+                    );
+                    let size_doc = self.emit_rvalue(env, size);
+                    // let mut arr = [| default_val; len |];
+                    let alloc = (Doc::text("let mut ").append(x.clone()).append(" ="))
+                        .append(Doc::line())
+                        .append("[|")
+                        .append(Doc::line())
+                        .append(default_doc)
+                        .append(Doc::text(";"))
+                        .append(Doc::line())
+                        .append(size_doc)
+                        .append(Doc::line())
+                        .append("|];")
+                        .nest(2)
+                        .group();
+                    // let mut arr = arr;  (redeclare as ref for lvalue convention)
+                    let redecl = Doc::text("let mut ")
+                        .append(x.clone())
+                        .append(" =")
+                        .append(Doc::line())
+                        .append(x)
+                        .append(";")
+                        .nest(2)
+                        .group();
+                    alloc.append(Doc::hardline()).append(redecl)
+                }
                 StmtT::Assign(x, t) => {
                     if let ExprT::Index(arr, idx) = &x.val {
                         // Array write: arr.(idx) <- val;

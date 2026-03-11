@@ -227,6 +227,13 @@ impl Env {
     pub fn push_stmt(&mut self, stmt: &Stmt) {
         match &stmt.val {
             StmtT::Decl(ident, ty) => self.push_var_decl(ident, ty.clone(), LocalDeclKind::LValue),
+            StmtT::DeclStackArray {
+                name, elem_type, ..
+            } => {
+                let array_ty = TypeT::Pointer(elem_type.clone(), PointerKind::Array)
+                    .with_loc(name.loc.clone());
+                self.push_var_decl(name, array_ty, LocalDeclKind::LValue);
+            }
             _ => {}
         }
     }

@@ -380,6 +380,20 @@ impl<'a> Elaborator<'a> {
         match &mut stmt.val {
             StmtT::Call(rval) => self.elab_rvalue(env, Rc::make_mut(rval)),
             StmtT::Decl(_, ty) => self.elab_type(env, Rc::make_mut(ty)),
+            StmtT::DeclStackArray {
+                elem_type, size, ..
+            } => {
+                self.elab_type(env, Rc::make_mut(elem_type));
+                self.elab_rvalue(env, Rc::make_mut(size));
+                // Cast size to SizeT if needed
+                if let Ok(size_ty) = env.infer_expr(size) {
+                    let size_ty = env.vtype_whnf(size_ty);
+                    if !matches!(&size_ty.val, TypeT::SizeT) {
+                        let target_ty = TypeT::SizeT.with_loc(size.loc.clone());
+                        cast_to(size, target_ty);
+                    }
+                }
+            }
             StmtT::Assign(x, v) => {
                 self.elab_lvalue(env, Rc::make_mut(x));
                 self.elab_rvalue(env, Rc::make_mut(v));

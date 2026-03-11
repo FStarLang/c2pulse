@@ -298,6 +298,11 @@ pub type Stmts = Vec<Rc<Stmt>>;
 pub enum StmtT {
     Call(Rc<Expr>),
     Decl(Rc<Ident>, Rc<Type>),
+    DeclStackArray {
+        name: Rc<Ident>,
+        elem_type: Rc<Type>,
+        size: Rc<Expr>,
+    },
     Assign(Rc<Expr>, Rc<Expr>),
     If(Rc<Expr>, Rc<Stmts>, Rc<Stmts>),
     While {

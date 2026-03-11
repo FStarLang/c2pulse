@@ -287,6 +287,18 @@ impl PrettyIR for StmtT {
                 .append(";")
                 .nest(2)
                 .group(),
+            StmtT::DeclStackArray {
+                name,
+                elem_type,
+                size,
+            } => (elem_type.to_doc())
+                .append(" ")
+                .append(name.to_doc())
+                .append("[")
+                .append(size.to_doc())
+                .append("];")
+                .nest(2)
+                .group(),
             StmtT::Assign(x, v) => (x.to_doc())
                 .append(" =")
                 .append(RcDoc::line())

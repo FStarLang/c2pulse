@@ -497,6 +497,21 @@ fn mk_lvalue_err(loc: Rc<SourceInfo>, ty: Rc<Type>) -> Rc<Expr> {
 fn mk_var_decl(loc: Rc<SourceInfo>, id: Rc<Ident>, ty: Rc<Type>) -> Rc<Stmt> {
     mk_ast(loc, StmtT::Decl(id, ty))
 }
+fn mk_decl_stack_array(
+    loc: Rc<SourceInfo>,
+    name: Rc<Ident>,
+    elem_type: Rc<Type>,
+    size: Rc<Expr>,
+) -> Rc<Stmt> {
+    mk_ast(
+        loc,
+        StmtT::DeclStackArray {
+            name,
+            elem_type,
+            size,
+        },
+    )
+}
 fn mk_assign(loc: Rc<SourceInfo>, lhs: Rc<Expr>, rhs: Rc<Expr>) -> Rc<Stmt> {
     mk_ast(loc, StmtT::Assign(lhs, rhs))
 }

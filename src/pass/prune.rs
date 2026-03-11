@@ -188,6 +188,12 @@ fn scan_stmt(deps: &mut HashSet<DeclName>, stmt: &Stmt) {
     match &stmt.val {
         StmtT::Call(v) => scan_expr(deps, v),
         StmtT::Decl(_name, ty) => scan_type(deps, ty),
+        StmtT::DeclStackArray {
+            elem_type, size, ..
+        } => {
+            scan_type(deps, elem_type);
+            scan_expr(deps, size);
+        }
         StmtT::Assign(lhs, v) => {
             scan_expr(deps, lhs);
             scan_expr(deps, v);

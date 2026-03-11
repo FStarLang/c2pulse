@@ -483,6 +483,8 @@ public:
 
       case CK_NoOp:
         return trRValue(ic->getSubExpr());
+      case CK_ArrayToPointerDecay:
+        return mk_rvalue_lvalue(std::move(loc), trLValue(ic->getSubExpr()));
       case CK_IntegralCast:
       case CK_IntegralToBoolean:
         return mk_rvalue_cast(std::move(loc), trRValue(ic->getSubExpr()),
@@ -821,12 +823,34 @@ public:
         auto dloc = getRange(d->getSourceRange());
         if (auto vd = dyn_cast<VarDecl>(d)) {
           auto id = ctx.mk_ident(toStr(vd->getName()), dloc.clone());
-          auto ty = trQualType(vd->getType(), vd->getSourceRange());
-          stmts.push(mk_var_decl(dloc.clone(), id.clone(), std::move(ty)));
-          if (vd->hasInit()) {
-            stmts.push(mk_assign(dloc.clone(),
-                                 mk_lvalue_var(dloc.clone(), id.clone()),
-                                 trRValue(vd->getInit())));
+          auto qt = vd->getType();
+          if (auto *cat =
+                  dyn_cast<ConstantArrayType>(qt.IgnoreParens().getTypePtr())) {
+            auto elemTy =
+                trQualType(cat->getElementType(), vd->getSourceRange());
+            auto sizeVal = cat->getSize().getZExtValue();
+            auto sizeStr = std::to_string(sizeVal);
+            auto sizeExpr = mk_int_lit(dloc.clone(), mk_bigint(toStr(sizeStr)),
+                                       mk_sizet(dloc.clone()));
+            stmts.push(mk_decl_stack_array(dloc.clone(), id.clone(),
+                                           std::move(elemTy),
+                                           std::move(sizeExpr)));
+          } else if (auto *vat = dyn_cast<VariableArrayType>(
+                         qt.IgnoreParens().getTypePtr())) {
+            auto elemTy =
+                trQualType(vat->getElementType(), vd->getSourceRange());
+            auto sizeExpr = trRValue(vat->getSizeExpr());
+            stmts.push(mk_decl_stack_array(dloc.clone(), id.clone(),
+                                           std::move(elemTy),
+                                           std::move(sizeExpr)));
+          } else {
+            auto ty = trQualType(vd->getType(), vd->getSourceRange());
+            stmts.push(mk_var_decl(dloc.clone(), id.clone(), std::move(ty)));
+            if (vd->hasInit()) {
+              stmts.push(mk_assign(dloc.clone(),
+                                   mk_lvalue_var(dloc.clone(), id.clone()),
+                                   trRValue(vd->getInit())));
+            }
           }
         } else {
           reportUnsupported(d->getSourceRange(), dloc,

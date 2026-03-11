@@ -449,6 +449,12 @@ impl<'a> Checker<'a> {
         match &stmt.val {
             StmtT::Call(rval) => self.check_rvalue(env, rval),
             StmtT::Decl(_, ty) => self.check_type(env, ty),
+            StmtT::DeclStackArray {
+                elem_type, size, ..
+            } => {
+                self.check_type(env, elem_type);
+                self.check_rvalue(env, size);
+            }
             StmtT::Assign(x, v) => {
                 self.check_lvalue(env, x);
                 self.check_rvalue(env, v);
