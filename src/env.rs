@@ -332,15 +332,14 @@ impl Env {
             | ExprT::PreDecr(val)
             | ExprT::PostDecr(val) => self.infer_expr(val),
             ExprT::InlinePulse(_, ty) => Ok(ty.clone().into()),
-            ExprT::UnOp(UnOp::Not, _)
-            | ExprT::BinOp(
-                BinOp::Eq | BinOp::LEq | BinOp::Lt | BinOp::LogOr | BinOp::Implies,
-                _,
-                _,
-            ) => Ok(TypeT::Bool.with_loc_core(expr.loc.clone()).into()),
+            ExprT::UnOp(UnOp::Not, _) | ExprT::BinOp(BinOp::Eq | BinOp::LEq | BinOp::Lt, _, _) => {
+                Ok(TypeT::Bool.with_loc_core(expr.loc.clone()).into())
+            }
             ExprT::UnOp(UnOp::Neg | UnOp::BitNot, lhs)
             | ExprT::BinOp(
                 BinOp::LogAnd
+                | BinOp::LogOr
+                | BinOp::Implies
                 | BinOp::Mul
                 | BinOp::Div
                 | BinOp::Mod

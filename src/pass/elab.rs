@@ -273,6 +273,28 @@ impl<'a> Elaborator<'a> {
                     }
                 }
                 match bin_op {
+                    BinOp::LogAnd | BinOp::LogOr | BinOp::Implies => {
+                        // For SLProp operands, use meet_type casts (&&→**, etc.)
+                        // For non-SLProp operands, cast to Bool (handles int→bool)
+                        let meet = env.meet_type(lhs_ty.clone(), rhs_ty.clone());
+                        let is_slprop = meet
+                            .as_ref()
+                            .map(|t| matches!(env.vtype_whnf(t.clone()).val, TypeT::SLProp))
+                            .unwrap_or(false);
+                        if is_slprop {
+                            if let Some(meet_type) = meet {
+                                if !env.vtype_eq(lhs_ty, meet_type.clone()) {
+                                    cast_to(lhs, meet_type.clone().to_rc())
+                                }
+                                if !env.vtype_eq(rhs_ty, meet_type.clone()) {
+                                    cast_to(rhs, meet_type.to_rc())
+                                }
+                            }
+                        } else {
+                            self.cast_to_bool(env, lhs);
+                            self.cast_to_bool(env, rhs);
+                        }
+                    }
                     BinOp::Eq
                     | BinOp::LEq
                     | BinOp::Lt
@@ -281,13 +303,31 @@ impl<'a> Elaborator<'a> {
                     | BinOp::Mod
                     | BinOp::Add
                     | BinOp::Sub
-                    | BinOp::LogAnd
-                    | BinOp::LogOr
-                    | BinOp::Implies
                     | BinOp::BitAnd
                     | BinOp::BitOr
                     | BinOp::BitXor => {
-                        if let Some(meet_type) = env.meet_type(lhs_ty.clone(), rhs_ty.clone()) {
+                        if let Some(mut meet_type) = env.meet_type(lhs_ty.clone(), rhs_ty.clone()) {
+                            // C integer promotion: Bool → int for arithmetic/bitwise ops
+                            if env.is_bool(meet_type.clone())
+                                && matches!(
+                                    bin_op,
+                                    BinOp::Add
+                                        | BinOp::Sub
+                                        | BinOp::Mul
+                                        | BinOp::Div
+                                        | BinOp::Mod
+                                        | BinOp::BitAnd
+                                        | BinOp::BitOr
+                                        | BinOp::BitXor
+                                )
+                            {
+                                meet_type = TypeT::Int {
+                                    signed: true,
+                                    width: 32,
+                                }
+                                .with_loc(lhs.loc.clone())
+                                .into();
+                            }
                             if !env.vtype_eq(lhs_ty, meet_type.clone()) {
                                 cast_to(lhs, meet_type.clone().to_rc())
                             }
