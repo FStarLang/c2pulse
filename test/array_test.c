@@ -1,4 +1,5 @@
 #include "c2pulse.h"
+#include <stdlib.h>
 
 void foo(unsigned a[])
   _requires(a._length == 2)
@@ -57,4 +58,17 @@ void b32_arr_alt(b32_struct_alt a)
   _ensures(a.x[10] == 67)
 {
   a.x[10] = 67;
+}
+
+typedef struct {
+  _array int *x, *y;
+} two_arrays;
+void test_two_arrays() {
+  two_arrays p = {
+    .x = (int *)calloc(3, sizeof(int)),
+    .y = (int *)malloc(4 * sizeof(int))
+  };
+  p.x[2] = 3;
+  free(p.x);
+  free(p.y);
 }
