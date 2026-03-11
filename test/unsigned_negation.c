@@ -1,10 +1,7 @@
-// Tests-todo: Unary negation on unsigned types
-//
-// Missing features: unary minus on unsigned integers (negation)
-// Prototype tests: issue51_test_2.c
+// Test: Unary negation on unsigned types
 //
 // The C standard defines -x on unsigned types as producing a valid
-// unsigned result (2^N - x). c2pulse should support this.
+// unsigned result (2^N - x).
 
 #include "c2pulse.h"
 #include <stdint.h>
