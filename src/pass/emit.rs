@@ -1075,6 +1075,14 @@ impl<'a> Emitter<'a> {
                     } => Doc::text(format!("(UInt{}.uint_to_t {})", width, val)),
                     TypeT::SizeT => Doc::text(format!("{}sz", val)),
                     TypeT::SpecInt => Doc::text(format!("{}", val)),
+                    TypeT::Pointer(_, PointerKind::Ref | PointerKind::Unknown)
+                        if **val == BigInt::ZERO =>
+                    {
+                        Doc::text("null")
+                    }
+                    TypeT::Pointer(_, PointerKind::Array) if **val == BigInt::ZERO => {
+                        Doc::text("Pulse.Lib.Array.null")
+                    }
                     _ => {
                         self.report(
                             format!("unsupported integer literal type for {}", val),
