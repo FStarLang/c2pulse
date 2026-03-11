@@ -316,9 +316,16 @@ struct ExBinding {
     ty: Doc,
 }
 
+#[derive(Clone, Copy)]
+enum SLPropVariant<'a> {
+    Init { perm: &'a Doc, quote: bool },
+    Uninit,
+}
+
 struct Emitter<'a> {
     nm: NameMangling,
     diags: &'a mut Diagnostics,
+    /// For each TypeRef, the types of the val params for Init/Uninit variants.
     type_val_params: HashMap<TypeRef, Vec<Doc>>,
     type_uninit_val_params: HashMap<TypeRef, Vec<Doc>>,
 }
@@ -560,14 +567,13 @@ impl<'a> Emitter<'a> {
         &mut self,
         env: &Env,
         ty: &Type,
+        variant: SLPropVariant,
         bindings: &mut Vec<ExBinding>,
         props: &mut Vec<Doc>,
         this: &Rc<Expr>,
-        perm: &Doc,
-        quote: bool,
     ) {
         let q = |doc: Doc| -> Doc {
-            if quote {
+            if let SLPropVariant::Init { quote: true, .. } = variant {
                 Doc::text("'").append(doc)
             } else {
                 doc
@@ -581,46 +587,82 @@ impl<'a> Emitter<'a> {
             | TypeT::SpecInt
             | TypeT::SLProp => {}
             TypeT::Pointer(pointee_ty, kind) => {
-                let idx = bindings.len() as u32;
-                let val_name_raw = self.nm.emit(Name::Val(extract_base_ident(this), idx));
-                let val_name = q(val_name_raw);
-                let pointee_type_doc = self.emit_type(env, pointee_ty);
-                let val_ty = match kind {
-                    PointerKind::Array => unaryfn(Doc::text("Seq.seq"), pointee_type_doc),
-                    _ => pointee_type_doc,
-                };
-                let pts_to = annotated(
-                    ty,
-                    naryfn([
-                        Doc::text("pts_to"),
-                        self.emit_rvalue(env, this),
-                        Doc::text("#").append(perm.clone()),
-                        val_name.clone(),
-                    ]),
-                );
-                props.push(pts_to);
-                bindings.push(ExBinding {
-                    name: val_name,
-                    ty: val_ty,
-                });
-
-                match kind {
-                    PointerKind::Ref => {
-                        let derefed = ExprT::Deref(this.clone()).with_loc(this.loc.clone());
-                        self.emit_type_slprop(
-                            env, pointee_ty, bindings, props, &derefed, perm, quote,
+                let this_doc = self.emit_rvalue(env, this);
+                match variant {
+                    SLPropVariant::Init { perm, .. } => {
+                        let idx = bindings.len() as u32;
+                        let val_name_raw = self.nm.emit(Name::Val(extract_base_ident(this), idx));
+                        let val_name = q(val_name_raw);
+                        let pointee_type_doc = self.emit_type(env, pointee_ty);
+                        let val_ty = match kind {
+                            PointerKind::Array => unaryfn(Doc::text("Seq.seq"), pointee_type_doc),
+                            _ => pointee_type_doc,
+                        };
+                        let pts_to = annotated(
+                            ty,
+                            naryfn([
+                                Doc::text("pts_to"),
+                                this_doc,
+                                Doc::text("#").append(perm.clone()),
+                                val_name.clone(),
+                            ]),
                         );
+                        props.push(pts_to);
+                        bindings.push(ExBinding {
+                            name: val_name,
+                            ty: val_ty,
+                        });
+                        if let PointerKind::Ref = kind {
+                            let derefed = ExprT::Deref(this.clone()).with_loc(this.loc.clone());
+                            self.emit_type_slprop(
+                                env, pointee_ty, variant, bindings, props, &derefed,
+                            );
+                        }
                     }
-                    _ => {}
+                    SLPropVariant::Uninit => match kind {
+                        PointerKind::Ref | PointerKind::Unknown => {
+                            props.push(annotated(
+                                ty,
+                                unaryfn(Doc::text("Pulse.Lib.Reference.pts_to_uninit"), this_doc),
+                            ));
+                        }
+                        PointerKind::Array => {
+                            let idx = bindings.len() as u32;
+                            let len_name = self.nm.emit(Name::Val(extract_base_ident(this), idx));
+                            bindings.push(ExBinding {
+                                name: len_name.clone(),
+                                ty: Doc::text("nat"),
+                            });
+                            props.push(annotated(
+                                ty,
+                                naryfn([
+                                    Doc::text("Pulse.Lib.Array.pts_to_uninit"),
+                                    this_doc,
+                                    len_name,
+                                ]),
+                            ));
+                        }
+                    },
                 }
             }
             TypeT::TypeRef(n) => {
                 let this_doc = self.emit_rvalue(env, this);
-                let val_param_types = self
-                    .type_val_params
-                    .get(&TypeRef::from(n))
-                    .cloned()
-                    .unwrap_or_default();
+                let (val_param_types, pred_name) = match variant {
+                    SLPropVariant::Init { .. } => (
+                        self.type_val_params
+                            .get(&TypeRef::from(n))
+                            .cloned()
+                            .unwrap_or_default(),
+                        self.nm.emit(Name::TypeRefPred(n.into())),
+                    ),
+                    SLPropVariant::Uninit => (
+                        self.type_uninit_val_params
+                            .get(&TypeRef::from(n))
+                            .cloned()
+                            .unwrap_or_default(),
+                        self.nm.emit(Name::TypeRefUninitPred(n.into())),
+                    ),
+                };
                 let mut val_args: Vec<Doc> = vec![];
                 for vp_type in &val_param_types {
                     let idx = bindings.len() as u32;
@@ -631,99 +673,70 @@ impl<'a> Emitter<'a> {
                         ty: vp_type.clone(),
                     });
                 }
-                let pred = self.nm.emit(Name::TypeRefPred(n.into()));
-                let args: Vec<Doc> = std::iter::once(pred)
-                    .chain(std::iter::once(this_doc))
-                    .chain(std::iter::once(perm.clone()))
-                    .chain(val_args)
-                    .collect();
+                let mut args: Vec<Doc> = vec![pred_name, this_doc];
+                if let SLPropVariant::Init { perm, .. } = variant {
+                    args.push(perm.clone());
+                }
+                args.extend(val_args);
                 props.push(naryfn(args));
             }
             TypeT::Refine(ty, p) => {
-                self.emit_type_slprop(env, ty, bindings, props, this, perm, quote);
-
-                let p = &mut p.clone();
-                self.subst_this_rvalue(env, Rc::make_mut(p), this);
-                props.push(self.emit_rvalue(env, p));
+                self.emit_type_slprop(env, ty, variant, bindings, props, this);
+                if let SLPropVariant::Init { .. } = variant {
+                    let p = &mut p.clone();
+                    self.subst_this_rvalue(env, Rc::make_mut(p), this);
+                    props.push(self.emit_rvalue(env, p));
+                }
             }
             TypeT::Plain(_) => {}
             TypeT::Error => {}
         }
     }
 
-    /// Emit uninit slprops for a type — no value bindings, just ownership.
-    fn emit_type_slprop_uninit(
+    /// Collect slprops for a type, register val params, and emit a predicate declaration.
+    /// Used by typedef and struct emission for both Init and Uninit variants.
+    fn emit_pred_decl(
         &mut self,
-        env: &Env,
-        ty: &Type,
-        bindings: &mut Vec<ExBinding>,
-        props: &mut Vec<Doc>,
-        this: &Rc<Expr>,
-    ) {
-        match &ty.val {
-            TypeT::Void
-            | TypeT::Bool
-            | TypeT::Int { .. }
-            | TypeT::SizeT
-            | TypeT::SpecInt
-            | TypeT::SLProp => {}
-            TypeT::Pointer(_, kind) => {
-                let this_doc = self.emit_rvalue(env, this);
-                match kind {
-                    PointerKind::Ref | PointerKind::Unknown => {
-                        props.push(annotated(
-                            ty,
-                            unaryfn(Doc::text("Pulse.Lib.Reference.pts_to_uninit"), this_doc),
-                        ));
-                    }
-                    PointerKind::Array => {
-                        let idx = bindings.len() as u32;
-                        let len_name = self.nm.emit(Name::Val(extract_base_ident(this), idx));
-                        bindings.push(ExBinding {
-                            name: len_name.clone(),
-                            ty: Doc::text("nat"),
-                        });
-                        props.push(annotated(
-                            ty,
-                            naryfn([
-                                Doc::text("Pulse.Lib.Array.pts_to_uninit"),
-                                this_doc,
-                                len_name,
-                            ]),
-                        ));
-                    }
-                }
-            }
-            TypeT::TypeRef(n) => {
-                let this_doc = self.emit_rvalue(env, this);
-                let val_param_types = self
-                    .type_uninit_val_params
-                    .get(&TypeRef::from(n))
-                    .cloned()
-                    .unwrap_or_default();
-                let mut val_args: Vec<Doc> = vec![];
-                for vp_type in &val_param_types {
-                    let idx = bindings.len() as u32;
-                    let val_name = self.nm.emit(Name::Val(extract_base_ident(this), idx));
-                    val_args.push(val_name.clone());
-                    bindings.push(ExBinding {
-                        name: val_name,
-                        ty: vp_type.clone(),
-                    });
-                }
-                let pred = self.nm.emit(Name::TypeRefUninitPred(n.into()));
-                let args: Vec<Doc> = std::iter::once(pred)
-                    .chain(std::iter::once(this_doc))
-                    .chain(val_args)
-                    .collect();
-                props.push(naryfn(args));
-            }
-            TypeT::Refine(ty, _) => {
-                self.emit_type_slprop_uninit(env, ty, bindings, props, this);
-            }
-            TypeT::Plain(_) => {}
-            TypeT::Error => {}
+        variant: SLPropVariant,
+        k: &TypeRefKind,
+        base_args: Vec<Doc>,
+        emit_slprops: impl Fn(&mut Self, SLPropVariant, &mut Vec<ExBinding>, &mut Vec<Doc>),
+    ) -> Doc {
+        let pred_name = match variant {
+            SLPropVariant::Init { .. } => self.nm.emit(Name::TypeRefPred(k.into())),
+            SLPropVariant::Uninit => self.nm.emit(Name::TypeRefUninitPred(k.into())),
+        };
+        let mut args = base_args;
+        if let SLPropVariant::Init { .. } = variant {
+            args.push(parens(Doc::text("p: perm")));
         }
+        let mut bindings = vec![];
+        let mut props = vec![];
+        emit_slprops(self, variant, &mut bindings, &mut props);
+        match variant {
+            SLPropVariant::Init { .. } => {
+                self.type_val_params.insert(
+                    TypeRef::from(k),
+                    bindings.iter().map(|b| b.ty.clone()).collect(),
+                );
+            }
+            SLPropVariant::Uninit => {
+                self.type_uninit_val_params.insert(
+                    TypeRef::from(k),
+                    bindings.iter().map(|b| b.ty.clone()).collect(),
+                );
+            }
+        }
+        for b in &bindings {
+            args.push(parens(
+                b.name
+                    .clone()
+                    .append(":")
+                    .append(Doc::line())
+                    .append(b.ty.clone()),
+            ));
+        }
+        mk_eager_unfold_slprop(pred_name, &args, mk_star(props))
     }
 
     fn emit_var(&mut self, v: &Ident) -> Doc {
@@ -1716,73 +1729,37 @@ impl<'a> Emitter<'a> {
         let this = env
             .push_this(TypeT::TypeRef(k.clone()).with_loc(name.loc.clone()))
             .with_loc(name.loc.clone());
-        let this_doc = self.nm.emit(Name::Var(this.val.clone()));
-        let mut all_args = vec![parens(this_doc.append(":").append(Doc::line()).append(t))];
-        all_args.push(parens(Doc::text("p: perm")));
-        let mut bindings = vec![];
-        let mut props = vec![];
-        self.emit_type_slprop(
-            env,
-            body,
-            &mut bindings,
-            &mut props,
-            &mk_rvar(&this),
-            &Doc::text("p"),
-            false,
-        );
-        self.type_val_params.insert(
-            TypeRef::from(k),
-            bindings.iter().map(|b| b.ty.clone()).collect(),
-        );
-        for b in &bindings {
-            all_args.push(parens(
-                b.name
-                    .clone()
-                    .append(":")
-                    .append(Doc::line())
-                    .append(b.ty.clone()),
-            ));
-        }
-        let pred_decl = mk_eager_unfold_slprop(
-            self.nm.emit(Name::TypeRefPred(k.into())),
-            &all_args,
-            mk_star(props),
+        let this_arg = parens(
+            self.nm
+                .emit(Name::Var(this.val.clone()))
+                .append(":")
+                .append(Doc::line())
+                .append(t),
         );
 
-        // Generate uninit predicate
-        let uninit_pred_decl = {
-            let uninit_pred_name = self.nm.emit(Name::TypeRefUninitPred(k.into()));
-            let mut uninit_args = vec![parens(
-                self.nm
-                    .emit(Name::Var(this.val.clone()))
-                    .append(":")
-                    .append(Doc::line())
-                    .append(self.nm.emit(Name::TypeRef(k.into()))),
-            )];
-            let mut uninit_bindings = vec![];
-            let mut uninit_props = vec![];
-            self.emit_type_slprop_uninit(
-                env,
-                body,
-                &mut uninit_bindings,
-                &mut uninit_props,
-                &mk_rvar(&this),
-            );
-            self.type_uninit_val_params.insert(
-                TypeRef::from(k),
-                uninit_bindings.iter().map(|b| b.ty.clone()).collect(),
-            );
-            for b in &uninit_bindings {
-                uninit_args.push(parens(
-                    b.name
-                        .clone()
-                        .append(":")
-                        .append(Doc::line())
-                        .append(b.ty.clone()),
-                ));
-            }
-            mk_eager_unfold_slprop(uninit_pred_name, &uninit_args, mk_star(uninit_props))
-        };
+        let body = body.clone();
+        let this_r = this.clone();
+        let pred_decl = self.emit_pred_decl(
+            SLPropVariant::Init {
+                perm: &Doc::text("p"),
+                quote: false,
+            },
+            k,
+            vec![this_arg.clone()],
+            |s, variant, bindings, props| {
+                s.emit_type_slprop(env, &body, variant, bindings, props, &mk_rvar(&this_r));
+            },
+        );
+
+        let this_r = this.clone();
+        let uninit_pred_decl = self.emit_pred_decl(
+            SLPropVariant::Uninit,
+            k,
+            vec![this_arg],
+            |s, variant, bindings, props| {
+                s.emit_type_slprop(env, &body, variant, bindings, props, &mk_rvar(&this_r));
+            },
+        );
 
         // has_zero_default instance
         let default_name = self.nm.emit(Name::TypeRefDefault(k.into()));
@@ -1803,7 +1780,7 @@ impl<'a> Emitter<'a> {
             .append(
                 Doc::text("zero_default =")
                     .append(Doc::line())
-                    .append(self.emit_type_default(env, body))
+                    .append(self.emit_type_default(env, &body))
                     .group(),
             )
             .nest(2)
@@ -1920,7 +1897,6 @@ impl<'a> Emitter<'a> {
 
         let k = &TypeRefKind::Struct(name.clone());
         let struct_type_name = self.nm.emit(Name::TypeRef(k.into()));
-        let pts_to_name = self.nm.emit(Name::TypeRefPred(k.into()));
         let ref_struct_type = unaryfn(Doc::text("ref"), struct_type_name.clone());
 
         let direct_fld =
@@ -1960,90 +1936,41 @@ impl<'a> Emitter<'a> {
         let this = env
             .push_this(TypeT::TypeRef(k.clone()).with_loc(name.loc.clone()))
             .with_loc(name.loc.clone());
-        let mut all_args = vec![parens(
+        let this_arg = parens(
             Doc::text("[@@@mkey] ")
                 .append(self.nm.emit(Name::Var(this.val.clone())))
                 .append(":")
                 .append(Doc::line())
                 .append(struct_type_name.clone()),
-        )];
-        all_args.push(parens(Doc::text("p: perm")));
-        let mut bindings = vec![];
-        let mut props = vec![];
-        for (fld, fld_ty) in fields {
-            let field_expr =
-                ExprT::Member(mk_rvar(&this), fld.clone().into()).with_loc(fld.loc.clone());
-            self.emit_type_slprop(
-                env,
-                fld_ty,
-                &mut bindings,
-                &mut props,
-                &field_expr,
-                &Doc::text("p"),
-                false,
-            );
-        }
-        self.type_val_params.insert(
-            TypeRef::from(k),
-            bindings.iter().map(|b| b.ty.clone()).collect(),
         );
-        for b in &bindings {
-            all_args.push(parens(
-                b.name
-                    .clone()
-                    .append(":")
-                    .append(Doc::line())
-                    .append(b.ty.clone()),
-            ));
-        }
-        ses.push(mk_eager_unfold_slprop(
-            pts_to_name.clone(),
-            &all_args,
-            mk_star(props),
-        ));
 
-        // Generate uninit predicate
-        {
-            let uninit_pred_name = self.nm.emit(Name::TypeRefUninitPred(k.into()));
-            let mut uninit_args = vec![parens(
-                Doc::text("[@@@mkey] ")
-                    .append(self.nm.emit(Name::Var(this.val.clone())))
-                    .append(":")
-                    .append(Doc::line())
-                    .append(struct_type_name.clone()),
-            )];
-            let mut uninit_bindings = vec![];
-            let mut uninit_props = vec![];
+        let emit_field_slprops = |s: &mut Self,
+                                  variant: SLPropVariant,
+                                  bindings: &mut Vec<ExBinding>,
+                                  props: &mut Vec<Doc>| {
             for (fld, fld_ty) in fields {
                 let field_expr =
                     ExprT::Member(mk_rvar(&this), fld.clone().into()).with_loc(fld.loc.clone());
-                self.emit_type_slprop_uninit(
-                    env,
-                    fld_ty,
-                    &mut uninit_bindings,
-                    &mut uninit_props,
-                    &field_expr,
-                );
+                s.emit_type_slprop(env, fld_ty, variant, bindings, props, &field_expr);
             }
-            self.type_uninit_val_params.insert(
-                TypeRef::from(k),
-                uninit_bindings.iter().map(|b| b.ty.clone()).collect(),
-            );
-            for b in &uninit_bindings {
-                uninit_args.push(parens(
-                    b.name
-                        .clone()
-                        .append(":")
-                        .append(Doc::line())
-                        .append(b.ty.clone()),
-                ));
-            }
-            ses.push(mk_eager_unfold_slprop(
-                uninit_pred_name,
-                &uninit_args,
-                mk_star(uninit_props),
-            ));
-        }
+        };
+
+        ses.push(self.emit_pred_decl(
+            SLPropVariant::Init {
+                perm: &Doc::text("p"),
+                quote: false,
+            },
+            k,
+            vec![this_arg.clone()],
+            &emit_field_slprops,
+        ));
+
+        ses.push(self.emit_pred_decl(
+            SLPropVariant::Uninit,
+            k,
+            vec![this_arg],
+            &emit_field_slprops,
+        ));
 
         let unfolded_tok = self
             .nm
@@ -2688,11 +2615,13 @@ impl<'a> Emitter<'a> {
                     self.emit_type_slprop(
                         env,
                         &arg.ty,
+                        SLPropVariant::Init {
+                            perm: &Doc::text("1.0R"),
+                            quote: false,
+                        },
                         &mut type_bindings,
                         &mut type_props,
                         &mk_rvar(&n),
-                        &Doc::text("1.0R"),
-                        false,
                     );
                     if !type_props.is_empty() {
                         let wrapped = wrap_exists(&type_bindings, type_props);
@@ -2718,11 +2647,13 @@ impl<'a> Emitter<'a> {
                     self.emit_type_slprop(
                         env,
                         &arg.ty,
+                        SLPropVariant::Init {
+                            perm: &perm_doc,
+                            quote: true,
+                        },
                         &mut type_bindings,
                         &mut type_props,
                         &mk_rvar(&n),
-                        &perm_doc,
-                        true,
                     );
                     preserves_props.extend(type_props);
                 }
@@ -2730,9 +2661,10 @@ impl<'a> Emitter<'a> {
                     // Precondition: uninit slprop
                     let mut uninit_bindings = vec![];
                     let mut uninit_props = vec![];
-                    self.emit_type_slprop_uninit(
+                    self.emit_type_slprop(
                         env,
                         &arg.ty,
+                        SLPropVariant::Uninit,
                         &mut uninit_bindings,
                         &mut uninit_props,
                         &mk_rvar(&n),
@@ -2747,11 +2679,13 @@ impl<'a> Emitter<'a> {
                     self.emit_type_slprop(
                         env,
                         &arg.ty,
+                        SLPropVariant::Init {
+                            perm: &Doc::text("1.0R"),
+                            quote: false,
+                        },
                         &mut type_bindings,
                         &mut type_props,
                         &mk_rvar(&n),
-                        &Doc::text("1.0R"),
-                        false,
                     );
                     if !type_props.is_empty() {
                         ensures_props.push(wrap_exists(&type_bindings, type_props));
@@ -2774,11 +2708,13 @@ impl<'a> Emitter<'a> {
         self.emit_type_slprop(
             env,
             &ret_type,
+            SLPropVariant::Init {
+                perm: &Doc::text("1.0R"),
+                quote: false,
+            },
             &mut ret_bindings,
             &mut ret_props,
             &mk_rvar(&return_id),
-            &Doc::text("1.0R"),
-            false,
         );
         if !ret_props.is_empty() {
             ensures_props.push(wrap_exists(&ret_bindings, ret_props));
