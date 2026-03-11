@@ -40,3 +40,25 @@ fn calloc_array u#a (#a:Type u#a) {| has_zero_default a |} (sz:SizeT.t)
   returns r : array a
   ensures freeable_array r
   ensures A.pts_to r (Seq.create (SizeT.v sz) zero_default)
+
+let has_length #a ([@@@mkey] x: a) (len: nat) : slprop = emp
+
+[@@pulse_intro]
+ghost fn intro_has_length_init u#a (#a: Type u#a) (x: array a)
+  requires pts_to x #'p 'y
+  ensures has_length x (Seq.length 'y)
+{
+  drop_ (pts_to x #'p 'y);
+  fold has_length x (Seq.length 'y);
+}
+
+[@@pulse_intro]
+ghost fn intro_has_length_uninit u#a (#a: Type u#a) (x: array a)
+  requires A.pts_to_mask x #'p 'y 'mask
+  ensures has_length x (Seq.length 'y)
+{
+  drop_ (A.pts_to_mask x #'p _ _);
+  fold has_length x (Seq.length 'y);
+}
+
+let length_of #a (x: a) #y = observe (has_length x) #y

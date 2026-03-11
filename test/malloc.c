@@ -43,5 +43,6 @@ int sum_and_free_point(_consumes point_ptr p)
 
 void test_array_malloc_free(void) {
     int *arr = (int *) malloc(sizeof(int) * 10);
+    _assert(arr._length == 10);
     free(arr);
 }

@@ -846,8 +846,8 @@ impl<'a> Emitter<'a> {
             ExprT::VAttr(VAttr::Length, x) => ExprKind::RValue(annotated(
                 v,
                 unaryfn(
-                    Doc::text("Seq.length"),
-                    unaryfn(Doc::text("value_of"), self.emit_rvalue(env, x)),
+                    Doc::text("reveal"),
+                    unaryfn(Doc::text("length_of"), self.emit_rvalue(env, x)),
                 ),
             )),
             ExprT::VAttr(VAttr::Active(fld), base) => {
