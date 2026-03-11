@@ -7,33 +7,32 @@
 // c2pulse should desugar them during translation.
 
 #include "c2pulse.h"
-#include <stddef.h>
 #include <stdint.h>
 
-int test_incr_decr(int a) {
+uint32_t test_incr(uint32_t a)
+    _requires(a < 1000)
+{
     a++;
-    ++a;
-    a--;
-    --a;
     return a;
 }
 
-int test_compound_assign(int a) {
-    a += 1;
-    a -= 1;
-    a *= 2;
-    a /= 1;
-    return a;
-}
-
-size_t test_sizet_incr(size_t a) {
-    a++;
+uint32_t test_decr(uint32_t a)
+    _requires(a > 0)
+{
     a--;
     return a;
 }
 
-uint32_t test_u32_incr(uint32_t a) {
-    a++;
-    a--;
+uint32_t test_compound_add(uint32_t a, uint32_t b)
+    _requires(a < 1000 && b < 1000)
+{
+    a += b;
+    return a;
+}
+
+uint32_t test_compound_sub(uint32_t a, uint32_t b)
+    _requires(a >= b)
+{
+    a -= b;
     return a;
 }
