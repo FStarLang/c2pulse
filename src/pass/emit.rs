@@ -320,6 +320,7 @@ struct Emitter<'a> {
     nm: NameMangling,
     diags: &'a mut Diagnostics,
     type_val_params: HashMap<TypeRef, Vec<Doc>>,
+    type_uninit_val_params: HashMap<TypeRef, Vec<Doc>>,
 }
 
 impl<'a> Emitter<'a> {
@@ -695,8 +696,27 @@ impl<'a> Emitter<'a> {
             }
             TypeT::TypeRef(n) => {
                 let this_doc = self.emit_rvalue(env, this);
+                let val_param_types = self
+                    .type_uninit_val_params
+                    .get(&TypeRef::from(n))
+                    .cloned()
+                    .unwrap_or_default();
+                let mut val_args: Vec<Doc> = vec![];
+                for vp_type in &val_param_types {
+                    let idx = bindings.len() as u32;
+                    let val_name = self.nm.emit(Name::Val(extract_base_ident(this), idx));
+                    val_args.push(val_name.clone());
+                    bindings.push(ExBinding {
+                        name: val_name,
+                        ty: vp_type.clone(),
+                    });
+                }
                 let pred = self.nm.emit(Name::TypeRefUninitPred(n.into()));
-                props.push(naryfn([pred, this_doc]));
+                let args: Vec<Doc> = std::iter::once(pred)
+                    .chain(std::iter::once(this_doc))
+                    .chain(val_args)
+                    .collect();
+                props.push(naryfn(args));
             }
             TypeT::Refine(ty, _) => {
                 self.emit_type_slprop_uninit(env, ty, bindings, props, this);
@@ -1732,7 +1752,7 @@ impl<'a> Emitter<'a> {
         // Generate uninit predicate
         let uninit_pred_decl = {
             let uninit_pred_name = self.nm.emit(Name::TypeRefUninitPred(k.into()));
-            let uninit_args = vec![parens(
+            let mut uninit_args = vec![parens(
                 self.nm
                     .emit(Name::Var(this.val.clone()))
                     .append(":")
@@ -1748,11 +1768,20 @@ impl<'a> Emitter<'a> {
                 &mut uninit_props,
                 &mk_rvar(&this),
             );
-            mk_eager_unfold_slprop(
-                uninit_pred_name,
-                &uninit_args,
-                wrap_exists(&uninit_bindings, uninit_props),
-            )
+            self.type_uninit_val_params.insert(
+                TypeRef::from(k),
+                uninit_bindings.iter().map(|b| b.ty.clone()).collect(),
+            );
+            for b in &uninit_bindings {
+                uninit_args.push(parens(
+                    b.name
+                        .clone()
+                        .append(":")
+                        .append(Doc::line())
+                        .append(b.ty.clone()),
+                ));
+            }
+            mk_eager_unfold_slprop(uninit_pred_name, &uninit_args, mk_star(uninit_props))
         };
 
         // has_zero_default instance
@@ -1976,7 +2005,7 @@ impl<'a> Emitter<'a> {
         // Generate uninit predicate
         {
             let uninit_pred_name = self.nm.emit(Name::TypeRefUninitPred(k.into()));
-            let uninit_args = vec![parens(
+            let mut uninit_args = vec![parens(
                 Doc::text("[@@@mkey] ")
                     .append(self.nm.emit(Name::Var(this.val.clone())))
                     .append(":")
@@ -1996,10 +2025,23 @@ impl<'a> Emitter<'a> {
                     &field_expr,
                 );
             }
+            self.type_uninit_val_params.insert(
+                TypeRef::from(k),
+                uninit_bindings.iter().map(|b| b.ty.clone()).collect(),
+            );
+            for b in &uninit_bindings {
+                uninit_args.push(parens(
+                    b.name
+                        .clone()
+                        .append(":")
+                        .append(Doc::line())
+                        .append(b.ty.clone()),
+                ));
+            }
             ses.push(mk_eager_unfold_slprop(
                 uninit_pred_name,
                 &uninit_args,
-                wrap_exists(&uninit_bindings, uninit_props),
+                mk_star(uninit_props),
             ));
         }
 
@@ -2348,6 +2390,7 @@ impl<'a> Emitter<'a> {
             parens(Doc::text("p: perm")),
         ];
         self.type_val_params.insert(TypeRef::from(k), vec![]);
+        self.type_uninit_val_params.insert(TypeRef::from(k), vec![]);
         ses.push(mk_eager_unfold_slprop(
             pts_to_name.clone(),
             &all_args,
@@ -3132,6 +3175,7 @@ pub fn emit(
         nm: NameMangling::new(),
         diags,
         type_val_params: HashMap::new(),
+        type_uninit_val_params: HashMap::new(),
     };
     let mut output: Vec<Doc> = vec![];
     output.push(Doc::text(format!(
