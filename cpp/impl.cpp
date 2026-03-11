@@ -168,6 +168,7 @@ public:
       alreadyDefined; // guard against recursive structures
   std::unordered_map<RecordDecl *, std::string>
       structNames; // map record decls to generated struct names
+  Expr *forLoopIncrement = nullptr;
 
   // TODO: should probably wait with translation until after parsing
 
@@ -777,12 +778,54 @@ public:
         }
         body = attrBody->getSubStmt();
       }
+      auto savedIncrement = forLoopIncrement;
+      forLoopIncrement = nullptr;
+      auto bodyStmts = trStmts(body);
+      forLoopIncrement = savedIncrement;
       return stmts.push(mk_while(loc.clone(), trRValue(w->getCond()),
                                  std::move(invs), std::move(reqs),
-                                 std::move(enss), trStmts(body)));
+                                 std::move(enss), std::move(bodyStmts)));
+    } else if (auto *f = dyn_cast<ForStmt>(stmt)) {
+      // Desugar: for (init; cond; incr) body
+      //      --> init; while (cond) { body; incr; }
+      if (f->getInit())
+        trStmt(stmts, f->getInit());
+
+      auto cond = f->getCond() ? trRValue(f->getCond())
+                               : mk_bool_lit(loc.clone(), true);
+
+      auto body = f->getBody();
+      auto invs = Vec<Rc<ir::Expr>>::new_();
+      auto reqs = Vec<Rc<ir::Expr>>::new_();
+      auto enss = Vec<Rc<ir::Expr>>::new_();
+      if (auto attrBody = dyn_cast<AttributedStmt>(body)) {
+        for (auto attr : attrBody->getAttrs()) {
+          if (auto inv = isUnaryAttrOf(attr, "c2pulse-invariant")) {
+            invs.push(std::move(inv.value()));
+          } else if (auto req = isUnaryAttrOf(attr, "c2pulse-requires")) {
+            reqs.push(std::move(req.value()));
+          } else if (auto ens = isUnaryAttrOf(attr, "c2pulse-ensures")) {
+            enss.push(std::move(ens.value()));
+          }
+        }
+        body = attrBody->getSubStmt();
+      }
+
+      auto savedIncrement = forLoopIncrement;
+      forLoopIncrement = f->getInc();
+      auto bodyStmts = trStmts(body);
+      if (f->getInc())
+        trStmt(bodyStmts, f->getInc());
+      forLoopIncrement = savedIncrement;
+
+      return stmts.push(mk_while(loc.clone(), std::move(cond), std::move(invs),
+                                 std::move(reqs), std::move(enss),
+                                 std::move(bodyStmts)));
     } else if (dyn_cast<BreakStmt>(stmt)) {
       return stmts.push(mk_break(std::move(loc)));
     } else if (dyn_cast<ContinueStmt>(stmt)) {
+      if (forLoopIncrement)
+        trStmt(stmts, forLoopIncrement);
       return stmts.push(mk_continue(std::move(loc)));
     } else if (auto *r = dyn_cast<ReturnStmt>(stmt)) {
       if (auto *rv = r->getRetValue()) {
