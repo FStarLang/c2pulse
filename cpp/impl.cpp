@@ -595,6 +595,15 @@ public:
         return mk_rvalue_unop(std::move(loc), ir::UnOp::Neg(),
                               trRValue(uo->getSubExpr()));
 
+      case UO_PreInc:
+        return mk_pre_incr(std::move(loc), trLValue(uo->getSubExpr()));
+      case UO_PostInc:
+        return mk_post_incr(std::move(loc), trLValue(uo->getSubExpr()));
+      case UO_PreDec:
+        return mk_pre_decr(std::move(loc), trLValue(uo->getSubExpr()));
+      case UO_PostDec:
+        return mk_post_decr(std::move(loc), trLValue(uo->getSubExpr()));
+
       default:;
         // continue to error case
       }
@@ -711,45 +720,7 @@ public:
   rust::Unit trStmt(Vec<Rc<ir::Stmt>> &stmts, Stmt *stmt) {
     auto loc = getRange(stmt->getSourceRange());
 
-    if (auto *cao = dyn_cast<CompoundAssignOperator>(stmt)) {
-      // Desugar compound assignment: a += b → a = a + b
-      auto lhs = trLValue(cao->getLHS());
-      auto lhsValLoc = loc.clone();
-      auto lhsVal =
-          mk_rvalue_lvalue(std::move(lhsValLoc), trLValue(cao->getLHS()));
-      auto rhs = trRValue(cao->getRHS());
-      auto opLoc = loc.clone();
-      auto m = [&](ir::BinOp op) {
-        auto result = mk_rvalue_binop(std::move(opLoc), std::move(op),
-                                      std::move(lhsVal), std::move(rhs));
-        return stmts.push(
-            mk_assign(std::move(loc), std::move(lhs), std::move(result)));
-      };
-      switch (cao->getOpcode()) {
-      case clang::BO_AddAssign:
-        return m(ir::BinOp::Add());
-      case clang::BO_SubAssign:
-        return m(ir::BinOp::Sub());
-      case clang::BO_MulAssign:
-        return m(ir::BinOp::Mul());
-      case clang::BO_DivAssign:
-        return m(ir::BinOp::Div());
-      case clang::BO_RemAssign:
-        return m(ir::BinOp::Mod());
-      case clang::BO_AndAssign:
-        return m(ir::BinOp::BitAnd());
-      case clang::BO_OrAssign:
-        return m(ir::BinOp::BitOr());
-      case clang::BO_XorAssign:
-        return m(ir::BinOp::BitXor());
-      case clang::BO_ShlAssign:
-        return m(ir::BinOp::Shl());
-      case clang::BO_ShrAssign:
-        return m(ir::BinOp::Shr());
-      default:;
-        // continue to error case
-      }
-    } else if (auto *bo = dyn_cast<BinaryOperator>(stmt)) {
+    if (auto *bo = dyn_cast<BinaryOperator>(stmt)) {
       switch (bo->getOpcode()) {
       case clang::BO_Assign:
         return stmts.push(mk_assign(std::move(loc), trLValue(bo->getLHS()),
@@ -759,32 +730,27 @@ public:
         // continue to error case
       }
     } else if (auto *uo = dyn_cast<UnaryOperator>(stmt)) {
-      // Desugar ++/-- as statements: a++ → a = a + 1, a-- → a = a - 1
       auto lhs = trLValue(uo->getSubExpr());
-      auto rhs_loc = loc.clone();
-      auto rhs =
-          mk_rvalue_lvalue(std::move(rhs_loc), trLValue(uo->getSubExpr()));
-      auto oneLoc = loc.clone();
-      auto ty =
-          trQualType(uo->getType().getCanonicalType(), uo->getSourceRange());
-      auto one =
-          mk_int_lit(std::move(oneLoc), mk_bigint("1"_rs), std::move(ty));
       switch (uo->getOpcode()) {
-      case UO_PostInc:
       case UO_PreInc: {
-        auto addLoc = loc.clone();
-        auto sum = mk_rvalue_binop(std::move(addLoc), ir::BinOp::Add(),
-                                   std::move(rhs), std::move(one));
-        return stmts.push(
-            mk_assign(std::move(loc), std::move(lhs), std::move(sum)));
+        auto exprLoc = loc.clone();
+        return stmts.push(mk_call(
+            std::move(loc), mk_pre_incr(std::move(exprLoc), std::move(lhs))));
       }
-      case UO_PostDec:
+      case UO_PostInc: {
+        auto exprLoc = loc.clone();
+        return stmts.push(mk_call(
+            std::move(loc), mk_post_incr(std::move(exprLoc), std::move(lhs))));
+      }
       case UO_PreDec: {
-        auto subLoc = loc.clone();
-        auto diff = mk_rvalue_binop(std::move(subLoc), ir::BinOp::Sub(),
-                                    std::move(rhs), std::move(one));
-        return stmts.push(
-            mk_assign(std::move(loc), std::move(lhs), std::move(diff)));
+        auto exprLoc = loc.clone();
+        return stmts.push(mk_call(
+            std::move(loc), mk_pre_decr(std::move(exprLoc), std::move(lhs))));
+      }
+      case UO_PostDec: {
+        auto exprLoc = loc.clone();
+        return stmts.push(mk_call(
+            std::move(loc), mk_post_decr(std::move(exprLoc), std::move(lhs))));
       }
       default:;
         // continue to error case

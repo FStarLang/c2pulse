@@ -327,6 +327,10 @@ impl Env {
                 .reuse_loc(TypeT::Pointer(ty.clone(), PointerKind::Array))
                 .into()),
             ExprT::Free(_) => Ok(TypeT::Void.with_loc_core(expr.loc.clone()).into()),
+            ExprT::PreIncr(val)
+            | ExprT::PostIncr(val)
+            | ExprT::PreDecr(val)
+            | ExprT::PostDecr(val) => self.infer_expr(val),
             ExprT::InlinePulse(_, ty) => Ok(ty.clone().into()),
             ExprT::UnOp(UnOp::Not, _)
             | ExprT::BinOp(

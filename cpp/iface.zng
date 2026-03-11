@@ -252,6 +252,10 @@ mod crate::clang {
     fn mk_calloc(Rc<SourceInfo>, Rc<Type>) -> Rc<Expr>;
     fn mk_calloc_array(Rc<SourceInfo>, Rc<Type>, Rc<Expr>) -> Rc<Expr>;
     fn mk_free(Rc<SourceInfo>, Rc<Expr>) -> Rc<Expr>;
+    fn mk_pre_incr(Rc<SourceInfo>, Rc<Expr>) -> Rc<Expr>;
+    fn mk_post_incr(Rc<SourceInfo>, Rc<Expr>) -> Rc<Expr>;
+    fn mk_pre_decr(Rc<SourceInfo>, Rc<Expr>) -> Rc<Expr>;
+    fn mk_post_decr(Rc<SourceInfo>, Rc<Expr>) -> Rc<Expr>;
 
     fn mk_lvalue_var(Rc<SourceInfo>, Rc<Ident>) -> Rc<Expr>;
     fn mk_lvalue_member(Rc<SourceInfo>, Rc<Expr>, Rc<Ident>) -> Rc<Expr>;

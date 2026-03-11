@@ -142,6 +142,9 @@ fn scan_expr(deps: &mut HashSet<DeclName>, rv: &Expr) {
             scan_expr(deps, count);
         }
         ExprT::Free(val) => scan_expr(deps, val),
+        ExprT::PreIncr(val) | ExprT::PostIncr(val) | ExprT::PreDecr(val) | ExprT::PostDecr(val) => {
+            scan_expr(deps, val)
+        }
         ExprT::InlinePulse(code, ty) => {
             scan_type(deps, ty);
             scan_inline_pulse_code(deps, code);

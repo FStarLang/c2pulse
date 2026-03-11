@@ -237,6 +237,10 @@ impl<'a> Elaborator<'a> {
                 }
             }
             ExprT::Free(val) => self.elab_rvalue(env, Rc::make_mut(val)),
+            ExprT::PreIncr(val)
+            | ExprT::PostIncr(val)
+            | ExprT::PreDecr(val)
+            | ExprT::PostDecr(val) => self.elab_lvalue(env, Rc::make_mut(val)),
             ExprT::InlinePulse(code, ty) => {
                 self.elab_type(env, Rc::make_mut(ty));
                 self.elab_inline_pulse_code(env, Rc::make_mut(code));

@@ -437,6 +437,18 @@ fn mk_calloc_array(loc: Rc<SourceInfo>, ty: Rc<Type>, count: Rc<Expr>) -> Rc<Exp
 fn mk_free(loc: Rc<SourceInfo>, val: Rc<Expr>) -> Rc<Expr> {
     mk_ast(loc, ExprT::Free(val))
 }
+fn mk_pre_incr(loc: Rc<SourceInfo>, val: Rc<Expr>) -> Rc<Expr> {
+    mk_ast(loc, ExprT::PreIncr(val))
+}
+fn mk_post_incr(loc: Rc<SourceInfo>, val: Rc<Expr>) -> Rc<Expr> {
+    mk_ast(loc, ExprT::PostIncr(val))
+}
+fn mk_pre_decr(loc: Rc<SourceInfo>, val: Rc<Expr>) -> Rc<Expr> {
+    mk_ast(loc, ExprT::PreDecr(val))
+}
+fn mk_post_decr(loc: Rc<SourceInfo>, val: Rc<Expr>) -> Rc<Expr> {
+    mk_ast(loc, ExprT::PostDecr(val))
+}
 
 pub struct StructInitBuilder {
     loc: Rc<SourceInfo>,

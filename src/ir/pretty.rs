@@ -233,6 +233,10 @@ impl PrettyIR for ExprT {
                 .append(ty.to_doc())
                 .append("))"),
             ExprT::Free(val) => RcDoc::text("free(").append(val.to_doc()).append(")"),
+            ExprT::PreIncr(val) => RcDoc::text("++").append(val.to_doc()),
+            ExprT::PostIncr(val) => val.to_doc().append("++"),
+            ExprT::PreDecr(val) => RcDoc::text("--").append(val.to_doc()),
+            ExprT::PostDecr(val) => val.to_doc().append("--"),
             ExprT::StructInit(name, fields) => RcDoc::text("(")
                 .append(name.to_doc())
                 .append(") {")

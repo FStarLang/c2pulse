@@ -282,6 +282,10 @@ pub enum ExprT {
     Calloc(Rc<Type>),
     CallocArray(Rc<Type>, Rc<Expr>),
     Free(Rc<Expr>),
+    PreIncr(Rc<Expr>),
+    PostIncr(Rc<Expr>),
+    PreDecr(Rc<Expr>),
+    PostDecr(Rc<Expr>),
     Error(Rc<Type>),
 }
 

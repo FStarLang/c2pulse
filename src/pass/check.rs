@@ -401,6 +401,10 @@ impl<'a> Checker<'a> {
                 self.check_rvalue(env, count);
             }
             ExprT::Free(val) => self.check_rvalue(env, val),
+            ExprT::PreIncr(val)
+            | ExprT::PostIncr(val)
+            | ExprT::PreDecr(val)
+            | ExprT::PostDecr(val) => self.check_lvalue(env, val),
             ExprT::Error(ty) => self.check_type(env, ty),
         }
     }

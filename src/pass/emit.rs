@@ -474,6 +474,10 @@ impl<'a> Emitter<'a> {
                 self.subst_this_rvalue(env, Rc::make_mut(count), this);
             }
             ExprT::Free(val) => self.subst_this_rvalue(env, Rc::make_mut(val), this),
+            ExprT::PreIncr(val)
+            | ExprT::PostIncr(val)
+            | ExprT::PreDecr(val)
+            | ExprT::PostDecr(val) => self.subst_this_rvalue(env, Rc::make_mut(val), this),
             ExprT::VAttr(_, x) => self.subst_this_rvalue(env, Rc::make_mut(x), this),
             ExprT::Index(arr, idx) => {
                 self.subst_this_rvalue(env, Rc::make_mut(arr), this);
@@ -1386,6 +1390,34 @@ impl<'a> Emitter<'a> {
                         Doc::text(func)
                             .append(Doc::line())
                             .append(self.emit_rvalue(env, val)),
+                    )
+                }
+                ExprT::PreIncr(val)
+                | ExprT::PostIncr(val)
+                | ExprT::PreDecr(val)
+                | ExprT::PostDecr(val) => {
+                    let prefix = match &v.val {
+                        ExprT::PreIncr(_) => "pluspluspre",
+                        ExprT::PostIncr(_) => "pluspluspost",
+                        ExprT::PreDecr(_) => "minusminuspre",
+                        ExprT::PostDecr(_) => "minusminuspost",
+                        _ => unreachable!(),
+                    };
+                    let suffix =
+                        env.infer_expr(val)
+                            .ok()
+                            .and_then(|ty| match &env.vtype_whnf(ty).val {
+                                TypeT::Int { signed, width } => {
+                                    get_int_mod(signed, width).map(|s| s.to_lowercase())
+                                }
+                                TypeT::SizeT => Some("sizet".to_string()),
+                                _ => None,
+                            });
+                    let suffix = suffix.unwrap_or_else(|| "unknown".to_string());
+                    parens(
+                        Doc::text(format!("Pulse.Lib.C.UnaryOps.{}_{}", prefix, suffix))
+                            .append(Doc::line())
+                            .append(self.emit_lvalue(env, val)),
                     )
                 }
             }
