@@ -118,19 +118,18 @@ fn array_write u#a (#t: Type u#a) (a: array t) (i: SZ.t) (v: t)
 
 // ---------------------------------------------------------------------------
 // ArrayPtr: pointers into arrays (zero-length sub-arrays sharing a base)
+//
+// An arrayptr is just a Pulse array with length 0 and the same base as its
+// parent. arrayptr_pts_to is a pure proposition asserting this relationship.
 // ---------------------------------------------------------------------------
 
 private let nat_add (x y: nat) : nat = x + y
 
 /// Predicate asserting that arrayptr `x` points into array `y` at offset `off`.
-/// Carries no permissions — duplicable.
-val arrayptr_pts_to (#t: Type u#a) ([@@@mkey] x: array t) (y: array t) (off: nat) : slprop
-
-/// arrayptr_pts_to is duplicable (it carries no permissions).
-val arrayptr_pts_to_dup (#t: Type u#a) (x: array t) (y: array t) (off: nat)
-  : stt_ghost unit emp_inames
-    (arrayptr_pts_to x y off)
-    (fun _ -> arrayptr_pts_to x y off ** arrayptr_pts_to x y off)
+/// Defined as a pure proposition: same base, correct offset, zero length.
+/// Automatically duplicable and droppable (it's just pure).
+let arrayptr_pts_to (#t: Type u#a) ([@@@mkey] x: array t) (y: array t) (off: nat) : slprop =
+  pure (base_of x == base_of y /\ offset_of x == offset_of y + off /\ length x == 0)
 
 /// Create an arrayptr from an array at offset `i`.
 val array_to_arrayptr (#t: Type u#a) (arr: array t) (i: SZ.t)
