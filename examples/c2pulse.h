@@ -22,6 +22,7 @@
 #define _consumes __attribute__((annotate("c2pulse-consumes")))
 #define _out __attribute__((annotate("c2pulse-out")))
 #define _array __attribute((annotate("c2pulse-array")))
+#define _arrayptr __attribute((annotate("c2pulse-arrayptr")))
 #define _pure __attribute((annotate("c2pulse-pure")))
 
 #define _inline_pulse(args) _inline_pulse(__capture_args(args))
@@ -42,6 +43,7 @@
 #define _consumes
 #define _out
 #define _array
+#define _arrayptr
 #define _pure
 
 #endif

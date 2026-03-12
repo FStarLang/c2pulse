@@ -389,8 +389,9 @@ impl<'a> Emitter<'a> {
 
                 TypeT::Bool => Doc::text("bool"),
                 TypeT::SizeT => Doc::text("SizeT.t"),
+                TypeT::PtrdiffT => Doc::text("Pulse.Lib.C.PtrdiffT.t"),
 
-                TypeT::Pointer(to, PointerKind::Array) => {
+                TypeT::Pointer(to, PointerKind::Array | PointerKind::ArrayPtr) => {
                     unaryfn(Doc::text("array"), self.emit_type(env, to))
                 }
                 TypeT::Pointer(to, PointerKind::Ref | PointerKind::Unknown) => {
@@ -424,7 +425,9 @@ impl<'a> Emitter<'a> {
             TypeT::Bool => Doc::text("false"),
             TypeT::SizeT => Doc::text("0sz"),
             TypeT::Pointer(_, PointerKind::Ref | PointerKind::Unknown) => Doc::text("null"),
-            TypeT::Pointer(_, PointerKind::Array) => Doc::text("zero_default"),
+            TypeT::Pointer(_, PointerKind::Array | PointerKind::ArrayPtr) => {
+                Doc::text("zero_default")
+            }
             TypeT::Void => Doc::text("()"),
             TypeT::TypeRef(_) => Doc::text("zero_default"),
             TypeT::Refine(ty, _) | TypeT::RefineAlways(ty, _) | TypeT::Plain(ty) => {
@@ -589,6 +592,7 @@ impl<'a> Emitter<'a> {
             | TypeT::Bool
             | TypeT::Int { .. }
             | TypeT::SizeT
+            | TypeT::PtrdiffT
             | TypeT::SpecInt
             | TypeT::SLProp => {}
             TypeT::Pointer(pointee_ty, kind) => {
@@ -666,6 +670,10 @@ impl<'a> Emitter<'a> {
                                 ]),
                             )),
                         }
+                    }
+                    PointerKind::ArrayPtr => {
+                        // ArrayPtr has no data ownership — arrayptr_pts_to is
+                        // expressed by the user via _slprop/_inline_pulse for MVP
                     }
                 }
             }
@@ -799,7 +807,29 @@ impl<'a> Emitter<'a> {
                 }
             }
             ExprT::Deref(inner) => {
-                ExprKind::LValue(annotated(v, self.emit_expr(env, inner).to_rvalue()))
+                // *arrayptr → arrayptr_read at index 0
+                let is_arrayptr = env
+                    .infer_expr(inner)
+                    .map(|ty| {
+                        matches!(
+                            env.vtype_whnf(ty).val,
+                            TypeT::Pointer(_, PointerKind::ArrayPtr)
+                        )
+                    })
+                    .unwrap_or(false);
+                if is_arrayptr {
+                    let inner_doc = self.emit_rvalue(env, inner);
+                    ExprKind::RValue(annotated(
+                        v,
+                        parens(naryfn([
+                            Doc::text("arrayptr_read"),
+                            inner_doc,
+                            Doc::text("0sz"),
+                        ])),
+                    ))
+                } else {
+                    ExprKind::LValue(annotated(v, self.emit_expr(env, inner).to_rvalue()))
+                }
             }
             ExprT::Member(x, a) => match env.infer_expr(x) {
                 Ok(ty) => {
@@ -902,11 +932,25 @@ impl<'a> Emitter<'a> {
                 ))
             }
             ExprT::Index(arr, idx) => {
+                let is_arrayptr = env
+                    .infer_expr(arr)
+                    .map(|ty| {
+                        matches!(
+                            env.vtype_whnf(ty).val,
+                            TypeT::Pointer(_, PointerKind::ArrayPtr)
+                        )
+                    })
+                    .unwrap_or(false);
                 let arr_doc = self.emit_rvalue(env, arr);
                 let idx_doc = self.emit_rvalue(env, idx);
+                let fn_name = if is_arrayptr {
+                    "arrayptr_read"
+                } else {
+                    "array_read"
+                };
                 ExprKind::RValue(annotated(
                     v,
-                    parens(naryfn([Doc::text("array_read"), arr_doc, idx_doc])),
+                    parens(naryfn([Doc::text(fn_name), arr_doc, idx_doc])),
                 ))
             }
             _ => ExprKind::RValue(self.emit_rvalue_inner(env, v)),
@@ -971,7 +1015,12 @@ fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
         (BinOp::Eq, TypeT::SLProp | TypeT::Void) => Doc::text("=="),
         (
             BinOp::Eq,
-            TypeT::SpecInt | TypeT::Bool | TypeT::Int { .. } | TypeT::SizeT | TypeT::Pointer(_, _),
+            TypeT::SpecInt
+            | TypeT::Bool
+            | TypeT::Int { .. }
+            | TypeT::SizeT
+            | TypeT::PtrdiffT
+            | TypeT::Pointer(_, _),
         ) => Doc::text("="),
 
         (BinOp::LEq, TypeT::Int { signed, width }) => {
@@ -982,6 +1031,8 @@ fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
         }
         (BinOp::LEq, TypeT::SizeT) => Doc::text("`SizeT.lte`"),
         (BinOp::Lt, TypeT::SizeT) => Doc::text("`SizeT.lt`"),
+        (BinOp::LEq, TypeT::PtrdiffT) => Doc::text("`Pulse.Lib.C.PtrdiffT.lte`"),
+        (BinOp::Lt, TypeT::PtrdiffT) => Doc::text("`Pulse.Lib.C.PtrdiffT.lt`"),
 
         (BinOp::LEq, TypeT::Bool) => todo_binop!(),
         (BinOp::Lt, TypeT::Bool) => todo_binop!(),
@@ -1018,6 +1069,12 @@ fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
             Doc::text(format!("`{}.sub`", get_int_mod(signed, width)?))
         }
         (BinOp::Sub, TypeT::SizeT) => Doc::text("`SizeT.sub`"),
+
+        (BinOp::Add, TypeT::PtrdiffT) => Doc::text("`Pulse.Lib.C.PtrdiffT.add`"),
+        (BinOp::Sub, TypeT::PtrdiffT) => Doc::text("`Pulse.Lib.C.PtrdiffT.sub`"),
+        (BinOp::Mul, TypeT::PtrdiffT) => Doc::text("`Pulse.Lib.C.PtrdiffT.mul`"),
+        (BinOp::Div, TypeT::PtrdiffT) => Doc::text("`Pulse.Lib.C.PtrdiffT.div`"),
+        (BinOp::Mod, TypeT::PtrdiffT) => Doc::text("`Pulse.Lib.C.PtrdiffT.rem`"),
 
         (BinOp::BitAnd, TypeT::Int { signed, width }) => {
             Doc::text(format!("`{}.logand`", get_int_mod(signed, width)?))
@@ -1075,11 +1132,11 @@ fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
         | (_, TypeT::Void)
         | (
             BinOp::LogAnd | BinOp::LogOr | BinOp::Implies,
-            TypeT::Int { .. } | TypeT::SizeT | TypeT::Pointer(..),
+            TypeT::Int { .. } | TypeT::SizeT | TypeT::PtrdiffT | TypeT::Pointer(..),
         )
         | (
             BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor | BinOp::Shl | BinOp::Shr,
-            TypeT::Bool | TypeT::SizeT,
+            TypeT::Bool | TypeT::SizeT | TypeT::PtrdiffT,
         )
         | (_, TypeT::SLProp)
         | (_, TypeT::Error) => return None,
@@ -1111,7 +1168,9 @@ impl<'a> Emitter<'a> {
                     {
                         Doc::text("null")
                     }
-                    TypeT::Pointer(_, PointerKind::Array) if **val == BigInt::ZERO => {
+                    TypeT::Pointer(_, PointerKind::Array | PointerKind::ArrayPtr)
+                        if **val == BigInt::ZERO =>
+                    {
                         Doc::text("Pulse.Lib.Array.null")
                     }
                     _ => {
@@ -1335,6 +1394,76 @@ impl<'a> Emitter<'a> {
                     }
                 }
                 ExprT::BinOp(op, lhs, rhs) => {
+                    // Pointer arithmetic: ptr + int → arrayptr_shift / array_to_arrayptr
+                    if *op == BinOp::Add {
+                        let lhs_ty = env.infer_expr(lhs).ok().map(|t| env.vtype_whnf(t));
+                        let rhs_ty = env.infer_expr(rhs).ok().map(|t| env.vtype_whnf(t));
+                        let lhs_is_ptr = lhs_ty.as_ref().is_some_and(|t| {
+                            matches!(
+                                t.val,
+                                TypeT::Pointer(_, PointerKind::Array | PointerKind::ArrayPtr)
+                            )
+                        });
+                        let rhs_is_ptr = rhs_ty.as_ref().is_some_and(|t| {
+                            matches!(
+                                t.val,
+                                TypeT::Pointer(_, PointerKind::Array | PointerKind::ArrayPtr)
+                            )
+                        });
+                        if lhs_is_ptr {
+                            let is_array = lhs_ty.as_ref().is_some_and(|t| {
+                                matches!(t.val, TypeT::Pointer(_, PointerKind::Array))
+                            });
+                            let fn_name = if is_array {
+                                "array_to_arrayptr"
+                            } else {
+                                "arrayptr_shift"
+                            };
+                            return parens(naryfn([
+                                Doc::text(fn_name),
+                                self.emit_rvalue(env, lhs),
+                                self.emit_rvalue(env, rhs),
+                            ]));
+                        } else if rhs_is_ptr {
+                            let is_array = rhs_ty.as_ref().is_some_and(|t| {
+                                matches!(t.val, TypeT::Pointer(_, PointerKind::Array))
+                            });
+                            let fn_name = if is_array {
+                                "array_to_arrayptr"
+                            } else {
+                                "arrayptr_shift"
+                            };
+                            return parens(naryfn([
+                                Doc::text(fn_name),
+                                self.emit_rvalue(env, rhs),
+                                self.emit_rvalue(env, lhs),
+                            ]));
+                        }
+                    }
+                    // Pointer subtraction: ptr - ptr → arrayptr_diff
+                    if *op == BinOp::Sub {
+                        let lhs_ty = env.infer_expr(lhs).ok().map(|t| env.vtype_whnf(t));
+                        let rhs_ty = env.infer_expr(rhs).ok().map(|t| env.vtype_whnf(t));
+                        let lhs_is_ptr = lhs_ty.as_ref().is_some_and(|t| {
+                            matches!(
+                                t.val,
+                                TypeT::Pointer(_, PointerKind::Array | PointerKind::ArrayPtr)
+                            )
+                        });
+                        let rhs_is_ptr = rhs_ty.as_ref().is_some_and(|t| {
+                            matches!(
+                                t.val,
+                                TypeT::Pointer(_, PointerKind::Array | PointerKind::ArrayPtr)
+                            )
+                        });
+                        if lhs_is_ptr && rhs_is_ptr {
+                            return parens(naryfn([
+                                Doc::text("arrayptr_diff"),
+                                self.emit_rvalue(env, lhs),
+                                self.emit_rvalue(env, rhs),
+                            ]));
+                        }
+                    }
                     if let Ok(ty) = env.infer_expr(&lhs)
                         && let Some(op) = emit_binop(env, *op, ty)
                     {
@@ -1381,7 +1510,29 @@ impl<'a> Emitter<'a> {
                             })
                             .unwrap_or(false)
                     };
-                    if is_array {
+                    let is_arrayptr = if let ExprT::Deref(inner) = &v.val {
+                        env.infer_expr(inner)
+                            .map(|ty| {
+                                matches!(
+                                    env.vtype_whnf(ty).val,
+                                    TypeT::Pointer(_, PointerKind::ArrayPtr)
+                                )
+                            })
+                            .unwrap_or(false)
+                    } else {
+                        env.infer_expr(v)
+                            .map(|ty| {
+                                matches!(
+                                    env.vtype_whnf(ty).val,
+                                    TypeT::Pointer(_, PointerKind::ArrayPtr)
+                                )
+                            })
+                            .unwrap_or(false)
+                    };
+                    if is_arrayptr {
+                        // arrayptrs carry no permissions; _live is emp
+                        Doc::text("emp")
+                    } else if is_array {
                         unaryfn(
                             Doc::text("Pulse.Lib.C.Array.live_array"),
                             self.emit_lvalue(env, v),
@@ -1508,29 +1659,47 @@ impl<'a> Emitter<'a> {
                 | ExprT::PostIncr(val)
                 | ExprT::PreDecr(val)
                 | ExprT::PostDecr(val) => {
-                    let prefix = match &v.val {
-                        ExprT::PreIncr(_) => "pluspluspre",
-                        ExprT::PostIncr(_) => "pluspluspost",
-                        ExprT::PreDecr(_) => "minusminuspre",
-                        ExprT::PostDecr(_) => "minusminuspost",
-                        _ => unreachable!(),
-                    };
-                    let suffix =
-                        env.infer_expr(val)
-                            .ok()
-                            .and_then(|ty| match &env.vtype_whnf(ty).val {
-                                TypeT::Int { signed, width } => {
-                                    get_int_mod(signed, width).map(|s| s.to_lowercase())
-                                }
-                                TypeT::SizeT => Some("sizet".to_string()),
-                                _ => None,
-                            });
-                    let suffix = suffix.unwrap_or_else(|| "unknown".to_string());
-                    parens(
-                        Doc::text(format!("Pulse.Lib.C.UnaryOps.{}_{}", prefix, suffix))
-                            .append(Doc::line())
-                            .append(self.emit_lvalue(env, val)),
-                    )
+                    // Check if this is pointer arithmetic (arrayptr++/--)
+                    let val_ty = env.infer_expr(val).ok().map(|t| env.vtype_whnf(t));
+                    let is_ptr = val_ty.as_ref().is_some_and(|t| {
+                        matches!(
+                            t.val,
+                            TypeT::Pointer(_, PointerKind::Array | PointerKind::ArrayPtr)
+                        )
+                    });
+                    if is_ptr {
+                        let is_incr = matches!(&v.val, ExprT::PreIncr(_) | ExprT::PostIncr(_));
+                        let is_pre = matches!(&v.val, ExprT::PreIncr(_) | ExprT::PreDecr(_));
+                        let prefix = if is_pre { "pre" } else { "post" };
+                        let dir = if is_incr { "incr" } else { "decr" };
+                        parens(
+                            Doc::text(format!("Pulse.Lib.C.Array.arrayptr_{}_{}", prefix, dir))
+                                .append(Doc::line())
+                                .append(self.emit_lvalue(env, val)),
+                        )
+                    } else {
+                        let prefix = match &v.val {
+                            ExprT::PreIncr(_) => "pluspluspre",
+                            ExprT::PostIncr(_) => "pluspluspost",
+                            ExprT::PreDecr(_) => "minusminuspre",
+                            ExprT::PostDecr(_) => "minusminuspost",
+                            _ => unreachable!(),
+                        };
+                        let suffix = val_ty.and_then(|ty| match &ty.val {
+                            TypeT::Int { signed, width } => {
+                                get_int_mod(signed, width).map(|s| s.to_lowercase())
+                            }
+                            TypeT::SizeT => Some("sizet".to_string()),
+                            TypeT::PtrdiffT => Some("ptrdifft".to_string()),
+                            _ => None,
+                        });
+                        let suffix = suffix.unwrap_or_else(|| "unknown".to_string());
+                        parens(
+                            Doc::text(format!("Pulse.Lib.C.UnaryOps.{}_{}", prefix, suffix))
+                                .append(Doc::line())
+                                .append(self.emit_lvalue(env, val)),
+                        )
+                    }
                 }
             }
         })
@@ -1590,9 +1759,22 @@ impl<'a> Emitter<'a> {
                 }
                 StmtT::Assign(x, t) => {
                     if let ExprT::Index(arr, idx) = &x.val {
-                        // Array write: array_write arr idx val;
+                        let is_arrayptr = env
+                            .infer_expr(arr)
+                            .map(|ty| {
+                                matches!(
+                                    env.vtype_whnf(ty).val,
+                                    TypeT::Pointer(_, PointerKind::ArrayPtr)
+                                )
+                            })
+                            .unwrap_or(false);
+                        let fn_name = if is_arrayptr {
+                            "arrayptr_write"
+                        } else {
+                            "array_write"
+                        };
                         naryfn([
-                            Doc::text("array_write"),
+                            Doc::text(fn_name),
                             self.emit_rvalue(env, arr),
                             self.emit_rvalue(env, idx),
                             self.emit_rvalue(env, t),
@@ -1600,6 +1782,38 @@ impl<'a> Emitter<'a> {
                         .append(";")
                         .nest(2)
                         .group()
+                    } else if let ExprT::Deref(inner) = &x.val {
+                        // Check if dereferencing an arrayptr: *p = val → arrayptr_write p 0sz val
+                        let is_arrayptr = env
+                            .infer_expr(inner)
+                            .map(|ty| {
+                                matches!(
+                                    env.vtype_whnf(ty).val,
+                                    TypeT::Pointer(_, PointerKind::ArrayPtr)
+                                )
+                            })
+                            .unwrap_or(false);
+                        if is_arrayptr {
+                            naryfn([
+                                Doc::text("arrayptr_write"),
+                                self.emit_rvalue(env, inner),
+                                Doc::text("0sz"),
+                                self.emit_rvalue(env, t),
+                            ])
+                            .append(";")
+                            .nest(2)
+                            .group()
+                        } else {
+                            self.emit_lvalue(env, x)
+                                .append(Doc::line())
+                                .append(":=")
+                                .group()
+                                .append(Doc::line())
+                                .append(self.emit_rvalue(env, t))
+                                .append(";")
+                                .group()
+                                .nest(2)
+                        }
                     } else if let ExprT::Member(base, fld) = &x.val {
                         // Check if base is a union type — if so, emit x := Ctor val
                         if let Ok(base_ty) = env.infer_expr(base) {
@@ -2953,6 +3167,7 @@ impl<'a> Emitter<'a> {
             | TypeT::Bool
             | TypeT::Int { .. }
             | TypeT::SizeT
+            | TypeT::PtrdiffT
             | TypeT::SpecInt
             | TypeT::SLProp
             | TypeT::Error

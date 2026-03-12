@@ -78,6 +78,7 @@ impl<'a> Checker<'a> {
                 width: _,
             } => {}
             TypeT::SizeT => {}
+            TypeT::PtrdiffT => {}
             TypeT::Pointer(ty, _kind) => {
                 self.check_type(env, ty);
             }
@@ -115,6 +116,7 @@ impl<'a> Checker<'a> {
             TypeT::Bool => true,
             TypeT::Int { .. } => true,
             TypeT::SizeT => true,
+            TypeT::PtrdiffT => true,
             TypeT::Pointer(_, _) => true, // == 0 ?
             TypeT::SpecInt => true,
             TypeT::SLProp => true, // true/false
@@ -205,7 +207,7 @@ impl<'a> Checker<'a> {
                     if let Some(arr_ty) = self.infer_expr(env, arr) {
                         let arr_ty = env.vtype_whnf(arr_ty);
                         match &arr_ty.val {
-                            TypeT::Pointer(_, PointerKind::Array) => {}
+                            TypeT::Pointer(_, PointerKind::Array | PointerKind::ArrayPtr) => {}
                             TypeT::Error => {}
                             _ => self.report(format!("not an array type: {}", arr_ty), &rval.loc),
                         }
@@ -292,7 +294,22 @@ impl<'a> Checker<'a> {
                         | BinOp::Sub
                         | BinOp::BitAnd
                         | BinOp::BitOr
-                        | BinOp::BitXor => check_eq(self),
+                        | BinOp::BitXor => {
+                            // Allow pointer arithmetic: array/arrayptr ± integer
+                            let lhs_w = env.vtype_whnf(lhs_ty.clone().into());
+                            let rhs_w = env.vtype_whnf(rhs_ty.clone().into());
+                            let is_ptr_arith = matches!(bin_op, BinOp::Add | BinOp::Sub)
+                                && (matches!(
+                                    &lhs_w.val,
+                                    TypeT::Pointer(_, PointerKind::Array | PointerKind::ArrayPtr)
+                                ) || matches!(
+                                    &rhs_w.val,
+                                    TypeT::Pointer(_, PointerKind::Array | PointerKind::ArrayPtr)
+                                ));
+                            if !is_ptr_arith {
+                                check_eq(self)
+                            }
+                        }
                         BinOp::Shl | BinOp::Shr => {
                             let u32_ty: MaybeRc<Type> = TypeT::Int {
                                 signed: false,

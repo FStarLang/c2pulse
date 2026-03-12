@@ -359,6 +359,9 @@ public:
         } else if (ann->getAnnotation() == "c2pulse-array" &&
                    ann->args_size() == 0) {
           ty = mk_type_array(std::move(loc), std::move(ty));
+        } else if (ann->getAnnotation() == "c2pulse-arrayptr" &&
+                   ann->args_size() == 0) {
+          ty = mk_type_arrayptr(std::move(loc), std::move(ty));
         }
       }
     }
@@ -1022,8 +1025,9 @@ public:
           builder.arg_anon(std::move(ty), std::move(mode));
         }
       }
-      builder.return_type(
-          trQualType(FD->getReturnType(), FD->getReturnTypeSourceRange()));
+      builder.return_type(trTypeAttrs(
+          FD->getAttrs(),
+          trQualType(FD->getReturnType(), FD->getReturnTypeSourceRange())));
       for (auto attr : FD->getAttrs()) {
         if (auto req = isUnaryAttrOf(attr, "c2pulse-requires")) {
           builder.requires(std::move(req.value()));

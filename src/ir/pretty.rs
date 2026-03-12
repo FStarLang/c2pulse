@@ -110,8 +110,10 @@ impl PrettyIR for TypeT {
                 format!("uint{}_t", width)
             }),
             TypeT::SizeT => RcDoc::text("size_t"),
+            TypeT::PtrdiffT => RcDoc::text("ptrdiff_t"),
             TypeT::Pointer(ty, PointerKind::Ref) => ty.to_doc().append("*"),
             TypeT::Pointer(ty, PointerKind::Array) => ty.to_doc().append(RcDoc::text("[]")),
+            TypeT::Pointer(ty, PointerKind::ArrayPtr) => ty.to_doc().append(RcDoc::text("[ptr]")),
             TypeT::Pointer(ty, PointerKind::Unknown) => ty.to_doc().append(RcDoc::text("[?]")),
             TypeT::SpecInt => RcDoc::text("_specint"),
             TypeT::SLProp => RcDoc::text("_slprop"),

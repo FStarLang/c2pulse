@@ -128,6 +128,7 @@ pub enum PointerKind {
     Unknown,
     Ref,
     Array,
+    ArrayPtr,
 }
 
 pub type Type = Ast<TypeT>;
@@ -137,6 +138,7 @@ pub enum TypeT {
     Bool,
     Int { signed: bool, width: u32 },
     SizeT,
+    PtrdiffT,
     Pointer(Rc<Type>, PointerKind),
 
     SpecInt,

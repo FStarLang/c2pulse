@@ -310,7 +310,9 @@ impl Env {
             ExprT::Index(arr, _idx) => {
                 let arr_ty = self.vtype_whnf(self.infer_expr(arr)?);
                 match &arr_ty.val {
-                    TypeT::Pointer(elem, PointerKind::Array) => Ok(elem.clone().into()),
+                    TypeT::Pointer(elem, PointerKind::Array | PointerKind::ArrayPtr) => {
+                        Ok(elem.clone().into())
+                    }
                     _ => Err(InferError::CannotIndex(arr_ty)),
                 }
             }
@@ -350,8 +352,6 @@ impl Env {
                 | BinOp::Mul
                 | BinOp::Div
                 | BinOp::Mod
-                | BinOp::Add
-                | BinOp::Sub
                 | BinOp::BitAnd
                 | BinOp::BitOr
                 | BinOp::BitXor
@@ -360,6 +360,36 @@ impl Env {
                 lhs,
                 _,
             ) => self.infer_expr(lhs),
+            ExprT::BinOp(BinOp::Add, lhs, rhs) => {
+                let lhs_ty = self.vtype_whnf(self.infer_expr(lhs)?);
+                let rhs_ty = self.vtype_whnf(self.infer_expr(rhs)?);
+                // pointer + int → arrayptr
+                match (&lhs_ty.val, &rhs_ty.val) {
+                    (TypeT::Pointer(elem, PointerKind::Array | PointerKind::ArrayPtr), _) => {
+                        Ok(expr
+                            .reuse_loc(TypeT::Pointer(elem.clone(), PointerKind::ArrayPtr))
+                            .into())
+                    }
+                    (_, TypeT::Pointer(elem, PointerKind::Array | PointerKind::ArrayPtr)) => {
+                        Ok(expr
+                            .reuse_loc(TypeT::Pointer(elem.clone(), PointerKind::ArrayPtr))
+                            .into())
+                    }
+                    _ => Ok(lhs_ty),
+                }
+            }
+            ExprT::BinOp(BinOp::Sub, lhs, rhs) => {
+                let lhs_ty = self.vtype_whnf(self.infer_expr(lhs)?);
+                let rhs_ty = self.vtype_whnf(self.infer_expr(rhs)?);
+                // pointer - pointer → PtrdiffT
+                match (&lhs_ty.val, &rhs_ty.val) {
+                    (
+                        TypeT::Pointer(_, PointerKind::Array | PointerKind::ArrayPtr),
+                        TypeT::Pointer(_, PointerKind::Array | PointerKind::ArrayPtr),
+                    ) => Ok(TypeT::PtrdiffT.with_loc_core(expr.loc.clone()).into()),
+                    _ => Ok(lhs_ty),
+                }
+            }
             ExprT::BoolLit(_) => Ok(TypeT::Bool.with_loc_core(expr.loc.clone()).into()),
             ExprT::Live(_) => Ok(TypeT::SLProp.with_loc_core(expr.loc.clone()).into()),
             ExprT::Old(v) => self.infer_expr(v),
@@ -385,21 +415,33 @@ impl Env {
             (_, TypeT::Error) => Some(b0),
             (TypeT::Error, _) => Some(a0),
 
-            (TypeT::SpecInt, TypeT::Bool | TypeT::Int { .. } | TypeT::SizeT) => Some(a0),
-            (TypeT::Bool | TypeT::Int { .. } | TypeT::SizeT, TypeT::SpecInt) => Some(b0),
+            (TypeT::SpecInt, TypeT::Bool | TypeT::Int { .. } | TypeT::SizeT | TypeT::PtrdiffT) => {
+                Some(a0)
+            }
+            (TypeT::Bool | TypeT::Int { .. } | TypeT::SizeT | TypeT::PtrdiffT, TypeT::SpecInt) => {
+                Some(b0)
+            }
 
             (TypeT::SizeT, TypeT::Bool | TypeT::Int { .. }) => Some(a0),
             (TypeT::Bool | TypeT::Int { .. }, TypeT::SizeT) => Some(b0),
 
+            (TypeT::PtrdiffT, TypeT::Bool | TypeT::Int { .. }) => Some(a0),
+            (TypeT::Bool | TypeT::Int { .. }, TypeT::PtrdiffT) => Some(b0),
+
+            (TypeT::SizeT, TypeT::PtrdiffT) => Some(b0),
+            (TypeT::PtrdiffT, TypeT::SizeT) => Some(a0),
+
             (TypeT::Int { .. }, TypeT::Bool) => Some(a0),
             (TypeT::Bool, TypeT::Int { .. }) => Some(b0),
 
-            (TypeT::SLProp, TypeT::Bool | TypeT::Int { .. } | TypeT::SizeT | TypeT::SpecInt) => {
-                Some(a0)
-            }
-            (TypeT::Bool | TypeT::Int { .. } | TypeT::SizeT | TypeT::SpecInt, TypeT::SLProp) => {
-                Some(b0)
-            }
+            (
+                TypeT::SLProp,
+                TypeT::Bool | TypeT::Int { .. } | TypeT::SizeT | TypeT::PtrdiffT | TypeT::SpecInt,
+            ) => Some(a0),
+            (
+                TypeT::Bool | TypeT::Int { .. } | TypeT::SizeT | TypeT::PtrdiffT | TypeT::SpecInt,
+                TypeT::SLProp,
+            ) => Some(b0),
 
             both_sides!(TypeT::Bool) => None,
             // Different Int types: use C-style usual arithmetic conversion
@@ -426,6 +468,7 @@ impl Env {
             }
             both_sides!(TypeT::SLProp) => None,
             both_sides!(TypeT::SizeT) => None,
+            both_sides!(TypeT::PtrdiffT) => None,
             both_sides!(TypeT::SpecInt) => None,
 
             either_side!(TypeT::Void) => None,
@@ -451,6 +494,7 @@ impl Env {
             | TypeT::Bool
             | TypeT::Int { .. }
             | TypeT::SizeT
+            | TypeT::PtrdiffT
             | TypeT::Pointer(_, _)
             | TypeT::SpecInt
             | TypeT::SLProp

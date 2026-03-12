@@ -75,12 +75,14 @@ fn scan_type(deps: &mut HashSet<DeclName>, ty: &Type) {
             width: _,
         } => {}
         TypeT::SizeT => {}
+        TypeT::PtrdiffT => {}
         TypeT::Pointer(to, kind) => {
             scan_type(deps, &*to);
             match kind {
                 PointerKind::Unknown => {}
                 PointerKind::Ref => {}
                 PointerKind::Array => {}
+                PointerKind::ArrayPtr => {}
             }
         }
         TypeT::Error => {}
