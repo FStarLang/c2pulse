@@ -9,45 +9,30 @@ module SZ = FStar.SizeT
 let array_value_of #a (x: array a) #p #m #y =
   observe (fun y -> pts_to_mask x #p y m) #y
 
+let array_full_mask #t (s: Seq.seq (option t)) (mask: nat -> prop) =
+  forall (i: nat). i < Seq.length s ==> mask i
+
+let array_initialized #t (s: Seq.seq (option t)) : prop =
+  forall (i: nat). i < Seq.length s ==> Some? (Seq.index s i)
+
 [@@pulse_eager_unfold]
 let array_pts_to_uninit (#t: Type u#a) (a: array t) (s: Seq.seq (option t)) (mask: nat -> prop) =
-  pts_to_mask a s mask ** with_pure (forall (i: nat). i < Seq.length s ==> mask i) fun _ -> emp
+  pts_to_mask a s mask ** with_pure (array_full_mask s mask) fun _ -> emp
 
 [@@pulse_eager_unfold]
 let array_pts_to (#t: Type u#a) ([@@@mkey] a: array t) (p: perm) (s: Seq.seq (option t)) (mask: nat -> prop) : slprop =
-  pts_to_mask a #p s mask
-    ** with_pure (forall (i: nat). i < Seq.length s ==> Some? (Seq.index s i) /\ mask i) fun _ -> emp
+  pts_to_mask a #p s mask ** with_pure (array_full_mask s mask /\ array_initialized s) fun _ -> emp
 
 val freeable_array (#a:Type) (r:array a) : slprop
 
 fn alloc_array u#a (#a:Type u#a) (sz:SizeT.t)
   returns r : array a
   ensures freeable_array r
-  ensures exists* s mask. array_pts_to_uninit r s mask 
+  ensures exists* s mask. array_pts_to_uninit r s mask
   ensures pure (Seq.length (array_value_of r) == (SizeT.v sz))
 
-let free_array_pre (#a: Type u#a) (r: array a) : slprop =
-  A.pts_to_uninit_post r
-
-[@@pulse_intro]
-ghost fn intro_free_array_pre_init u#a (#a: Type u#a) (r: array a)
-  requires live r
-  ensures free_array_pre r
-{
-  A.to_mask r;
-  fold free_array_pre r;
-}
-
-[@@pulse_intro]
-ghost fn intro_free_array_pre_uninit u#a (#a: Type u#a) (r: array a)
-  requires A.pts_to_uninit_post r
-  ensures free_array_pre r
-{
-  fold free_array_pre r;
-}
-
 fn free_array u#a (#a:Type u#a) (r:array a)
-  requires free_array_pre r
+  requires exists* s mask. array_pts_to_uninit r s mask
   requires freeable_array r
 
 fn calloc_array u#a (#a:Type u#a) {| has_zero_default a |} (sz:SizeT.t)
@@ -71,22 +56,12 @@ fn calloc_array_mask u#a (#a:Type u#a) {| has_zero_default a |} (sz:SizeT.t)
   ensures freeable_array r
   ensures exists* (s: Seq.seq (option a)) mask.
     pts_to_mask r s mask **
-    pure (Seq.length s == SZ.v sz /\
-      (forall (i: nat). i < Seq.length s ==> mask i /\ Seq.index s i == Some zero_default))
+    pure (Seq.length s == SZ.v sz /\ array_initialized s /\ array_full_mask s mask /\
+      (forall (i: nat). i < Seq.length s ==> Seq.index s i == Some zero_default))
 {
   let r = calloc_array #a sz;
   arr_to_mask r;
   r
-}
-
-// Free from pts_to_mask context
-[@@pulse_intro]
-ghost fn intro_free_array_pre_from_mask u#a (#a: Type u#a) (r: array a) #mask
-  requires pts_to_mask r #1.0R 'y mask
-  requires pure (forall (i: nat). i < Seq.length 'y ==> mask i)
-  ensures free_array_pre r
-{
-  fold free_array_pre r;
 }
 
 let has_length #a ([@@@mkey] x: a) (len: nat) : slprop = emp
