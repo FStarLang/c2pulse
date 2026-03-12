@@ -5,12 +5,16 @@ module A = Pulse.Lib.Array
 
 #lang-pulse
 
+[@@pulse_eager_unfold]
+let array_pts_to_uninit (#t: Type u#a) (a: array t) (len: nat) =
+  exists* s. pts_to_mask a s (fun _ -> True) ** pure (Seq.length s == len)
+
 val freeable_array (#a:Type) (r:array a) : slprop
 
 fn alloc_array u#a (#a:Type u#a) (sz:SizeT.t)
   returns r : array a
   ensures freeable_array r
-  ensures A.pts_to_uninit r (SizeT.v sz)
+  ensures array_pts_to_uninit r (SizeT.v sz)
 
 let free_array_pre (#a: Type u#a) (r: array a) : slprop =
   A.pts_to_uninit_post r
@@ -53,7 +57,7 @@ ghost fn intro_has_length_init u#a (#a: Type u#a) (x: array a)
 }
 
 [@@pulse_intro]
-ghost fn intro_has_length_uninit u#a (#a: Type u#a) (x: array a)
+ghost fn intro_has_length_mask u#a (#a: Type u#a) (x: array a)
   requires A.pts_to_mask x #'p 'y 'mask
   ensures has_length x (Seq.length 'y)
 {

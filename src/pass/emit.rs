@@ -328,10 +328,6 @@ struct Emitter<'a> {
     /// For each TypeRef, the types of the val params for Init/Uninit variants.
     type_val_params: HashMap<TypeRef, Vec<Doc>>,
     type_uninit_val_params: HashMap<TypeRef, Vec<Doc>>,
-    /// When set, VAttr(Length, this) emits this Doc instead of `reveal (length_of ...)`.
-    /// Used when emitting _refine_always predicates in uninit context where the
-    /// length is a direct binding variable rather than derived from pts_to.
-    uninit_length_subst: Option<Doc>,
 }
 
 impl<'a> Emitter<'a> {
@@ -643,11 +639,7 @@ impl<'a> Emitter<'a> {
                             });
                             props.push(annotated(
                                 ty,
-                                naryfn([
-                                    Doc::text("Pulse.Lib.Array.pts_to_uninit"),
-                                    this_doc,
-                                    len_name,
-                                ]),
+                                naryfn([Doc::text("array_pts_to_uninit"), this_doc, len_name]),
                             ));
                         }
                     },
@@ -697,26 +689,10 @@ impl<'a> Emitter<'a> {
                 }
             }
             TypeT::RefineAlways(ty, p) => {
-                let bindings_before = bindings.len();
                 self.emit_type_slprop(env, ty, variant, bindings, props, this);
-                // For Uninit arrays, substitute _length references with the
-                // length binding variable (since length_of requires pts_to/pts_to_mask
-                // in context, but pts_to_uninit has them existentially bound).
-                let prev_subst = self.uninit_length_subst.take();
-                if let SLPropVariant::Uninit = variant {
-                    // Find the nat binding added by the array uninit emission
-                    for b in &bindings[bindings_before..] {
-                        // The uninit array binding has type "nat"
-                        if format!("{}", b.ty.pretty(80)) == "nat" {
-                            self.uninit_length_subst = Some(b.name.clone());
-                            break;
-                        }
-                    }
-                }
                 let p = &mut p.clone();
                 self.subst_this_rvalue(env, Rc::make_mut(p), this);
                 props.push(self.emit_rvalue(env, p));
-                self.uninit_length_subst = prev_subst;
             }
             TypeT::Plain(_) => {}
             TypeT::Error => {}
@@ -873,19 +849,13 @@ impl<'a> Emitter<'a> {
                     ExprKind::RValue(annotated(v, Doc::text("(admit())")))
                 }
             },
-            ExprT::VAttr(VAttr::Length, x) => {
-                if let Some(ref len_doc) = self.uninit_length_subst {
-                    ExprKind::RValue(annotated(v, len_doc.clone()))
-                } else {
-                    ExprKind::RValue(annotated(
-                        v,
-                        unaryfn(
-                            Doc::text("reveal"),
-                            unaryfn(Doc::text("length_of"), self.emit_rvalue(env, x)),
-                        ),
-                    ))
-                }
-            }
+            ExprT::VAttr(VAttr::Length, x) => ExprKind::RValue(annotated(
+                v,
+                unaryfn(
+                    Doc::text("reveal"),
+                    unaryfn(Doc::text("length_of"), self.emit_rvalue(env, x)),
+                ),
+            )),
             ExprT::VAttr(VAttr::Active(fld), base) => {
                 let base_ty = env.vtype_whnf(env.infer_expr(base).unwrap());
                 let TypeT::TypeRef(TypeRefKind::Union(union_name)) = &base_ty.val else {
@@ -3201,7 +3171,6 @@ pub fn emit(
         diags,
         type_val_params: HashMap::new(),
         type_uninit_val_params: HashMap::new(),
-        uninit_length_subst: None,
     };
     let mut output: Vec<Doc> = vec![];
     output.push(Doc::text(format!(
