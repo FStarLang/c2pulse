@@ -318,7 +318,7 @@ struct ExBinding {
 
 #[derive(Clone, Copy)]
 enum SLPropVariant<'a> {
-    Init { perm: &'a Doc, quote: bool },
+    Init { perm: &'a Doc },
     Uninit,
 }
 
@@ -572,12 +572,13 @@ impl<'a> Emitter<'a> {
         env: &Env,
         ty: &Type,
         variant: SLPropVariant,
+        quote: bool, // use single quote for implicit arg
         bindings: &mut Vec<ExBinding>,
         props: &mut Vec<Doc>,
         this: &Rc<Expr>,
     ) {
         let q = |doc: Doc| -> Doc {
-            if let SLPropVariant::Init { quote: true, .. } = variant {
+            if quote {
                 Doc::text("'").append(doc)
             } else {
                 doc
@@ -592,74 +593,80 @@ impl<'a> Emitter<'a> {
             | TypeT::SLProp => {}
             TypeT::Pointer(pointee_ty, kind) => {
                 let this_doc = self.emit_rvalue(env, this);
-                match variant {
-                    SLPropVariant::Init { perm, .. } => {
-                        let idx = bindings.len() as u32;
-                        let val_name_raw = self.nm.emit(Name::Val(extract_base_ident(this), idx));
-                        let val_name = q(val_name_raw);
-                        let pointee_type_doc = self.emit_type(env, pointee_ty);
-                        let (val_ty, pts_to) = match kind {
-                            PointerKind::Array => {
-                                let val_ty =
-                                    parens(Doc::text("Seq.seq").append(Doc::line()).append(
-                                        parens(Doc::text("option ").append(pointee_type_doc)),
-                                    ));
-                                let slprop = annotated(
-                                    ty,
-                                    naryfn([
-                                        Doc::text("array_pts_to"),
-                                        this_doc,
-                                        perm.clone(),
-                                        val_name.clone(),
-                                    ]),
-                                );
-                                (val_ty, slprop)
-                            }
-                            _ => {
-                                let slprop = annotated(
-                                    ty,
-                                    naryfn([
-                                        Doc::text("pts_to"),
-                                        this_doc,
-                                        Doc::text("#").append(perm.clone()),
-                                        val_name.clone(),
-                                    ]),
-                                );
-                                (pointee_type_doc, slprop)
-                            }
-                        };
-                        props.push(pts_to);
-                        bindings.push(ExBinding {
-                            name: val_name,
-                            ty: val_ty,
-                        });
-                        if let PointerKind::Ref = kind {
+                match kind {
+                    PointerKind::Ref | PointerKind::Unknown => match variant {
+                        SLPropVariant::Init { perm } => {
+                            let val_name = q(self
+                                .nm
+                                .emit(Name::Val(extract_base_ident(this), bindings.len() as u32)));
+                            let pointee_type_doc = self.emit_type(env, pointee_ty);
+                            let slprop = annotated(
+                                ty,
+                                naryfn([
+                                    Doc::text("pts_to"),
+                                    this_doc,
+                                    Doc::text("#").append(perm.clone()),
+                                    val_name.clone(),
+                                ]),
+                            );
+                            props.push(slprop);
+                            bindings.push(ExBinding {
+                                name: val_name,
+                                ty: pointee_type_doc,
+                            });
                             let derefed = ExprT::Deref(this.clone()).with_loc(this.loc.clone());
                             self.emit_type_slprop(
-                                env, pointee_ty, variant, bindings, props, &derefed,
+                                env, pointee_ty, variant, quote, bindings, props, &derefed,
                             );
                         }
-                    }
-                    SLPropVariant::Uninit => match kind {
-                        PointerKind::Ref | PointerKind::Unknown => {
+                        SLPropVariant::Uninit => {
                             props.push(annotated(
                                 ty,
                                 unaryfn(Doc::text("Pulse.Lib.Reference.pts_to_uninit"), this_doc),
                             ));
                         }
-                        PointerKind::Array => {
-                            let idx = bindings.len() as u32;
-                            let len_name = self.nm.emit(Name::Val(extract_base_ident(this), idx));
-                            bindings.push(ExBinding {
-                                name: len_name.clone(),
-                                ty: Doc::text("nat"),
-                            });
-                            props.push(annotated(
-                                ty,
-                                naryfn([Doc::text("array_pts_to_uninit"), this_doc, len_name]),
-                            ));
-                        }
                     },
+                    PointerKind::Array => {
+                        let pointee_type_doc = self.emit_type(env, pointee_ty);
+                        let val_name = q(self
+                            .nm
+                            .emit(Name::Val(extract_base_ident(this), bindings.len() as u32)));
+                        bindings.push(ExBinding {
+                            name: val_name.clone(),
+                            ty: unaryfn(
+                                Doc::text("Seq.seq"),
+                                unaryfn(Doc::text("option"), pointee_type_doc),
+                            ),
+                        });
+                        let mask_name = q(self
+                            .nm
+                            .emit(Name::Val(extract_base_ident(this), bindings.len() as u32)));
+                        bindings.push(ExBinding {
+                            name: mask_name.clone(),
+                            ty: Doc::text("(nat->prop)"),
+                        });
+                        match variant {
+                            SLPropVariant::Init { perm } => props.push(annotated(
+                                ty,
+                                naryfn([
+                                    Doc::text("array_pts_to"),
+                                    this_doc,
+                                    perm.clone(),
+                                    val_name,
+                                    mask_name,
+                                ]),
+                            )),
+                            SLPropVariant::Uninit => props.push(annotated(
+                                ty,
+                                naryfn([
+                                    Doc::text("array_pts_to_uninit"),
+                                    this_doc,
+                                    val_name,
+                                    mask_name,
+                                ]),
+                            )),
+                        }
+                    }
                 }
             }
             TypeT::TypeRef(n) => {
@@ -698,7 +705,7 @@ impl<'a> Emitter<'a> {
                 props.push(naryfn(args));
             }
             TypeT::Refine(ty, p) => {
-                self.emit_type_slprop(env, ty, variant, bindings, props, this);
+                self.emit_type_slprop(env, ty, variant, quote, bindings, props, this);
                 if let SLPropVariant::Init { .. } = variant {
                     let p = &mut p.clone();
                     self.subst_this_rvalue(env, Rc::make_mut(p), this);
@@ -706,7 +713,7 @@ impl<'a> Emitter<'a> {
                 }
             }
             TypeT::RefineAlways(ty, p) => {
-                self.emit_type_slprop(env, ty, variant, bindings, props, this);
+                self.emit_type_slprop(env, ty, variant, quote, bindings, props, this);
                 let p = &mut p.clone();
                 self.subst_this_rvalue(env, Rc::make_mut(p), this);
                 props.push(self.emit_rvalue(env, p));
@@ -1564,6 +1571,12 @@ impl<'a> Emitter<'a> {
                         .append("|];")
                         .nest(2)
                         .group();
+                    // HACK: the Pulse checker adds `pts_to_mask x s (fun _ -> True)` to the context and the lambda breaks the prover?!?
+                    let alloc = alloc.append(Doc::hardline()).append(
+                        Doc::text("assert exists* mask. pts_to_mask ")
+                            .append(x.clone())
+                            .append(" _ mask ** pure (forall i. mask i);"),
+                    );
                     // let mut arr = arr;  (redeclare as ref for lvalue convention)
                     let redecl = Doc::text("let mut ")
                         .append(x.clone())
@@ -1833,12 +1846,19 @@ impl<'a> Emitter<'a> {
         let pred_decl = self.emit_pred_decl(
             SLPropVariant::Init {
                 perm: &Doc::text("p"),
-                quote: false,
             },
             k,
             vec![this_arg.clone()],
             |s, variant, bindings, props| {
-                s.emit_type_slprop(env, &body, variant, bindings, props, &mk_rvar(&this_r));
+                s.emit_type_slprop(
+                    env,
+                    &body,
+                    variant,
+                    false,
+                    bindings,
+                    props,
+                    &mk_rvar(&this_r),
+                );
             },
         );
 
@@ -1848,7 +1868,15 @@ impl<'a> Emitter<'a> {
             k,
             vec![this_arg],
             |s, variant, bindings, props| {
-                s.emit_type_slprop(env, &body, variant, bindings, props, &mk_rvar(&this_r));
+                s.emit_type_slprop(
+                    env,
+                    &body,
+                    variant,
+                    false,
+                    bindings,
+                    props,
+                    &mk_rvar(&this_r),
+                );
             },
         );
 
@@ -2042,14 +2070,13 @@ impl<'a> Emitter<'a> {
             for (fld, fld_ty) in fields {
                 let field_expr =
                     ExprT::Member(mk_rvar(&this), fld.clone().into()).with_loc(fld.loc.clone());
-                s.emit_type_slprop(env, fld_ty, variant, bindings, props, &field_expr);
+                s.emit_type_slprop(env, fld_ty, variant, false, bindings, props, &field_expr);
             }
         };
 
         ses.push(self.emit_pred_decl(
             SLPropVariant::Init {
                 perm: &Doc::text("p"),
-                quote: false,
             },
             k,
             vec![this_arg.clone()],
@@ -2708,8 +2735,8 @@ impl<'a> Emitter<'a> {
                         &arg.ty,
                         SLPropVariant::Init {
                             perm: &Doc::text("1.0R"),
-                            quote: false,
                         },
+                        false,
                         &mut type_bindings,
                         &mut type_props,
                         &mk_rvar(&n),
@@ -2738,10 +2765,8 @@ impl<'a> Emitter<'a> {
                     self.emit_type_slprop(
                         env,
                         &arg.ty,
-                        SLPropVariant::Init {
-                            perm: &perm_doc,
-                            quote: true,
-                        },
+                        SLPropVariant::Init { perm: &perm_doc },
+                        true,
                         &mut type_bindings,
                         &mut type_props,
                         &mk_rvar(&n),
@@ -2756,6 +2781,7 @@ impl<'a> Emitter<'a> {
                         env,
                         &arg.ty,
                         SLPropVariant::Uninit,
+                        true,
                         &mut uninit_bindings,
                         &mut uninit_props,
                         &mk_rvar(&n),
@@ -2772,8 +2798,8 @@ impl<'a> Emitter<'a> {
                         &arg.ty,
                         SLPropVariant::Init {
                             perm: &Doc::text("1.0R"),
-                            quote: false,
                         },
+                        false,
                         &mut type_bindings,
                         &mut type_props,
                         &mk_rvar(&n),
@@ -2801,8 +2827,8 @@ impl<'a> Emitter<'a> {
             &ret_type,
             SLPropVariant::Init {
                 perm: &Doc::text("1.0R"),
-                quote: false,
             },
+            false,
             &mut ret_bindings,
             &mut ret_props,
             &mk_rvar(&return_id),
@@ -3208,7 +3234,7 @@ pub fn emit(
     };
     let mut output: Vec<Doc> = vec![];
     output.push(Doc::text(format!(
-        "module {}\nopen Pulse\nopen Pulse.Lib.C\n#lang-pulse",
+        "module {}\nopen Pulse\nopen Pulse.Lib.C\n#lang-pulse\n",
         module_name
     )));
     for decl in &tu.decls {

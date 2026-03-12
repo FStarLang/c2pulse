@@ -8,8 +8,8 @@ _include_pulse(
   $declare(context_t s)
   [@@erasable]
   noeq type context_full_data =
-    | PL_Engine of (Seq.seq UInt8.t)
-    | PL_L0 of (Seq.seq UInt8.t)
+    | PL_Engine of (Seq.seq (option UInt8.t))
+    | PL_L0 of (Seq.seq (option UInt8.t))
     | PL_L1 // tbd
 
   let tag_relation ($(s): $type(context_t)) (h: context_full_data) : prop =
@@ -23,13 +23,21 @@ _include_pulse(
 _include_pulse(
   $declare(context_t s)
 
+  [@@pulse_eager_unfold]
+  let uds_pred (uds: $type(uds_array)) (uds_data: Seq.seq (option UInt8.t)) : slprop =
+    exists* mask. ty_uds_array__pred uds 1.0R uds_data mask ** freeable_array uds
+
+  [@@pulse_eager_unfold]
+  let cdi_pred (cdi: $type(dice_digest)) (cdi_data: Seq.seq (option UInt8.t)) : slprop =
+    exists* mask. ty_dice_digest__pred cdi 1.0R cdi_data mask ** freeable_array cdi
+
   let context_full_pred ([@@@mkey] $(s): $type(context_t)) (h: context_full_data) : slprop =
     match $(s.payload), h with
     | $field(u_context_t::uds) uds_ptr, PL_Engine uds_data ->
-      uds_ptr |-> uds_data ** freeable_array uds_ptr
+      uds_pred uds_ptr uds_data
     | $field(u_context_t::cdi) cdi_ptr, PL_L0 cdi_data ->
-      cdi_ptr |-> cdi_data ** freeable_array cdi_ptr
-    | $field(u_context_t::l1_context) _, PL_L1 ->
+      cdi_pred cdi_ptr cdi_data
+    | $field(u_context_t::l1_context) l1, PL_L1 ->
       emp
     | _ -> pure False
 
@@ -39,8 +47,7 @@ _include_pulse(
   ghost fn elim_context_full_pred_uds ($(s): $type(context_t)) (#h: context_full_data)
     requires with_pure (tag_relation $(s) h /\ PL_Engine? h)
     requires context_full_pred $(s) h
-    ensures Pulse.Lib.Array.pts_to $(s.payload.uds) (PL_Engine?._0 h)
-    ensures freeable_array $(s.payload.uds)
+    ensures uds_pred $(s.payload.uds) (PL_Engine?._0 h)
   {
     unfold context_full_pred;
     rewrite each $(s.payload) as $field(u_context_t::uds) $(s.payload.uds);
@@ -50,8 +57,7 @@ _include_pulse(
   ghost fn elim_context_full_pred_cdi ($(s): $type(context_t)) (#h: context_full_data)
     requires with_pure (tag_relation $(s) h /\ PL_L0? h)
     requires context_full_pred $(s) h
-    ensures Pulse.Lib.Array.pts_to $(s.payload.cdi) (PL_L0?._0 h)
-    ensures freeable_array $(s.payload.cdi)
+    ensures cdi_pred $(s.payload.cdi) (PL_L0?._0 h)
   {
     unfold context_full_pred;
     rewrite each $(s.payload) as $field(u_context_t::cdi) $(s.payload.cdi);
@@ -69,29 +75,27 @@ _include_pulse(
 
   ghost fn intro_context_full_pred_uds ($(s): $type(context_t)) #uds
     requires with_pure (tag_relation $(s) (PL_Engine uds))
-    requires Pulse.Lib.Array.pts_to $(s.payload.uds) uds
-    requires freeable_array $(s.payload.uds)
+    requires uds_pred $(s.payload.uds) uds
     ensures context_full_pred $(s) (PL_Engine uds)
   {
-    rewrite $(s.payload.uds) |-> uds ** freeable_array $(s.payload.uds)
+    rewrite uds_pred $(s.payload.uds) uds
       as context_full_pred $(s) (PL_Engine uds);
   }
 
   ghost fn intro_context_full_pred_cdi ($(s): $type(context_t)) #cdi
     requires with_pure (tag_relation $(s) (PL_L0 cdi))
-    requires Pulse.Lib.Array.pts_to $(s.payload.cdi) cdi
-    requires freeable_array $(s.payload.cdi)
+    requires cdi_pred $(s.payload.cdi) cdi
     ensures context_full_pred $(s) (PL_L0 cdi)
   {
-    rewrite $(s.payload.cdi) |-> cdi ** freeable_array $(s.payload.cdi)
+    rewrite cdi_pred $(s.payload.cdi) cdi
       as context_full_pred $(s) (PL_L0 cdi);
   }
 )
 
-void memcpy_(size_t len, _array const uint8_t *a1, _array uint8_t *a2)
+void memcpy_(size_t len, _array const uint8_t *a1, _out _array uint8_t *a2)
   _preserves(a1._length == len)
   _preserves(a2._length == len)
-  _ensures((_slprop) _inline_pulse(rewrites_to (value_of $(a2)) (value_of $(a1))))
+  _ensures((_slprop) _inline_pulse(rewrites_to (array_value_of $(a2)) (array_value_of $(a1))))
 {
   _ghost_stmt(admit());
 }
@@ -105,9 +109,9 @@ typedef context_t *context_obj;
 _allocated
 typedef context_obj allocated_context_obj;
 allocated_context_obj init_engine_context(const uds_array uds)
-  _ensures((bool) _inline_pulse(engine_state $(*return) == PL_Engine (value_of $(uds))))
+  _ensures((bool) _inline_pulse(engine_state $(*return) == PL_Engine (array_value_of $(uds))))
 {
-  uint8_t *uds_buf = (uint8_t*)calloc(UDS_LEN, sizeof(uint8_t));
+  uint8_t *uds_buf = (uint8_t*)malloc(UDS_LEN * sizeof(uint8_t));
   memcpy_(UDS_LEN, uds, uds_buf);
   context_t *ctx = (context_t*)malloc(sizeof(context_t));
   *ctx = (context_t) {
@@ -127,9 +131,9 @@ _include_pulse (
 
 void init_l0_context(context_obj ctx, const dice_digest cdi)
   _requires((bool) _inline_pulse(PL_Engine? (engine_state $(*ctx))))
-  _ensures((bool) _inline_pulse(engine_state $(*ctx) == PL_L0 (value_of $(cdi))))
+  _ensures((bool) _inline_pulse(engine_state $(*ctx) == PL_L0 (array_value_of $(cdi))))
 {
-  uint8_t *cdi_buf = (uint8_t*)calloc(DICE_DIGEST_LEN, sizeof(uint8_t));
+  uint8_t *cdi_buf = (uint8_t*)malloc(DICE_DIGEST_LEN * sizeof(uint8_t));
   memcpy_(DICE_DIGEST_LEN, cdi, cdi_buf);
   _ghost_stmt(elim_context_full_pred_uds $(*ctx));
   uint8_t* uds_buf = ctx->payload.uds;
@@ -152,7 +156,7 @@ void destroy_uds_context(_consumes _allocated context_obj ctx)
 
 void mk_l0_context(context_obj ctx, _consumes _allocated_array dice_digest cdi)
   _requires(ctx->tag == 0)
-  _ensures((bool) _inline_pulse(engine_state $(*ctx) == PL_L0 (old (value_of $(cdi)))))
+  _ensures((bool) _inline_pulse(engine_state $(*ctx) == PL_L0 (old (array_value_of $(cdi)))))
 {
   _assert(cdi._length == DICE_DIGEST_LEN);
   _ghost_stmt(elim_context_full_pred_uds $(*ctx));
@@ -170,8 +174,8 @@ bool derive_child_from_context(context_obj ctx, const engine_record_t *record)
 {
   _ghost_stmt(elim_context_full_pred_uds $(*ctx));
   uint8_t *cdi_buf = (uint8_t*)calloc(DICE_DIGEST_LEN, sizeof(uint8_t));
-  // _assert(cdi_buf._length == DICE_DIGEST_LEN);
-  bool ok = false; // engine_main(cdi_buf, ctx->payload.uds, record);
+  _assert(cdi_buf._length == DICE_DIGEST_LEN);
+  bool ok = engine_main(cdi_buf, ctx->payload.uds, record);
   if (ok) {
     _ghost_stmt(intro_context_full_pred_uds $(*ctx));
     mk_l0_context(ctx, cdi_buf);

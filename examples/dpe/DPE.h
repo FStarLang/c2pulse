@@ -54,8 +54,8 @@ typedef struct {
 #define L1_CONTEXT 2
 
 typedef union _u_context_t {
-  uds_array uds;
-  dice_digest cdi;
+  _allocated uds_array uds;
+  _allocated dice_digest cdi;
   l1_context_t l1_context;
 } u_context_t;
 

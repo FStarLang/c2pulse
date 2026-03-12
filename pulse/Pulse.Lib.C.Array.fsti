@@ -6,13 +6,16 @@ module SZ = FStar.SizeT
 
 #lang-pulse
 
-[@@pulse_eager_unfold]
-let array_pts_to_uninit (#t: Type u#a) (a: array t) (len: nat) =
-  exists* s. pts_to_mask a s (fun _ -> True) ** with_pure (Seq.length s == len) fun _ -> emp
+let array_value_of #a (x: array a) #p #m #y =
+  observe (fun y -> pts_to_mask x #p y m) #y
 
 [@@pulse_eager_unfold]
-let array_pts_to (#t: Type u#a) ([@@@mkey] a: array t) (p: perm) (s: Seq.seq (option t)) : slprop =
-  exists* mask. pts_to_mask a #p s mask
+let array_pts_to_uninit (#t: Type u#a) (a: array t) (s: Seq.seq (option t)) (mask: nat -> prop) =
+  pts_to_mask a s mask ** with_pure (forall (i: nat). i < Seq.length s ==> mask i) fun _ -> emp
+
+[@@pulse_eager_unfold]
+let array_pts_to (#t: Type u#a) ([@@@mkey] a: array t) (p: perm) (s: Seq.seq (option t)) (mask: nat -> prop) : slprop =
+  pts_to_mask a #p s mask
     ** with_pure (forall (i: nat). i < Seq.length s ==> Some? (Seq.index s i) /\ mask i) fun _ -> emp
 
 val freeable_array (#a:Type) (r:array a) : slprop
@@ -20,7 +23,8 @@ val freeable_array (#a:Type) (r:array a) : slprop
 fn alloc_array u#a (#a:Type u#a) (sz:SizeT.t)
   returns r : array a
   ensures freeable_array r
-  ensures array_pts_to_uninit r (SizeT.v sz)
+  ensures exists* s mask. array_pts_to_uninit r s mask 
+  ensures pure (Seq.length (array_value_of r) == (SizeT.v sz))
 
 let free_array_pre (#a: Type u#a) (r: array a) : slprop =
   A.pts_to_uninit_post r
@@ -65,10 +69,10 @@ ghost fn arr_to_mask u#a (#t: Type u#a) (arr: array t) (#p: perm) (#v: erased (S
 fn calloc_array_mask u#a (#a:Type u#a) {| has_zero_default a |} (sz:SizeT.t)
   returns r : array a
   ensures freeable_array r
-  ensures exists* (s: Seq.seq (option a)).
-    pts_to_mask r s (fun _ -> True) **
+  ensures exists* (s: Seq.seq (option a)) mask.
+    pts_to_mask r s mask **
     pure (Seq.length s == SZ.v sz /\
-      (forall (i: nat). i < Seq.length s ==> Seq.index s i == Some zero_default))
+      (forall (i: nat). i < Seq.length s ==> mask i /\ Seq.index s i == Some zero_default))
 {
   let r = calloc_array #a sz;
   arr_to_mask r;
@@ -110,7 +114,7 @@ let length_of #a (x: a) #y = observe (has_length x) #y
 // live_array: array resource preserved across loop iterations
 [@@pulse_eager_unfold]
 let live_array (#t: Type u#a) (a: array t) : slprop =
-  exists* s. array_pts_to a 1.0R s
+  exists* s mask. array_pts_to a 1.0R s mask
 
 // Array read that works in spec contexts (has rewrites_to).
 fn array_read u#a (#t: Type u#a) (a: array t) (i: SZ.t)
