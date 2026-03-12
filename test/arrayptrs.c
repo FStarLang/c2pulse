@@ -41,7 +41,7 @@ _include_pulse(
     offset_of x <= offset_of lo
       /\ offset_of lo <= offset_of hi
       /\ offset_of hi <= offset_of x + Seq.length v
-      /\ (forall i. ~(offset_of lo <= i /\ i < offset_of hi) \/
+      /\ (forall i. offset_of lo <= i /\ i < offset_of hi ==>
         (m (i - offset_of x) /\ Some? (Seq.index v (i - offset_of x))))
 
   [@@pulse_eager_unfold]

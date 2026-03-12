@@ -961,6 +961,8 @@ fn relex_inline_code<'a>(diagnostics: &mut Diagnostics, code: &'a InlineCode) ->
     while i + 1 < tokens.len() {
         if tokens[i].0 == Token::Punct(Punct::EqEq) && tokens[i + 1].0 == Token::Punct(Punct::Gt) {
             tokens[i].0 = Token::Punct(Punct::EqEqGt);
+            // Expand span to cover both original tokens
+            tokens[i].1 = (tokens[i].1.start..tokens[i + 1].1.end).into();
             tokens.remove(i + 1);
         }
         i += 1;
@@ -1163,7 +1165,21 @@ pub fn process_inline_pulse(
     let result = raw_tokens
         .into_iter()
         .map(|raw| match raw {
-            RawToken::Verbatim(span) => InlinePulseToken::Verbatim(code.tokens[span.start].clone()),
+            RawToken::Verbatim(span) => {
+                let mut ct = code.tokens[span.start].clone();
+                // If the relexer merged tokens (e.g., EqEq+Gt → EqEqGt),
+                // the span covers multiple original tokens; reconstruct text.
+                if span.end > span.start + 1 {
+                    let merged: String = (span.start..span.end)
+                        .map(|i| code.tokens[i].text.val.as_ref())
+                        .collect();
+                    ct.text = Ast {
+                        val: Rc::from(merged.as_str()),
+                        loc: ct.text.loc.clone(),
+                    };
+                }
+                InlinePulseToken::Verbatim(ct)
+            }
             RawToken::Antiquot {
                 is_lvalue,
                 dollar_span,
