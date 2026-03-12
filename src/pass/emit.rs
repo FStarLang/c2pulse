@@ -1164,34 +1164,34 @@ impl<'a> Emitter<'a> {
                 ExprT::IntLit(val, ty) => {
                     let resolved = env.vtype_whnf(ty.clone().into());
                     match resolved.val {
-                    TypeT::Int {
-                        signed: true,
-                        width,
-                    } => Doc::text(format!("(Int{}.int_to_t {})", width, val)),
-                    TypeT::Int {
-                        signed: false,
-                        width,
-                    } => Doc::text(format!("(UInt{}.uint_to_t {})", width, val)),
-                    TypeT::SizeT => Doc::text(format!("{}sz", val)),
-                    TypeT::SpecInt => Doc::text(format!("{}", val)),
-                    TypeT::Pointer(_, PointerKind::Ref | PointerKind::Unknown)
-                        if **val == BigInt::ZERO =>
-                    {
-                        Doc::text("null")
+                        TypeT::Int {
+                            signed: true,
+                            width,
+                        } => Doc::text(format!("(Int{}.int_to_t {})", width, val)),
+                        TypeT::Int {
+                            signed: false,
+                            width,
+                        } => Doc::text(format!("(UInt{}.uint_to_t {})", width, val)),
+                        TypeT::SizeT => Doc::text(format!("{}sz", val)),
+                        TypeT::SpecInt => Doc::text(format!("{}", val)),
+                        TypeT::Pointer(_, PointerKind::Ref | PointerKind::Unknown)
+                            if **val == BigInt::ZERO =>
+                        {
+                            Doc::text("null")
+                        }
+                        TypeT::Pointer(_, PointerKind::Array | PointerKind::ArrayPtr)
+                            if **val == BigInt::ZERO =>
+                        {
+                            Doc::text("Pulse.Lib.Array.null")
+                        }
+                        _ => {
+                            self.report(
+                                format!("unsupported integer literal type for {}", val),
+                                &v.loc,
+                            );
+                            Doc::text(format!("(admit()) (* {} *)", val))
+                        }
                     }
-                    TypeT::Pointer(_, PointerKind::Array | PointerKind::ArrayPtr)
-                        if **val == BigInt::ZERO =>
-                    {
-                        Doc::text("Pulse.Lib.Array.null")
-                    }
-                    _ => {
-                        self.report(
-                            format!("unsupported integer literal type for {}", val),
-                            &v.loc,
-                        );
-                        Doc::text(format!("(admit()) (* {} *)", val))
-                    }
-                }
                 }
                 ExprT::Var(_)
                 | ExprT::Deref(_)
