@@ -30,7 +30,7 @@ int_arrptr binary_search(int_arrptr lo, int_arrptr hi, int target)
     _invariant((_slprop) _inline_pulse(arrayptr_pts_to $(hi) arr))
     _invariant((bool) _inline_pulse(offset_of $(lo) <= offset_of $(hi)))
   {
-      int *mid = lo + (hi - lo);
+      int *mid = lo + (hi - lo) / 2;
       if (*mid == target)
           return mid;
       else if (*mid < target)

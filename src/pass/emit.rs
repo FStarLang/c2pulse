@@ -1342,6 +1342,33 @@ impl<'a> Emitter<'a> {
                             Doc::text("Pulse.Lib.C.PtrdiffT.of_int (SizeT.v"),
                             val_doc.append(Doc::text(")")),
                         ),
+                        (TypeT::Int { signed, width }, TypeT::PtrdiffT) => {
+                            if let Some(m) = get_int_mod(signed, width) {
+                                unaryfn(
+                                    Doc::text(format!("Pulse.Lib.C.PtrdiffT.of_int ({}.v", m)),
+                                    val_doc.append(Doc::text(")")),
+                                )
+                            } else {
+                                self.report(default_msg.clone(), &v.loc);
+                                Doc::text("(admit())")
+                            }
+                        }
+                        (TypeT::PtrdiffT, TypeT::Int { signed, width }) => {
+                            if let Some(m) = get_int_mod(signed, width) {
+                                unaryfn(
+                                    Doc::text(format!(
+                                        "{}.{} (Pulse.Lib.C.PtrdiffT.v",
+                                        m,
+                                        if *signed { "int_to_t" } else { "uint_to_t" }
+                                    )),
+                                    val_doc.append(Doc::text(")")),
+                                )
+                            } else {
+                                self.report(default_msg.clone(), &v.loc);
+                                Doc::text("(admit())")
+                            }
+                        }
+                        (TypeT::PtrdiffT, TypeT::PtrdiffT) => val_doc,
                         (TypeT::Error, _) | (_, TypeT::Error) => val_doc,
                         _ => {
                             self.report(default_msg.clone(), &v.loc);

@@ -468,7 +468,7 @@ impl Env {
             }
             both_sides!(TypeT::SLProp) => None,
             both_sides!(TypeT::SizeT) => None,
-            both_sides!(TypeT::PtrdiffT) => None,
+            both_sides!(TypeT::PtrdiffT) => Some(a0),
             both_sides!(TypeT::SpecInt) => None,
 
             either_side!(TypeT::Void) => None,
@@ -527,6 +527,7 @@ impl Env {
                 },
             ) => s1 == s2 && w1 == w2,
             (TypeT::SizeT, TypeT::SizeT) => true,
+            (TypeT::PtrdiffT, TypeT::PtrdiffT) => true,
             (TypeT::Pointer(t1, k1), TypeT::Pointer(t2, k2)) => {
                 k1 == k2 && self.vtype_eq(t1.clone().into(), t2.clone().into())
             }
