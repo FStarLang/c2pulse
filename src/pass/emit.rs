@@ -1013,6 +1013,9 @@ fn emit_unop(env: &Env, op: UnOp, ty: MaybeRc<Type>) -> Option<Doc> {
 fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
     Some(match (op, &env.vtype_whnf(ty).val) {
         (BinOp::Eq, TypeT::SLProp | TypeT::Void) => Doc::text("=="),
+        (BinOp::Eq, TypeT::Pointer(_, PointerKind::ArrayPtr)) => {
+            Doc::text("`Pulse.Lib.C.Array.arrayptr_eq`")
+        }
         (
             BinOp::Eq,
             TypeT::SpecInt
@@ -1033,6 +1036,12 @@ fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
         (BinOp::Lt, TypeT::SizeT) => Doc::text("`SizeT.lt`"),
         (BinOp::LEq, TypeT::PtrdiffT) => Doc::text("`Pulse.Lib.C.PtrdiffT.lte`"),
         (BinOp::Lt, TypeT::PtrdiffT) => Doc::text("`Pulse.Lib.C.PtrdiffT.lt`"),
+        (BinOp::LEq, TypeT::Pointer(_, PointerKind::ArrayPtr)) => {
+            Doc::text("`Pulse.Lib.C.Array.arrayptr_lte`")
+        }
+        (BinOp::Lt, TypeT::Pointer(_, PointerKind::ArrayPtr)) => {
+            Doc::text("`Pulse.Lib.C.Array.arrayptr_lt`")
+        }
 
         (BinOp::LEq, TypeT::Bool) => todo_binop!(),
         (BinOp::Lt, TypeT::Bool) => todo_binop!(),

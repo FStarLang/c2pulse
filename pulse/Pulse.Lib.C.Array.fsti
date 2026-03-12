@@ -185,6 +185,15 @@ val arrayptr_diff (#t: Type u#a) (x z: array t) (#y: array t)
     (fun r -> arrayptr_pts_to x y ** arrayptr_pts_to z y **
       pure (Pulse.Lib.C.PtrdiffT.v r == offset_of x - offset_of z))
 
+/// Compare two arrayptrs for equality.
+val arrayptr_eq (#t: Type) (x z: array t) : (r:bool{r == (offset_of x = offset_of z)})
+
+/// Check if arrayptr x offset is <= z offset.
+val arrayptr_lte (#t: Type) (x z: array t) : (r:bool{r == (offset_of x <= offset_of z)})
+
+/// Check if arrayptr x offset is < z offset.
+val arrayptr_lt (#t: Type) (x z: array t) : (r:bool{r == (offset_of x < offset_of z)})
+
 /// Drop an arrayptr_pts_to predicate (for scope exit / cleanup).
 val arrayptr_drop (#t: Type u#a) (x: array t) (#y: array t)
   : stt_ghost unit emp_inames
