@@ -8,12 +8,12 @@ module SZ = FStar.SizeT
 
 [@@pulse_eager_unfold]
 let array_pts_to_uninit (#t: Type u#a) (a: array t) (len: nat) =
-  exists* s. pts_to_mask a s (fun _ -> True) ** pure (Seq.length s == len)
+  exists* s. pts_to_mask a s (fun _ -> True) ** with_pure (Seq.length s == len) fun _ -> emp
 
 [@@pulse_eager_unfold]
 let array_pts_to (#t: Type u#a) ([@@@mkey] a: array t) (p: perm) (s: Seq.seq (option t)) : slprop =
   exists* mask. pts_to_mask a #p s mask
-    ** pure (forall (i: nat). i < Seq.length s ==> Some? (Seq.index s i) /\ mask i)
+    ** with_pure (forall (i: nat). i < Seq.length s ==> Some? (Seq.index s i) /\ mask i) fun _ -> emp
 
 val freeable_array (#a:Type) (r:array a) : slprop
 
@@ -110,22 +110,17 @@ let length_of #a (x: a) #y = observe (has_length x) #y
 // live_array: array resource preserved across loop iterations
 [@@pulse_eager_unfold]
 let live_array (#t: Type u#a) (a: array t) : slprop =
-  exists* (s: Seq.seq (option t)) mask. pts_to_mask a s mask
-    ** pure (forall (i: nat). i < Seq.length s ==> Some? (Seq.index s i) /\ mask i)
-
-let some_v (#a: Type) {| has_zero_default a |} (x: option a) : a =
-  match x with
-  | Some v -> v
-  | None -> zero_default
+  exists* s. array_pts_to a 1.0R s
 
 // Array read that works in spec contexts (has rewrites_to).
-fn array_read u#a (#t: Type u#a) {| has_zero_default t |} (a: array t) (i: SZ.t)
+fn array_read u#a (#t: Type u#a) (a: array t) (i: SZ.t)
   (#p: perm)
   (#s: Ghost.erased (Seq.seq (option t)) { SZ.v i < Seq.length s })
   #mask
-  requires pts_to_mask a #p s mask ** pure (mask (SZ.v i) /\ Some? (Seq.index s (SZ.v i)))
+  preserves pts_to_mask a #p s mask
+  requires with_pure (mask (SZ.v i) /\ Some? (Seq.index s (SZ.v i)))
   returns res: t
-  ensures pts_to_mask a #p s mask ** rewrites_to res (some_v (Seq.index s (SZ.v i)))
+  ensures rewrites_to res (Some?.v (Seq.index s (SZ.v i)))
 {
   A.mask_read a i
 }
