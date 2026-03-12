@@ -11,6 +11,31 @@ void write_via_ptr(_array int *a)
   _ghost_stmt(arrayptr_drop (!var_p));
 }
 
+_include_pulse(
+  let maybe_arrayptr_pts_to #a (x: array a) (y: array a) : slprop =
+    if Pulse.Lib.Array.is_null x then emp else arrayptr_pts_to x y
+
+  [@@pulse_intro]
+  ghost fn intro_maybe_arrayptr_pts_to_null (#a: Type0) (y: array a)
+    ensures maybe_arrayptr_pts_to Pulse.Lib.Array.null y
+  {
+    rewrite emp as maybe_arrayptr_pts_to Pulse.Lib.Array.null y
+  }
+
+  [@@pulse_intro]
+  ghost fn intro_maybe_arrayptr_pts_to_nonnull (#a: Type0) (x y: array a)
+    requires arrayptr_pts_to x y
+    ensures maybe_arrayptr_pts_to x y
+  {
+    if Pulse.Lib.Array.is_null x {
+      drop_ (arrayptr_pts_to x y);
+      assert rewrites_to x Pulse.Lib.Array.null;
+    } else {
+      rewrite arrayptr_pts_to x y as maybe_arrayptr_pts_to x y;
+    }
+  }
+)
+
 typedef int *int_arrptr _arrayptr;
 
 int_arrptr binary_search(int_arrptr lo, int_arrptr hi, int target)
@@ -18,25 +43,39 @@ int_arrptr binary_search(int_arrptr lo, int_arrptr hi, int target)
   _preserves((_slprop) _inline_pulse(
     let arr = 'arr in let v_arr = 'v_arr in let m_arr = 'm_arr in // '
     arrayptr_pts_to $(lo) arr ** arrayptr_pts_to $(hi) arr ** pure (
-      offset_of arr <= offset_of $(lo) /\ offset_of $(lo) <= offset_of $(hi) /\ offset_of $(hi) <= offset_of arr + Seq.length v_arr /\ (
+      offset_of arr <= offset_of $(lo) /\ offset_of $(lo) <= offset_of $(hi) /\ offset_of $(hi) <= offset_of arr + Seq.length v_arr /\ offset_of $(hi) - offset_of $(lo) < 100000 /\ (
       forall i. ~(offset_of $(lo) <= i /\ i < offset_of $(hi)) \/
       (reveal m_arr (i - offset_of arr) /\ Some? (Seq.index v_arr (i - offset_of arr)))))))
+  _ensures((_slprop) _inline_pulse((
+    maybe_arrayptr_pts_to $(return) 'arr //'
+  )))
 {
   _ghost_stmt(with arr p_arr v_arr m_arr. assert pts_to_mask arr #p_arr v_arr m_arr);
+  _ghost_stmt(arrayptr_pts_to_dup $(lo) arr);
+  _ghost_stmt(arrayptr_pts_to_dup $(hi) arr);
   while (lo < hi)
-    _invariant(_live(lo))
-    _invariant(_live(hi))
+    _invariant((_slprop) _inline_pulse(live $&(lo)))
+    _invariant((_slprop) _inline_pulse(live $&(hi)))
     _invariant((_slprop) _inline_pulse(arrayptr_pts_to $(lo) arr))
     _invariant((_slprop) _inline_pulse(arrayptr_pts_to $(hi) arr))
     _invariant((bool) _inline_pulse(offset_of $(lo) <= offset_of $(hi)))
+    _invariant((bool) _inline_pulse(old (offset_of $(lo)) <= offset_of $(lo) && offset_of $(hi) <= old (offset_of $(hi))))
   {
       int *mid = lo + (hi - lo) / 2;
-      if (*mid == target)
+      if (*mid == target) {
+          _ghost_stmt(drop_(arrayptr_pts_to $(lo) _));
+          _ghost_stmt(drop_(arrayptr_pts_to $(hi) _));
           return mid;
-      else if (*mid < target)
+      } else if (*mid < target) {
+          _ghost_stmt(drop_(arrayptr_pts_to $(lo) _));
           lo = mid + 1;
-      else
+          _ghost_stmt(drop_(arrayptr_pts_to $(mid) _));
+      } else {
+          _ghost_stmt(drop_(arrayptr_pts_to $(hi) _));
           hi = mid;
+      }
   }
+  _ghost_stmt(drop_(arrayptr_pts_to $(lo) _));
+  _ghost_stmt(drop_(arrayptr_pts_to $(hi) _));
   return NULL;
 }

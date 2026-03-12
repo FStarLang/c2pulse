@@ -132,6 +132,15 @@ private let arrayptr_off (#t: Type) (x y: array t) : GTot int =
 let arrayptr_pts_to (#t: Type u#a) ([@@@mkey] x: array t) (y: array t) : slprop =
   pure (base_of x == base_of y /\ length x == 0)
 
+ghost fn arrayptr_pts_to_dup u#a #t x y : duplicable_f (arrayptr_pts_to u#a #t x y) = {
+  unfold arrayptr_pts_to x y;
+  fold arrayptr_pts_to x y;
+  fold arrayptr_pts_to x y;
+}
+
+instance duplicable_arrayptr_pts_to #t x y : duplicable (arrayptr_pts_to x y) =
+  { dup_f = fun _ -> arrayptr_pts_to_dup x y }
+
 /// Create an arrayptr from an array at offset `i`.
 val array_to_arrayptr (#t: Type u#a) (arr: array t) (i: SZ.t)
   : stt (array t)
@@ -139,7 +148,7 @@ val array_to_arrayptr (#t: Type u#a) (arr: array t) (i: SZ.t)
     (fun r -> arrayptr_pts_to r arr ** pure (offset_of r == offset_of arr + SZ.v i))
 
 /// Shift an arrayptr by `n` positions.
-val arrayptr_shift (#t: Type u#a) (x: array t) (n: SZ.t) (#y: array t)
+val arrayptr_shift (#t: Type u#a) (x: array t) (n: SZ.t) (#y: erased (array t))
   : stt (array t)
     (arrayptr_pts_to x y)
     (fun r -> arrayptr_pts_to x y ** arrayptr_pts_to r y **
@@ -147,7 +156,7 @@ val arrayptr_shift (#t: Type u#a) (x: array t) (n: SZ.t) (#y: array t)
 
 /// Read through an arrayptr at index `i`, borrowing permissions from parent `y`.
 val arrayptr_read (#t: Type u#a) (x: array t) (i: SZ.t)
-  (#y: array t)
+  (#y: erased (array t))
   (#p: perm) (#s: Ghost.erased (Seq.seq (option t))) (#mask: Ghost.erased (nat -> prop))
   : stt t
     (arrayptr_pts_to x y ** pts_to_mask y #p s mask **
