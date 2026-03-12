@@ -7,4 +7,5 @@ void write_via_ptr(_array int *a)
 {
   _arrayptr int *p = a + 3;
   *p = 42;
+  _ghost_stmt(arrayptr_drop (!var_p));
 }
