@@ -54,7 +54,7 @@ _include_pulse(
 typedef int *int_arrptr _arrayptr;
 
 int_arrptr binary_search(int_arrptr lo, int_arrptr hi, int target)
-  _preserves((_slprop) _inline_pulse(is_slice $(lo) $(hi) 'arr 'p_arr 'v_arr 'm_arr))
+  _preserves((_slprop) _inline_pulse(is_slice $(lo) $(hi) $`arr $`p_arr $`v_arr $`m_arr))
   _requires((bool) _inline_pulse(offset_of $(hi) - offset_of $(lo) < 100000))
   _ensures((_slprop) _inline_pulse(maybe_arrayptr_pts_to $(return) (arrayptr_parent $(lo))))
 {

@@ -134,6 +134,7 @@ mk_punct_table! {
     Hash => "#",
 
     Dollar => "$",
+    Backtick => "`",
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -927,18 +928,36 @@ fn relex_inline_code<'a>(diagnostics: &mut Diagnostics, code: &'a InlineCode) ->
         if token.starts_with('$') && token.len() > 1 {
             tokens.push((Token::Punct(Punct::Dollar), (i..i).into()));
             let rest = &token[1..];
-            let result = lex_core_token().parse(rest);
-            diagnostics
-                .diags
-                .extend(result.errors().map(|err| Diagnostic {
-                    loc: loc.location().clone(),
-                    level: DiagnosticLevel::Error,
-                    msg: format!("{}", err),
-                }));
-            tokens.push((
-                *result.output().unwrap_or(&Token::Error),
-                (i..(i + 1)).into(),
-            ));
+            // Handle $`ident (tick antiquotation): split into $ + ` + ident
+            if rest.starts_with('`') && rest.len() > 1 {
+                tokens.push((Token::Punct(Punct::Backtick), (i..i).into()));
+                let ident_part = &rest[1..];
+                let result = lex_core_token().parse(ident_part);
+                diagnostics
+                    .diags
+                    .extend(result.errors().map(|err| Diagnostic {
+                        loc: loc.location().clone(),
+                        level: DiagnosticLevel::Error,
+                        msg: format!("{}", err),
+                    }));
+                tokens.push((
+                    *result.output().unwrap_or(&Token::Error),
+                    (i..(i + 1)).into(),
+                ));
+            } else {
+                let result = lex_core_token().parse(rest);
+                diagnostics
+                    .diags
+                    .extend(result.errors().map(|err| Diagnostic {
+                        loc: loc.location().clone(),
+                        level: DiagnosticLevel::Error,
+                        msg: format!("{}", err),
+                    }));
+                tokens.push((
+                    *result.output().unwrap_or(&Token::Error),
+                    (i..(i + 1)).into(),
+                ));
+            }
         } else {
             let result = lex_core_token().parse(token);
             diagnostics
@@ -1075,6 +1094,10 @@ pub fn process_inline_pulse(
             dollar_span: SimpleSpan,
             body_span: SimpleSpan,
         },
+        TickAntiquot {
+            dollar_span: SimpleSpan,
+            ident_span: SimpleSpan,
+        },
     }
 
     // Balanced parentheses: matches everything between ( and ), handling nesting.
@@ -1139,6 +1162,16 @@ pub fn process_inline_pulse(
             body_span,
         });
 
+    // $`ident → emits 'ident (F* implicit/ticked argument)
+    let tick_antiquot = just(Token::Punct(Punct::Dollar))
+        .map_with(|_, extra| extra.span())
+        .then_ignore(just(Token::Punct(Punct::Backtick)))
+        .then(select! { Token::Ident(_) => () }.map_with(|_, extra| extra.span()))
+        .map(|(dollar_span, ident_span)| RawToken::TickAntiquot {
+            dollar_span,
+            ident_span,
+        });
+
     let verbatim = any()
         .filter(|t: &Token| *t != Token::Whitespace)
         .map_with(|_, extra| RawToken::Verbatim(extra.span()));
@@ -1147,6 +1180,7 @@ pub fn process_inline_pulse(
         type_antiquot,
         field_antiquot,
         declare_antiquot,
+        tick_antiquot,
         antiquot,
         verbatim,
     ))
@@ -1295,6 +1329,20 @@ pub fn process_inline_pulse(
                         InlinePulseToken::Verbatim(code.tokens[dollar_span.start].clone())
                     }
                 }
+            }
+            RawToken::TickAntiquot {
+                dollar_span,
+                ident_span,
+            } => {
+                let ct = &code.tokens[dollar_span.start];
+                let ident = &code.tokens[ident_span.start].text.val;
+                InlinePulseToken::Verbatim(CodeToken {
+                    before: ct.before,
+                    text: Ast {
+                        val: Rc::from(format!("'{}", ident).as_str()),
+                        loc: ct.text.loc.clone(),
+                    },
+                })
             }
         })
         .collect();
