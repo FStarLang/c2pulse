@@ -179,11 +179,8 @@ val arrayptr_write (#t: Type u#a)
               s' == Seq.upd s (arrayptr_off x y + SZ.v i) (Some v)))
 
 /// Subtract two arrayptrs to get their offset difference.
-val arrayptr_diff (#t: Type u#a) (x z: array t) (#y: array t)
-  : stt Pulse.Lib.C.PtrdiffT.t
-    (arrayptr_pts_to x y ** arrayptr_pts_to z y)
-    (fun r -> arrayptr_pts_to x y ** arrayptr_pts_to z y **
-      pure (Pulse.Lib.C.PtrdiffT.v r == offset_of x - offset_of z))
+val arrayptr_diff (#t: Type) (x z: array t)
+  : (r:Pulse.Lib.C.PtrdiffT.t{Pulse.Lib.C.PtrdiffT.v r == offset_of x - offset_of z})
 
 /// Compare two arrayptrs for equality.
 val arrayptr_eq (#t: Type) (x z: array t) : (r:bool{r == (offset_of x = offset_of z)})

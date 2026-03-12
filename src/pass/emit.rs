@@ -1161,7 +1161,9 @@ impl<'a> Emitter<'a> {
         annotated(v, {
             match &v.val {
                 ExprT::BoolLit(v) => Doc::text(if *v { "true" } else { "false" }),
-                ExprT::IntLit(val, ty) => match ty.val {
+                ExprT::IntLit(val, ty) => {
+                    let resolved = env.vtype_whnf(ty.clone().into());
+                    match resolved.val {
                     TypeT::Int {
                         signed: true,
                         width,
@@ -1189,7 +1191,8 @@ impl<'a> Emitter<'a> {
                         );
                         Doc::text(format!("(admit()) (* {} *)", val))
                     }
-                },
+                }
+                }
                 ExprT::Var(_)
                 | ExprT::Deref(_)
                 | ExprT::Member(_, _)
@@ -1331,6 +1334,14 @@ impl<'a> Emitter<'a> {
                         // (TypeT::Pointer { to, kind }, TypeT::SizeT) => todo!(),
                         // (TypeT::Pointer { to:t1, kind:k1 }, TypeT::Pointer { to:t2, kind:k2 }) if t1 == t2 => todo!(),
                         // (TypeT::Pointer { to, kind }, TypeT::SLProp) => todo!(),
+                        (TypeT::PtrdiffT, TypeT::SizeT) => unaryfn(
+                            Doc::text("SizeT.uint_to_t (Pulse.Lib.C.PtrdiffT.v"),
+                            val_doc.append(Doc::text(")")),
+                        ),
+                        (TypeT::SizeT, TypeT::PtrdiffT) => unaryfn(
+                            Doc::text("Pulse.Lib.C.PtrdiffT.of_int (SizeT.v"),
+                            val_doc.append(Doc::text(")")),
+                        ),
                         (TypeT::Error, _) | (_, TypeT::Error) => val_doc,
                         _ => {
                             self.report(default_msg.clone(), &v.loc);
