@@ -36,19 +36,27 @@ _include_pulse(
   }
 )
 
+_include_pulse(
+  let is_slice_prop #a (lo hi: array a) (x: array a) (v: Seq.seq (option a)) (m: nat->prop) =
+    offset_of x <= offset_of lo
+      /\ offset_of lo <= offset_of hi
+      /\ offset_of hi <= offset_of x + Seq.length v
+      /\ (forall i. ~(offset_of lo <= i /\ i < offset_of hi) \/
+        (m (i - offset_of x) /\ Some? (Seq.index v (i - offset_of x))))
+
+  [@@pulse_eager_unfold]
+  let is_slice #a (lo hi: array a) (x: array a) p v m =
+    pts_to_mask x #p v m ** 
+    arrayptr_pts_to lo x ** arrayptr_pts_to hi x **
+    pure (is_slice_prop lo hi x v m)
+)
+
 typedef int *int_arrptr _arrayptr;
 
 int_arrptr binary_search(int_arrptr lo, int_arrptr hi, int target)
-  _preserves((_slprop) _inline_pulse(pts_to_mask 'arr #'p_arr 'v_arr 'm_arr))
-  _preserves((_slprop) _inline_pulse(
-    let arr = 'arr in let v_arr = 'v_arr in let m_arr = 'm_arr in // '
-    arrayptr_pts_to $(lo) arr ** arrayptr_pts_to $(hi) arr ** pure (
-      offset_of arr <= offset_of $(lo) /\ offset_of $(lo) <= offset_of $(hi) /\ offset_of $(hi) <= offset_of arr + Seq.length v_arr /\ offset_of $(hi) - offset_of $(lo) < 100000 /\ (
-      forall i. ~(offset_of $(lo) <= i /\ i < offset_of $(hi)) \/
-      (reveal m_arr (i - offset_of arr) /\ Some? (Seq.index v_arr (i - offset_of arr)))))))
-  _ensures((_slprop) _inline_pulse((
-    maybe_arrayptr_pts_to $(return) 'arr //'
-  )))
+  _preserves((_slprop) _inline_pulse(is_slice $(lo) $(hi) 'arr 'p_arr 'v_arr 'm_arr))
+  _requires((bool) _inline_pulse(offset_of $(hi) - offset_of $(lo) < 100000))
+  _ensures((_slprop) _inline_pulse(maybe_arrayptr_pts_to $(return) (arrayptr_parent $(lo))))
 {
   _ghost_stmt(with arr p_arr v_arr m_arr. assert pts_to_mask arr #p_arr v_arr m_arr);
   _ghost_stmt(arrayptr_pts_to_dup $(lo) arr);

@@ -132,6 +132,9 @@ private let arrayptr_off (#t: Type) (x y: array t) : GTot int =
 let arrayptr_pts_to (#t: Type u#a) ([@@@mkey] x: array t) (y: array t) : slprop =
   pure (base_of x == base_of y /\ length x == 0)
 
+let arrayptr_parent #a (x: array a) #y =
+  observe (arrayptr_pts_to x) #y
+
 ghost fn arrayptr_pts_to_dup u#a #t x y : duplicable_f (arrayptr_pts_to u#a #t x y) = {
   unfold arrayptr_pts_to x y;
   fold arrayptr_pts_to x y;
