@@ -13,6 +13,8 @@ unsigned read_first(four_element_array arr)
 
 // _out parameter: refinement appears in uninit precondition too
 void populate(_out four_element_array arr) {
-    // Use ghost_stmt to admit — writing to uninit arrays requires mask_write
-    _ghost_stmt(admit ());
+    arr[0] = 1;
+    arr[1] = 42;
+    arr[2] = 67;
+    arr[3] = -1;
 }
