@@ -146,7 +146,7 @@ val arrayptr_shift (#t: Type u#a) (x: array t) (n: SZ.t) (#y: array t)
       pure (offset_of r == offset_of x + SZ.v n))
 
 /// Read through an arrayptr at index `i`, borrowing permissions from parent `y`.
-val arrayptr_read (#t: Type u#a) {| has_zero_default t |} (x: array t) (i: SZ.t)
+val arrayptr_read (#t: Type u#a) (x: array t) (i: SZ.t)
   (#y: array t)
   (#p: perm) (#s: Ghost.erased (Seq.seq (option t))) (#mask: Ghost.erased (nat -> prop))
   : stt t
@@ -162,7 +162,7 @@ val arrayptr_read (#t: Type u#a) {| has_zero_default t |} (x: array t) (i: SZ.t)
             res == Some?.v (Seq.index s (arrayptr_off x y + SZ.v i))))
 
 /// Write through an arrayptr at index `i`, using permissions from parent `y`.
-val arrayptr_write (#t: Type u#a) {| has_zero_default t |}
+val arrayptr_write (#t: Type u#a)
   (x: array t) (i: SZ.t) (v: t)
   (#y: array t)
   (#s: Ghost.erased (Seq.seq (option t))) (#mask: Ghost.erased (nat -> prop))
