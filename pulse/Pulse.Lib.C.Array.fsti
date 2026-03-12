@@ -164,11 +164,7 @@ val arrayptr_read (#t: Type u#a) (x: array t) (i: SZ.t)
             arrayptr_off x y + SZ.v i < Seq.length s /\
             reveal mask (arrayptr_off x y + SZ.v i) /\
             Some? (Seq.index s (arrayptr_off x y + SZ.v i))))
-    (fun res -> arrayptr_pts_to x y ** pts_to_mask y #p s mask **
-      pure (0 <= arrayptr_off x y + SZ.v i /\
-            arrayptr_off x y + SZ.v i < Seq.length s /\
-            Some? (Seq.index s (arrayptr_off x y + SZ.v i)) /\
-            res == Some?.v (Seq.index s (arrayptr_off x y + SZ.v i))))
+    (fun res -> arrayptr_pts_to x y ** pts_to_mask y #p s mask)
 
 /// Write through an arrayptr at index `i`, using permissions from parent `y`.
 val arrayptr_write (#t: Type u#a)
