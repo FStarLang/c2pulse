@@ -180,3 +180,9 @@ val arrayptr_diff (#t: Type u#a) (x y: array t) (#parent: array t)
     (arrayptr_pts_to x parent off_x ** arrayptr_pts_to y parent off_y)
     (fun r -> arrayptr_pts_to x parent off_x ** arrayptr_pts_to y parent off_y **
       pure (Pulse.Lib.C.PtrdiffT.v r == off_x - off_y))
+
+/// Drop an arrayptr_pts_to predicate (for scope exit / cleanup).
+val arrayptr_drop (#t: Type u#a) (x: array t) (#y: array t) (#off: nat)
+  : stt_ghost unit emp_inames
+    (arrayptr_pts_to x y off)
+    (fun _ -> emp)

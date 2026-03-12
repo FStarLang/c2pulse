@@ -3133,7 +3133,32 @@ impl<'a> Emitter<'a> {
         }));
         let env = &mut env.clone();
         env.push_fn_decl_args_for_body(decl);
-        decl_doc.append(block(arg_redecl_as_mut.append(self.emit_stmts(env, body))).group())
+        // Collect local arrayptr variables for cleanup at function exit
+        let arrayptr_locals = Self::collect_arrayptr_locals(env, body);
+        let body_doc = arg_redecl_as_mut.append(self.emit_stmts(env, body));
+        let drops = Doc::concat(arrayptr_locals.iter().map(|name| {
+            let n = self.nm.emit(Name::Var(name.clone()));
+            Doc::line().append(
+                Doc::text("arrayptr_drop (!")
+                    .append(n)
+                    .append(Doc::text(");")),
+            )
+        }));
+        decl_doc.append(block(body_doc.append(drops)).group())
+    }
+
+    /// Scan a function body for local arrayptr declarations.
+    fn collect_arrayptr_locals(env: &Env, stmts: &[Rc<Stmt>]) -> Vec<Rc<str>> {
+        let mut result = Vec::new();
+        for stmt in stmts {
+            if let StmtT::Decl(name, ty) = &stmt.val {
+                let whnf_ty = env.vtype_whnf(ty.clone().into());
+                if matches!(whnf_ty.val, TypeT::Pointer(_, PointerKind::ArrayPtr)) {
+                    result.push(name.val.clone());
+                }
+            }
+        }
+        result
     }
 } // impl Emitter (group E)
 
