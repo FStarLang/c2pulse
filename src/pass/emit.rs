@@ -598,19 +598,36 @@ impl<'a> Emitter<'a> {
                         let val_name_raw = self.nm.emit(Name::Val(extract_base_ident(this), idx));
                         let val_name = q(val_name_raw);
                         let pointee_type_doc = self.emit_type(env, pointee_ty);
-                        let val_ty = match kind {
-                            PointerKind::Array => unaryfn(Doc::text("Seq.seq"), pointee_type_doc),
-                            _ => pointee_type_doc,
+                        let (val_ty, pts_to) = match kind {
+                            PointerKind::Array => {
+                                let val_ty =
+                                    parens(Doc::text("Seq.seq").append(Doc::line()).append(
+                                        parens(Doc::text("option ").append(pointee_type_doc)),
+                                    ));
+                                let slprop = annotated(
+                                    ty,
+                                    naryfn([
+                                        Doc::text("array_pts_to"),
+                                        this_doc,
+                                        perm.clone(),
+                                        val_name.clone(),
+                                    ]),
+                                );
+                                (val_ty, slprop)
+                            }
+                            _ => {
+                                let slprop = annotated(
+                                    ty,
+                                    naryfn([
+                                        Doc::text("pts_to"),
+                                        this_doc,
+                                        Doc::text("#").append(perm.clone()),
+                                        val_name.clone(),
+                                    ]),
+                                );
+                                (pointee_type_doc, slprop)
+                            }
                         };
-                        let pts_to = annotated(
-                            ty,
-                            naryfn([
-                                Doc::text("pts_to"),
-                                this_doc,
-                                Doc::text("#").append(perm.clone()),
-                                val_name.clone(),
-                            ]),
-                        );
                         props.push(pts_to);
                         bindings.push(ExBinding {
                             name: val_name,
@@ -882,12 +899,7 @@ impl<'a> Emitter<'a> {
                 let idx_doc = self.emit_rvalue(env, idx);
                 ExprKind::RValue(annotated(
                     v,
-                    parens(
-                        arr_doc
-                            .append(Doc::text(".("))
-                            .append(idx_doc)
-                            .append(Doc::text(")")),
-                    ),
+                    parens(naryfn([Doc::text("array_read"), arr_doc, idx_doc])),
                 ))
             }
             _ => ExprKind::RValue(self.emit_rvalue_inner(env, v)),
@@ -1341,7 +1353,36 @@ impl<'a> Emitter<'a> {
                             .append(args),
                     )
                 }
-                ExprT::Live(v) => unaryfn(Doc::text("live"), self.emit_lvalue(env, v)),
+                ExprT::Live(v) => {
+                    // Check if the dereferenced expression is an array type
+                    let is_array = if let ExprT::Deref(inner) = &v.val {
+                        env.infer_expr(inner)
+                            .map(|ty| {
+                                matches!(
+                                    env.vtype_whnf(ty).val,
+                                    TypeT::Pointer(_, PointerKind::Array)
+                                )
+                            })
+                            .unwrap_or(false)
+                    } else {
+                        env.infer_expr(v)
+                            .map(|ty| {
+                                matches!(
+                                    env.vtype_whnf(ty).val,
+                                    TypeT::Pointer(_, PointerKind::Array)
+                                )
+                            })
+                            .unwrap_or(false)
+                    };
+                    if is_array {
+                        unaryfn(
+                            Doc::text("Pulse.Lib.C.Array.live_array"),
+                            self.emit_lvalue(env, v),
+                        )
+                    } else {
+                        unaryfn(Doc::text("live"), self.emit_lvalue(env, v))
+                    }
+                }
                 ExprT::Old(v) => unaryfn(Doc::text("old"), self.emit_rvalue(env, v)),
                 ExprT::Forall(var, ty, body) | ExprT::Exists(var, ty, body) => {
                     let mut env = env.clone();
@@ -1428,7 +1469,7 @@ impl<'a> Emitter<'a> {
                         .append(self.emit_rvalue(env, count)),
                 ),
                 ExprT::CallocArray(ty, count) => parens(
-                    Doc::text("Pulse.Lib.C.Array.calloc_array")
+                    Doc::text("Pulse.Lib.C.Array.calloc_array_mask")
                         .append(Doc::line())
                         .append(Doc::text("#"))
                         .append(self.emit_type(env, ty))
@@ -1507,20 +1548,16 @@ impl<'a> Emitter<'a> {
                     size,
                 } => {
                     let x = self.nm.emit(Name::Var(name.val.clone()));
-                    // Use type ascription to avoid refined literal type
-                    let default_doc = parens(
-                        self.emit_type_default(env, elem_type)
-                            .append(Doc::text(" <: "))
-                            .append(self.emit_type(env, elem_type)),
-                    );
                     let size_doc = self.emit_rvalue(env, size);
-                    // let mut arr = [| default_val; len |];
-                    let alloc = (Doc::text("let mut ").append(x.clone()).append(" ="))
+                    let elem_type_doc = self.emit_type(env, elem_type);
+                    // let mut arr : (array T) = [| len |];  (uninit, gives pts_to_mask)
+                    let alloc = Doc::text("let mut ")
+                        .append(x.clone())
+                        .append(Doc::text(" : (array "))
+                        .append(elem_type_doc)
+                        .append(Doc::text(") ="))
                         .append(Doc::line())
                         .append("[|")
-                        .append(Doc::line())
-                        .append(default_doc)
-                        .append(Doc::text(";"))
                         .append(Doc::line())
                         .append(size_doc)
                         .append(Doc::line())
@@ -1540,19 +1577,16 @@ impl<'a> Emitter<'a> {
                 }
                 StmtT::Assign(x, t) => {
                     if let ExprT::Index(arr, idx) = &x.val {
-                        // Array write: arr.(idx) <- val;
-                        self.emit_rvalue(env, arr)
-                            .append(Doc::text(".("))
-                            .append(self.emit_rvalue(env, idx))
-                            .append(Doc::text(")"))
-                            .append(Doc::line())
-                            .append("<-")
-                            .group()
-                            .append(Doc::line())
-                            .append(self.emit_rvalue(env, t))
-                            .append(";")
-                            .group()
-                            .nest(2)
+                        // Array write: array_write arr idx val;
+                        naryfn([
+                            Doc::text("array_write"),
+                            self.emit_rvalue(env, arr),
+                            self.emit_rvalue(env, idx),
+                            self.emit_rvalue(env, t),
+                        ])
+                        .append(";")
+                        .nest(2)
+                        .group()
                     } else if let ExprT::Member(base, fld) = &x.val {
                         // Check if base is a union type — if so, emit x := Ctor val
                         if let Ok(base_ty) = env.infer_expr(base) {
