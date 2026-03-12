@@ -58,14 +58,13 @@ int_arrptr binary_search(int_arrptr lo, int_arrptr hi, int target)
   _requires((bool) _inline_pulse(offset_of $(hi) - offset_of $(lo) < 100000))
   _ensures((_slprop) _inline_pulse(maybe_arrayptr_pts_to $(return) (arrayptr_parent $(lo))))
 {
-  _ghost_stmt(with arr p_arr v_arr m_arr. assert pts_to_mask arr #p_arr v_arr m_arr);
-  _ghost_stmt(arrayptr_pts_to_dup $(lo) arr);
-  _ghost_stmt(arrayptr_pts_to_dup $(hi) arr);
+  _ghost_stmt(arrayptr_pts_to_dup $(lo) _);
+  _ghost_stmt(arrayptr_pts_to_dup $(hi) _);
   while (lo < hi)
     _invariant((_slprop) _inline_pulse(live $&(lo)))
     _invariant((_slprop) _inline_pulse(live $&(hi)))
-    _invariant((_slprop) _inline_pulse(arrayptr_pts_to $(lo) arr))
-    _invariant((_slprop) _inline_pulse(arrayptr_pts_to $(hi) arr))
+    _invariant((_slprop) _inline_pulse(arrayptr_pts_to $(lo) (old <| arrayptr_parent $(lo))))
+    _invariant((_slprop) _inline_pulse(arrayptr_pts_to $(hi) (old <| arrayptr_parent $(hi))))
     _invariant((bool) _inline_pulse(offset_of $(lo) <= offset_of $(hi)))
     _invariant((bool) _inline_pulse(old (offset_of $(lo)) <= offset_of $(lo) && offset_of $(hi) <= old (offset_of $(hi))))
   {
