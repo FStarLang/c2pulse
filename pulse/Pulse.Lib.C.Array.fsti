@@ -123,65 +123,70 @@ fn array_write u#a (#t: Type u#a) (a: array t) (i: SZ.t) (v: t)
 // parent. arrayptr_pts_to is a pure proposition asserting this relationship.
 // ---------------------------------------------------------------------------
 
-private let nat_add (x y: nat) : nat = x + y
+/// Offset of x relative to y (may be negative).
+private let arrayptr_off (#t: Type) (x y: array t) : GTot int =
+  offset_of x - offset_of y
 
-/// Predicate asserting that arrayptr `x` points into array `y` at offset `off`.
-/// Defined as a pure proposition: same base, correct offset, zero length.
-/// Automatically duplicable and droppable (it's just pure).
-let arrayptr_pts_to (#t: Type u#a) ([@@@mkey] x: array t) (y: array t) (off: nat) : slprop =
-  pure (base_of x == base_of y /\ offset_of x == offset_of y + off /\ length x == 0)
+/// Predicate asserting that arrayptr `x` points into array `y`.
+/// Same base, zero length.
+let arrayptr_pts_to (#t: Type u#a) ([@@@mkey] x: array t) (y: array t) : slprop =
+  pure (base_of x == base_of y /\ length x == 0)
 
 /// Create an arrayptr from an array at offset `i`.
 val array_to_arrayptr (#t: Type u#a) (arr: array t) (i: SZ.t)
   : stt (array t)
     emp
-    (fun r -> arrayptr_pts_to r arr (SZ.v i))
+    (fun r -> arrayptr_pts_to r arr ** pure (offset_of r == offset_of arr + SZ.v i))
 
 /// Shift an arrayptr by `n` positions.
-val arrayptr_shift (#t: Type u#a) (x: array t) (n: SZ.t) (#y: array t) (#off: nat)
+val arrayptr_shift (#t: Type u#a) (x: array t) (n: SZ.t) (#y: array t)
   : stt (array t)
-    (arrayptr_pts_to x y off)
-    (fun r -> arrayptr_pts_to x y off ** arrayptr_pts_to r y (nat_add off (SZ.v n)))
+    (arrayptr_pts_to x y)
+    (fun r -> arrayptr_pts_to x y ** arrayptr_pts_to r y **
+      pure (offset_of r == offset_of x + SZ.v n))
 
 /// Read through an arrayptr at index `i`, borrowing permissions from parent `y`.
 val arrayptr_read (#t: Type u#a) {| has_zero_default t |} (x: array t) (i: SZ.t)
-  (#y: array t) (#off: nat)
+  (#y: array t)
   (#p: perm) (#s: Ghost.erased (Seq.seq (option t))) (#mask: Ghost.erased (nat -> prop))
   : stt t
-    (arrayptr_pts_to x y off ** pts_to_mask y #p s mask **
-      pure (nat_add off (SZ.v i) < Seq.length s /\
-            reveal mask (nat_add off (SZ.v i)) /\
-            Some? (Seq.index s (nat_add off (SZ.v i)))))
-    (fun res -> arrayptr_pts_to x y off ** pts_to_mask y #p s mask **
-      pure (nat_add off (SZ.v i) < Seq.length s /\
-            Some? (Seq.index s (nat_add off (SZ.v i))) /\
-            res == Some?.v (Seq.index s (nat_add off (SZ.v i)))))
+    (arrayptr_pts_to x y ** pts_to_mask y #p s mask **
+      pure (0 <= arrayptr_off x y + SZ.v i /\
+            arrayptr_off x y + SZ.v i < Seq.length s /\
+            reveal mask (arrayptr_off x y + SZ.v i) /\
+            Some? (Seq.index s (arrayptr_off x y + SZ.v i))))
+    (fun res -> arrayptr_pts_to x y ** pts_to_mask y #p s mask **
+      pure (0 <= arrayptr_off x y + SZ.v i /\
+            arrayptr_off x y + SZ.v i < Seq.length s /\
+            Some? (Seq.index s (arrayptr_off x y + SZ.v i)) /\
+            res == Some?.v (Seq.index s (arrayptr_off x y + SZ.v i))))
 
 /// Write through an arrayptr at index `i`, using permissions from parent `y`.
 val arrayptr_write (#t: Type u#a) {| has_zero_default t |}
   (x: array t) (i: SZ.t) (v: t)
-  (#y: array t) (#off: nat)
+  (#y: array t)
   (#s: Ghost.erased (Seq.seq (option t))) (#mask: Ghost.erased (nat -> prop))
   : stt unit
-    (arrayptr_pts_to x y off ** pts_to_mask y s mask **
-      pure (nat_add off (SZ.v i) < Seq.length s /\
-            reveal mask (nat_add off (SZ.v i))))
+    (arrayptr_pts_to x y ** pts_to_mask y s mask **
+      pure (0 <= arrayptr_off x y + SZ.v i /\
+            arrayptr_off x y + SZ.v i < Seq.length s /\
+            reveal mask (arrayptr_off x y + SZ.v i)))
     (fun _ ->
-      exists* s'. arrayptr_pts_to x y off **
+      exists* s'. arrayptr_pts_to x y **
         pts_to_mask y s' mask **
-        pure (nat_add off (SZ.v i) < Seq.length s /\
-              s' == Seq.upd s (nat_add off (SZ.v i)) (Some v)))
+        pure (0 <= arrayptr_off x y + SZ.v i /\
+              arrayptr_off x y + SZ.v i < Seq.length s /\
+              s' == Seq.upd s (arrayptr_off x y + SZ.v i) (Some v)))
 
 /// Subtract two arrayptrs to get their offset difference.
-val arrayptr_diff (#t: Type u#a) (x y: array t) (#parent: array t)
-  (#off_x #off_y: nat)
+val arrayptr_diff (#t: Type u#a) (x z: array t) (#y: array t)
   : stt Pulse.Lib.C.PtrdiffT.t
-    (arrayptr_pts_to x parent off_x ** arrayptr_pts_to y parent off_y)
-    (fun r -> arrayptr_pts_to x parent off_x ** arrayptr_pts_to y parent off_y **
-      pure (Pulse.Lib.C.PtrdiffT.v r == off_x - off_y))
+    (arrayptr_pts_to x y ** arrayptr_pts_to z y)
+    (fun r -> arrayptr_pts_to x y ** arrayptr_pts_to z y **
+      pure (Pulse.Lib.C.PtrdiffT.v r == offset_of x - offset_of z))
 
 /// Drop an arrayptr_pts_to predicate (for scope exit / cleanup).
-val arrayptr_drop (#t: Type u#a) (x: array t) (#y: array t) (#off: nat)
+val arrayptr_drop (#t: Type u#a) (x: array t) (#y: array t)
   : stt_ghost unit emp_inames
-    (arrayptr_pts_to x y off)
+    (arrayptr_pts_to x y)
     (fun _ -> emp)
