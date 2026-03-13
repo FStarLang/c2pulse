@@ -1133,26 +1133,38 @@ public:
 
   void HandleDiagnostic(DiagnosticsEngine::Level DiagLevel,
                         const Diagnostic &Info) override {
+    if (!Info.hasSourceManager())
+      return;
     auto &sm = Info.getSourceManager();
+
+    SourceLocation begin, end;
+
     if (Info.getNumRanges() > 0) {
       auto range = Info.getRange(0);
-      auto file_name = rangeMap.getFileName(
-          sm, sm.getFileID(sm.getExpansionLoc(range.getBegin())));
-      unsigned begin_line = sm.getExpansionLineNumber(range.getBegin());
-      unsigned begin_col = sm.getExpansionColumnNumber(range.getBegin());
-      unsigned end_line = sm.getExpansionLineNumber(range.getEnd());
-      unsigned end_col = sm.getExpansionColumnNumber(range.getEnd());
-      if (end_line == 0 || end_col == 0) {
-        // unknown end position
-        end_line = begin_line;
-        end_col = begin_col;
-      }
-      llvm::SmallString<0> out;
-      Info.FormatDiagnostic(out);
-      ctx.report_diag(mk_original_location(std::move(file_name), begin_line,
-                                           begin_col, end_line, end_col),
-                      DiagLevel >= DiagnosticsEngine::Level::Error, toStr(out));
+      begin = range.getBegin();
+      end = range.getEnd();
+    } else if (Info.getLocation().isValid()) {
+      begin = Info.getLocation();
+      end = begin;
+    } else {
+      return;
     }
+
+    auto file_name =
+        rangeMap.getFileName(sm, sm.getFileID(sm.getExpansionLoc(begin)));
+    unsigned begin_line = sm.getExpansionLineNumber(begin);
+    unsigned begin_col = sm.getExpansionColumnNumber(begin);
+    unsigned end_line = sm.getExpansionLineNumber(end);
+    unsigned end_col = sm.getExpansionColumnNumber(end);
+    if (end_line == 0 || end_col == 0) {
+      end_line = begin_line;
+      end_col = begin_col;
+    }
+    llvm::SmallString<0> out;
+    Info.FormatDiagnostic(out);
+    ctx.report_diag(mk_original_location(std::move(file_name), begin_line,
+                                         begin_col, end_line, end_col),
+                    DiagLevel >= DiagnosticsEngine::Level::Error, toStr(out));
   }
 };
 
