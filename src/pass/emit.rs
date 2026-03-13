@@ -1378,6 +1378,13 @@ impl<'a> Emitter<'a> {
                                         Doc::text("Pulse.Lib.Array.null")
                                     }
                                 }
+                            } else if matches!(to_kind, PointerKind::ArrayPtr) {
+                                // Array→ArrayPtr: obtain arrayptr_pts_to resource
+                                parens(naryfn([
+                                    Doc::text("array_to_arrayptr"),
+                                    val_doc,
+                                    Doc::text("0sz"),
+                                ]))
                             } else {
                                 val_doc
                             }
@@ -1420,15 +1427,23 @@ impl<'a> Emitter<'a> {
                         let ty = env.vtype_whnf(ty);
                         match (&ty.val, &rhs.val) {
                             (
-                                TypeT::Pointer(
-                                    _,
-                                    PointerKind::Ref | PointerKind::Unknown, /* TODO */
-                                ),
+                                TypeT::Pointer(_, PointerKind::Ref | PointerKind::Unknown),
                                 ExprT::IntLit(n, _),
                             ) => {
                                 if **n == BigInt::ZERO {
                                     return unaryfn(
                                         Doc::text("Pulse.Lib.Reference.is_null"),
+                                        self.emit_rvalue(env, lhs),
+                                    );
+                                }
+                            }
+                            (
+                                TypeT::Pointer(_, PointerKind::Array | PointerKind::ArrayPtr),
+                                ExprT::IntLit(n, _),
+                            ) => {
+                                if **n == BigInt::ZERO {
+                                    return unaryfn(
+                                        Doc::text("Pulse.Lib.Array.is_null"),
                                         self.emit_rvalue(env, lhs),
                                     );
                                 }

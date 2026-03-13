@@ -74,3 +74,18 @@ _arrayptr int *binary_search(_arrayptr int *lo, _arrayptr int *hi, int target)
   }
   return NULL;
 }
+
+void use_binary_search(_array int *arr, int target, size_t length)
+  _requires(length == arr._length && length <= 10000)
+{
+  _arrayptr int *lo = arr;
+  _arrayptr int *hi = arr + length;
+  _arrayptr int *result = binary_search(lo, hi, target);
+  if (result == NULL) {
+    _ghost_stmt(drop_ (maybe_arrayptr_pts_to _ _));
+  } else {
+    _ghost_stmt(with x y. rewrite maybe_arrayptr_pts_to x y as arrayptr_pts_to x y);
+    _ghost_stmt(admit());
+    int val = *result;
+  }
+}

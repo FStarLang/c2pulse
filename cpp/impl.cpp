@@ -893,7 +893,9 @@ public:
                                            std::move(elemTy),
                                            std::move(sizeExpr)));
           } else {
-            auto ty = trQualType(vd->getType(), vd->getSourceRange());
+            auto ty =
+                trTypeAttrs(vd->getAttrs(),
+                            trQualType(vd->getType(), vd->getSourceRange()));
             stmts.push(mk_var_decl(dloc.clone(), id.clone(), std::move(ty)));
             if (vd->hasInit()) {
               stmts.push(mk_assign(dloc.clone(),
