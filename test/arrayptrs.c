@@ -12,27 +12,41 @@ void write_via_ptr(_array int *a)
 }
 
 _include_pulse(
-  let maybe_arrayptr_pts_to #a (x: array a) (y: array a) : slprop =
-    if Pulse.Lib.Array.is_null x then emp else arrayptr_pts_to x y
+  let unless_null #a (x: array a) (p: slprop) : slprop =
+    if Pulse.Lib.Array.is_null x then emp else p
 
   [@@pulse_intro]
-  ghost fn intro_maybe_arrayptr_pts_to_null (#a: Type0) (y: array a)
-    ensures maybe_arrayptr_pts_to Pulse.Lib.Array.null y
+  ghost fn intro_unless_null_null (#a: Type0) p
+    ensures unless_null #a Pulse.Lib.Array.null p
   {
-    rewrite emp as maybe_arrayptr_pts_to Pulse.Lib.Array.null y
+    rewrite emp as unless_null #a Pulse.Lib.Array.null p
   }
 
   [@@pulse_intro]
-  ghost fn intro_maybe_arrayptr_pts_to_nonnull (#a: Type0) (x y: array a)
-    requires arrayptr_pts_to x y
-    ensures maybe_arrayptr_pts_to x y
+  ghost fn intro_unless_null_nonnull (#a: Type0) (x: array a) p
+    requires p
+    ensures unless_null x p
   {
     if Pulse.Lib.Array.is_null x {
-      drop_ (arrayptr_pts_to x y);
+      drop_ p;
       assert rewrites_to x Pulse.Lib.Array.null;
     } else {
-      rewrite arrayptr_pts_to x y as maybe_arrayptr_pts_to x y;
+      rewrite p as unless_null x p;
     }
+  }
+
+  ghost fn elim_unless_null_null (#a: Type0) (x: array a) p
+    requires unless_null x p
+    requires pure (Pulse.Lib.Array.is_null x)
+  {
+    rewrite unless_null x p as emp
+  }
+  ghost fn elim_unless_null_nonnull (#a: Type0) (x: array a) p
+    requires unless_null x p
+    requires pure (not (Pulse.Lib.Array.is_null x))
+    ensures p
+  {
+    rewrite unless_null x p as p
   }
 )
 
@@ -54,7 +68,9 @@ _include_pulse(
 _arrayptr int *binary_search(_arrayptr int *lo, _arrayptr int *hi, int target)
   _preserves((_slprop) _inline_pulse(is_slice $(lo) $(hi) $`arr $`p_arr $`v_arr $`m_arr))
   _requires((bool) _inline_pulse(offset_of $(hi) - offset_of $(lo) < 100000))
-  _ensures((_slprop) _inline_pulse(maybe_arrayptr_pts_to $(return) (arrayptr_parent $(lo))))
+  _ensures((_slprop) _inline_pulse(unless_null $(return)
+    (arrayptr_pts_to $(return) (arrayptr_parent $(lo)) **
+      pure (offset_of $(lo) <= offset_of $(return) /\ offset_of $(return) < offset_of $(hi)))))
 {
   while (lo < hi)
     _invariant((_slprop) _inline_pulse(live $&(lo)))
@@ -82,10 +98,9 @@ void use_binary_search(_array int *arr, int target, size_t length)
   _arrayptr int *hi = arr + length;
   _arrayptr int *result = binary_search(lo, hi, target);
   if (result == NULL) {
-    _ghost_stmt(drop_ (maybe_arrayptr_pts_to _ _));
+    _ghost_stmt(elim_unless_null_null _ _);
   } else {
-    _ghost_stmt(with x y. rewrite maybe_arrayptr_pts_to x y as arrayptr_pts_to x y);
-    _ghost_stmt(admit());
+    _ghost_stmt(elim_unless_null_nonnull _ _);
     int val = *result;
   }
 }
