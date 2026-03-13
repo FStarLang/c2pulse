@@ -135,13 +135,13 @@ let arrayptr_pts_to (#t: Type u#a) ([@@@mkey] x: array t) (y: array t) : slprop 
 let arrayptr_parent #a (x: array a) #y =
   observe (arrayptr_pts_to x) #y
 
-ghost fn arrayptr_pts_to_dup u#a #t x y : duplicable_f (arrayptr_pts_to u#a #t x y) = {
+ghost fn arrayptr_pts_to_dup u#a (#t: Type u#a) x y : duplicable_f (arrayptr_pts_to u#a #t x y) = {
   unfold arrayptr_pts_to x y;
   fold arrayptr_pts_to x y;
   fold arrayptr_pts_to x y;
 }
 
-instance duplicable_arrayptr_pts_to #t x y : duplicable (arrayptr_pts_to x y) =
+instance duplicable_arrayptr_pts_to #t x y : duplicable (arrayptr_pts_to #t x y) =
   { dup_f = fun _ -> arrayptr_pts_to_dup x y }
 
 /// Create an arrayptr from an array at offset `i`.

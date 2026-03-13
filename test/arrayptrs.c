@@ -58,8 +58,6 @@ int_arrptr binary_search(int_arrptr lo, int_arrptr hi, int target)
   _requires((bool) _inline_pulse(offset_of $(hi) - offset_of $(lo) < 100000))
   _ensures((_slprop) _inline_pulse(maybe_arrayptr_pts_to $(return) (arrayptr_parent $(lo))))
 {
-  _ghost_stmt(arrayptr_pts_to_dup $(lo) _);
-  _ghost_stmt(arrayptr_pts_to_dup $(hi) _);
   while (lo < hi)
     _invariant((_slprop) _inline_pulse(live $&(lo)))
     _invariant((_slprop) _inline_pulse(live $&(hi)))
@@ -69,20 +67,12 @@ int_arrptr binary_search(int_arrptr lo, int_arrptr hi, int target)
     _invariant((bool) _inline_pulse(old (offset_of $(lo)) <= offset_of $(lo) && offset_of $(hi) <= old (offset_of $(hi))))
   {
       int *mid = lo + (hi - lo) / 2;
-      if (*mid == target) {
-          _ghost_stmt(drop_(arrayptr_pts_to $(lo) _));
-          _ghost_stmt(drop_(arrayptr_pts_to $(hi) _));
-          return mid;
-      } else if (*mid < target) {
-          _ghost_stmt(drop_(arrayptr_pts_to $(lo) _));
-          lo = mid + 1;
-          _ghost_stmt(drop_(arrayptr_pts_to $(mid) _));
-      } else {
-          _ghost_stmt(drop_(arrayptr_pts_to $(hi) _));
-          hi = mid;
-      }
+      if (*mid == target)
+        return mid;
+      else if (*mid < target)
+        lo = mid + 1;
+      else
+        hi = mid;
   }
-  _ghost_stmt(drop_(arrayptr_pts_to $(lo) _));
-  _ghost_stmt(drop_(arrayptr_pts_to $(hi) _));
   return NULL;
 }
