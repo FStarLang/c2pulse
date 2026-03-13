@@ -95,7 +95,7 @@ _include_pulse(
 void memcpy_(size_t len, _array const uint8_t *a1, _out _array uint8_t *a2)
   _preserves(a1._length == len)
   _preserves(a2._length == len)
-  _ensures((_slprop) _inline_pulse(rewrites_to (array_value_of $(a2)) (array_value_of $(a1))))
+  _ensures((bool) _inline_pulse(array_value_of $(a2) == array_value_of $(a1)))
 {
   _ghost_stmt(admit());
 }
@@ -106,9 +106,7 @@ _refine((_slprop) _inline_pulse(
     context_full_pred $(*this) state))
 typedef context_t *context_obj;
 
-_allocated
-typedef context_obj allocated_context_obj;
-allocated_context_obj init_engine_context(const uds_array uds)
+_allocated context_obj init_engine_context(const uds_array uds)
   _ensures((bool) _inline_pulse(engine_state $(*return) == PL_Engine (array_value_of $(uds))))
 {
   uint8_t *uds_buf = (uint8_t*)malloc(UDS_LEN * sizeof(uint8_t));
