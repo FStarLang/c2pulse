@@ -1369,6 +1369,19 @@ impl<'a> Emitter<'a> {
                             }
                         }
                         (TypeT::PtrdiffT, TypeT::PtrdiffT) => val_doc,
+                        (TypeT::Pointer(_, _), TypeT::Pointer(_, to_kind)) => {
+                            // Pointer kind change (e.g., Ref→ArrayPtr for null)
+                            if matches!(&val.val, ExprT::IntLit(n, _) if **n == BigInt::ZERO) {
+                                match to_kind {
+                                    PointerKind::Ref | PointerKind::Unknown => Doc::text("null"),
+                                    PointerKind::Array | PointerKind::ArrayPtr => {
+                                        Doc::text("Pulse.Lib.Array.null")
+                                    }
+                                }
+                            } else {
+                                val_doc
+                            }
+                        }
                         (TypeT::Error, _) | (_, TypeT::Error) => val_doc,
                         _ => {
                             self.report(default_msg.clone(), &v.loc);
