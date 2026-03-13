@@ -1,5 +1,10 @@
 // Tests-todo: Complex union ownership and nested struct/union with pointers
 //
+// GABRIEL: the only thing missing here is managing the implicit ownership
+// predicate of the fields.  Right now if you have a union field `unsigned int
+// *a` then you can read/write it, but you don't get liveness of the pointer.
+// See examples/dpe for how the automatically generated code could look like.
+//
 // Missing features:
 //   - Unions with pointer fields (ownership transfer)
 //   - Nested struct/union with LEMMA-based ownership proofs

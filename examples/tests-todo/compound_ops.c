@@ -4,7 +4,7 @@
 // Prototype tests: test_ops.c, random.c
 //
 // These operators are syntactic sugar for existing supported operations.
-// c2pulse should desugar them during translation.
+// We cannot desugar them directly because the lhs might be effectful.
 
 #include "c2pulse.h"
 #include <stddef.h>
