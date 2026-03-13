@@ -99,7 +99,10 @@ fn main() {
     let module_name = derive_module_name(&file_name);
 
     let (mut tu, mut diags) = clang::parse_file(&file_name, &mut *vfs);
-    pass::check::check(&mut diags, &mut tu, "clang", false);
+    if false {
+        // This generates error for C features we don't support yet even when they're unused.
+        pass::check::check(&mut diags, &mut tu, "clang", false);
+    }
     pass::prune::prune(&mut tu);
     pass::check::check(&mut diags, &mut tu, "prune", false);
     pass::merge::merge(&mut diags, &mut tu);
@@ -112,7 +115,12 @@ fn main() {
         return;
     }
 
-    let (pulse_code, range_map) = pass::emit::emit(&mut diags, &module_name, &tu);
+    let (mut pulse_code, range_map) = pass::emit::emit(&mut diags, &module_name, &tu);
+
+    if diags.has_errors() {
+        // Force F* to fail on files with errors
+        pulse_code = format!("{}\n\nlet _ = assert False\n", pulse_code);
+    }
 
     let outdir = match &cli.tmpdir {
         Some(tmpdir) => Path::new(tmpdir),
