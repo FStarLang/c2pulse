@@ -1315,6 +1315,14 @@ static void parse_file(RefMut<Ctx> ctx) {
   Tool.appendArgumentsAdjuster(getInsertArgumentAdjuster(
       {"-resource-dir", getResourcesPath()}, ArgumentInsertPosition::BEGIN));
 
+  // Add user-specified include paths
+  size_t includePathCount = ctx.get_include_path_count();
+  for (size_t i = 0; i < includePathCount; i++) {
+    std::string incPath = "-I" + toString(ctx.get_include_path(i));
+    Tool.appendArgumentsAdjuster(getInsertArgumentAdjuster(
+        incPath.c_str(), ArgumentInsertPosition::BEGIN));
+  }
+
   C2PulseActionFactory factory(ctx, rangeMap);
   Tool.run(&factory);
 }

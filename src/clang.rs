@@ -22,6 +22,7 @@ unsafe fn str_from_parts<'a>(ptr: *const u8, sz: usize) -> &'a str {
 pub struct Ctx<'a> {
     vfs: &'a mut dyn VFS,
     input_file_name: String,
+    include_paths: Vec<String>,
     interned_strs: HashSet<Rc<str>>,
     translation_unit: TranslationUnit,
     diagnostics: Diagnostics,
@@ -29,12 +30,13 @@ pub struct Ctx<'a> {
 }
 
 impl<'a> Ctx<'a> {
-    fn new(input_file_name: String, vfs: &'a mut dyn VFS) -> Ctx<'a> {
+    fn new(input_file_name: String, include_paths: Vec<String>, vfs: &'a mut dyn VFS) -> Ctx<'a> {
         let input_fn: &str = &input_file_name;
         let main_file_name: Rc<str> = Rc::from(input_fn);
         Ctx {
             vfs,
             input_file_name,
+            include_paths,
             interned_strs: HashSet::new(),
             translation_unit: TranslationUnit {
                 main_file_name: main_file_name,
@@ -47,6 +49,14 @@ impl<'a> Ctx<'a> {
 
     fn get_input_file_name(&self) -> &str {
         &self.input_file_name
+    }
+
+    fn get_include_path_count(&self) -> usize {
+        self.include_paths.len()
+    }
+
+    fn get_include_path(&self, idx: usize) -> &str {
+        &self.include_paths[idx]
     }
 
     fn set_target_int_widths(&mut self, widths: TargetIntWidths) {
@@ -581,8 +591,12 @@ fn mk_label(loc: Rc<SourceInfo>, label: Rc<Ident>, ensures: Exprs) -> Rc<Stmt> {
     .with_loc(loc)
 }
 
-pub fn parse_file(file_name: &str, vfs: &mut dyn VFS) -> (TranslationUnit, Diagnostics) {
-    let mut ctx = Ctx::new(file_name.to_string(), vfs);
+pub fn parse_file(
+    file_name: &str,
+    include_paths: &[String],
+    vfs: &mut dyn VFS,
+) -> (TranslationUnit, Diagnostics) {
+    let mut ctx = Ctx::new(file_name.to_string(), include_paths.to_vec(), vfs);
     generated::parse_file(&mut ctx);
     (ctx.translation_unit, ctx.diagnostics)
 }

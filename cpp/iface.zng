@@ -164,6 +164,9 @@ mod crate::clang {
 
         fn get_input_file_name(&self) -> &str;
 
+        fn get_include_path_count(&self) -> usize;
+        fn get_include_path(&self, usize) -> &str;
+
         fn set_target_int_widths(&mut self, TargetIntWidths);
 
         fn intern_str(&mut self, &str) -> Rc<str>;

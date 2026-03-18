@@ -7,6 +7,9 @@ CACHE_DIR ?= _cache
 
 C2PULSE ?= ../target/debug/c2pulse
 
+# Per-test c2pulse options (e.g., OPTS_include = -I include)
+OPTS_include = -I include
+
 # Convert foo.c -> Foo.fst (capitalize first letter, change extension)
 c_to_fst = $(shell echo '$(1)' | sed 's/^\(.\)/\U\1/;s/\.c$$/.fst/')
 
@@ -30,7 +33,7 @@ FSTAR = $(FSTAR_EXE) \
 verify: $(ALL_CHECKED_FILES)
 
 %.fst:
-	$(C2PULSE) $<
+	$(C2PULSE) $(OPTS_$(basename $<)) $<
 
 $(CACHE_DIR)/%.fst.checked: %.fst
 	$(FSTAR) --force $<

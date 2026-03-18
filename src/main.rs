@@ -25,6 +25,9 @@ struct Cli {
     #[arg(long = "print-ir")]
     print_ir: bool,
 
+    #[arg(short = 'I')]
+    include_paths: Vec<String>,
+
     file: String,
 }
 
@@ -98,7 +101,7 @@ fn main() {
 
     let module_name = derive_module_name(&file_name);
 
-    let (mut tu, mut diags) = clang::parse_file(&file_name, &mut *vfs);
+    let (mut tu, mut diags) = clang::parse_file(&file_name, &cli.include_paths, &mut *vfs);
     if false {
         // This generates error for C features we don't support yet even when they're unused.
         pass::check::check(&mut diags, &mut tu, "clang", false);
