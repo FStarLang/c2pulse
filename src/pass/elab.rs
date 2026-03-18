@@ -400,6 +400,25 @@ impl<'a> Elaborator<'a> {
             ExprT::UnionInit(_, _, fld_val) => {
                 self.elab_rvalue(env, Rc::make_mut(fld_val));
             }
+            ExprT::Cond(cond, then_expr, else_expr) => {
+                self.elab_rvalue(env, Rc::make_mut(cond));
+                self.cast_to_bool(env, cond);
+                self.elab_rvalue(env, Rc::make_mut(then_expr));
+                self.elab_rvalue(env, Rc::make_mut(else_expr));
+                // Unify branch types
+                let then_ty = env.infer_expr(then_expr).ok();
+                let else_ty = env.infer_expr(else_expr).ok();
+                if let (Some(t_ty), Some(e_ty)) = (then_ty, else_ty) {
+                    if let Some(meet) = env.meet_type(t_ty.clone(), e_ty.clone()) {
+                        if !env.vtype_eq(t_ty, meet.clone()) {
+                            cast_to(then_expr, meet.clone().to_rc());
+                        }
+                        if !env.vtype_eq(e_ty, meet.clone()) {
+                            cast_to(else_expr, meet.to_rc());
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -544,12 +563,57 @@ impl<'a> Elaborator<'a> {
         }
     }
 
+    /// Lower a `Cond` expression at the top of an `Assign` or `Return` into
+    /// an `If` statement.  Returns `true` when a rewrite happened.
+    fn lower_cond(stmt: &mut Rc<Stmt>) -> bool {
+        let s = Rc::make_mut(stmt);
+        let loc = s.loc.clone();
+        match &s.val {
+            StmtT::Assign(lhs, rhs) => {
+                if let ExprT::Cond(c, a, b) = &rhs.val {
+                    let (c, a, b, lhs) = (c.clone(), a.clone(), b.clone(), lhs.clone());
+                    s.val = StmtT::If(
+                        c,
+                        Rc::new(vec![StmtT::Assign(lhs.clone(), a).with_loc(loc.clone())]),
+                        Rc::new(vec![StmtT::Assign(lhs, b).with_loc(loc)]),
+                    );
+                    return true;
+                }
+            }
+            StmtT::Return(Some(rhs)) => {
+                if let ExprT::Cond(c, a, b) = &rhs.val {
+                    let (c, a, b) = (c.clone(), a.clone(), b.clone());
+                    s.val = StmtT::If(
+                        c,
+                        Rc::new(vec![StmtT::Return(Some(a)).with_loc(loc.clone())]),
+                        Rc::new(vec![StmtT::Return(Some(b)).with_loc(loc)]),
+                    );
+                    return true;
+                }
+            }
+            StmtT::Call(rhs) => {
+                if let ExprT::Cond(c, a, b) = &rhs.val {
+                    let (c, a, b) = (c.clone(), a.clone(), b.clone());
+                    s.val = StmtT::If(
+                        c,
+                        Rc::new(vec![StmtT::Call(a).with_loc(loc.clone())]),
+                        Rc::new(vec![StmtT::Call(b).with_loc(loc)]),
+                    );
+                    return true;
+                }
+            }
+            _ => {}
+        }
+        false
+    }
+
     fn elab_stmts(&mut self, env: &Env, stmts: &mut Vec<Rc<Stmt>>) {
         let mut env = env.clone();
         for i in 0..stmts.len() {
             Self::refine_decl_pointer_kind(&env, stmts, i);
 
             self.elab_stmt(&env, Rc::make_mut(&mut stmts[i]));
+            Self::lower_cond(&mut stmts[i]);
             env.push_stmt(&stmts[i]);
         }
     }

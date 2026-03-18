@@ -699,6 +699,9 @@ public:
       return trInitList(init, e->getSourceRange(), std::move(loc));
     } else if (auto *init = dyn_cast<InitListExpr>(e)) {
       return trInitList(init, e->getSourceRange(), std::move(loc));
+    } else if (auto *co = dyn_cast<ConditionalOperator>(e)) {
+      return mk_cond(std::move(loc), trRValue(co->getCond()),
+                     trRValue(co->getTrueExpr()), trRValue(co->getFalseExpr()));
     }
 
     reportUnsupported(e->getSourceRange(), loc,

@@ -289,6 +289,7 @@ pub enum ExprT {
     PostIncr(Rc<Expr>),
     PreDecr(Rc<Expr>),
     PostDecr(Rc<Expr>),
+    Cond(Rc<Expr>, Rc<Expr>, Rc<Expr>),
     Error(Rc<Type>),
 }
 

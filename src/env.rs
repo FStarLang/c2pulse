@@ -400,6 +400,7 @@ impl Env {
             ExprT::UnionInit(name, _, _) => Ok(expr
                 .reuse_loc(TypeT::TypeRef(TypeRefKind::Union(name.clone())))
                 .into()),
+            ExprT::Cond(_, then_expr, _) => self.infer_expr(then_expr),
         }
     }
 

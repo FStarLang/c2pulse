@@ -473,6 +473,14 @@ fn mk_pre_decr(loc: Rc<SourceInfo>, val: Rc<Expr>) -> Rc<Expr> {
 fn mk_post_decr(loc: Rc<SourceInfo>, val: Rc<Expr>) -> Rc<Expr> {
     mk_ast(loc, ExprT::PostDecr(val))
 }
+fn mk_cond(
+    loc: Rc<SourceInfo>,
+    cond: Rc<Expr>,
+    then_expr: Rc<Expr>,
+    else_expr: Rc<Expr>,
+) -> Rc<Expr> {
+    mk_ast(loc, ExprT::Cond(cond, then_expr, else_expr))
+}
 
 pub struct StructInitBuilder {
     loc: Rc<SourceInfo>,

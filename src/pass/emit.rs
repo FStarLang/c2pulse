@@ -498,6 +498,11 @@ impl<'a> Emitter<'a> {
                 self.subst_this_rvalue(env, Rc::make_mut(arr), this);
                 self.subst_this_rvalue(env, Rc::make_mut(idx), this);
             }
+            ExprT::Cond(cond, then_expr, else_expr) => {
+                self.subst_this_rvalue(env, Rc::make_mut(cond), this);
+                self.subst_this_rvalue(env, Rc::make_mut(then_expr), this);
+                self.subst_this_rvalue(env, Rc::make_mut(else_expr), this);
+            }
         }
     }
 
@@ -1776,6 +1781,18 @@ impl<'a> Emitter<'a> {
                         )
                     }
                 }
+                ExprT::Cond(cond, then_expr, else_expr) => parens(
+                    Doc::text("if")
+                        .append(Doc::line())
+                        .append(self.emit_rvalue(env, cond))
+                        .group()
+                        .append(Doc::line())
+                        .append("then")
+                        .append(Doc::line().append(self.emit_rvalue(env, then_expr)).nest(2))
+                        .append(Doc::line())
+                        .append("else")
+                        .append(Doc::line().append(self.emit_rvalue(env, else_expr)).nest(2)),
+                ),
             }
         })
     }

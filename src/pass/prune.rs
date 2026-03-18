@@ -177,6 +177,11 @@ fn scan_expr(deps: &mut HashSet<DeclName>, rv: &Expr) {
             deps.insert(DeclName::Union(name.val.clone()));
             scan_expr(deps, fld_val);
         }
+        ExprT::Cond(cond, then_expr, else_expr) => {
+            scan_expr(deps, cond);
+            scan_expr(deps, then_expr);
+            scan_expr(deps, else_expr);
+        }
     }
 }
 

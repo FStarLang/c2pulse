@@ -422,6 +422,11 @@ impl<'a> Checker<'a> {
             | ExprT::PostIncr(val)
             | ExprT::PreDecr(val)
             | ExprT::PostDecr(val) => self.check_lvalue(env, val),
+            ExprT::Cond(cond, then_expr, else_expr) => {
+                self.check_rvalue(env, cond);
+                self.check_rvalue(env, then_expr);
+                self.check_rvalue(env, else_expr);
+            }
             ExprT::Error(ty) => self.check_type(env, ty),
         }
     }
