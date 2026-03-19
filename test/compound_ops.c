@@ -1,10 +1,8 @@
-// Tests-todo: Increment, decrement, and compound assignment operators
+// Tests: Increment, decrement, and compound assignment operators
 //
-// Missing features: ++, --, +=, -=, *=, /=, %=
-// Prototype tests: test_ops.c, random.c
-//
+// Compound assignments (+=, -=, *=, etc.) are tested in binary_ops.c.
 // These operators are syntactic sugar for existing supported operations.
-// c2pulse should desugar them during translation.
+// c2pulse desugars them during translation.
 
 #include "c2pulse.h"
 #include <stdint.h>
