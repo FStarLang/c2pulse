@@ -419,6 +419,10 @@ public:
     } else if (auto sub = dyn_cast<ArraySubscriptExpr>(e)) {
       return mk_index(std::move(loc), trRValue(sub->getBase()),
                       trRValue(sub->getIdx()));
+    } else if (auto ic = dyn_cast<ImplicitCastExpr>(e)) {
+      if (ic->getCastKind() == CK_NoOp) {
+        return trLValue(ic->getSubExpr());
+      }
     }
 
     reportUnsupported(e->getSourceRange(), loc,
@@ -494,6 +498,7 @@ public:
         return mk_rvalue_lvalue(std::move(loc), trLValue(ic->getSubExpr()));
       case CK_IntegralCast:
       case CK_IntegralToBoolean:
+      case CK_PointerToBoolean:
         return mk_rvalue_cast(std::move(loc), trRValue(ic->getSubExpr()),
                               trQualType(ic->getType(), ic->getSourceRange()));
 

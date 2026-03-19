@@ -1336,6 +1336,15 @@ impl<'a> Emitter<'a> {
                         // (TypeT::SizeT, TypeT::Int { signed, width }) => todo!(),
                         // (TypeT::SizeT, TypeT::SLProp) => todo!(),
                         // (TypeT::Pointer { to, kind }, TypeT::Bool) => todo!(),
+                        (TypeT::Pointer(_, kind), TypeT::Bool) => {
+                            let is_null_fn = match kind {
+                                PointerKind::Array | PointerKind::ArrayPtr => {
+                                    "Pulse.Lib.Array.is_null"
+                                }
+                                _ => "Pulse.Lib.Reference.is_null",
+                            };
+                            unaryfn(Doc::text("not"), unaryfn(Doc::text(is_null_fn), val_doc))
+                        }
                         // (TypeT::Pointer { to, kind }, TypeT::SizeT) => todo!(),
                         // (TypeT::Pointer { to:t1, kind:k1 }, TypeT::Pointer { to:t2, kind:k2 }) if t1 == t2 => todo!(),
                         // (TypeT::Pointer { to, kind }, TypeT::SLProp) => todo!(),
