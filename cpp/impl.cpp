@@ -707,6 +707,16 @@ public:
     } else if (auto *co = dyn_cast<ConditionalOperator>(e)) {
       return mk_cond(std::move(loc), trRValue(co->getCond()),
                      trRValue(co->getTrueExpr()), trRValue(co->getFalseExpr()));
+    } else if (auto *dre = dyn_cast<DeclRefExpr>(e)) {
+      if (auto *ecd = dyn_cast<EnumConstantDecl>(dre->getDecl())) {
+        const auto val = ecd->getInitVal();
+        SmallString<20> valStr;
+        val.toString(valStr, 10, val.isSigned());
+        return mk_int_lit(std::move(loc), mk_bigint(toStr(StringRef(valStr))),
+                          trQualType(e->getType(), e->getSourceRange()));
+      }
+      // Other DeclRefExpr in rvalue context: treat as lvalue read
+      return mk_rvalue_lvalue(std::move(loc), trLValue(e));
     }
 
     reportUnsupported(e->getSourceRange(), loc,
@@ -1080,7 +1090,7 @@ public:
       auto ty = trQualType(VD->getType(), VD->getSourceRange());
       OptExpr init = VD->hasInit() ? OptExpr::Some(trRValue(VD->getInit()))
                                    : OptExpr::None();
-      bool is_pure = false;
+      bool is_pure = VD->getType().isConstQualified() && VD->hasInit();
       for (auto attr : VD->getAttrs()) {
         if (auto ann = dyn_cast<AnnotateAttr>(attr);
             ann && ann->getAnnotation() == "c2pulse-pure" &&
@@ -1090,6 +1100,10 @@ public:
       }
       return ctx.add_global_var(std::move(loc), std::move(id), std::move(ty),
                                 std::move(init), is_pure);
+    } else if (dyn_cast<EnumDecl>(D)) {
+      // Enum declarations need no IR representation;
+      // constants are inlined as integer literals at use sites.
+      return {};
     }
 
     reportUnsupported(D->getSourceRange(), getRange(D->getSourceRange()),
