@@ -47,7 +47,6 @@ build-fstar: opt/opam.done
 
 .PHONY: build-pulse
 build-pulse: build-fstar
-	$(MAKE) -C opt/pulse ADMIT=1
 
 endif
 

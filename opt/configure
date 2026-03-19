@@ -41,8 +41,5 @@ if [ "$C2PULSE_OPT" = 0 ]; then
     add_to_path $(dirname $(which fstar.exe))
 else
     add_to_path $OPTDIR/fstar/bin
-    PULSE_HOME=$OPTDIR/pulse/out
     export_env OPAMYES 1
 fi
-
-export_env PULSE_HOME "$PULSE_HOME"
