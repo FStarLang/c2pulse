@@ -1097,6 +1097,8 @@ public:
         }
       }
       return rust::Unit();
+    } else if (auto *p = dyn_cast<ParenExpr>(stmt)) {
+      return trStmt(stmts, p->getSubExpr());
     } else if (auto *comp = dyn_cast<CompoundStmt>(stmt)) {
       // TODO: scope
       for (auto stmt : comp->body())
