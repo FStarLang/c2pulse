@@ -49,3 +49,25 @@ uint32_t find_limit(uint32_t n, uint32_t limit)
     } while (i < n);
     return i;
 }
+
+/* do-while with continue: skip even iterations */
+uint32_t count_odd(uint32_t n)
+    _requires(n >= 1 && n <= 100)
+{
+    uint32_t i = 0;
+    uint32_t count = 0;
+    do
+        _do_while_first(first)
+        _invariant(_live(i) && _live(count) && _live(n) && _live(first))
+        _invariant(first ==> (_specint) i < n)
+        _invariant((_specint) i <= n)
+        _invariant((_specint) count <= i)
+    {
+        i = i + 1;
+        if (i % 2 == 0) {
+            continue;
+        }
+        count = count + 1;
+    } while (i < n);
+    return count;
+}
