@@ -858,6 +858,76 @@ public:
       return stmts.push(mk_while(loc.clone(), trRValue(w->getCond()),
                                  std::move(invs), std::move(reqs),
                                  std::move(enss), std::move(bodyStmts)));
+    } else if (auto *d = dyn_cast<DoStmt>(stmt)) {
+      // Desugar: do { body } while (cond)
+      //      --> bool flag = true;
+      //          while (flag || cond) { flag = false; body; }
+      // If _do_while_first(name) is provided, use that name for the flag.
+
+      // Extract annotations and check for _do_while_first
+      auto body = d->getBody();
+      auto invs = Vec<Rc<ir::Expr>>::new_();
+      auto reqs = Vec<Rc<ir::Expr>>::new_();
+      auto enss = Vec<Rc<ir::Expr>>::new_();
+      std::string flagName;
+      if (auto attrBody = dyn_cast<AttributedStmt>(body)) {
+        for (auto attr : attrBody->getAttrs()) {
+          if (auto inv = isUnaryAttrOf(attr, "c2pulse-invariant")) {
+            invs.push(std::move(inv.value()));
+          } else if (auto req = isUnaryAttrOf(attr, "c2pulse-requires")) {
+            reqs.push(std::move(req.value()));
+          } else if (auto ens = isUnaryAttrOf(attr, "c2pulse-ensures")) {
+            enss.push(std::move(ens.value()));
+          } else if (auto ann = dyn_cast<AnnotateAttr>(attr)) {
+            if (ann->getAnnotation() == "c2pulse-do-while-first" &&
+                ann->args_size() == 1) {
+              auto *arg = (*ann->args_begin())->IgnoreParenImpCasts();
+              if (auto *sl = dyn_cast<StringLiteral>(arg)) {
+                flagName = sl->getString().str();
+              }
+            }
+          }
+        }
+        body = attrBody->getSubStmt();
+      }
+
+      if (flagName.empty()) {
+        static int doCounter = 0;
+        flagName = "__do_first_" + std::to_string(doCounter++);
+      }
+      auto flagId = ctx.mk_ident(toStr(flagName), loc.clone());
+
+      // bool flag; flag = true;
+      stmts.push(
+          mk_var_decl(loc.clone(), flagId.clone(), mk_bool_type(loc.clone())));
+      stmts.push(mk_assign(loc.clone(),
+                           mk_lvalue_var(loc.clone(), flagId.clone()),
+                           mk_bool_lit(loc.clone(), true)));
+
+      // while condition: flag || cond
+      auto flagRead = mk_rvalue_lvalue(
+          loc.clone(), mk_lvalue_var(loc.clone(), flagId.clone()));
+      auto whileCond =
+          mk_rvalue_binop(loc.clone(), ir::BinOp::LogOr(), std::move(flagRead),
+                          trRValue(d->getCond()));
+
+      // Add _live(flag) to invariants (skip if user provided _do_while_first,
+      // since user is expected to include it in their own invariant)
+      if (flagName.find("__do_first_") == 0) {
+        invs.push(
+            mk_live(loc.clone(), mk_lvalue_var(loc.clone(), flagId.clone())));
+      }
+
+      // Build body: flag = false; original_body;
+      auto bodyStmts = Vec<Rc<ir::Stmt>>::new_();
+      bodyStmts.push(mk_assign(loc.clone(),
+                               mk_lvalue_var(loc.clone(), flagId.clone()),
+                               mk_bool_lit(loc.clone(), false)));
+      trStmt(bodyStmts, body);
+
+      return stmts.push(mk_while(std::move(loc), std::move(whileCond),
+                                 std::move(invs), std::move(reqs),
+                                 std::move(enss), std::move(bodyStmts)));
     } else if (auto *f = dyn_cast<ForStmt>(stmt)) {
       // Desugar: for (init; cond; incr) body
       //      --> init; while (cond) { body; incr; }

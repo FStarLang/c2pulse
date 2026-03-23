@@ -14,6 +14,7 @@
 #define _refine(p) __attribute__((annotate("c2pulse-refine", __capture_args(p))))
 #define _refine_always(p) __attribute__((annotate("c2pulse-refine-always", __capture_args(p))))
 #define _invariant(p) __attribute__((annotate("c2pulse-invariant", __capture_args(p))))
+#define _do_while_first(name) __attribute__((annotate("c2pulse-do-while-first", #name)))
 
 #define _assert(p) ({ __attribute__((annotate("c2pulse-assert", __capture_args(p)))) {} })
 #define _ghost_stmt(args) ({ __attribute__((annotate("c2pulse-ghost-stmt", __capture_args(args)))) {} })
@@ -35,6 +36,7 @@
 #define _refine(p)
 #define _refine_always(p)
 #define _invariant(p)
+#define _do_while_first(name)
 
 #define _assert(p)
 #define _ghost_stmt(args)

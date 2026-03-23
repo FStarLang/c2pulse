@@ -481,6 +481,9 @@ fn mk_cond(
 ) -> Rc<Expr> {
     mk_ast(loc, ExprT::Cond(cond, then_expr, else_expr))
 }
+fn mk_live(loc: Rc<SourceInfo>, val: Rc<Expr>) -> Rc<Expr> {
+    mk_ast(loc, ExprT::Live(val))
+}
 
 pub struct StructInitBuilder {
     loc: Rc<SourceInfo>,

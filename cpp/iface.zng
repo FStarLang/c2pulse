@@ -262,6 +262,7 @@ mod crate::clang {
     fn mk_pre_decr(Rc<SourceInfo>, Rc<Expr>) -> Rc<Expr>;
     fn mk_post_decr(Rc<SourceInfo>, Rc<Expr>) -> Rc<Expr>;
     fn mk_cond(Rc<SourceInfo>, Rc<Expr>, Rc<Expr>, Rc<Expr>) -> Rc<Expr>;
+    fn mk_live(Rc<SourceInfo>, Rc<Expr>) -> Rc<Expr>;
 
     fn mk_lvalue_var(Rc<SourceInfo>, Rc<Ident>) -> Rc<Expr>;
     fn mk_lvalue_member(Rc<SourceInfo>, Rc<Expr>, Rc<Ident>) -> Rc<Expr>;
