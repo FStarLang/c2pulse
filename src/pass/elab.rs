@@ -419,6 +419,16 @@ impl<'a> Elaborator<'a> {
                     }
                 }
             }
+            ExprT::AssignExpr(lhs, rhs) => {
+                self.elab_lvalue(env, Rc::make_mut(lhs));
+                self.elab_rvalue(env, Rc::make_mut(rhs));
+                // Cast RHS to LHS type if needed
+                if let (Ok(x_ty), Ok(v_ty)) = (env.infer_expr(lhs), env.infer_expr(rhs)) {
+                    if !env.vtype_eq(x_ty.clone(), v_ty) {
+                        cast_to(rhs, x_ty.to_rc());
+                    }
+                }
+            }
         }
     }
 
@@ -563,9 +573,9 @@ impl<'a> Elaborator<'a> {
         }
     }
 
-    /// Lower a `Cond` expression at the top of an `Assign` or `Return` into
-    /// an `If` statement.  Returns `true` when a rewrite happened.
-    fn lower_cond(stmt: &mut Rc<Stmt>) -> bool {
+    /// Lower complex expressions at the top of statements.
+    /// - `Cond` in Assign/Return/Call → If statement
+    fn lower_expr(stmt: &mut Rc<Stmt>) -> bool {
         let s = Rc::make_mut(stmt);
         let loc = s.loc.clone();
         match &s.val {
@@ -607,14 +617,64 @@ impl<'a> Elaborator<'a> {
         false
     }
 
+    /// Lower AssignExpr: `x = (y = expr)` → insert `y = expr` before,
+    /// replace rhs with `y`. Returns statements to insert before, if any.
+    fn lower_assign_expr(stmt: &mut Rc<Stmt>) -> Vec<Rc<Stmt>> {
+        let s = Rc::make_mut(stmt);
+        let loc = s.loc.clone();
+
+        // Extract the top-level rhs expression
+        let rhs = match &s.val {
+            StmtT::Assign(_, rhs) => Some(rhs.clone()),
+            StmtT::Return(Some(rhs)) => Some(rhs.clone()),
+            StmtT::Call(rhs) => Some(rhs.clone()),
+            _ => None,
+        };
+
+        let Some(rhs) = rhs else { return vec![] };
+        let ExprT::AssignExpr(inner_lhs, inner_rhs) = &rhs.val else {
+            return vec![];
+        };
+        let inner_lhs = inner_lhs.clone();
+        let inner_rhs = inner_rhs.clone();
+
+        // Create the assignment statement: inner_lhs = inner_rhs
+        let assign_stmt = StmtT::Assign(inner_lhs.clone(), inner_rhs).with_loc(loc.clone());
+
+        // Replace the rhs in the current statement with a read of inner_lhs
+        match &mut s.val {
+            StmtT::Assign(_, rhs) => *rhs = inner_lhs,
+            StmtT::Return(Some(rhs)) => *rhs = inner_lhs,
+            StmtT::Call(rhs) => *rhs = inner_lhs,
+            _ => unreachable!(),
+        }
+
+        vec![assign_stmt]
+    }
+
     fn elab_stmts(&mut self, env: &Env, stmts: &mut Vec<Rc<Stmt>>) {
         let mut env = env.clone();
-        for i in 0..stmts.len() {
+        let mut i = 0;
+        while i < stmts.len() {
             Self::refine_decl_pointer_kind(&env, stmts, i);
 
             self.elab_stmt(&env, Rc::make_mut(&mut stmts[i]));
-            Self::lower_cond(&mut stmts[i]);
+            Self::lower_expr(&mut stmts[i]);
+            // Lower AssignExpr by inserting assignment before current stmt
+            let inserted = Self::lower_assign_expr(&mut stmts[i]);
+            if !inserted.is_empty() {
+                for (j, s) in inserted.into_iter().enumerate() {
+                    stmts.insert(i + j, s);
+                }
+                // Re-elaborate the inserted statements
+                for j in 0..stmts.len() - i {
+                    env.push_stmt(&stmts[i + j]);
+                }
+                i = stmts.len();
+                continue;
+            }
             env.push_stmt(&stmts[i]);
+            i += 1;
         }
     }
 

@@ -290,6 +290,9 @@ pub enum ExprT {
     PreDecr(Rc<Expr>),
     PostDecr(Rc<Expr>),
     Cond(Rc<Expr>, Rc<Expr>, Rc<Expr>),
+    /// Assignment expression: assigns rhs to lhs, evaluates to rhs.
+    /// Lowered to Assign statement + value in elab pass.
+    AssignExpr(Rc<Expr>, Rc<Expr>),
     Error(Rc<Type>),
 }
 

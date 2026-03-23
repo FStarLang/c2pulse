@@ -427,6 +427,10 @@ impl<'a> Checker<'a> {
                 self.check_rvalue(env, then_expr);
                 self.check_rvalue(env, else_expr);
             }
+            ExprT::AssignExpr(lhs, rhs) => {
+                self.check_rvalue(env, lhs);
+                self.check_rvalue(env, rhs);
+            }
             ExprT::Error(ty) => self.check_type(env, ty),
         }
     }

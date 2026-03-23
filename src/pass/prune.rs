@@ -182,6 +182,10 @@ fn scan_expr(deps: &mut HashSet<DeclName>, rv: &Expr) {
             scan_expr(deps, then_expr);
             scan_expr(deps, else_expr);
         }
+        ExprT::AssignExpr(lhs, rhs) => {
+            scan_expr(deps, lhs);
+            scan_expr(deps, rhs);
+        }
     }
 }
 

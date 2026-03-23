@@ -669,6 +669,55 @@ public:
       case clang::BO_Shr:
         return m(ir::BinOp::Shr());
 
+      case clang::BO_Assign:
+        return mk_assign_expr(std::move(loc), trLValue(bo->getLHS()),
+                              trRValue(bo->getRHS()));
+
+      case clang::BO_AddAssign:
+      case clang::BO_SubAssign:
+      case clang::BO_MulAssign:
+      case clang::BO_DivAssign:
+      case clang::BO_RemAssign:
+      case clang::BO_ShlAssign:
+      case clang::BO_ShrAssign:
+      case clang::BO_AndAssign:
+      case clang::BO_OrAssign:
+      case clang::BO_XorAssign: {
+        auto getBinOp = [](BinaryOperatorKind ok) -> ir::BinOp {
+          switch (ok) {
+          case BO_AddAssign:
+            return ir::BinOp::Add();
+          case BO_SubAssign:
+            return ir::BinOp::Sub();
+          case BO_MulAssign:
+            return ir::BinOp::Mul();
+          case BO_DivAssign:
+            return ir::BinOp::Div();
+          case BO_RemAssign:
+            return ir::BinOp::Mod();
+          case BO_ShlAssign:
+            return ir::BinOp::Shl();
+          case BO_ShrAssign:
+            return ir::BinOp::Shr();
+          case BO_AndAssign:
+            return ir::BinOp::BitAnd();
+          case BO_OrAssign:
+            return ir::BinOp::BitOr();
+          case BO_XorAssign:
+            return ir::BinOp::BitXor();
+          default:
+            __builtin_unreachable();
+          }
+        };
+        auto op = getBinOp(bo->getOpcode());
+        auto lhsRval = mk_rvalue_lvalue(loc.clone(), trLValue(bo->getLHS()));
+        auto rhs = trRValue(bo->getRHS());
+        auto result = mk_rvalue_binop(loc.clone(), std::move(op),
+                                      std::move(lhsRval), std::move(rhs));
+        return mk_assign_expr(std::move(loc), trLValue(bo->getLHS()),
+                              std::move(result));
+      }
+
       default:;
         // continue to error case
       }

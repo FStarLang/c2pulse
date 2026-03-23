@@ -273,6 +273,11 @@ impl PrettyIR for ExprT {
                 .append(" : ")
                 .append(else_expr.to_doc())
                 .append(")"),
+            ExprT::AssignExpr(lhs, rhs) => RcDoc::text("(")
+                .append(lhs.to_doc())
+                .append(" = ")
+                .append(rhs.to_doc())
+                .append(")"),
         }
     }
 }

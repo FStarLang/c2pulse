@@ -503,6 +503,10 @@ impl<'a> Emitter<'a> {
                 self.subst_this_rvalue(env, Rc::make_mut(then_expr), this);
                 self.subst_this_rvalue(env, Rc::make_mut(else_expr), this);
             }
+            ExprT::AssignExpr(lhs, rhs) => {
+                self.subst_this_rvalue(env, Rc::make_mut(lhs), this);
+                self.subst_this_rvalue(env, Rc::make_mut(rhs), this);
+            }
         }
     }
 
@@ -1802,6 +1806,13 @@ impl<'a> Emitter<'a> {
                         .append("else")
                         .append(Doc::line().append(self.emit_rvalue(env, else_expr)).nest(2)),
                 ),
+                ExprT::AssignExpr(_, _) => {
+                    self.report(
+                        "assignment expression should have been lowered".to_string(),
+                        &v.loc,
+                    );
+                    Doc::text("(admit())")
+                }
             }
         })
     }

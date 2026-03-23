@@ -401,6 +401,7 @@ impl Env {
                 .reuse_loc(TypeT::TypeRef(TypeRefKind::Union(name.clone())))
                 .into()),
             ExprT::Cond(_, then_expr, _) => self.infer_expr(then_expr),
+            ExprT::AssignExpr(_, rhs) => self.infer_expr(rhs),
         }
     }
 
