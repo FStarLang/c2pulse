@@ -29,3 +29,23 @@ uint32_t run_once(uint32_t x)
     } while (0);
     return r;
 }
+
+/* do-while with break: search for a threshold */
+uint32_t find_limit(uint32_t n, uint32_t limit)
+    _requires(n >= 1 && n <= 100 && limit <= 100)
+{
+    uint32_t i = 0;
+    do
+        _do_while_first(first)
+        _invariant(_live(i) && _live(n) && _live(limit) && _live(first))
+        _invariant(first ==> (_specint) i < n)
+        _invariant((_specint) i <= n)
+        _ensures((_specint) i <= n)
+    {
+        if (i == limit) {
+            break;
+        }
+        i = i + 1;
+    } while (i < n);
+    return i;
+}
