@@ -583,6 +583,12 @@ public:
           }
         }
 
+        // BitCast (e.g., T* → void*): pass through after malloc/calloc
+        // detection. F* functions like memcpy are type-polymorphic.
+        if (ic->getCastKind() == CK_BitCast) {
+          return trRValue(ic->getSubExpr());
+        }
+
         // continue to error case
       }
     } else if (auto p = dyn_cast<ParenExpr>(e)) {
