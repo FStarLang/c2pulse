@@ -5,6 +5,7 @@
 #include "clang/Tooling/CompilationDatabase.h"
 #include "clang/Tooling/Tooling.h"
 #include <dlfcn.h>
+#include <optional>
 #include <sstream>
 #include <unordered_set>
 
@@ -169,6 +170,8 @@ public:
   std::unordered_map<RecordDecl *, std::string>
       structNames; // map record decls to generated struct names
   Expr *forLoopIncrement = nullptr;
+  // When inside a switch desugaring, break sets this flag instead of mk_break
+  Rc<ir::Ident> *switchBreakId = nullptr;
 
   // TODO: should probably wait with translation until after parsing
 
@@ -977,6 +980,153 @@ public:
       return stmts.push(mk_while(std::move(loc), std::move(whileCond),
                                  std::move(invs), std::move(reqs),
                                  std::move(enss), std::move(bodyStmts)));
+    } else if (auto *sw = dyn_cast<SwitchStmt>(stmt)) {
+      // Desugar: switch (scrutinee) { case v1: s1; case v2: s2; default: sd }
+      //      --> let scrut = scrutinee;
+      //          bool hit = false; bool brk = false;
+      //          if (!brk && (hit || scrut == v1)) { hit = true; s1 }
+      //          if (!brk && (hit || scrut == v2)) { hit = true; s2 }
+      //          if (!brk) { sd }
+      // break inside case bodies sets brk = true.
+
+      // Evaluate scrutinee
+      auto scrutRval = trRValue(sw->getCond());
+      auto scrutTy =
+          trQualType(sw->getCond()->getType(), sw->getCond()->getSourceRange());
+
+      // Create scrutinee temp variable
+      static int switchCounter = 0;
+      auto scrutName = "__switch_scrut_" + std::to_string(switchCounter);
+      auto scrutId = ctx.mk_ident(toStr(scrutName), loc.clone());
+      stmts.push(mk_var_decl(loc.clone(), scrutId.clone(), std::move(scrutTy)));
+      stmts.push(mk_assign(loc.clone(),
+                           mk_lvalue_var(loc.clone(), scrutId.clone()),
+                           std::move(scrutRval)));
+
+      // Create hit and brk flag variables
+      auto hitName = "__switch_hit_" + std::to_string(switchCounter);
+      auto brkName = "__switch_brk_" + std::to_string(switchCounter);
+      switchCounter++;
+      auto hitId = ctx.mk_ident(toStr(hitName), loc.clone());
+      auto brkId = ctx.mk_ident(toStr(brkName), loc.clone());
+      auto boolTy = mk_bool_type(loc.clone());
+
+      stmts.push(
+          mk_var_decl(loc.clone(), hitId.clone(), mk_bool_type(loc.clone())));
+      stmts.push(mk_assign(loc.clone(),
+                           mk_lvalue_var(loc.clone(), hitId.clone()),
+                           mk_bool_lit(loc.clone(), false)));
+      stmts.push(
+          mk_var_decl(loc.clone(), brkId.clone(), mk_bool_type(loc.clone())));
+      stmts.push(mk_assign(loc.clone(),
+                           mk_lvalue_var(loc.clone(), brkId.clone()),
+                           mk_bool_lit(loc.clone(), false)));
+
+      // Set switchBreakId so BreakStmt sets flag
+      auto savedSwitchBreak = switchBreakId;
+      auto brkIdHeap = new Rc<ir::Ident>(brkId.clone());
+      switchBreakId = brkIdHeap;
+
+      // Collect cases from the switch body
+      auto *body = sw->getBody();
+      auto *comp = dyn_cast<CompoundStmt>(body);
+      if (!comp) {
+        reportUnsupported(body->getSourceRange(), loc,
+                          "switch body must be a compound statement", "");
+        delete switchBreakId;
+        switchBreakId = savedSwitchBreak;
+        return {};
+      }
+
+      // Walk the compound statement collecting case/default groups
+      bool seenDefault = false;
+      for (auto *child : comp->body()) {
+        auto childLoc = getRange(child->getSourceRange());
+
+        if (auto *cs = dyn_cast<CaseStmt>(child)) {
+          if (seenDefault) {
+            reportUnsupported(cs->getSourceRange(), childLoc,
+                              "default must be the last case in switch", "");
+            break;
+          }
+
+          // Collect all case values from chained cases (case 1: case 2: ...)
+          // and find the final sub-statement
+          std::vector<Expr *> caseValues;
+          Stmt *caseBody = child;
+          while (auto *innerCs = dyn_cast<CaseStmt>(caseBody)) {
+            caseValues.push_back(innerCs->getLHS());
+            caseBody = innerCs->getSubStmt();
+          }
+
+          // Build match condition: scrut == v1 || scrut == v2 || ...
+          Rc<ir::Expr> matchCond = mk_bool_lit(childLoc.clone(), false);
+          for (auto *cv : caseValues) {
+            auto scrutRead = mk_rvalue_lvalue(
+                childLoc.clone(),
+                mk_lvalue_var(childLoc.clone(), scrutId.clone()));
+            auto caseVal = trRValue(cv->IgnoreParenImpCasts());
+            auto eq = mk_rvalue_binop(childLoc.clone(), ir::BinOp::Eq(),
+                                      std::move(scrutRead), std::move(caseVal));
+            matchCond = mk_rvalue_binop(childLoc.clone(), ir::BinOp::LogOr(),
+                                        std::move(matchCond), std::move(eq));
+          }
+
+          // Full condition: !brk && (hit || matchCond)
+          auto notBrk = mk_rvalue_unop(
+              childLoc.clone(), ir::UnOp::Not(),
+              mk_rvalue_lvalue(childLoc.clone(),
+                               mk_lvalue_var(childLoc.clone(), brkId.clone())));
+          auto hitRead = mk_rvalue_lvalue(
+              childLoc.clone(), mk_lvalue_var(childLoc.clone(), hitId.clone()));
+          auto hitOrMatch =
+              mk_rvalue_binop(childLoc.clone(), ir::BinOp::LogOr(),
+                              std::move(hitRead), std::move(matchCond));
+          auto cond = mk_rvalue_binop(childLoc.clone(), ir::BinOp::LogAnd(),
+                                      std::move(notBrk), std::move(hitOrMatch));
+
+          // Body: hit = true; case_stmts
+          auto thenStmts = Vec<Rc<ir::Stmt>>::new_();
+          thenStmts.push(mk_assign(
+              childLoc.clone(), mk_lvalue_var(childLoc.clone(), hitId.clone()),
+              mk_bool_lit(childLoc.clone(), true)));
+          if (caseBody)
+            trStmt(thenStmts, caseBody);
+
+          auto elseStmts = Vec<Rc<ir::Stmt>>::new_();
+          stmts.push(mk_if(std::move(childLoc), std::move(cond),
+                           std::move(thenStmts), std::move(elseStmts)));
+
+        } else if (dyn_cast<DefaultStmt>(child)) {
+          seenDefault = true;
+          auto *ds = dyn_cast<DefaultStmt>(child);
+
+          // Condition: !brk
+          auto notBrk = mk_rvalue_unop(
+              childLoc.clone(), ir::UnOp::Not(),
+              mk_rvalue_lvalue(childLoc.clone(),
+                               mk_lvalue_var(childLoc.clone(), brkId.clone())));
+
+          auto thenStmts = Vec<Rc<ir::Stmt>>::new_();
+          thenStmts.push(mk_assign(
+              childLoc.clone(), mk_lvalue_var(childLoc.clone(), hitId.clone()),
+              mk_bool_lit(childLoc.clone(), true)));
+          if (ds->getSubStmt())
+            trStmt(thenStmts, ds->getSubStmt());
+
+          auto elseStmts = Vec<Rc<ir::Stmt>>::new_();
+          stmts.push(mk_if(std::move(childLoc), std::move(notBrk),
+                           std::move(thenStmts), std::move(elseStmts)));
+
+        } else {
+          // Bare statement outside case/default — translate directly
+          trStmt(stmts, child);
+        }
+      }
+
+      delete switchBreakId;
+      switchBreakId = savedSwitchBreak;
+      return {};
     } else if (auto *f = dyn_cast<ForStmt>(stmt)) {
       // Desugar: for (init; cond; incr) body
       //      --> init; while (cond) { body; incr; }
@@ -1014,6 +1164,12 @@ public:
                                  std::move(reqs), std::move(enss),
                                  std::move(bodyStmts)));
     } else if (dyn_cast<BreakStmt>(stmt)) {
+      if (switchBreakId) {
+        // Inside a switch: set break flag instead of emitting break
+        return stmts.push(mk_assign(
+            loc.clone(), mk_lvalue_var(loc.clone(), switchBreakId->clone()),
+            mk_bool_lit(std::move(loc), true)));
+      }
       return stmts.push(mk_break(std::move(loc)));
     } else if (dyn_cast<ContinueStmt>(stmt)) {
       if (forLoopIncrement)
