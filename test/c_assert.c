@@ -1,0 +1,12 @@
+#include "c2pulse.h"
+#include <stdint.h>
+
+/* C assert is translated to Pulse assert (with_pure ...) */
+int32_t checked_add(int32_t a, int32_t b)
+    _requires(a >= 0 && a < 1000 && b >= 0 && b < 1000)
+    _ensures(return == a + b)
+{
+    int32_t result = a + b;
+    assert(result >= 0);
+    return result;
+}

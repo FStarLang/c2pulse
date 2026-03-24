@@ -1267,6 +1267,27 @@ public:
         trStmt(stmts, stmt);
       return rust::Unit();
     } else if (auto *c = dyn_cast<CallExpr>(stmt)) {
+      // Intercept __c2pulse_c_assert(expr) — translated from C assert()
+      if (auto fd = c->getDirectCallee()) {
+        if (fd->getName() == "__c2pulse_c_assert" && c->getNumArgs() == 1) {
+          auto val = trRValue(c->getArg(0));
+          // Cast to bool — elab will convert to slprop via with_pure
+          auto boolVal = mk_rvalue_cast(loc.clone(), std::move(val),
+                                        mk_bool_type(loc.clone()));
+          // Wrap in if (c2pulse_c_assert_enabled()) to expose
+          // side-effect differences when assertions are disabled.
+          auto enabledFn = ctx.mk_ident(
+              toStr(StringRef("c2pulse_c_assert_enabled")), loc.clone());
+          auto enabledArgs = Vec<Rc<ir::Expr>>::new_();
+          auto enabledCall = mk_rvalue_fncall(loc.clone(), std::move(enabledFn),
+                                              std::move(enabledArgs));
+          auto thenStmts = Vec<Rc<ir::Stmt>>::new_();
+          thenStmts.push(mk_assert(loc.clone(), std::move(boolVal)));
+          auto elseStmts = Vec<Rc<ir::Stmt>>::new_();
+          return stmts.push(mk_if(std::move(loc), std::move(enabledCall),
+                                  std::move(thenStmts), std::move(elseStmts)));
+        }
+      }
       return stmts.push(mk_call(std::move(loc), trRValue(c)));
     } else if (auto *se = dyn_cast<StmtExpr>(stmt)) {
       // _assert(p) expands to ({ __attribute__((annotate("c2pulse-assert",

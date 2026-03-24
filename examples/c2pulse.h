@@ -2,6 +2,11 @@
 
 #ifdef C2PULSE
 
+// Dummy declaration for C assert() translation
+static inline void __c2pulse_c_assert(int x) { (void)x; }
+// Opaque function used to guard assert — Pulse verifies both branches
+__attribute__((annotate("c2pulse-pure"))) _Bool c2pulse_c_assert_enabled(void);
+
 #define __c2pulse_concat_ind(x, y) x ## y
 #define __c2pulse_concat(x, y) __c2pulse_concat_ind(x, y)
 #define _include_pulse(...) [[clang::annotate("c2pulse-includes", __COUNTER__)]] \
@@ -55,3 +60,9 @@
 
 #define _same_as_old(x) ((x) == _old(x))
 #define _preserves_value(x) _ensures(_same_as_old(x))
+
+// Override C assert to translate to Pulse assertion
+#ifdef C2PULSE
+#undef assert
+#define assert(x) __c2pulse_c_assert(x)
+#endif
