@@ -3565,6 +3565,7 @@ pub fn emit(
         module_name
     )));
     for decl in &tu.decls {
+        output.push(Doc::text("#restart-solver"));
         output.push(emitter.emit_decl(&env, decl));
         env.push_decl(decl);
     }
