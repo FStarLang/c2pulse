@@ -288,8 +288,10 @@ public:
     } else if (auto tydef = dyn_cast<TypedefType>(t)) {
       auto id = ctx.mk_ident(toStr(tydef->getDecl()->getName()), loc.clone());
       return mk_type_typedef(std::move(loc), std::move(id));
+#if LLVM_VERSION_MAJOR < 22
     } else if (auto elab = dyn_cast<ElaboratedType>(t)) {
       return trQualType(elab->desugar(), range, liftStructs);
+#endif
     } else if (auto ptr = dyn_cast<PointerType>(t)) {
       return mk_pointer_unknown(
           std::move(loc),
@@ -1543,9 +1545,14 @@ public:
   }
 };
 
+#if LLVM_VERSION_MAJOR < 22
+#define GetResourcesPath clang::driver::Driver::GetResourcesPath
+#endif
+
 std::string getBinaryForResourcesPath() {
   Dl_info info;
-  if (dladdr((void *)&clang::driver::Driver::GetResourcesPath, &info)) {
+  if (dladdr((void *)static_cast<std::string (*)(StringRef)>(&GetResourcesPath),
+             &info)) {
     return info.dli_fname;
   } else {
     return "/usr/bin/clang";
@@ -1553,7 +1560,7 @@ std::string getBinaryForResourcesPath() {
 }
 
 std::string getResourcesPath() {
-  return clang::driver::Driver::GetResourcesPath(getBinaryForResourcesPath());
+  return GetResourcesPath(getBinaryForResourcesPath());
 }
 
 llvm::vfs::Status mkStatus(Ref<rust::crate::vfs::VFSEntry> entry) {
