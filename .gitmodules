@@ -1,3 +1,0 @@
-[submodule "opt/fstar"]
-	path = opt/fstar
-	url = https://github.com/fstarlang/fstar

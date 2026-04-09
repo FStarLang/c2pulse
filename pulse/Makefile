@@ -1,8 +1,6 @@
 .PHONY: all
 all: verify
 
-include ../opt/env.mk
-
 ADMIT ?=
 MAYBE_ADMIT = $(if $(ADMIT),--admit_smt_queries true)
 

@@ -1,6 +1,9 @@
 {
   "name": "c2pulse devcontainer",
-  "image": "ghcr.io/fstarlang/c2pulse-devcontainer",
+  "build": {
+    "context": "..",
+    "dockerfile": "Containerfile"
+  },
   "customizations": {
     "vscode": {
       "extensions": [
@@ -14,7 +17,6 @@
   },
   // Runs only once when container is prepared
   "onCreateCommand": {
-    "restore-opt-cache": "cd /workspaces/c2pulse && test ! -f opt/opam.done && tar -xf /c2pulse-opt-cache.tar.zst || echo not using cache"
   },
   // Runs periodically and/or when content of repo changes
   "updateContentCommand": {
