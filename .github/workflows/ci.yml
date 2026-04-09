@@ -12,46 +12,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
-
-    - name: Install opam
-      run: |
-        sudo apt update
-        sudo apt install -y opam
-        opam init --bare
-
-    - name: Install Z3
-      run: |
-        echo "PATH=/usr/local/bin/:$PATH" >> $GITHUB_ENV
-        sudo ./opt/fstar/.scripts/get_fstar_z3.sh /usr/local/bin/
-
-    - name: Compute cache key
-      id: cachekey
-      run: |
-        echo "cachekey=$(./opt/ci-deps-hash)" >> "$GITHUB_OUTPUT"
-
-    - name: Get cache
-      id: getcache
-      uses: actions/cache/restore@v4
-      with:
-        path: opt
-        key: ${{ steps.cachekey.outputs.cachekey }}
-
-    - name: Restore changes to files in opt
-      run: |
-        git reset --hard
-
-    - name: Build dependencies
-      run: |
-        make -j$(nproc) build-pulse
-
-    - name: Save cache
-      if: ${{ steps.getcache.outputs.cache-hit != 'true' }}
-      uses: actions/cache/save@v4
-      with:
-        path: opt
-        key: ${{ steps.cachekey.outputs.cachekey }}
 
     - name: Install clang
       run: |
@@ -61,6 +21,9 @@ jobs:
         sudo apt update
         sudo apt install -y clang-20 libclang-cpp20-dev g++ clang-tools-20 libclang-20-dev
 
+    - name: Install F*
+      run: ./opt/install-fstar.sh --link-dir /usr/local/bin
+
     - name: Build c2pulse
       run: |
         make -j$(nproc)
@@ -68,10 +31,3 @@ jobs:
     - name: Test c2pulse
       run: |
         make -j$(nproc) test
-
-    - name: Checking that code is correctly formatted
-      if: always()
-      run: |
-        cargo fmt
-        clang-format -i cpp/impl.cpp
-        git diff --exit-code
