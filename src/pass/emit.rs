@@ -2085,7 +2085,16 @@ impl<'a> Emitter<'a> {
 } // impl Emitter (group C)
 
 fn mk_let(n: Doc, args: &[Doc], ty: Doc, body: Doc) -> Doc {
-    (Doc::text("let").append(Doc::line()).append(n))
+    mk_let_rec(false, n, args, ty, body)
+}
+
+fn mk_let_rec(is_rec: bool, n: Doc, args: &[Doc], ty: Doc, body: Doc) -> Doc {
+    let keyword = if is_rec {
+        Doc::text("let rec")
+    } else {
+        Doc::text("let")
+    };
+    (keyword.append(Doc::line()).append(n))
         .append(
             Doc::concat(args.iter().map(|arg| Doc::line().append(arg.clone())))
                 .append(Doc::line().append(":"))
@@ -3473,7 +3482,7 @@ impl<'a> Emitter<'a> {
 
         let has_specs = !requires_props.is_empty() || !ensures_props.is_empty();
 
-        let ty_doc = if has_specs {
+        let ty_doc = if has_specs || (decl.is_rec && decl.decreases.is_some()) {
             let req_doc = if requires_props.is_empty() {
                 Doc::text("True")
             } else {
@@ -3484,7 +3493,7 @@ impl<'a> Emitter<'a> {
             } else {
                 Doc::intersperse(ensures_props, Doc::text(" /\\ "))
             };
-            naryfn([
+            let mut pure_args = vec![
                 Doc::text("Pure"),
                 ret_type_doc,
                 parens(Doc::text("requires").append(Doc::line()).append(req_doc)),
@@ -3501,12 +3510,21 @@ impl<'a> Emitter<'a> {
                             .append(ens_doc),
                     )),
                 ),
-            ])
+            ];
+            if let Some(decreases_expr) = &decl.decreases {
+                pure_args.push(parens(
+                    Doc::text("decreases")
+                        .append(Doc::line())
+                        .append(self.emit_rvalue(env, decreases_expr)),
+                ));
+            }
+            naryfn(pure_args)
         } else {
             ret_type_doc
         };
 
-        mk_let(
+        mk_let_rec(
+            decl.is_rec,
             self.nm.emit(Name::Fn(decl.name.val.clone())),
             &params,
             ty_doc,
