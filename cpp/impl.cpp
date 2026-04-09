@@ -1584,18 +1584,22 @@ static const llvm::sys::fs::UniqueID BUILTIN_ASSERT_H_UID(2, 1);
 static const llvm::sys::fs::UniqueID BUILTIN_INCLUDE_DIR_UID(2, 2);
 
 // A VFS file that serves static string content (used for builtin headers).
+// The UID is passed explicitly so each builtin file has a stable, distinct ID.
 class BuiltinVFSFile : public llvm::vfs::File {
   llvm::StringRef name;
   llvm::StringRef content;
+  llvm::sys::fs::UniqueID uid;
 
 public:
-  BuiltinVFSFile(llvm::StringRef n, llvm::StringRef c) : name(n), content(c) {}
+  BuiltinVFSFile(llvm::StringRef n, llvm::StringRef c,
+                 llvm::sys::fs::UniqueID u)
+      : name(n), content(c), uid(u) {}
 
   llvm::ErrorOr<llvm::vfs::Status> status() override {
     llvm::sys::TimePoint<> time;
-    return llvm::vfs::Status(
-        name, BUILTIN_ASSERT_H_UID, time, 0, 0, content.size(),
-        llvm::sys::fs::file_type::regular_file, llvm::sys::fs::perms::all_all);
+    return llvm::vfs::Status(name, uid, time, 0, 0, content.size(),
+                             llvm::sys::fs::file_type::regular_file,
+                             llvm::sys::fs::perms::all_all);
   }
 
   llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>>
@@ -1700,7 +1704,8 @@ public:
       return std::make_unique<BuiltinVFSFile>(
           llvm::StringRef(BUILTIN_ASSERT_H_PATH),
           llvm::StringRef(BUILTIN_ASSERT_H_CONTENT,
-                          sizeof(BUILTIN_ASSERT_H_CONTENT) - 1));
+                          sizeof(BUILTIN_ASSERT_H_CONTENT) - 1),
+          BUILTIN_ASSERT_H_UID);
     }
     auto res = ctx.read_vfs_file(toStr(Path.str()));
     if (!res.is_ok()) {
@@ -1785,9 +1790,12 @@ static void parse_file(RefMut<Ctx> ctx) {
         incPath.c_str(), ArgumentInsertPosition::BEGIN));
   }
 
-  // Add the builtin include directory last so it ends up first in the
-  // command line (highest priority). This ensures our wrapper assert.h
-  // is found before any system assert.h.
+  // Append the builtin include directory adjuster last. Because each adjuster
+  // uses ArgumentInsertPosition::BEGIN, later-appended adjusters insert their
+  // flags before earlier ones. The last adjuster therefore places its flags
+  // first in the final command line, giving the builtin directory the highest
+  // include-path priority. This ensures our wrapper assert.h is found before
+  // any user or system assert.h.
   Tool.appendArgumentsAdjuster(getInsertArgumentAdjuster(
       {"-I", BUILTIN_INCLUDE_DIR}, ArgumentInsertPosition::BEGIN));
 
