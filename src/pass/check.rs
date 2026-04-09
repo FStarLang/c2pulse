@@ -588,6 +588,8 @@ impl<'a> Checker<'a> {
             requires,
             ensures,
             is_pure: _,
+            is_rec: _,
+            decreases: _,
         }: &FnDecl,
     ) {
         let env = &mut env.clone();
@@ -641,6 +643,11 @@ impl<'a> Checker<'a> {
     fn check_translation_unit(&mut self, tu: &TranslationUnit) {
         let mut env = Env::new();
         for decl in &tu.decls {
+            if let DeclT::FnDefn(FnDefn { decl: fn_decl, .. }) = &decl.val {
+                if fn_decl.is_rec {
+                    env.push_fn_decl(fn_decl.clone());
+                }
+            }
             self.check_decl(&env, decl);
             env.push_decl(decl);
         }

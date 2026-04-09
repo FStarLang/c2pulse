@@ -284,6 +284,8 @@ fn scan_translation_unit(deps: &mut Deps<DeclName>, tu: &TranslationUnit) {
             requires,
             ensures,
             is_pure: _,
+            is_rec: _,
+            decreases: _,
         }: &FnDecl,
     ) {
         for arg in args {

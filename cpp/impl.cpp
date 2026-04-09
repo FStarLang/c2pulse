@@ -1410,10 +1410,18 @@ public:
         if (auto ens = isUnaryAttrOf(attr, "c2pulse-ensures")) {
           builder.ensures(std::move(ens.value()));
         }
+        if (auto dec = isUnaryAttrOf(attr, "c2pulse-decreases")) {
+          builder.decreases(std::move(dec.value()));
+        }
         if (auto ann = dyn_cast<AnnotateAttr>(attr);
             ann && ann->getAnnotation() == "c2pulse-pure" &&
             ann->args_size() == 0) {
           builder.set_pure();
+        }
+        if (auto ann = dyn_cast<AnnotateAttr>(attr);
+            ann && ann->getAnnotation() == "c2pulse-rec" &&
+            ann->args_size() == 0) {
+          builder.set_rec();
         }
       }
       if (FD->hasBody()) {

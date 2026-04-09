@@ -3031,6 +3031,8 @@ impl<'a> Emitter<'a> {
             requires,
             ensures,
             is_pure: _,
+            is_rec,
+            decreases,
         }: &FnDecl,
     ) -> Doc {
         let env = &mut env.clone();
@@ -3166,8 +3168,14 @@ impl<'a> Emitter<'a> {
 
         ensures_props.extend(ensures.iter().map(|r| self.emit_rvalue(env, r)));
 
-        let hdr = Doc::group(
+        let fn_keyword = if *is_rec {
+            Doc::text("fn rec")
+        } else {
             Doc::text("fn")
+        };
+
+        let hdr = Doc::group(
+            fn_keyword
                 .append(Doc::line())
                 .append(self.nm.emit(Name::Fn(name.val.clone()))),
         )
@@ -3212,6 +3220,16 @@ impl<'a> Emitter<'a> {
                     .group(),
             )
         })))
+        .append(match decreases {
+            Some(dec) => Doc::hardline().append(
+                Doc::text("decreases")
+                    .append(Doc::line())
+                    .append(self.emit_rvalue(env, dec))
+                    .nest(2)
+                    .group(),
+            ),
+            None => Doc::nil(),
+        })
         .group()
     }
 
@@ -3565,6 +3583,11 @@ pub fn emit(
         module_name
     )));
     for decl in &tu.decls {
+        if let DeclT::FnDefn(FnDefn { decl: fn_decl, .. }) = &decl.val {
+            if fn_decl.is_rec {
+                env.push_fn_decl(fn_decl.clone());
+            }
+        }
         output.push(Doc::text("#restart-solver"));
         output.push(emitter.emit_decl(&env, decl));
         env.push_decl(decl);

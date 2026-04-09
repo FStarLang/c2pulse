@@ -695,6 +695,8 @@ impl<'a> Elaborator<'a> {
             requires,
             ensures,
             is_pure: _,
+            is_rec: _,
+            decreases: _,
         }: &mut FnDecl,
     ) {
         let env = &mut env.clone();
@@ -752,6 +754,11 @@ pub fn elab(diags: &mut Diagnostics, tu: &mut TranslationUnit) {
     let mut env = Env::new();
     let mut elab = Elaborator { diags };
     for decl in &mut tu.decls {
+        if let DeclT::FnDefn(FnDefn { decl: fn_decl, .. }) = &decl.val {
+            if fn_decl.is_rec {
+                env.push_fn_decl(fn_decl.clone());
+            }
+        }
         elab.elab_decl(&env, decl);
         env.push_decl(decl);
     }

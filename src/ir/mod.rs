@@ -390,6 +390,8 @@ pub struct FnDecl {
     pub requires: Exprs,
     pub ensures: Exprs,
     pub is_pure: bool,
+    pub is_rec: bool,
+    pub decreases: Option<Rc<Expr>>,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
