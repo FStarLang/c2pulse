@@ -1078,7 +1078,7 @@ fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
         (BinOp::Mod, TypeT::Int { signed, width }) => {
             Doc::text(format!("`{}.rem`", get_int_mod(signed, width)?))
         }
-        (BinOp::Mod, TypeT::SizeT) => Doc::text("`SizeT.mod`"),
+        (BinOp::Mod, TypeT::SizeT) => Doc::text("`SizeT.rem`"),
         (BinOp::Add, TypeT::Int { signed, width }) => {
             Doc::text(format!("`{}.add`", get_int_mod(signed, width)?))
         }
