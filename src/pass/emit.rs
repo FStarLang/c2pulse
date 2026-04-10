@@ -328,6 +328,9 @@ struct Emitter<'a> {
     /// For each TypeRef, the types of the val params for Init/Uninit variants.
     type_val_params: HashMap<TypeRef, Vec<Doc>>,
     type_uninit_val_params: HashMap<TypeRef, Vec<Doc>>,
+    /// When emitting a struct's pred, tracks the struct name to avoid
+    /// infinite recursion on self-referential pointer fields.
+    defining_struct: Option<Rc<str>>,
 }
 
 impl<'a> Emitter<'a> {
@@ -627,10 +630,20 @@ impl<'a> Emitter<'a> {
                                 name: val_name,
                                 ty: pointee_type_doc,
                             });
-                            let derefed = ExprT::Deref(this.clone()).with_loc(this.loc.clone());
-                            self.emit_type_slprop(
-                                env, pointee_ty, variant, quote, bindings, props, &derefed,
-                            );
+                            // Skip recursion for self-referential struct pointers
+                            // (the user defines their own recursive predicate)
+                            let is_self_ref = match &pointee_ty.val {
+                                TypeT::TypeRef(TypeRefKind::Struct(s)) => {
+                                    self.defining_struct.as_deref() == Some(&*s.val)
+                                }
+                                _ => false,
+                            };
+                            if !is_self_ref {
+                                let derefed = ExprT::Deref(this.clone()).with_loc(this.loc.clone());
+                                self.emit_type_slprop(
+                                    env, pointee_ty, variant, quote, bindings, props, &derefed,
+                                );
+                            }
                         }
                         SLPropVariant::Uninit => {
                             props.push(annotated(
@@ -2349,6 +2362,11 @@ impl<'a> Emitter<'a> {
         let env = &mut env.clone();
         env.push_struct(decl.clone());
 
+        // Track which struct we're defining so self-referential pointer
+        // fields don't produce infinitely recursive predicates.
+        let prev_defining = self.defining_struct.take();
+        self.defining_struct = Some(name.val.clone());
+
         let k = &TypeRefKind::Struct(name.clone());
         let struct_type_name = self.nm.emit(Name::TypeRef(k.into()));
         let ref_struct_type = unaryfn(Doc::text("ref"), struct_type_name.clone());
@@ -2712,6 +2730,7 @@ impl<'a> Emitter<'a> {
                 .group(),
         );
 
+        self.defining_struct = prev_defining;
         Doc::intersperse(ses.into_iter().map(|se| se.group()), Doc::hardline())
     }
 
@@ -3594,6 +3613,7 @@ pub fn emit(
         diags,
         type_val_params: HashMap::new(),
         type_uninit_val_params: HashMap::new(),
+        defining_struct: None,
     };
     let mut output: Vec<Doc> = vec![];
     output.push(Doc::text(format!(

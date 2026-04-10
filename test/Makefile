@@ -1,11 +1,14 @@
 .PHONY: all
 all: verify
 
-TESTS := $(wildcard *.c)
+TESTS := $(filter-out $(EXPECTED_FAIL),$(wildcard *.c))
 
 CACHE_DIR ?= _cache
 
 C2PULSE ?= ../target/debug/c2pulse
+
+# Tests that are expected to fail (known unsupported features)
+EXPECTED_FAIL :=
 
 # Per-test c2pulse options (e.g., OPTS_include = -I include)
 OPTS_include = -I include
@@ -38,3 +41,19 @@ verify: $(ALL_CHECKED_FILES)
 $(CACHE_DIR)/%.fst.checked: %.fst
 	$(FSTAR) --force $<
 	touch $@
+
+# ── Expected-fail targets ──────────────────────────────────────────
+# Run with: make test-expected-fail
+.PHONY: test-expected-fail
+test-expected-fail: $(patsubst %.c,test-xfail-%,$(EXPECTED_FAIL))
+
+test-xfail-%: %.c $(C2PULSE)
+	@echo "=== Expected failure: $< ==="
+	@output=$$($(C2PULSE) $< 2>&1); \
+	if echo "$$output" | grep -q "^error:"; then \
+	  echo "$$output"; \
+	  echo "OK — got expected error"; \
+	else \
+	  echo "$$output"; \
+	  echo "UNEXPECTED PASS — $< should have failed"; exit 1; \
+	fi

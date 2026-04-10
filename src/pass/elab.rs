@@ -762,6 +762,10 @@ pub fn elab(diags: &mut Diagnostics, tu: &mut TranslationUnit) {
                 env.push_fn_decl(fn_decl.clone());
             }
         }
+        // Pre-register struct definitions so self-referential fields resolve
+        if let DeclT::StructDefn(s) = &decl.val {
+            env.push_struct(s.clone());
+        }
         elab.elab_decl(&env, decl);
         env.push_decl(decl);
     }
