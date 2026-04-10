@@ -695,6 +695,8 @@ impl<'a> Elaborator<'a> {
             requires,
             ensures,
             is_pure: _,
+            is_rec: _,
+            decreases,
         }: &mut FnDecl,
     ) {
         let env = &mut env.clone();
@@ -706,6 +708,9 @@ impl<'a> Elaborator<'a> {
         self.elab_type(env, Rc::make_mut(ret_type));
         env.push_return(ret_type.clone());
         self.elab_slprops(env, ensures);
+        if let Some(dec) = decreases {
+            self.elab_rvalue(env, Rc::make_mut(dec));
+        }
     }
 
     fn elab_decl(&mut self, env: &Env, decl: &mut Decl) {
@@ -752,6 +757,11 @@ pub fn elab(diags: &mut Diagnostics, tu: &mut TranslationUnit) {
     let mut env = Env::new();
     let mut elab = Elaborator { diags };
     for decl in &mut tu.decls {
+        if let DeclT::FnDefn(FnDefn { decl: fn_decl, .. }) = &decl.val {
+            if fn_decl.is_rec {
+                env.push_fn_decl(fn_decl.clone());
+            }
+        }
         elab.elab_decl(&env, decl);
         env.push_decl(decl);
     }

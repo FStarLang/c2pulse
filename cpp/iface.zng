@@ -201,6 +201,8 @@ mod crate::clang {
         fn requires(&mut self, Rc<Expr>);
         fn ensures(&mut self, Rc<Expr>);
         fn set_pure(&mut self);
+        fn set_rec(&mut self);
+        fn decreases(&mut self, Rc<Expr>);
     }
 
     type InlineCodeBuilder {

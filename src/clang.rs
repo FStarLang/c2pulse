@@ -91,6 +91,8 @@ impl<'a> Ctx<'a> {
                 requires: builder.requires,
                 ensures: builder.ensures,
                 is_pure: builder.is_pure,
+                is_rec: builder.is_rec,
+                decreases: builder.decreases,
             }),
         })
     }
@@ -106,6 +108,8 @@ impl<'a> Ctx<'a> {
                     requires: builder.requires,
                     ensures: builder.ensures,
                     is_pure: builder.is_pure,
+                    is_rec: builder.is_rec,
+                    decreases: builder.decreases,
                 },
                 body: body,
             }),
@@ -240,6 +244,8 @@ struct DeclBuilder {
     requires: Vec<Rc<Expr>>,
     ensures: Vec<Rc<Expr>>,
     is_pure: bool,
+    is_rec: bool,
+    decreases: Option<Rc<Expr>>,
 }
 
 impl DeclBuilder {
@@ -253,6 +259,8 @@ impl DeclBuilder {
             requires: vec![],
             ensures: vec![],
             is_pure: false,
+            is_rec: false,
+            decreases: None,
         }
     }
 
@@ -287,6 +295,12 @@ impl DeclBuilder {
     }
     fn set_pure(&mut self) {
         self.is_pure = true;
+    }
+    fn set_rec(&mut self) {
+        self.is_rec = true;
+    }
+    fn decreases(&mut self, p: Rc<Expr>) {
+        self.decreases = Some(p);
     }
 }
 
