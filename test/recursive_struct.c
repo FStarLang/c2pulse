@@ -1,13 +1,134 @@
 // Test: recursive (self-referential) struct — e.g., a linked-list node.
 //
-// This tests that c2pulse can handle struct types with self-referential
-// pointer fields, needed for pointer-based linked lists, trees, etc.
+// Covers:
+//   1. Struct definition with self-referential pointer field
+//   2. Field reads/writes on recursive struct (auto-generated ownership)
+//   3. _include_pulse with recursive predicate over the struct
+//   4. _rec with _plain: recursive traversal passes field read to recursive call
+//      (regression: fn_decl must be elaborated before pre-registration so
+//       recursive calls don't get spurious Unknown→Ref casts + assert False)
+//   5. Null checks on recursive struct pointers
+//   6. _ghost_stmt proof steps interleaved with C field access
+
+#include "c2pulse.h"
+#include <stdint.h>
+#include <stddef.h>
+#include <stdlib.h>
+#include <stdbool.h>
 
 typedef struct node {
     int data;
     struct node *next;
 } node;
 
+/* 1–2. Basic field read/write */
 void set_data(node *n, int x) {
     n->data = x;
+}
+
+int get_data(node *n) {
+    return n->data;
+}
+
+/* 3. _include_pulse: recursive ownership predicate + ghost helpers.
+ *    Tests that c2pulse generates correct struct types and that _include_pulse
+ *    can define recursive predicates over self-referential structs. */
+_include_pulse(
+  module L = FStar.List.Tot
+
+  let rec is_list ([@@@mkey] head: $type(node *)) (l: list Int32.t)
+    : Tot slprop (decreases l)
+  = match l with
+    | [] -> pure (is_null head)
+    | hd :: tl ->
+      exists* (nd: $type(node)).
+        pure (not (is_null head)) **
+        pts_to head nd **
+        freeable head **
+        pure (nd.struct_node__data == hd) **
+        is_list nd.struct_node__next tl
+
+  ghost fn is_list_nil_case (head: $type(node *)) (#l: list Int32.t)
+    requires is_list head l ** pure (is_null head)
+    ensures is_list head l ** pure (l == ([] #Int32.t))
+  {
+    match l {
+      Nil -> { () }
+      Cons hd tl -> { unfold (is_list head (hd :: tl)); unreachable () }
+    }
+  }
+
+  ghost fn elim_is_list_nonnull (head: $type(node *)) (#l: list Int32.t)
+    requires is_list head l ** pure (not (is_null head))
+    ensures exists* (nd: $type(node)) (tl: list Int32.t).
+      pts_to head nd ** freeable head **
+      pure (l == nd.struct_node__data :: tl) **
+      is_list nd.struct_node__next tl
+  {
+    match l {
+      Nil -> { unfold (is_list head []); unreachable () }
+      Cons hd tl -> { unfold (is_list head (hd :: tl)) }
+    }
+  }
+
+  ghost fn intro_is_list_cons
+    (head: $type(node *))
+    (nd: $type(node))
+    (#tl: list Int32.t)
+    requires
+      pure (not (is_null head)) **
+      pts_to head nd **
+      freeable head **
+      is_list nd.struct_node__next tl
+    ensures is_list head (nd.struct_node__data :: tl)
+  {
+    fold (is_list head (nd.struct_node__data :: tl))
+  }
+)
+
+/* 4. _rec with _plain: recursive call passes struct field read (head->next)
+ *    to _plain parameter. Regression: without elaborating fn_decl types before
+ *    pre-registration, this gets a spurious (node[?]) cast → assert False. */
+_rec void traverse(_plain node *head)
+    _decreases((_slprop) _inline_pulse($`l))
+    _requires((_slprop) _inline_pulse(is_list $(head) $`l))
+    _ensures((_slprop) _inline_pulse(is_list $(head) $`l))
+{
+    if (head == NULL) {
+        _ghost_stmt(is_list_nil_case $(head));
+        return;
+    }
+    _ghost_stmt(
+        elim_is_list_nonnull $(head);
+        struct_node__aux_raw_unfold $(head)
+    );
+    node *nx = head->next;
+    traverse(nx);
+    _ghost_stmt(
+        struct_node__aux_raw_fold $(head);
+        Pulse.Lib.Reference.pts_to_not_null $(head);
+        intro_is_list_cons $(head) (!($(head)))
+    );
+}
+
+/* 5–6. _ghost_stmt with raw_unfold/fold around field reads and null check */
+bool peek_head(_plain node *head, int *out)
+    _requires((_slprop) _inline_pulse(is_list $(head) $`l))
+    _ensures((_slprop) _inline_pulse(is_list $(head) $`l))
+{
+    if (head == NULL) {
+        _ghost_stmt(is_list_nil_case $(head));
+        return false;
+    }
+    _ghost_stmt(
+        elim_is_list_nonnull $(head);
+        struct_node__aux_raw_unfold $(head)
+    );
+    *out = head->data;
+    _ghost_stmt(
+        struct_node__aux_raw_fold $(head);
+        Pulse.Lib.Reference.pts_to_not_null $(head);
+        intro_is_list_cons $(head) (!($(head)))
+    );
+    return true;
 }
