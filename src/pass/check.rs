@@ -589,7 +589,7 @@ impl<'a> Checker<'a> {
             ensures,
             is_pure: _,
             is_rec: _,
-            decreases: _,
+            decreases,
         }: &FnDecl,
     ) {
         let env = &mut env.clone();
@@ -601,6 +601,9 @@ impl<'a> Checker<'a> {
         self.check_type(env, ret_type);
         env.push_return(ret_type.clone());
         self.check_slprops(env, ensures);
+        if let Some(dec) = decreases {
+            self.check_rvalue(env, dec);
+        }
     }
 
     fn check_decl(&mut self, env: &Env, decl: &Decl) {

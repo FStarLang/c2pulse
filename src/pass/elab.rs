@@ -696,7 +696,7 @@ impl<'a> Elaborator<'a> {
             ensures,
             is_pure: _,
             is_rec: _,
-            decreases: _,
+            decreases,
         }: &mut FnDecl,
     ) {
         let env = &mut env.clone();
@@ -708,6 +708,9 @@ impl<'a> Elaborator<'a> {
         self.elab_type(env, Rc::make_mut(ret_type));
         env.push_return(ret_type.clone());
         self.elab_slprops(env, ensures);
+        if let Some(dec) = decreases {
+            self.elab_rvalue(env, Rc::make_mut(dec));
+        }
     }
 
     fn elab_decl(&mut self, env: &Env, decl: &mut Decl) {
