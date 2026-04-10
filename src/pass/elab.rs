@@ -757,8 +757,11 @@ pub fn elab(diags: &mut Diagnostics, tu: &mut TranslationUnit) {
     let mut env = Env::new();
     let mut elab = Elaborator { diags };
     for decl in &mut tu.decls {
-        if let DeclT::FnDefn(FnDefn { decl: fn_decl, .. }) = &decl.val {
+        if let DeclT::FnDefn(FnDefn { decl: fn_decl, .. }) = &mut decl.val {
             if fn_decl.is_rec {
+                // Elaborate the fn_decl's types before pre-registering so
+                // recursive calls see Ref instead of Unknown pointer kinds.
+                elab.elab_fn_decl(&env, fn_decl);
                 env.push_fn_decl(fn_decl.clone());
             }
         }
