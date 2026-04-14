@@ -29,6 +29,8 @@ The test suite (`test/Makefile`) runs `c2pulse` on each `.c` file in `test/`, th
 
 ALWAYS RUN `make test` TO MAKE SURE THE TESTS SUCCEED!!!
 
+NEVER RUN `git remote set-url`.  You are probably running in a sandbox with restricted permissions, it's expected that `git push` doesn't work.
+
 ## Architecture
 
 ### Translation Pipeline
