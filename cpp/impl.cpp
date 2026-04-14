@@ -1312,7 +1312,14 @@ public:
           }
         }
       }
-    } else if (dyn_cast<NullStmt>(stmt)) {
+    } else if (auto *cse = dyn_cast<CStyleCastExpr>(stmt)) {
+      if (cse->getType()->isVoidType()) {
+        // (void)expr — translate the sub-expression as a statement to
+        // preserve any side effects (e.g. (void)x++).  Pure no-ops like
+        // ((void)0) will naturally produce no IR.
+        return trStmt(stmts, cse->getSubExpr());
+      }
+    } else if (dyn_cast<NullStmt>(stmt) || dyn_cast<IntegerLiteral>(stmt)) {
       return rust::Unit();
     }
 
