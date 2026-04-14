@@ -2364,7 +2364,6 @@ impl<'a> Emitter<'a> {
 
         // Track which struct we're defining so self-referential pointer
         // fields don't produce infinitely recursive predicates.
-        let prev_defining = self.defining_struct.take();
         self.defining_struct = Some(name.val.clone());
 
         let k = &TypeRefKind::Struct(name.clone());
@@ -2730,7 +2729,7 @@ impl<'a> Emitter<'a> {
                 .group(),
         );
 
-        self.defining_struct = prev_defining;
+        self.defining_struct = None;
         Doc::intersperse(ses.into_iter().map(|se| se.group()), Doc::hardline())
     }
 
