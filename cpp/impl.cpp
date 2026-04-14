@@ -1474,6 +1474,10 @@ public:
       // Enum declarations need no IR representation;
       // constants are inlined as integer literals at use sites.
       return {};
+    } else if (dyn_cast<StaticAssertDecl>(D)) {
+      // _Static_assert / static_assert — compile-time check already
+      // enforced by Clang; no Pulse representation needed.
+      return {};
     }
 
     reportUnsupported(D->getSourceRange(), getRange(D->getSourceRange()),
