@@ -1038,6 +1038,9 @@ fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
         (BinOp::Eq, TypeT::Pointer(_, PointerKind::ArrayPtr)) => {
             Doc::text("`Pulse.Lib.C.Array.arrayptr_eq`")
         }
+        (BinOp::Eq, TypeT::Pointer(_, PointerKind::Ref | PointerKind::Unknown)) => {
+            Doc::text("`Pulse.Lib.C.Ref.ref_eq`")
+        }
         (
             BinOp::Eq,
             TypeT::SpecInt
@@ -1480,6 +1483,17 @@ impl<'a> Emitter<'a> {
                                 }
                             }
                             _ => {}
+                        }
+                    }
+                    // For non-null pointer equality, use the emit_binop path
+                    // which dispatches to ref_eq / arrayptr_eq as appropriate.
+                    if let Ok(ty) = env.infer_expr(lhs) {
+                        if let Some(op_doc) = emit_binop(env, BinOp::Eq, ty) {
+                            return binop(
+                                self.emit_rvalue(env, lhs),
+                                op_doc,
+                                self.emit_rvalue(env, rhs),
+                            );
                         }
                     }
                     // TODO: this should be == in ghost contexts

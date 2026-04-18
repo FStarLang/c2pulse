@@ -127,6 +127,9 @@ ensures (r |->? Frac p x) ** pure (x == None)
 
 
 
+/// Compare two refs for equality (no preconditions).
+val ref_eq (#t: Type) (x y: ref t) : (r:bool{r == true <==> x == y})
+
 let _test0 (x:ref int) (y:int) = x |-> y
 let _test1 (x:ref int) (y:option int) = x |->? y
 let _test2 (x:ref int) (y:int) = x |-> Frac 0.170R y
