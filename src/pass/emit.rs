@@ -111,8 +111,8 @@ impl<'a> RenderAnnotated<'a, Annotation> for StrWriter {
     }
 }
 
-fn annotated<T>(ast: &Ast<T>, doc: Doc) -> Doc {
-    doc.annotate(ast.loc.clone())
+fn annotated<T>(ast: &Ast<T>, doc: impl FnOnce() -> Doc) -> Doc {
+    doc().annotate(ast.loc.clone())
 }
 
 fn parens(doc: Doc) -> Doc {
@@ -376,7 +376,7 @@ fn wrap_exists(bindings: &[ExBinding], props: Vec<Doc>) -> Doc {
 
 impl<'a> Emitter<'a> {
     fn emit_type(&mut self, env: &Env, ty: &Type) -> Doc {
-        annotated(ty, {
+        annotated(ty, || {
             match &ty.val {
                 TypeT::Void => Doc::text("unit"),
 
@@ -534,50 +534,49 @@ impl<'a> Emitter<'a> {
     }
 
     fn emit_inline_pulse_tokens(&mut self, env: &mut Env, code: &InlinePulseCode) -> Doc {
-        Doc::concat(code.tokens.iter().map(|tok| match tok {
-            InlinePulseToken::Verbatim(ct) => {
-                Doc::text(ct.before).append(annotated(&ct.text, Doc::text(ct.text.val.to_string())))
-            }
-            InlinePulseToken::RValueAntiquot { before, expr } => {
-                Doc::text(*before).append(self.emit_rvalue(env, expr))
-            }
-            InlinePulseToken::LValueAntiquot { before, expr } => {
-                Doc::text(*before).append(self.emit_expr(env, expr).into_doc())
-            }
-            InlinePulseToken::TypeAntiquot { before, ty } => {
-                Doc::text(*before).append(self.emit_type(env, ty))
-            }
-            InlinePulseToken::FieldAntiquot {
-                before,
-                ty,
-                field_name,
-            } => {
-                let resolved = env.vtype_whnf(ty.clone().into());
-                match &resolved.val {
-                    TypeT::TypeRef(TypeRefKind::Struct(struct_name)) => {
-                        Doc::text(*before).append(self.nm.emit(Name::StructDirectFieldName(
-                            struct_name.val.clone(),
-                            field_name.val.clone(),
-                        )))
-                    }
-                    TypeT::TypeRef(TypeRefKind::Union(union_name)) => {
-                        Doc::text(*before).append(self.nm.emit(Name::UnionFieldConstructor(
-                            union_name.val.clone(),
-                            field_name.val.clone(),
-                        )))
-                    }
-                    _ => {
-                        self.report(
-                            format!("$field: expected struct or union type, got {}", ty),
-                            &ty.loc,
-                        );
-                        Doc::text(*before).append("(* $field: not a struct or union type *)")
+        Doc::concat(code.tokens.iter().map(|tok| {
+            match tok {
+                InlinePulseToken::Verbatim(ct) => Doc::text(ct.before)
+                    .append(annotated(&ct.text, || Doc::text(ct.text.val.to_string()))),
+                InlinePulseToken::RValueAntiquot { before, expr } => {
+                    Doc::text(*before).append(self.emit_rvalue(env, expr))
+                }
+                InlinePulseToken::LValueAntiquot { before, expr } => {
+                    Doc::text(*before).append(self.emit_expr(env, expr).into_doc())
+                }
+                InlinePulseToken::TypeAntiquot { before, ty } => {
+                    Doc::text(*before).append(self.emit_type(env, ty))
+                }
+                InlinePulseToken::FieldAntiquot {
+                    before,
+                    ty,
+                    field_name,
+                } => {
+                    let resolved = env.vtype_whnf(ty.clone().into());
+                    match &resolved.val {
+                        TypeT::TypeRef(TypeRefKind::Struct(struct_name)) => Doc::text(*before)
+                            .append(self.nm.emit(Name::StructDirectFieldName(
+                                struct_name.val.clone(),
+                                field_name.val.clone(),
+                            ))),
+                        TypeT::TypeRef(TypeRefKind::Union(union_name)) => Doc::text(*before)
+                            .append(self.nm.emit(Name::UnionFieldConstructor(
+                                union_name.val.clone(),
+                                field_name.val.clone(),
+                            ))),
+                        _ => {
+                            self.report(
+                                format!("$field: expected struct or union type, got {}", ty),
+                                &ty.loc,
+                            );
+                            Doc::text(*before).append("(* $field: not a struct or union type *)")
+                        }
                     }
                 }
-            }
-            InlinePulseToken::Declare { ident, ty } => {
-                env.push_var_decl(ident, ty.clone(), LocalDeclKind::RValue);
-                Doc::nil()
+                InlinePulseToken::Declare { ident, ty } => {
+                    env.push_var_decl(ident, ty.clone(), LocalDeclKind::RValue);
+                    Doc::nil()
+                }
             }
         }))
     }
@@ -616,15 +615,14 @@ impl<'a> Emitter<'a> {
                                 .nm
                                 .emit(Name::Val(extract_base_ident(this), bindings.len() as u32)));
                             let pointee_type_doc = self.emit_type(env, pointee_ty);
-                            let slprop = annotated(
-                                ty,
+                            let slprop = annotated(ty, || {
                                 naryfn([
                                     Doc::text("pts_to"),
                                     this_doc,
                                     Doc::text("#").append(perm.clone()),
                                     val_name.clone(),
-                                ]),
-                            );
+                                ])
+                            });
                             props.push(slprop);
                             bindings.push(ExBinding {
                                 name: val_name,
@@ -646,10 +644,9 @@ impl<'a> Emitter<'a> {
                             }
                         }
                         SLPropVariant::Uninit => {
-                            props.push(annotated(
-                                ty,
-                                unaryfn(Doc::text("Pulse.Lib.Reference.pts_to_uninit"), this_doc),
-                            ));
+                            props.push(annotated(ty, || {
+                                unaryfn(Doc::text("Pulse.Lib.Reference.pts_to_uninit"), this_doc)
+                            }));
                         }
                     },
                     PointerKind::Array => {
@@ -672,25 +669,23 @@ impl<'a> Emitter<'a> {
                             ty: Doc::text("(nat->prop)"),
                         });
                         match variant {
-                            SLPropVariant::Init { perm } => props.push(annotated(
-                                ty,
+                            SLPropVariant::Init { perm } => props.push(annotated(ty, || {
                                 naryfn([
                                     Doc::text("array_pts_to"),
                                     this_doc,
                                     perm.clone(),
                                     val_name,
                                     mask_name,
-                                ]),
-                            )),
-                            SLPropVariant::Uninit => props.push(annotated(
-                                ty,
+                                ])
+                            })),
+                            SLPropVariant::Uninit => props.push(annotated(ty, || {
                                 naryfn([
                                     Doc::text("array_pts_to_uninit"),
                                     this_doc,
                                     val_name,
                                     mask_name,
-                                ]),
-                            )),
+                                ])
+                            })),
                         }
                     }
                     PointerKind::ArrayPtr => {
@@ -800,7 +795,7 @@ impl<'a> Emitter<'a> {
     }
 
     fn emit_var(&mut self, v: &Ident) -> Doc {
-        annotated(v, self.nm.emit(Name::Var(v.val.clone())))
+        annotated(v, || self.nm.emit(Name::Var(v.val.clone())))
     }
 
     fn emit_lvalue(&mut self, env: &Env, v: &Expr) -> Doc {
@@ -816,16 +811,17 @@ impl<'a> Emitter<'a> {
     fn emit_expr(&mut self, env: &Env, v: &Expr) -> ExprKind {
         match &v.val {
             ExprT::Var(x) => {
+                let x2 = annotated(v, || self.emit_var(x));
                 if let Some(LocalDecl {
                     kind: LocalDeclKind::RValue,
                     ..
                 }) = env.lookup_var(x)
                 {
-                    ExprKind::RValue(annotated(v, self.emit_var(x)))
+                    ExprKind::RValue(x2)
                 } else if env.lookup_global_var(x).is_some() {
-                    ExprKind::RValue(annotated(v, self.emit_var(x)))
+                    ExprKind::RValue(x2)
                 } else {
-                    ExprKind::LValue(annotated(v, self.emit_var(x)))
+                    ExprKind::LValue(x2)
                 }
             }
             ExprT::Deref(inner) => {
@@ -841,16 +837,15 @@ impl<'a> Emitter<'a> {
                     .unwrap_or(false);
                 if is_arrayptr {
                     let inner_doc = self.emit_rvalue(env, inner);
-                    ExprKind::RValue(annotated(
-                        v,
+                    ExprKind::RValue(annotated(v, || {
                         parens(naryfn([
                             Doc::text("arrayptr_read"),
                             inner_doc,
                             Doc::text("0sz"),
-                        ])),
-                    ))
+                        ]))
+                    }))
                 } else {
-                    ExprKind::LValue(annotated(v, self.emit_expr(env, inner).to_rvalue()))
+                    ExprKind::LValue(annotated(v, || self.emit_expr(env, inner).to_rvalue()))
                 }
             }
             ExprT::Member(x, a) => match env.infer_expr(x) {
@@ -859,41 +854,37 @@ impl<'a> Emitter<'a> {
                     match &ty.val {
                         TypeT::TypeRef(TypeRefKind::Struct(struct_name)) => {
                             match self.emit_expr(env, x) {
-                                ExprKind::LValue(x_doc) => ExprKind::LValue(annotated(
-                                    v,
+                                ExprKind::LValue(x_doc) => ExprKind::LValue(annotated(v, || {
                                     unaryfn(
                                         self.nm.emit(Name::StructFieldProj(
                                             struct_name.val.clone(),
                                             a.val.clone(),
                                         )),
                                         x_doc,
-                                    ),
-                                )),
-                                ExprKind::RValue(x_doc) => ExprKind::RValue(annotated(
-                                    v,
+                                    )
+                                })),
+                                ExprKind::RValue(x_doc) => ExprKind::RValue(annotated(v, || {
                                     x_doc.append(Doc::text(".")).append(self.nm.emit(
                                         Name::StructDirectFieldName(
                                             struct_name.val.clone(),
                                             a.val.clone(),
                                         ),
-                                    )),
-                                )),
+                                    ))
+                                })),
                             }
                         }
                         TypeT::TypeRef(TypeRefKind::Union(union_name)) => {
                             match self.emit_expr(env, x) {
-                                ExprKind::LValue(x_doc) => ExprKind::LValue(annotated(
-                                    v,
+                                ExprKind::LValue(x_doc) => ExprKind::LValue(annotated(v, || {
                                     unaryfn(
                                         self.nm.emit(Name::UnionFieldProj(
                                             union_name.val.clone(),
                                             a.val.clone(),
                                         )),
                                         x_doc,
-                                    ),
-                                )),
-                                ExprKind::RValue(x_doc) => ExprKind::RValue(annotated(
-                                    v,
+                                    )
+                                })),
+                                ExprKind::RValue(x_doc) => ExprKind::RValue(annotated(v, || {
                                     parens(
                                         self.nm
                                             .emit(Name::UnionFieldConstructor(
@@ -904,8 +895,8 @@ impl<'a> Emitter<'a> {
                                             .append(Doc::line())
                                             .append(x_doc)
                                             .group(),
-                                    ),
-                                )),
+                                    )
+                                })),
                             }
                         }
                         _ => {
@@ -913,7 +904,7 @@ impl<'a> Emitter<'a> {
                                 format!("unsupported struct field access on {}", ty),
                                 &v.loc,
                             );
-                            ExprKind::RValue(annotated(v, Doc::text("(admit())")))
+                            ExprKind::RValue(annotated(v, || Doc::text("(admit())")))
                         }
                     }
                 }
@@ -922,24 +913,22 @@ impl<'a> Emitter<'a> {
                         format!("cannot infer type of {}: {}\n{}", x, error, env),
                         &x.loc,
                     );
-                    ExprKind::RValue(annotated(v, Doc::text("(admit())")))
+                    ExprKind::RValue(annotated(v, || Doc::text("(admit())")))
                 }
             },
-            ExprT::VAttr(VAttr::Length, x) => ExprKind::RValue(annotated(
-                v,
+            ExprT::VAttr(VAttr::Length, x) => ExprKind::RValue(annotated(v, || {
                 unaryfn(
                     Doc::text("reveal"),
                     unaryfn(Doc::text("length_of"), self.emit_rvalue(env, x)),
-                ),
-            )),
+                )
+            })),
             ExprT::VAttr(VAttr::Active(fld), base) => {
                 let base_ty = env.vtype_whnf(env.infer_expr(base).unwrap());
                 let TypeT::TypeRef(TypeRefKind::Union(union_name)) = &base_ty.val else {
                     unreachable!()
                 };
                 let base_doc = self.emit_rvalue(env, base);
-                ExprKind::RValue(annotated(
-                    v,
+                ExprKind::RValue(annotated(v, || {
                     parens(
                         self.nm
                             .emit(Name::UnionFieldConstructor(
@@ -950,8 +939,8 @@ impl<'a> Emitter<'a> {
                             .append(Doc::line())
                             .append(base_doc)
                             .group(),
-                    ),
-                ))
+                    )
+                }))
             }
             ExprT::Index(arr, idx) => {
                 let is_arrayptr = env
@@ -970,10 +959,9 @@ impl<'a> Emitter<'a> {
                 } else {
                     "array_read"
                 };
-                ExprKind::RValue(annotated(
-                    v,
-                    parens(naryfn([Doc::text(fn_name), arr_doc, idx_doc])),
-                ))
+                ExprKind::RValue(annotated(v, || {
+                    parens(naryfn([Doc::text(fn_name), arr_doc, idx_doc]))
+                }))
             }
             _ => ExprKind::RValue(self.emit_rvalue_inner(env, v)),
         }
@@ -1183,7 +1171,7 @@ impl<'a> Emitter<'a> {
     }
 
     fn emit_rvalue_inner(&mut self, env: &Env, v: &Expr) -> Doc {
-        annotated(v, {
+        annotated(v, || {
             match &v.val {
                 ExprT::BoolLit(v) => Doc::text(if *v { "true" } else { "false" }),
                 ExprT::IntLit(val, ty) => {
@@ -1845,7 +1833,7 @@ impl<'a> Emitter<'a> {
     }
 
     fn emit_stmt(&mut self, env: &Env, stmt: &Stmt) -> Doc {
-        annotated(stmt, {
+        annotated(stmt, || {
             match &stmt.val {
                 StmtT::Call(v) => self.emit_rvalue(env, v).append(";").nest(2).group(),
                 StmtT::Decl(x, ty) => {
@@ -3088,7 +3076,7 @@ impl<'a> Emitter<'a> {
             });
 
             params.push(parens(
-                annotated(&n, self.nm.emit(Name::Var(n.val.clone())))
+                annotated(&n, || self.nm.emit(Name::Var(n.val.clone())))
                     .append(":")
                     .append(Doc::line())
                     .append(self.emit_type(env, &arg.ty)),
@@ -3289,8 +3277,7 @@ impl<'a> Emitter<'a> {
         let decl_doc = self.emit_fn_sig(env, decl).nest(2).append(Doc::hardline());
         let arg_redecl_as_mut = Doc::concat(decl.args.iter().filter_map(|arg| {
             arg.name.as_ref().map(|n| {
-                Doc::line().append(annotated(
-                    n,
+                Doc::line().append(annotated(n, || {
                     Doc::group({
                         let n = self.nm.emit(Name::Var(n.val.clone()));
                         Doc::text("let mut ")
@@ -3298,8 +3285,8 @@ impl<'a> Emitter<'a> {
                             .append(" = ")
                             .append(n)
                             .append(";")
-                    }),
-                ))
+                    })
+                }))
             })
         }));
         let env = &mut env.clone();
@@ -3476,7 +3463,7 @@ impl<'a> Emitter<'a> {
             });
 
             params.push(parens(
-                annotated(&n, self.nm.emit(Name::Var(n.val.clone())))
+                annotated(&n, || self.nm.emit(Name::Var(n.val.clone())))
                     .append(":")
                     .append(Doc::line())
                     .append(self.emit_type(env, &arg.ty)),
@@ -3597,20 +3584,18 @@ impl<'a> Emitter<'a> {
     }
 
     fn emit_decl(&mut self, env: &Env, decl: &Decl) -> Doc {
-        annotated(decl, {
-            match &decl.val {
-                DeclT::FnDefn(fn_defn) => self.emit_fn_defn(env, fn_defn),
-                DeclT::FnDecl(fn_decl) => self.emit_fn_decl(env, fn_decl),
-                DeclT::Typedef(typedef) => self.emit_typedef(env, typedef),
-                DeclT::StructDefn(struct_defn) => self.emit_structdefn(env, struct_defn),
-                DeclT::StructDecl(name) => self.emit_struct_decl(env, name),
-                DeclT::UnionDefn(union_defn) => self.emit_uniondefn(env, union_defn),
-                DeclT::IncludeDecl(include_decl) => {
-                    let env = &mut env.clone();
-                    self.emit_inline_pulse_tokens(env, &include_decl.code)
-                }
-                DeclT::GlobalVar(gv) => self.emit_global_var(env, gv),
+        annotated(decl, || match &decl.val {
+            DeclT::FnDefn(fn_defn) => self.emit_fn_defn(env, fn_defn),
+            DeclT::FnDecl(fn_decl) => self.emit_fn_decl(env, fn_decl),
+            DeclT::Typedef(typedef) => self.emit_typedef(env, typedef),
+            DeclT::StructDefn(struct_defn) => self.emit_structdefn(env, struct_defn),
+            DeclT::StructDecl(name) => self.emit_struct_decl(env, name),
+            DeclT::UnionDefn(union_defn) => self.emit_uniondefn(env, union_defn),
+            DeclT::IncludeDecl(include_decl) => {
+                let env = &mut env.clone();
+                self.emit_inline_pulse_tokens(env, &include_decl.code)
             }
+            DeclT::GlobalVar(gv) => self.emit_global_var(env, gv),
         })
     }
 } // impl Emitter (group F)
