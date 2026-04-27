@@ -13,7 +13,7 @@ let one : t = 1L
 
 let add (x y: t { I64.fits (I64.v x + I64.v y) }) : t = I64.add x y
 let sub (x y: t { I64.fits (I64.v x - I64.v y) }) : t = I64.sub x y
-let mul (x y: t { I64.fits (I64.v x `op_Multiply` I64.v y) }) : t = I64.mul x y
+let mul (x y: t { I64.fits (I64.v x * I64.v y) }) : t = I64.mul x y
 let div (x y: t { I64.v y <> 0 /\ I64.fits (I64.v x / I64.v y) }) : t = I64.div x y
 let rem (x y: t { I64.v y <> 0 /\ I64.fits (I64.v x / I64.v y) }) : t = I64.rem x y
 

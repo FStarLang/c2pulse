@@ -5,7 +5,7 @@ class inhabited (a:Type) = {
 }
 
 instance inhabited_pair (a:Type) (b:Type) {| wa : inhabited a |} {| wb : inhabited b |}
-: inhabited (a * b) = {
+: inhabited (a & b) = {
   witness = (witness, witness)
 }
 

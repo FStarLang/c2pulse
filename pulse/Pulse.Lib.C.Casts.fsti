@@ -2,7 +2,6 @@ module Pulse.Lib.C.Casts
 
 open Pulse
 #lang-pulse
-open FStar.Mul
 include Pulse.Lib.C.Casts.Bool
 include FStar.Int.Cast
 

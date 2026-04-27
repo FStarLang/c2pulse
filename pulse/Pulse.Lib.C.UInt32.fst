@@ -10,7 +10,6 @@ let fits (op : int -> int -> int) (vx vy : int) : prop =
 let min_uint32 = FStar.UInt.min_int U32.n
 let max_uint32 = FStar.UInt.max_int U32.n
 let (+^) = FStar.UInt32.add
-open FStar.Mul
 // let ( + ) (x y:uint32)
 // : Pure uint32 
 //   (requires True)

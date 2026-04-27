@@ -1,6 +1,5 @@
 module Pulse.Lib.C
 #lang-pulse
-include FStar.Mul
 include Pulse.Lib.C.Inhabited
 include FStar.SizeT // before Int32 to not shadow fits there
 include Pulse.Lib.C.Int32

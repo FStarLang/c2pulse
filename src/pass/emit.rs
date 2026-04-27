@@ -1128,7 +1128,7 @@ fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
 
         (BinOp::LEq, TypeT::SpecInt) => Doc::text("<="),
         (BinOp::Lt, TypeT::SpecInt) => Doc::text("<"),
-        (BinOp::Mul, TypeT::SpecInt) => Doc::text("`op_Multiply`"),
+        (BinOp::Mul, TypeT::SpecInt) => Doc::text("*"),
         (BinOp::Div, TypeT::SpecInt) => Doc::text("/"),
         (BinOp::Mod, TypeT::SpecInt) => Doc::text("%"),
         (BinOp::Add, TypeT::SpecInt) => Doc::text("+"),
