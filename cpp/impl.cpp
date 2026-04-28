@@ -376,8 +376,7 @@ public:
   bool hasConsumesAttr(AttrVec const &attrs) {
     for (auto it = attrs.rbegin(); it != attrs.rend(); ++it) {
       if (auto ann = dyn_cast<AnnotateAttr>(*it)) {
-        if (ann->getAnnotation() == "pal-consumes" &&
-            ann->args_size() == 0) {
+        if (ann->getAnnotation() == "pal-consumes" && ann->args_size() == 0) {
           return true;
         }
       }
@@ -1426,8 +1425,7 @@ public:
           builder.set_pure();
         }
         if (auto ann = dyn_cast<AnnotateAttr>(attr);
-            ann && ann->getAnnotation() == "pal-rec" &&
-            ann->args_size() == 0) {
+            ann && ann->getAnnotation() == "pal-rec" && ann->args_size() == 0) {
           builder.set_rec();
         }
       }
