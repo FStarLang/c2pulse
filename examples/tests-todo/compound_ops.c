@@ -6,7 +6,7 @@
 // These operators are syntactic sugar for existing supported operations.
 // We cannot desugar them directly because the lhs might be effectful.
 
-#include "c2pulse.h"
+#include "pal.h"
 #include <stddef.h>
 #include <stdint.h>
 

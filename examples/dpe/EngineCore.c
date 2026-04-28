@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include "c2pulse.h"
+#include "pal.h"
 #include "DPE.h"
 #include "EngineCore.h"
 #include "HACL.h"

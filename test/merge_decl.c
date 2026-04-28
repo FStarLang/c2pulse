@@ -1,4 +1,4 @@
-#include "c2pulse.h"
+#include "pal.h"
 #include <stdbool.h>
 
 // Forward declaration with spec (as if from a header)

@@ -1,4 +1,4 @@
-#include "c2pulse.h"
+#include "pal.h"
 #include <stdint.h>
 
 /* C assert is translated to Pulse assert (with_pure ...) */

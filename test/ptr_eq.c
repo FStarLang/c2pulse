@@ -1,6 +1,6 @@
 // Test: Pointer equality between arbitrary pointers (not just NULL).
 
-#include "c2pulse.h"
+#include "pal.h"
 #include <stdbool.h>
 #include <stdint.h>
 

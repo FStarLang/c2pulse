@@ -6,7 +6,7 @@
 //
 // Proposed: _expect_failure annotation on functions
 
-#include "c2pulse.h"
+#include "pal.h"
 
 // Proposed syntax:
 // _expect_failure

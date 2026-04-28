@@ -155,9 +155,9 @@ struct AnonNameGen {
   }
 };
 
-class C2PulseConsumer : public ASTConsumer {
+class PALConsumer : public ASTConsumer {
 public:
-  C2PulseConsumer(RefMut<Ctx> c, RangeMap &m, SnipMap &s, CompilerInstance &ci)
+  PALConsumer(RefMut<Ctx> c, RangeMap &m, SnipMap &s, CompilerInstance &ci)
       : ctx(c), rangeMap(m), snippets(s), sm(ci.getSourceManager()) {}
 
   RefMut<Ctx> ctx;
@@ -352,19 +352,19 @@ public:
     for (auto it = attrs.rbegin(); it != attrs.rend(); ++it) {
       if (auto ann = dyn_cast<AnnotateAttr>(*it)) {
         auto loc = getRange(ann->getRange());
-        if (auto ref = isUnaryAttrOf(ann, "c2pulse-refine")) {
+        if (auto ref = isUnaryAttrOf(ann, "pal-refine")) {
           ty = mk_type_refine(std::move(loc), std::move(ty),
                               std::move(ref.value()));
-        } else if (auto ref = isUnaryAttrOf(ann, "c2pulse-refine-always")) {
+        } else if (auto ref = isUnaryAttrOf(ann, "pal-refine-always")) {
           ty = mk_type_refine_always(std::move(loc), std::move(ty),
                                      std::move(ref.value()));
-        } else if (ann->getAnnotation() == "c2pulse-plain" &&
+        } else if (ann->getAnnotation() == "pal-plain" &&
                    ann->args_size() == 0) {
           ty = mk_type_plain(std::move(loc), std::move(ty));
-        } else if (ann->getAnnotation() == "c2pulse-array" &&
+        } else if (ann->getAnnotation() == "pal-array" &&
                    ann->args_size() == 0) {
           ty = mk_type_array(std::move(loc), std::move(ty));
-        } else if (ann->getAnnotation() == "c2pulse-arrayptr" &&
+        } else if (ann->getAnnotation() == "pal-arrayptr" &&
                    ann->args_size() == 0) {
           ty = mk_type_arrayptr(std::move(loc), std::move(ty));
         }
@@ -376,7 +376,7 @@ public:
   bool hasConsumesAttr(AttrVec const &attrs) {
     for (auto it = attrs.rbegin(); it != attrs.rend(); ++it) {
       if (auto ann = dyn_cast<AnnotateAttr>(*it)) {
-        if (ann->getAnnotation() == "c2pulse-consumes" &&
+        if (ann->getAnnotation() == "pal-consumes" &&
             ann->args_size() == 0) {
           return true;
         }
@@ -388,7 +388,7 @@ public:
   bool hasOutAttr(AttrVec const &attrs) {
     for (auto it = attrs.rbegin(); it != attrs.rend(); ++it) {
       if (auto ann = dyn_cast<AnnotateAttr>(*it)) {
-        if (ann->getAnnotation() == "c2pulse-out" && ann->args_size() == 0) {
+        if (ann->getAnnotation() == "pal-out" && ann->args_size() == 0) {
           return true;
         }
       }
@@ -901,11 +901,11 @@ public:
       auto enss = Vec<Rc<ir::Expr>>::new_();
       if (auto attrBody = dyn_cast<AttributedStmt>(body)) {
         for (auto attr : attrBody->getAttrs()) {
-          if (auto inv = isUnaryAttrOf(attr, "c2pulse-invariant")) {
+          if (auto inv = isUnaryAttrOf(attr, "pal-invariant")) {
             invs.push(std::move(inv.value()));
-          } else if (auto req = isUnaryAttrOf(attr, "c2pulse-requires")) {
+          } else if (auto req = isUnaryAttrOf(attr, "pal-requires")) {
             reqs.push(std::move(req.value()));
-          } else if (auto ens = isUnaryAttrOf(attr, "c2pulse-ensures")) {
+          } else if (auto ens = isUnaryAttrOf(attr, "pal-ensures")) {
             enss.push(std::move(ens.value()));
           }
         }
@@ -932,14 +932,14 @@ public:
       std::string flagName;
       if (auto attrBody = dyn_cast<AttributedStmt>(body)) {
         for (auto attr : attrBody->getAttrs()) {
-          if (auto inv = isUnaryAttrOf(attr, "c2pulse-invariant")) {
+          if (auto inv = isUnaryAttrOf(attr, "pal-invariant")) {
             invs.push(std::move(inv.value()));
-          } else if (auto req = isUnaryAttrOf(attr, "c2pulse-requires")) {
+          } else if (auto req = isUnaryAttrOf(attr, "pal-requires")) {
             reqs.push(std::move(req.value()));
-          } else if (auto ens = isUnaryAttrOf(attr, "c2pulse-ensures")) {
+          } else if (auto ens = isUnaryAttrOf(attr, "pal-ensures")) {
             enss.push(std::move(ens.value()));
           } else if (auto ann = dyn_cast<AnnotateAttr>(attr)) {
-            if (ann->getAnnotation() == "c2pulse-do-while-first" &&
+            if (ann->getAnnotation() == "pal-do-while-first" &&
                 ann->args_size() == 1) {
               auto *arg = (*ann->args_begin())->IgnoreParenImpCasts();
               if (auto *sl = dyn_cast<StringLiteral>(arg)) {
@@ -1150,11 +1150,11 @@ public:
       auto enss = Vec<Rc<ir::Expr>>::new_();
       if (auto attrBody = dyn_cast<AttributedStmt>(body)) {
         for (auto attr : attrBody->getAttrs()) {
-          if (auto inv = isUnaryAttrOf(attr, "c2pulse-invariant")) {
+          if (auto inv = isUnaryAttrOf(attr, "pal-invariant")) {
             invs.push(std::move(inv.value()));
-          } else if (auto req = isUnaryAttrOf(attr, "c2pulse-requires")) {
+          } else if (auto req = isUnaryAttrOf(attr, "pal-requires")) {
             reqs.push(std::move(req.value()));
-          } else if (auto ens = isUnaryAttrOf(attr, "c2pulse-ensures")) {
+          } else if (auto ens = isUnaryAttrOf(attr, "pal-ensures")) {
             enss.push(std::move(ens.value()));
           }
         }
@@ -1201,7 +1201,7 @@ public:
       auto labelDecl = ls->getDecl();
       if (labelDecl->hasAttrs()) {
         for (auto attr : labelDecl->getAttrs()) {
-          if (auto ens = isUnaryAttrOf(attr, "c2pulse-ensures")) {
+          if (auto ens = isUnaryAttrOf(attr, "pal-ensures")) {
             enss.push(std::move(ens.value()));
           }
         }
@@ -1209,7 +1209,7 @@ public:
       // Also check if sub-statement is AttributedStmt
       if (auto attrStmt = dyn_cast<AttributedStmt>(subStmt)) {
         for (auto attr : attrStmt->getAttrs()) {
-          if (auto ens = isUnaryAttrOf(attr, "c2pulse-ensures")) {
+          if (auto ens = isUnaryAttrOf(attr, "pal-ensures")) {
             enss.push(std::move(ens.value()));
           }
         }
@@ -1269,17 +1269,17 @@ public:
         trStmt(stmts, stmt);
       return rust::Unit();
     } else if (auto *c = dyn_cast<CallExpr>(stmt)) {
-      // Intercept __c2pulse_c_assert(expr) — translated from C assert()
+      // Intercept __pal_c_assert(expr) — translated from C assert()
       if (auto fd = c->getDirectCallee()) {
-        if (fd->getName() == "__c2pulse_c_assert" && c->getNumArgs() == 1) {
+        if (fd->getName() == "__pal_c_assert" && c->getNumArgs() == 1) {
           auto val = trRValue(c->getArg(0));
           // Cast to bool — elab will convert to slprop via with_pure
           auto boolVal = mk_rvalue_cast(loc.clone(), std::move(val),
                                         mk_bool_type(loc.clone()));
-          // Wrap in if (c2pulse_c_assert_enabled()) to expose
+          // Wrap in if (pal_c_assert_enabled()) to expose
           // side-effect differences when assertions are disabled.
           auto enabledFn = ctx.mk_ident(
-              toStr(StringRef("c2pulse_c_assert_enabled")), loc.clone());
+              toStr(StringRef("pal_c_assert_enabled")), loc.clone());
           auto enabledArgs = Vec<Rc<ir::Expr>>::new_();
           auto enabledCall = mk_rvalue_fncall(loc.clone(), std::move(enabledFn),
                                               std::move(enabledArgs));
@@ -1292,18 +1292,18 @@ public:
       }
       return stmts.push(mk_call(std::move(loc), trRValue(c)));
     } else if (auto *se = dyn_cast<StmtExpr>(stmt)) {
-      // _assert(p) expands to ({ __attribute__((annotate("c2pulse-assert",
+      // _assert(p) expands to ({ __attribute__((annotate("pal-assert",
       // ...))) {} })
-      // _ghost_stmt(p) expands similarly with "c2pulse-ghost-stmt"
+      // _ghost_stmt(p) expands similarly with "pal-ghost-stmt"
       if (auto *comp = dyn_cast<CompoundStmt>(se->getSubStmt())) {
         for (auto s : comp->body()) {
           if (auto *attr = dyn_cast<AttributedStmt>(s)) {
             for (auto a : attr->getAttrs()) {
-              if (auto val = isUnaryAttrOf(a, "c2pulse-assert")) {
+              if (auto val = isUnaryAttrOf(a, "pal-assert")) {
                 stmts.push(mk_assert(loc.clone(), std::move(val.value())));
                 return rust::Unit();
               }
-              if (auto ctr = isUnaryAttrCounter(a, "c2pulse-ghost-stmt")) {
+              if (auto ctr = isUnaryAttrCounter(a, "pal-ghost-stmt")) {
                 stmts.push(
                     ctx.mk_ghost_stmt(loc.clone(), ctr.value(), snippets));
                 return rust::Unit();
@@ -1354,11 +1354,11 @@ public:
   rust::Unit HandleDecl(Decl *D) {
     if (auto *FD = dyn_cast<FunctionDecl>(D)) {
       // Include block
-      if (FD->getName().starts_with("__c2pulse_include_anchor")) {
+      if (FD->getName().starts_with("__pal_include_anchor")) {
         std::optional<unsigned> code;
         for (auto attr : FD->getAttrs()) {
           if (auto ann = dyn_cast<AnnotateAttr>(attr);
-              ann && ann->getAnnotation() == "c2pulse-includes" &&
+              ann && ann->getAnnotation() == "pal-includes" &&
               ann->args_size() == 1) {
             if (auto ctrVal =
                     ann->args_begin()[0]->getIntegerConstantExpr(*astCtx)) {
@@ -1411,22 +1411,22 @@ public:
           FD->getAttrs(),
           trQualType(FD->getReturnType(), FD->getReturnTypeSourceRange())));
       for (auto attr : FD->getAttrs()) {
-        if (auto req = isUnaryAttrOf(attr, "c2pulse-requires")) {
+        if (auto req = isUnaryAttrOf(attr, "pal-requires")) {
           builder.requires(std::move(req.value()));
         }
-        if (auto ens = isUnaryAttrOf(attr, "c2pulse-ensures")) {
+        if (auto ens = isUnaryAttrOf(attr, "pal-ensures")) {
           builder.ensures(std::move(ens.value()));
         }
-        if (auto dec = isUnaryAttrOf(attr, "c2pulse-decreases")) {
+        if (auto dec = isUnaryAttrOf(attr, "pal-decreases")) {
           builder.decreases(std::move(dec.value()));
         }
         if (auto ann = dyn_cast<AnnotateAttr>(attr);
-            ann && ann->getAnnotation() == "c2pulse-pure" &&
+            ann && ann->getAnnotation() == "pal-pure" &&
             ann->args_size() == 0) {
           builder.set_pure();
         }
         if (auto ann = dyn_cast<AnnotateAttr>(attr);
-            ann && ann->getAnnotation() == "c2pulse-rec" &&
+            ann && ann->getAnnotation() == "pal-rec" &&
             ann->args_size() == 0) {
           builder.set_rec();
         }
@@ -1463,7 +1463,7 @@ public:
       bool is_pure = VD->getType().isConstQualified() && VD->hasInit();
       for (auto attr : VD->getAttrs()) {
         if (auto ann = dyn_cast<AnnotateAttr>(attr);
-            ann && ann->getAnnotation() == "c2pulse-pure" &&
+            ann && ann->getAnnotation() == "pal-pure" &&
             ann->args_size() == 0) {
           is_pure = true;
         }
@@ -1486,9 +1486,9 @@ public:
   }
 };
 
-class C2PulseAction : public SyntaxOnlyAction {
+class PALAction : public SyntaxOnlyAction {
 public:
-  C2PulseAction(RefMut<Ctx> c, RangeMap &m) : ctx(c), rangeMap(m) {}
+  PALAction(RefMut<Ctx> c, RangeMap &m) : ctx(c), rangeMap(m) {}
   RefMut<Ctx> ctx;
   RangeMap &rangeMap;
   SnipMap snippets = SnipMap::default_();
@@ -1501,7 +1501,7 @@ public:
 
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI,
                                                  StringRef InFile) override {
-    return std::make_unique<C2PulseConsumer>(ctx, rangeMap, snippets, CI);
+    return std::make_unique<PALConsumer>(ctx, rangeMap, snippets, CI);
   }
 
   void EndSourceFileAction() override {
@@ -1509,21 +1509,21 @@ public:
   }
 };
 
-class C2PulseActionFactory : public FrontendActionFactory {
+class PALActionFactory : public FrontendActionFactory {
 public:
-  C2PulseActionFactory(RefMut<Ctx> c, RangeMap &m) : ctx(c), rangeMap(m) {}
+  PALActionFactory(RefMut<Ctx> c, RangeMap &m) : ctx(c), rangeMap(m) {}
 
   std::unique_ptr<FrontendAction> create() override {
-    return std::make_unique<C2PulseAction>(ctx, rangeMap);
+    return std::make_unique<PALAction>(ctx, rangeMap);
   }
 
   RefMut<Ctx> ctx;
   RangeMap &rangeMap;
 };
 
-class C2PulseDiagnosticConsumer : public DiagnosticConsumer {
+class PALDiagnosticConsumer : public DiagnosticConsumer {
 public:
-  C2PulseDiagnosticConsumer(RefMut<Ctx> c, RangeMap &m) : ctx(c), rangeMap(m) {}
+  PALDiagnosticConsumer(RefMut<Ctx> c, RangeMap &m) : ctx(c), rangeMap(m) {}
   RefMut<Ctx> ctx;
   RangeMap &rangeMap;
 
@@ -1706,7 +1706,7 @@ static void parse_file(RefMut<Ctx> ctx) {
                  std::make_shared<PCHContainerOperations>(), CtxVFS::make(ctx));
 
   RangeMap rangeMap(ctx);
-  C2PulseDiagnosticConsumer consumer(ctx, rangeMap);
+  PALDiagnosticConsumer consumer(ctx, rangeMap);
   Tool.setDiagnosticConsumer(&consumer);
 
   // Tool.appendArgumentsAdjuster(OptionsParser->getArgumentsAdjuster());
@@ -1724,7 +1724,7 @@ static void parse_file(RefMut<Ctx> ctx) {
         incPath.c_str(), ArgumentInsertPosition::BEGIN));
   }
 
-  C2PulseActionFactory factory(ctx, rangeMap);
+  PALActionFactory factory(ctx, rangeMap);
   Tool.run(&factory);
 }
 

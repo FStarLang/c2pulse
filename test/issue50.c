@@ -1,4 +1,4 @@
-#include "c2pulse.h"
+#include "pal.h"
 #include <stdlib.h>
 
 int foo() {

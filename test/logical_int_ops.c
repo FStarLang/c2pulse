@@ -1,4 +1,4 @@
-#include "c2pulse.h"
+#include "pal.h"
 #include <stdint.h>
 
 int test_logical_and() {

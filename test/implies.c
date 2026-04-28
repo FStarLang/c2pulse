@@ -1,4 +1,4 @@
-#include "c2pulse.h"
+#include "pal.h"
 #include <stdbool.h>
 
 int test_implies(bool a, bool b)

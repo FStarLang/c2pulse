@@ -1,4 +1,4 @@
-#include "c2pulse.h"
+#include "pal.h"
 #include <stdlib.h>
 
 typedef int *int_ptr _allocated;

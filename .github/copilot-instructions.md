@@ -1,6 +1,6 @@
-# C2Pulse
+# PAL
 
-C2Pulse is a transpiler from C to [Pulse](https://github.com/fstarlang/pulse) (a verification-oriented language built on [F*](https://github.com/fstarlang/fstar)). It parses C source files using libclang (via a C++ frontend), translates them through an intermediate representation (IR), and emits verified Pulse `.fst` files.
+PAL is a transpiler from C to [Pulse](https://github.com/fstarlang/pulse) (a verification-oriented language built on [F*](https://github.com/fstarlang/fstar)). It parses C source files using libclang (via a C++ frontend), translates them through an intermediate representation (IR), and emits verified Pulse `.fst` files.
 
 ## Build & Test
 
@@ -25,7 +25,7 @@ cargo fmt
 clang-format -i cpp/impl.cpp
 ```
 
-The test suite (`test/Makefile`) runs `c2pulse` on each `.c` file in `test/`, then verifies the generated `.fst` files using F*/Pulse. Building F*/Pulse from source requires opam and is handled by the top-level Makefile (set `C2PULSE_OPT=0` to skip if dependencies are pre-built).
+The test suite (`test/Makefile`) runs `pal` on each `.c` file in `test/`, then verifies the generated `.fst` files using F*/Pulse. Building F*/Pulse from source requires opam and is handled by the top-level Makefile (set `C2PULSE_OPT=0` to skip if dependencies are pre-built).
 
 ALWAYS RUN `make test` TO MAKE SURE THE TESTS SUCCEED!!!
 
@@ -54,9 +54,9 @@ The IR is a typed AST modeling C constructs (types, expressions, statements, dec
 
 Defines the Rust/C++ boundary. The C++ code calls Rust functions declared here to construct IR nodes. Changes to IR types typically require updating `iface.zng` and `cpp/impl.cpp` in tandem.
 
-### C2Pulse Header (`c2pulse.h`)
+### PAL Header (`pal.h`)
 
-C source files include `c2pulse.h` to use verification annotations. When `C2PULSE` is defined (during translation), these macros expand to clang attributes; otherwise they are no-ops so the code compiles normally with any C compiler:
+C source files include `pal.h` to use verification annotations. When `C2PULSE` is defined (during translation), these macros expand to clang attributes; otherwise they are no-ops so the code compiles normally with any C compiler:
 - `_requires(p)`, `_ensures(p)` — pre/postconditions
 - `_invariant(p)` — loop invariants
 - `_plain`, `_consumes` — ownership annotations on parameters
@@ -72,5 +72,5 @@ Diagnostics are emitted as LSP-compatible JSON (`*_diagnostics.json`) alongside 
 - Rust edition 2024; uses `chumsky` for parsing inline Pulse expressions (`src/hauntedc.rs`).
 - The `pretty` crate is used for Pulse code emission with source range tracking.
 - Output file names are derived from input: `foo.c` → `Foo.fst` (first letter capitalized).
-- Test C files live in `test/`; each must include `c2pulse.h` and contain verification annotations.
+- Test C files live in `test/`; each must include `pal.h` and contain verification annotations.
 - The `pulse/` directory contains F*/Pulse library files (`.fst`/`.fsti`) for C interop types.

@@ -1,4 +1,4 @@
-#include "c2pulse.h"
+#include "pal.h"
 #include <stdint.h>
 
 uint32_t test_bitand(uint32_t a, uint32_t b)

@@ -5,12 +5,12 @@ TESTS := $(filter-out $(EXPECTED_FAIL),$(wildcard *.c))
 
 CACHE_DIR ?= _cache
 
-C2PULSE ?= ../target/debug/c2pulse
+C2PULSE ?= ../target/debug/pal
 
 # Tests that are expected to fail (known unsupported features)
 EXPECTED_FAIL :=
 
-# Per-test c2pulse options (e.g., OPTS_include = -I include)
+# Per-test pal options (e.g., OPTS_include = -I include)
 OPTS_include = -I include
 
 # Convert foo.c -> Foo.fst (capitalize first letter, change extension)
@@ -18,9 +18,9 @@ c_to_fst = $(shell echo '$(1)' | sed 's/^\(.\)/\U\1/;s/\.c$$/.fst/')
 
 ALL_FST_FILES := $(foreach t,$(TESTS),$(call c_to_fst,$(t)))
 
-# Generate per-file rules: Foo.fst: foo.c $(C2PULSE) c2pulse.h
+# Generate per-file rules: Foo.fst: foo.c $(C2PULSE) pal.h
 define make_fst_rule
-$(call c_to_fst,$(1)): $(1) $$(C2PULSE) c2pulse.h
+$(call c_to_fst,$(1)): $(1) $$(C2PULSE) pal.h
 endef
 $(foreach t,$(TESTS),$(eval $(call make_fst_rule,$(t))))
 

@@ -1,4 +1,4 @@
-#include "c2pulse.h"
+#include "pal.h"
 #include <stdbool.h>
 
 _pure bool pure_not(bool x)

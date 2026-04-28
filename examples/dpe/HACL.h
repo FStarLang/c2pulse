@@ -2,7 +2,7 @@
 #define _HACL_H_
 #include <stdlib.h>
 #include <stdint.h>
-#include "c2pulse.h"
+#include "pal.h"
 #include "DPE.h"
 
 typedef uint8_t *ed25519_key

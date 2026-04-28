@@ -24,10 +24,10 @@ jobs:
     - name: Install F*
       run: ./opt/install-fstar.sh --link-dir /usr/local/bin
 
-    - name: Build c2pulse
+    - name: Build pal
       run: |
         make -j$(nproc)
 
-    - name: Test c2pulse
+    - name: Test pal
       run: |
         make -j$(nproc) test

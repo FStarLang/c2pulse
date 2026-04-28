@@ -1,4 +1,4 @@
-#include "c2pulse.h"
+#include "pal.h"
 
 // Forward declaration only — opaque type
 struct opaque;

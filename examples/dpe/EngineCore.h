@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include "c2pulse.h"
+#include "pal.h"
 #include "DPE.h"
 
 bool engine_main(

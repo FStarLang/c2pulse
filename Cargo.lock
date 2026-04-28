@@ -105,23 +105,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "c2pulse"
-version = "0.1.0"
-dependencies = [
- "build-rs",
- "cc",
- "chumsky 0.12.0",
- "clap",
- "codespan-reporting",
- "lsp-types",
- "num-bigint",
- "pretty",
- "serde",
- "serde_json",
- "zngur",
-]
-
-[[package]]
 name = "cc"
 version = "1.2.56"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -351,6 +334,23 @@ name = "once_cell_polyfill"
 version = "1.70.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a4895175b425cb1f87721b59f0f286c2092bd4af812243672510e1ac53e2e0ad"
+
+[[package]]
+name = "pal"
+version = "0.1.0"
+dependencies = [
+ "build-rs",
+ "cc",
+ "chumsky 0.12.0",
+ "clap",
+ "codespan-reporting",
+ "lsp-types",
+ "num-bigint",
+ "pretty",
+ "serde",
+ "serde_json",
+ "zngur",
+]
 
 [[package]]
 name = "pretty"

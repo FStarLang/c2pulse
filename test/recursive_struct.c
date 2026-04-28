@@ -10,7 +10,7 @@
 //   5. Null checks on recursive struct pointers
 //   6. _ghost_stmt proof steps interleaved with C field access
 
-#include "c2pulse.h"
+#include "pal.h"
 #include <stdint.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -31,7 +31,7 @@ int get_data(node *n) {
 }
 
 /* 3. _include_pulse: recursive ownership predicate + ghost helpers.
- *    Tests that c2pulse generates correct struct types and that _include_pulse
+ *    Tests that pal generates correct struct types and that _include_pulse
  *    can define recursive predicates over self-referential structs. */
 _include_pulse(
   module L = FStar.List.Tot

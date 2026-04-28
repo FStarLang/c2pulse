@@ -4,7 +4,7 @@
 // Uses _plain on pointer parameters to skip pts_to pre/postconditions,
 // since nullable pointers cannot satisfy pts_to when null.
 
-#include "c2pulse.h"
+#include "pal.h"
 #include <stddef.h>
 #include <stdint.h>
 

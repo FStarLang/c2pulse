@@ -1,4 +1,4 @@
-#include "c2pulse.h"
+#include "pal.h"
 
 int test0(int x)
 	_ensures(return == 1)

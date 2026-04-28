@@ -1,4 +1,4 @@
-#include "c2pulse.h"
+#include "pal.h"
 #include <stdint.h>
 
 uint32_t multiply_by_repeated_addition(uint32_t x, uint32_t y)

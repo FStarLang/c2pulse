@@ -1,4 +1,4 @@
-#include "c2pulse.h"
+#include "pal.h"
 
 int test_negative_literal() {
     int x = -10;

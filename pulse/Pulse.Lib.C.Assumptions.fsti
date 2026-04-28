@@ -10,4 +10,4 @@ assume SizeTFitsU32 : fits_u32
 // Opaque so the verifier must handle both cases, exposing any
 // side effects in assert arguments that would change behavior
 // when assertions are disabled.
-val func_c2pulse_c_assert_enabled (_:unit) : bool
+val func_pal_c_assert_enabled (_:unit) : bool

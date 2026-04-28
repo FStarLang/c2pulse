@@ -14,12 +14,12 @@
 //   test_union_nested_owns_with_functional_spec_maybe_freeable.c,
 //   nested_struct_with_arrays.c, issue65_test.c
 //
-// The existing c2pulse handles simple unions well (union_test.c, union_test2.c).
+// The existing pal handles simple unions well (union_test.c, union_test2.c).
 // These tests exercise more complex ownership patterns.
 //
 // Proposed: idiomatic syntax for tagged unions
 
-#include "c2pulse.h"
+#include "pal.h"
 #include <stdbool.h>
 #include <stdint.h>
 

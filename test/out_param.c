@@ -1,4 +1,4 @@
-#include "c2pulse.h"
+#include "pal.h"
 
 void init_value(_out int *x)
     _ensures(*x == 42)

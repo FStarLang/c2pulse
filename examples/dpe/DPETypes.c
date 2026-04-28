@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
-#include "c2pulse.h"
+#include "pal.h"
 #include <stdbool.h>
 
 

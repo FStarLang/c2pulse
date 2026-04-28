@@ -1,4 +1,4 @@
-#include "c2pulse.h"
+#include "pal.h"
 
 void empty_branch()
 {

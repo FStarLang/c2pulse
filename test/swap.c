@@ -1,4 +1,4 @@
-#include "c2pulse.h"
+#include "pal.h"
 
 void swap(int *x, int *y)
     _ensures(*y == _old(*x) && *x == _old(*y))

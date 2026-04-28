@@ -1,7 +1,7 @@
 // Test for _refine_always: refinement that applies to both init and uninit predicates.
 // The array length refinement must be preserved in _out mode's uninit precondition.
 
-#include "c2pulse.h"
+#include "pal.h"
 
 _refine_always(this._length == 4) typedef _array unsigned *four_element_array;
 

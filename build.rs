@@ -45,7 +45,7 @@ fn main() {
         .expect("Cannot parse `llvm-config --version` output");
     if llvm_version < 20 {
         panic!(
-            "\nC2Pulse requires clang >= 20, but found version {:}\n",
+            "\nPAL requires clang >= 20, but found version {:}\n",
             llvm_version
         )
     }

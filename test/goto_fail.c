@@ -1,4 +1,4 @@
-#include "c2pulse.h"
+#include "pal.h"
 
 void cleanup_on_error(int *p)
 {

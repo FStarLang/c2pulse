@@ -1,4 +1,4 @@
-#include "c2pulse.h"
+#include "pal.h"
 
 void test_rvalue_antiquot(int *x)
     _ensures((_slprop) _inline_pulse(pure (Int32.v $(*x) > 0)))

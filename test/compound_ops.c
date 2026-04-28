@@ -2,9 +2,9 @@
 //
 // Compound assignments (+=, -=, *=, etc.) are tested in binary_ops.c.
 // These operators are syntactic sugar for existing supported operations.
-// c2pulse desugars them during translation.
+// pal desugars them during translation.
 
-#include "c2pulse.h"
+#include "pal.h"
 #include <stdint.h>
 
 uint32_t test_post_incr(uint32_t a)

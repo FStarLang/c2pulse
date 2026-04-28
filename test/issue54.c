@@ -1,4 +1,4 @@
-#include "c2pulse.h"
+#include "pal.h"
 #include <stdbool.h>
 
 bool is_eq(int a1, int a2)

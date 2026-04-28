@@ -1,4 +1,4 @@
-#include "c2pulse.h"
+#include "pal.h"
 
 void bar(void);
 void bar(void);

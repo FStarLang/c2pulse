@@ -8,7 +8,7 @@
 // C allows forward-declaring struct types and using pointers to them
 // before the full definition. This is essential for linked data structures.
 
-#include "c2pulse.h"
+#include "pal.h"
 
 // Forward declaration pattern
 struct foo;

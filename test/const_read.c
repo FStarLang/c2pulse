@@ -1,4 +1,4 @@
-#include "c2pulse.h"
+#include "pal.h"
 
 int read_val(const int *x)
     _ensures(return == *x)

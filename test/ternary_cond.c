@@ -1,4 +1,4 @@
-#include "c2pulse.h"
+#include "pal.h"
 #include <stdbool.h>
 
 /* Helper: identity function (impure in Pulse — not marked _pure) */

@@ -3,7 +3,7 @@
 // The C standard defines -x on unsigned types as producing a valid
 // unsigned result (2^N - x).
 
-#include "c2pulse.h"
+#include "pal.h"
 #include <stdint.h>
 
 int neg_u32(uint32_t x) {

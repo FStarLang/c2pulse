@@ -1,4 +1,4 @@
-#include "c2pulse.h"
+#include "pal.h"
 #include <stdint.h>
 
 /* Simple switch with break in every case */
