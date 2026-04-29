@@ -6,9 +6,7 @@ bool compare_elems(_array int *a, _array int *b, size_t len)
   _requires(a._length == len && b._length == len)
   _preserves_value(a._length)
   _preserves_value(b._length)
-  // TODO: return == _forall doesn't work because of bool/prop mismatch
-  _ensures(return ==> _forall(size_t i, i < len ==> a[i] == b[i]))
-  _ensures(_forall(size_t i, i < len ==> a[i] == b[i]) ==> return)
+  _ensures(return == _forall(size_t i, i < len ==> a[i] == b[i]))
 {
   size_t i = 0;
   while (i < len)
