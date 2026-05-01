@@ -208,10 +208,11 @@ impl<'a> Ctx<'a> {
             }
         };
 
-        let (name, ret_type, params) = match parse_let_signature(
+        let (name, ret_type, params, requires, ensures) = match parse_let_signature(
             &mut self.diagnostics,
             &loc,
             sig_code,
+            snippets,
             &self.target_int_widths,
         ) {
             Some(result) => result,
@@ -233,6 +234,8 @@ impl<'a> Ctx<'a> {
                 is_rec,
                 ret_type,
                 params,
+                requires,
+                ensures,
                 body,
             }),
         });

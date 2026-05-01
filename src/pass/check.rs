@@ -634,6 +634,8 @@ impl<'a> Checker<'a> {
                 is_rec: _,
                 ret_type,
                 params,
+                requires,
+                ensures,
                 body,
             }) => {
                 self.check_type(env, ret_type);
@@ -643,6 +645,12 @@ impl<'a> Checker<'a> {
                 let env = &mut env.clone();
                 for arg in params {
                     env.push_arg(arg, LocalDeclKind::LValue);
+                }
+                for r in requires {
+                    self.check_rvalue(env, r);
+                }
+                for e in ensures {
+                    self.check_rvalue(env, e);
                 }
                 self.check_rvalue(env, body);
             }

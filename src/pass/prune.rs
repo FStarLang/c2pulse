@@ -339,6 +339,8 @@ fn scan_translation_unit(deps: &mut Deps<DeclName>, tu: &TranslationUnit) {
                 for arg in &let_decl.params {
                     scan_type(ds, &arg.ty);
                 }
+                scan_exprs(ds, &let_decl.requires);
+                scan_exprs(ds, &let_decl.ensures);
                 scan_expr(ds, &let_decl.body);
             }
             DeclT::GlobalVar(GlobalVar {

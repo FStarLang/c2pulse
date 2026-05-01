@@ -747,6 +747,12 @@ impl<'a> Elaborator<'a> {
                 for arg in &let_decl.params {
                     env.push_arg(arg, LocalDeclKind::LValue);
                 }
+                for r in &mut let_decl.requires {
+                    self.elab_rvalue(env, Rc::make_mut(r));
+                }
+                for e in &mut let_decl.ensures {
+                    self.elab_rvalue(env, Rc::make_mut(e));
+                }
                 self.elab_rvalue(env, Rc::make_mut(&mut let_decl.body));
             }
             DeclT::GlobalVar(GlobalVar {

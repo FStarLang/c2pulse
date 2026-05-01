@@ -1062,14 +1062,15 @@ fn parse_type_inner(
     }
 }
 
-/// Parse a `_let` signature of the form: `_slprop foo(_array bool *r, _specnat n)`
-/// Returns (name, return_type, params) or None on parse error.
+/// Parse a `_let` signature of the form: `_slprop foo(_array bool *r, _specnat n) _requires(...) _ensures(...)`
+/// Returns (name, return_type, params, requires, ensures) or None on parse error.
 pub fn parse_let_signature(
     diagnostics: &mut Diagnostics,
     fallback_loc: &Rc<SourceInfo>,
     code: &InlineCode,
+    snippets: &SnippetMap,
     target_widths: &TargetIntWidths,
-) -> Option<(Rc<Ident>, Rc<Type>, Vec<FnArg>)> {
+) -> Option<(Rc<Ident>, Rc<Type>, Vec<FnArg>, Exprs, Exprs)> {
     let RelexedTokens {
         tokens,
         source_infos,
@@ -1080,7 +1081,7 @@ pub fn parse_let_signature(
     };
 
     // Build the parser for the signature
-    let sig_parser = let_signature_parser(&source_infos, target_widths);
+    let sig_parser = let_signature_parser(snippets, &source_infos, target_widths);
 
     let result = sig_parser.parse(IterInput::new(
         tokens.iter().map(Clone::clone),
@@ -1108,9 +1109,11 @@ fn let_signature_parser<
     I: ValueInput<'tokens, Token = Token<'src>, Span = SimpleSpan>,
     SIFT: SourceInfoForTokens,
 >(
+    snippets: &'src SnippetMap,
     sift: &'src SIFT,
     target_widths: &'src TargetIntWidths,
-) -> impl Parser<'tokens, I, (Rc<Ident>, Rc<Type>, Vec<FnArg>), Extra<'tokens, 'src>> {
+) -> impl Parser<'tokens, I, (Rc<Ident>, Rc<Type>, Vec<FnArg>, Exprs, Exprs), Extra<'tokens, 'src>>
+{
     let ret_type = type_parser(sift, target_widths);
 
     let fn_name = select! { Token::Ident(ident) => ident }
@@ -1179,10 +1182,37 @@ fn let_signature_parser<
         .collect::<Vec<_>>()
         .delimited_by(punct(Punct::LParen), punct(Punct::RParen));
 
+    // requires(expr) and ensures(expr) clauses (no underscore to avoid macro expansion)
+    let requires_clause = select! {
+        Token::Ident("requires") => (),
+        Token::Ident("_requires") => (),
+    }
+    .padded_by(ws())
+    .ignore_then(
+        expr_parser(snippets, sift, target_widths)
+            .map(|e| e.to_rvalue())
+            .delimited_by(punct(Punct::LParen), punct(Punct::RParen)),
+    );
+
+    let ensures_clause = select! {
+        Token::Ident("ensures") => (),
+        Token::Ident("_ensures") => (),
+    }
+    .padded_by(ws())
+    .ignore_then(
+        expr_parser(snippets, sift, target_widths)
+            .map(|e| e.to_rvalue())
+            .delimited_by(punct(Punct::LParen), punct(Punct::RParen)),
+    );
+
     ret_type
         .then(fn_name)
         .then(params)
-        .map(|((ret_ty, name), params)| (name, ret_ty, params))
+        .then(requires_clause.repeated().collect::<Vec<_>>())
+        .then(ensures_clause.repeated().collect::<Vec<_>>())
+        .map(|((((ret_ty, name), params), requires), ensures)| {
+            (name, ret_ty, params, requires, ensures)
+        })
 }
 
 pub fn process_inline_pulse(

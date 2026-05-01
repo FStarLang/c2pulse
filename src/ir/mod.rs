@@ -460,6 +460,8 @@ pub struct LetDecl {
     pub is_rec: bool,
     pub ret_type: Rc<Type>,
     pub params: Vec<FnArg>,
+    pub requires: Exprs,
+    pub ensures: Exprs,
     pub body: Rc<Expr>,
 }
 

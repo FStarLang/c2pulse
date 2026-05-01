@@ -3315,13 +3315,7 @@ impl<'a> Emitter<'a> {
             ExprT::Cast(inner, ty) if matches!(ty.val, TypeT::SLProp) => {
                 self.emit_rvalue(env, inner)
             }
-            _ => {
-                self.report(
-                    format!("pure function spec must be a boolean expression"),
-                    &expr.loc,
-                );
-                Doc::text("True")
-            }
+            _ => self.emit_rvalue(env, expr),
         }
     }
 
@@ -3582,7 +3576,57 @@ impl<'a> Emitter<'a> {
             params.push(Doc::text("()"));
         }
 
+        let requires_props: Vec<Doc> = let_decl
+            .requires
+            .iter()
+            .map(|r| self.emit_pure_prop(env, r))
+            .collect();
         let ret_type_doc = self.emit_type(env, &let_decl.ret_type);
+
+        let return_id = env
+            .push_return(let_decl.ret_type.clone())
+            .with_loc(let_decl.ret_type.loc.clone());
+        let ensures_props: Vec<Doc> = let_decl
+            .ensures
+            .iter()
+            .map(|e| self.emit_pure_prop(env, e))
+            .collect();
+
+        let has_specs = !requires_props.is_empty() || !ensures_props.is_empty();
+
+        let ty_doc = if has_specs {
+            let req_doc = if requires_props.is_empty() {
+                Doc::text("True")
+            } else {
+                Doc::intersperse(requires_props, Doc::text(" /\\ "))
+            };
+            let ens_doc = if ensures_props.is_empty() {
+                Doc::text("True")
+            } else {
+                Doc::intersperse(ensures_props, Doc::text(" /\\ "))
+            };
+            naryfn(vec![
+                Doc::text("Pure"),
+                ret_type_doc,
+                parens(Doc::text("requires").append(Doc::line()).append(req_doc)),
+                parens(
+                    Doc::text("ensures").append(Doc::line()).append(parens(
+                        Doc::text("fun")
+                            .append(Doc::line())
+                            .append(self.nm.emit(Name::Var(return_id.val.clone())))
+                            .append(Doc::line())
+                            .append("->")
+                            .group()
+                            .nest(2)
+                            .append(Doc::line())
+                            .append(ens_doc),
+                    )),
+                ),
+            ])
+        } else {
+            ret_type_doc
+        };
+
         let body_doc = if matches!(let_decl.ret_type.val, TypeT::SLProp) {
             self.emit_pure_prop(env, &let_decl.body)
         } else {
@@ -3593,7 +3637,7 @@ impl<'a> Emitter<'a> {
             let_decl.is_rec,
             self.nm.emit(Name::Fn(let_decl.name.val.clone())),
             &params,
-            ret_type_doc,
+            ty_doc,
             body_doc,
         )
     }

@@ -596,7 +596,20 @@ impl PrettyIR for LetDecl {
             .append(self.name.to_doc())
             .append("(")
             .append(params)
-            .append("), ")
+            .append(")")
+            .append(RcDoc::concat(self.requires.iter().map(|r| {
+                RcDoc::line()
+                    .append("_requires(")
+                    .append(r.to_doc())
+                    .append(")")
+            })))
+            .append(RcDoc::concat(self.ensures.iter().map(|e| {
+                RcDoc::line()
+                    .append("_ensures(")
+                    .append(e.to_doc())
+                    .append(")")
+            })))
+            .append(", ")
             .append(self.body.to_doc())
             .append(")")
     }
