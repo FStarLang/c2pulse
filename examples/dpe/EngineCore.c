@@ -9,7 +9,7 @@
 bool compare(size_t len, const _array uint8_t *a1, const _array uint8_t *a2)
     _requires(a1._length == len)
     _requires(a2._length == len)
-    _ensures((_slprop) _inline_pulse(pure ($(return) <==> Seq.equal (array_value_of $(a1)) (array_value_of $(a2)))))
+    _ensures(return == (bool) _inline_pulse(Seq.equal (array_value_of $(a1)) (array_value_of $(a2))))
 {
     _ghost_stmt(admit());
     return false;
