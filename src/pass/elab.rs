@@ -56,7 +56,7 @@ impl<'a> Elaborator<'a> {
             TypeT::Error => {}
             TypeT::Void => {}
             TypeT::SLProp => {}
-            TypeT::SpecInt => {}
+            TypeT::SpecInt | TypeT::SpecNat => {}
             TypeT::Bool => {}
 
             TypeT::TypeRef(_) => {}
@@ -737,6 +737,17 @@ impl<'a> Elaborator<'a> {
             }
             DeclT::IncludeDecl(include_decl) => {
                 self.elab_inline_pulse_code(env, &mut include_decl.code)
+            }
+            DeclT::LetDecl(let_decl) => {
+                self.elab_type(env, Rc::make_mut(&mut let_decl.ret_type));
+                for arg in &mut let_decl.params {
+                    self.elab_type(env, Rc::make_mut(&mut arg.ty));
+                }
+                let env = &mut env.clone();
+                for arg in &let_decl.params {
+                    env.push_arg(arg, LocalDeclKind::LValue);
+                }
+                self.elab_rvalue(env, Rc::make_mut(&mut let_decl.body));
             }
             DeclT::GlobalVar(GlobalVar {
                 name: _,

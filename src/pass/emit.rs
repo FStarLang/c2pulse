@@ -406,6 +406,7 @@ impl<'a> Emitter<'a> {
 
                 TypeT::SLProp => Doc::text("slprop"),
                 TypeT::SpecInt => Doc::text("int"),
+                TypeT::SpecNat => Doc::text("nat"),
 
                 TypeT::Refine(ty, _) | TypeT::RefineAlways(ty, _) | TypeT::Plain(ty) => {
                     self.emit_type(env, ty)
@@ -605,6 +606,7 @@ impl<'a> Emitter<'a> {
             | TypeT::SizeT
             | TypeT::PtrdiffT
             | TypeT::SpecInt
+            | TypeT::SpecNat
             | TypeT::SLProp => {}
             TypeT::Pointer(pointee_ty, kind) => {
                 let this_doc = self.emit_rvalue(env, this);
@@ -1011,7 +1013,7 @@ fn emit_unop(env: &Env, op: UnOp, ty: MaybeRc<Type>) -> Option<Doc> {
                 Doc::text(format!("{}.minus", modu))
             }
         }
-        (UnOp::Neg, TypeT::SpecInt) => Doc::text("op_Minus"),
+        (UnOp::Neg, TypeT::SpecInt | TypeT::SpecNat) => Doc::text("op_Minus"),
         (UnOp::Neg, _) => return None,
         (UnOp::BitNot, TypeT::Int { signed, width }) => {
             Doc::text(format!("{}.lognot", get_int_mod(signed, width)?))
@@ -1032,6 +1034,7 @@ fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
         (
             BinOp::Eq,
             TypeT::SpecInt
+            | TypeT::SpecNat
             | TypeT::Bool
             | TypeT::Int { .. }
             | TypeT::SizeT
@@ -1114,19 +1117,19 @@ fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
             Doc::text(format!("`{}.shift_right`", get_int_mod(signed, width)?))
         }
 
-        (BinOp::LEq, TypeT::SpecInt) => Doc::text("<="),
-        (BinOp::Lt, TypeT::SpecInt) => Doc::text("<"),
-        (BinOp::Mul, TypeT::SpecInt) => Doc::text("*"),
-        (BinOp::Div, TypeT::SpecInt) => Doc::text("/"),
-        (BinOp::Mod, TypeT::SpecInt) => Doc::text("%"),
-        (BinOp::Add, TypeT::SpecInt) => Doc::text("+"),
-        (BinOp::Sub, TypeT::SpecInt) => Doc::text("-"),
-        (BinOp::LogAnd, TypeT::SpecInt) => todo_binop!(),
-        (BinOp::LogOr, TypeT::SpecInt) => todo_binop!(),
-        (BinOp::Implies, TypeT::SpecInt) => todo_binop!(),
+        (BinOp::LEq, TypeT::SpecInt | TypeT::SpecNat) => Doc::text("<="),
+        (BinOp::Lt, TypeT::SpecInt | TypeT::SpecNat) => Doc::text("<"),
+        (BinOp::Mul, TypeT::SpecInt | TypeT::SpecNat) => Doc::text("*"),
+        (BinOp::Div, TypeT::SpecInt | TypeT::SpecNat) => Doc::text("/"),
+        (BinOp::Mod, TypeT::SpecInt | TypeT::SpecNat) => Doc::text("%"),
+        (BinOp::Add, TypeT::SpecInt | TypeT::SpecNat) => Doc::text("+"),
+        (BinOp::Sub, TypeT::SpecInt | TypeT::SpecNat) => Doc::text("-"),
+        (BinOp::LogAnd, TypeT::SpecInt | TypeT::SpecNat) => todo_binop!(),
+        (BinOp::LogOr, TypeT::SpecInt | TypeT::SpecNat) => todo_binop!(),
+        (BinOp::Implies, TypeT::SpecInt | TypeT::SpecNat) => todo_binop!(),
         (
             BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor | BinOp::Shl | BinOp::Shr,
-            TypeT::SpecInt,
+            TypeT::SpecInt | TypeT::SpecNat,
         ) => {
             todo_binop!()
         }
@@ -1186,7 +1189,7 @@ impl<'a> Emitter<'a> {
                             width,
                         } => Doc::text(format!("(UInt{}.uint_to_t {})", width, val)),
                         TypeT::SizeT => Doc::text(format!("{}sz", val)),
-                        TypeT::SpecInt => Doc::text(format!("{}", val)),
+                        TypeT::SpecInt | TypeT::SpecNat => Doc::text(format!("{}", val)),
                         TypeT::Pointer(_, PointerKind::Ref | PointerKind::Unknown)
                             if **val == BigInt::ZERO =>
                         {
@@ -1243,8 +1246,10 @@ impl<'a> Emitter<'a> {
                                 val_doc,
                             )
                         }
-                        (TypeT::Bool, TypeT::SpecInt) => unaryfn(Doc::text("bool_to_int"), val_doc),
-                        (TypeT::SpecInt, TypeT::Bool) => parens(
+                        (TypeT::Bool, TypeT::SpecInt | TypeT::SpecNat) => {
+                            unaryfn(Doc::text("bool_to_int"), val_doc)
+                        }
+                        (TypeT::SpecInt | TypeT::SpecNat, TypeT::Bool) => parens(
                             val_doc
                                 .append(Doc::line())
                                 .append("<>")
@@ -1272,7 +1277,7 @@ impl<'a> Emitter<'a> {
                                 width: w2,
                             },
                         ) if s1 == s2 && w1 == w2 => val_doc,
-                        (TypeT::Int { signed, width }, TypeT::SpecInt) => {
+                        (TypeT::Int { signed, width }, TypeT::SpecInt | TypeT::SpecNat) => {
                             if let Some(m) = get_int_mod(signed, width) {
                                 unaryfn_with_type(
                                     Doc::text(format!("{}.v", m)),
@@ -1307,7 +1312,9 @@ impl<'a> Emitter<'a> {
                                 self.emit_type(env, &*to_ty),
                             )
                         }
-                        (TypeT::SizeT, TypeT::SpecInt) => unaryfn(Doc::text("SizeT.v"), val_doc),
+                        (TypeT::SizeT, TypeT::SpecInt | TypeT::SpecNat) => {
+                            unaryfn(Doc::text("SizeT.v"), val_doc)
+                        }
                         (TypeT::Int { signed, width }, TypeT::SizeT) => {
                             if let Some(m) = get_int_mod(signed, width) {
                                 unaryfn(
@@ -1319,10 +1326,10 @@ impl<'a> Emitter<'a> {
                                 Doc::text("(admit())")
                             }
                         }
-                        (TypeT::SpecInt, TypeT::SizeT) => {
+                        (TypeT::SpecInt | TypeT::SpecNat, TypeT::SizeT) => {
                             unaryfn(Doc::text("SizeT.uint_to_t"), val_doc)
                         }
-                        (TypeT::SpecInt, TypeT::Int { signed, width }) => {
+                        (TypeT::SpecInt | TypeT::SpecNat, TypeT::Int { signed, width }) => {
                             if let Some(m) = get_int_mod(signed, width) {
                                 unaryfn(
                                     Doc::text(format!(
@@ -3327,6 +3334,7 @@ impl<'a> Emitter<'a> {
             | TypeT::SizeT
             | TypeT::PtrdiffT
             | TypeT::SpecInt
+            | TypeT::SpecNat
             | TypeT::SLProp
             | TypeT::Error
             | TypeT::TypeRef(_) => {}
@@ -3551,6 +3559,45 @@ impl<'a> Emitter<'a> {
         )
     }
 
+    fn emit_let_decl(&mut self, env: &Env, let_decl: &LetDecl) -> Doc {
+        let env = &mut env.clone();
+
+        let mut params = vec![];
+        for (i, arg) in let_decl.params.iter().enumerate() {
+            let n: Rc<Ident> = arg.name.clone().unwrap_or_else(|| {
+                Rc::<str>::from(format!("_unnamed{}", i)).with_loc(arg.ty.loc.clone())
+            });
+
+            params.push(parens(
+                annotated(&n, || self.nm.emit(Name::Var(n.val.clone())))
+                    .append(":")
+                    .append(Doc::line())
+                    .append(self.emit_type(env, &arg.ty)),
+            ));
+
+            env.push_arg(arg, LocalDeclKind::RValue);
+        }
+
+        if params.is_empty() {
+            params.push(Doc::text("()"));
+        }
+
+        let ret_type_doc = self.emit_type(env, &let_decl.ret_type);
+        let body_doc = if matches!(let_decl.ret_type.val, TypeT::SLProp) {
+            self.emit_pure_prop(env, &let_decl.body)
+        } else {
+            self.emit_rvalue(env, &let_decl.body)
+        };
+
+        mk_let_rec(
+            let_decl.is_rec,
+            self.nm.emit(Name::Fn(let_decl.name.val.clone())),
+            &params,
+            ret_type_doc,
+            body_doc,
+        )
+    }
+
     fn emit_global_var(&mut self, env: &Env, gv: &GlobalVar) -> Doc {
         if !gv.is_pure {
             self.report(
@@ -3595,6 +3642,7 @@ impl<'a> Emitter<'a> {
                 let env = &mut env.clone();
                 self.emit_inline_pulse_tokens(env, &include_decl.code)
             }
+            DeclT::LetDecl(let_decl) => self.emit_let_decl(env, let_decl),
             DeclT::GlobalVar(gv) => self.emit_global_var(env, gv),
         })
     }

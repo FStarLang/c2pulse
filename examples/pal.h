@@ -35,6 +35,11 @@ __attribute__((annotate("pal-pure"))) _Bool pal_c_assert_enabled(void);
 
 #define _inline_pulse(args) _inline_pulse(__capture_args(args))
 
+#define _let(sig, body) [[clang::annotate("pal-let", __capture_args(sig), __capture_args(body))]] \
+    void __pal_concat(__pal_let_anchor_, __COUNTER__) (void) {}
+#define _let_rec(sig, body) [[clang::annotate("pal-let-rec", __capture_args(sig), __capture_args(body))]] \
+    void __pal_concat(__pal_let_rec_anchor_, __COUNTER__) (void) {}
+
 #else
 
 #define _include_pulse(...)
@@ -56,6 +61,9 @@ __attribute__((annotate("pal-pure"))) _Bool pal_c_assert_enabled(void);
 #define _pure
 #define _rec
 #define _decreases(p)
+
+#define _let(sig, body)
+#define _let_rec(sig, body)
 
 #endif
 

@@ -116,6 +116,7 @@ impl PrettyIR for TypeT {
             TypeT::Pointer(ty, PointerKind::ArrayPtr) => ty.to_doc().append(RcDoc::text("[ptr]")),
             TypeT::Pointer(ty, PointerKind::Unknown) => ty.to_doc().append(RcDoc::text("[?]")),
             TypeT::SpecInt => RcDoc::text("_specint"),
+            TypeT::SpecNat => RcDoc::text("_specnat"),
             TypeT::SLProp => RcDoc::text("_slprop"),
             TypeT::TypeRef(n) => n.to_doc(),
             TypeT::Refine(ty, p) => RcDoc::text("_refine(")
@@ -567,6 +568,40 @@ impl PrettyIR for IncludeDecl {
     }
 }
 
+impl PrettyIR for LetDecl {
+    fn to_doc(&self) -> RcDoc<'_, ()> {
+        let keyword = if self.is_rec { "_let_rec(" } else { "_let(" };
+        let params = RcDoc::intersperse(
+            self.params.iter().map(|arg| {
+                let mode_prefix = match arg.mode {
+                    ParamMode::Consumed => RcDoc::text("_consumes").append(RcDoc::line()),
+                    ParamMode::Const => RcDoc::text("_const").append(RcDoc::line()),
+                    ParamMode::Out => RcDoc::text("_out").append(RcDoc::line()),
+                    ParamMode::Regular => RcDoc::nil(),
+                };
+                mode_prefix
+                    .append(arg.ty.to_doc())
+                    .append(match &arg.name {
+                        Some(n) => RcDoc::line().append(n.to_doc()),
+                        None => RcDoc::nil(),
+                    })
+                    .group()
+                    .nest(2)
+            }),
+            RcDoc::text(", "),
+        );
+        RcDoc::text(keyword)
+            .append(self.ret_type.to_doc())
+            .append(" ")
+            .append(self.name.to_doc())
+            .append("(")
+            .append(params)
+            .append("), ")
+            .append(self.body.to_doc())
+            .append(")")
+    }
+}
+
 impl PrettyIR for GlobalVar {
     fn to_doc(&self) -> RcDoc<'_, ()> {
         let prefix = if self.is_pure {
@@ -601,6 +636,7 @@ impl PrettyIR for DeclT {
                 .append(RcDoc::text(";")),
             DeclT::UnionDefn(union_defn) => union_defn.to_doc(),
             DeclT::IncludeDecl(include_decl) => include_decl.to_doc(),
+            DeclT::LetDecl(let_decl) => let_decl.to_doc(),
             DeclT::GlobalVar(global_var) => global_var.to_doc(),
         }
     }

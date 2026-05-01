@@ -82,7 +82,7 @@ impl<'a> Checker<'a> {
             TypeT::Pointer(ty, _kind) => {
                 self.check_type(env, ty);
             }
-            TypeT::SpecInt => {}
+            TypeT::SpecInt | TypeT::SpecNat => {}
             TypeT::SLProp => {}
             TypeT::TypeRef(TypeRefKind::Typedef(n)) => {
                 if let None = env.lookup_type(n) {
@@ -118,7 +118,7 @@ impl<'a> Checker<'a> {
             TypeT::SizeT => true,
             TypeT::PtrdiffT => true,
             TypeT::Pointer(_, _) => true, // == 0 ?
-            TypeT::SpecInt => true,
+            TypeT::SpecInt | TypeT::SpecNat => true,
             TypeT::SLProp => true, // true/false
             TypeT::TypeRef(_) => false,
             TypeT::Refine(..) | TypeT::RefineAlways(..) | TypeT::Plain(..) => false,
@@ -629,6 +629,23 @@ impl<'a> Checker<'a> {
                 }
             }
             DeclT::IncludeDecl(_) => {}
+            DeclT::LetDecl(LetDecl {
+                name: _,
+                is_rec: _,
+                ret_type,
+                params,
+                body,
+            }) => {
+                self.check_type(env, ret_type);
+                for arg in params {
+                    self.check_type(env, &arg.ty);
+                }
+                let env = &mut env.clone();
+                for arg in params {
+                    env.push_arg(arg, LocalDeclKind::LValue);
+                }
+                self.check_rvalue(env, body);
+            }
             DeclT::GlobalVar(GlobalVar {
                 name: _,
                 ty,

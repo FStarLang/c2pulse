@@ -142,6 +142,7 @@ pub enum TypeT {
     Pointer(Rc<Type>, PointerKind),
 
     SpecInt,
+    SpecNat,
     SLProp,
 
     TypeRef(TypeRefKind),
@@ -454,6 +455,15 @@ pub struct IncludeDecl {
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub struct LetDecl {
+    pub name: Rc<Ident>,
+    pub is_rec: bool,
+    pub ret_type: Rc<Type>,
+    pub params: Vec<FnArg>,
+    pub body: Rc<Expr>,
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct GlobalVar {
     pub name: Rc<Ident>,
     pub ty: Rc<Type>,
@@ -471,6 +481,7 @@ pub enum DeclT {
     StructDecl(Rc<Ident>),
     UnionDefn(UnionDefn),
     IncludeDecl(IncludeDecl),
+    LetDecl(LetDecl),
     GlobalVar(GlobalVar),
 }
 

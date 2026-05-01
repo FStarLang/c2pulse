@@ -2,7 +2,9 @@ use num_bigint::BigInt;
 
 use crate::{
     diag::{Diagnostic, DiagnosticLevel, Diagnostics},
-    hauntedc::{SnippetMap, TargetIntWidths, parse_expr, process_inline_pulse},
+    hauntedc::{
+        SnippetMap, TargetIntWidths, parse_expr, parse_let_signature, process_inline_pulse,
+    },
     ir::*,
     vfs::VFS,
 };
@@ -181,6 +183,59 @@ impl<'a> Ctx<'a> {
             }
             None => self.report_diag(loc, true, "internal error: invalid inline_pulse encoding"),
         }
+    }
+
+    fn add_let_decl(
+        &mut self,
+        loc: Rc<SourceInfo>,
+        is_rec: bool,
+        sig_idx: u32,
+        body_idx: u32,
+        snippets: &SnippetMap,
+    ) {
+        let sig_code = match snippets.snippets.get(&sig_idx) {
+            Some(code) => code,
+            None => {
+                self.report_diag(loc, true, "internal error: invalid _let signature encoding");
+                return;
+            }
+        };
+        let body_code = match snippets.snippets.get(&body_idx) {
+            Some(code) => code,
+            None => {
+                self.report_diag(loc, true, "internal error: invalid _let body encoding");
+                return;
+            }
+        };
+
+        let (name, ret_type, params) = match parse_let_signature(
+            &mut self.diagnostics,
+            &loc,
+            sig_code,
+            &self.target_int_widths,
+        ) {
+            Some(result) => result,
+            None => return,
+        };
+
+        let body = parse_expr(
+            &mut self.diagnostics,
+            &loc,
+            body_code,
+            snippets,
+            &self.target_int_widths,
+        );
+
+        self.translation_unit.decls.push(Ast {
+            loc,
+            val: DeclT::LetDecl(LetDecl {
+                name,
+                is_rec,
+                ret_type,
+                params,
+                body,
+            }),
+        });
     }
 
     fn mk_ghost_stmt(&mut self, loc: Rc<SourceInfo>, idx: u32, snippets: &SnippetMap) -> Rc<Stmt> {

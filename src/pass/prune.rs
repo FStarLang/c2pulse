@@ -101,7 +101,7 @@ fn scan_type(deps: &mut HashSet<DeclName>, ty: &Type) {
             scan_expr(deps, p);
         }
         TypeT::Plain(ty) => scan_type(deps, ty),
-        TypeT::SpecInt => {}
+        TypeT::SpecInt | TypeT::SpecNat => {}
     }
 }
 
@@ -270,6 +270,7 @@ fn decl_name(decl: &Decl) -> DeclName {
         DeclT::StructDecl(name) => DeclName::Struct(name.val.clone()),
         DeclT::UnionDefn(union_defn) => DeclName::Union(union_defn.name.val.clone()),
         DeclT::IncludeDecl(_) => DeclName::Include(decl.loc.clone()),
+        DeclT::LetDecl(let_decl) => DeclName::Fn(let_decl.name.val.clone()),
         DeclT::GlobalVar(gv) => DeclName::GlobalVar(gv.name.val.clone()),
     }
 }
@@ -332,6 +333,14 @@ fn scan_translation_unit(deps: &mut Deps<DeclName>, tu: &TranslationUnit) {
                 let ds = deps.deps_for(n);
                 scan_inline_pulse_code(ds, &code.code);
             }
+            DeclT::LetDecl(let_decl) => {
+                let ds = deps.deps_for(n);
+                scan_type(ds, &let_decl.ret_type);
+                for arg in &let_decl.params {
+                    scan_type(ds, &arg.ty);
+                }
+                scan_expr(ds, &let_decl.body);
+            }
             DeclT::GlobalVar(GlobalVar {
                 name: _,
                 ty,
@@ -353,7 +362,10 @@ pub fn prune(tu: &mut TranslationUnit) {
     scan_translation_unit(&mut deps, tu);
     for decl in &tu.decls {
         if in_main_file(&tu.main_file_name, &decl.loc) {
-            deps.add_root(decl_name(&decl))
+            // LetDecl is not auto-rooted; it's only included if referenced
+            if !matches!(&decl.val, DeclT::LetDecl(_)) {
+                deps.add_root(decl_name(&decl))
+            }
         }
     }
     let deps = deps.propagate();

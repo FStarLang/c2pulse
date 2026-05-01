@@ -399,6 +399,7 @@ fn type_parser<
         select! {
             Token::Ident("_slprop") => TypeT::SLProp,
             Token::Ident("_specint") => TypeT::SpecInt,
+            Token::Ident("_specnat") => TypeT::SpecNat,
             Token::Ident("void") => TypeT::Void,
             Token::Ident("size_t") => TypeT::SizeT,
         }
@@ -510,6 +511,7 @@ fn expr_parser<
             select! {
                 Token::Ident("_slprop") => TypeT::SLProp,
                 Token::Ident("_specint") => TypeT::SpecInt,
+                Token::Ident("_specnat") => TypeT::SpecNat,
                 Token::Ident("void") => TypeT::Void,
                 Token::Ident("size_t") => TypeT::SizeT,
             }
@@ -1058,6 +1060,129 @@ fn parse_type_inner(
             TypeT::Error.with_loc(fallback_loc.clone())
         }
     }
+}
+
+/// Parse a `_let` signature of the form: `_slprop foo(_array bool *r, _specnat n)`
+/// Returns (name, return_type, params) or None on parse error.
+pub fn parse_let_signature(
+    diagnostics: &mut Diagnostics,
+    fallback_loc: &Rc<SourceInfo>,
+    code: &InlineCode,
+    target_widths: &TargetIntWidths,
+) -> Option<(Rc<Ident>, Rc<Type>, Vec<FnArg>)> {
+    let RelexedTokens {
+        tokens,
+        source_infos,
+    } = relex_inline_code(diagnostics, code);
+    let source_infos = TokenSI {
+        source_infos,
+        fallback: fallback_loc.clone(),
+    };
+
+    // Build the parser for the signature
+    let sig_parser = let_signature_parser(&source_infos, target_widths);
+
+    let result = sig_parser.parse(IterInput::new(
+        tokens.iter().map(Clone::clone),
+        (tokens.len()..tokens.len()).into(),
+    ));
+
+    match result.output() {
+        Some(output) => Some(output.clone()),
+        None => {
+            diagnostics
+                .diags
+                .extend(result.errors().map(|err| Diagnostic {
+                    loc: source_infos.resolve_error_location(err.span()),
+                    level: DiagnosticLevel::Error,
+                    msg: format!("in _let signature: {}", err),
+                }));
+            None
+        }
+    }
+}
+
+fn let_signature_parser<
+    'tokens,
+    'src: 'tokens,
+    I: ValueInput<'tokens, Token = Token<'src>, Span = SimpleSpan>,
+    SIFT: SourceInfoForTokens,
+>(
+    sift: &'src SIFT,
+    target_widths: &'src TargetIntWidths,
+) -> impl Parser<'tokens, I, (Rc<Ident>, Rc<Type>, Vec<FnArg>), Extra<'tokens, 'src>> {
+    let ret_type = type_parser(sift, target_widths);
+
+    let fn_name = select! { Token::Ident(ident) => ident }
+        .map_with(|ident, e| {
+            Rc::new(Ast {
+                val: Rc::<str>::from(ident),
+                loc: sift.resolve_source_info(&e.span()),
+            })
+        })
+        .padded_by(ws());
+
+    // Parameter mode annotations
+    let param_mode = select! {
+        Token::Ident("_plain") => ParamMode::Const,
+        Token::Ident("_consumes") => ParamMode::Consumed,
+        Token::Ident("_out") => ParamMode::Out,
+    }
+    .padded_by(ws());
+
+    // Pointer kind annotations
+    let pointer_kind = select! {
+        Token::Ident("_array") => PointerKind::Array,
+        Token::Ident("_arrayptr") => PointerKind::ArrayPtr,
+    }
+    .padded_by(ws());
+
+    // A single parameter: [mode] [ptr_kind] type [name]
+    let param = param_mode
+        .or_not()
+        .then(pointer_kind.or_not())
+        .then(type_parser(sift, target_widths))
+        .then(
+            select! { Token::Ident(ident) => ident }
+                .map_with(|ident, e| {
+                    Rc::new(Ast {
+                        val: Rc::<str>::from(ident),
+                        loc: sift.resolve_source_info(&e.span()),
+                    })
+                })
+                .padded_by(ws())
+                .or_not(),
+        )
+        .map(|(((mode_opt, ptr_kind_opt), ty), name_opt)| {
+            let mode = mode_opt.unwrap_or(ParamMode::Regular);
+            // If a pointer kind annotation was given, override the pointer kind in the type
+            let ty = if let Some(ptr_kind) = ptr_kind_opt {
+                match &ty.val {
+                    TypeT::Pointer(inner, _) => {
+                        TypeT::Pointer(inner.clone(), ptr_kind).with_loc(ty.loc.clone())
+                    }
+                    _ => ty,
+                }
+            } else {
+                ty
+            };
+            FnArg {
+                name: name_opt,
+                ty,
+                mode,
+            }
+        });
+
+    let params = param
+        .separated_by(punct(Punct::Comma))
+        .allow_trailing()
+        .collect::<Vec<_>>()
+        .delimited_by(punct(Punct::LParen), punct(Punct::RParen));
+
+    ret_type
+        .then(fn_name)
+        .then(params)
+        .map(|((ret_ty, name), params)| (name, ret_ty, params))
 }
 
 pub fn process_inline_pulse(

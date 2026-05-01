@@ -167,6 +167,19 @@ impl Env {
             }
             DeclT::UnionDefn(union_defn) => self.push_union(union_defn.clone()),
             DeclT::IncludeDecl(_) => {}
+            DeclT::LetDecl(let_decl) => {
+                // Register as a function so it can be called in specs
+                self.push_fn_decl(FnDecl {
+                    name: let_decl.name.clone(),
+                    ret_type: let_decl.ret_type.clone(),
+                    args: let_decl.params.clone(),
+                    requires: vec![],
+                    ensures: vec![],
+                    is_pure: true,
+                    is_rec: let_decl.is_rec,
+                    decreases: None,
+                });
+            }
             DeclT::GlobalVar(gv) => self.push_global_var(gv.clone()),
         }
     }
@@ -417,12 +430,14 @@ impl Env {
             (_, TypeT::Error) => Some(b0),
             (TypeT::Error, _) => Some(a0),
 
-            (TypeT::SpecInt, TypeT::Bool | TypeT::Int { .. } | TypeT::SizeT | TypeT::PtrdiffT) => {
-                Some(a0)
-            }
-            (TypeT::Bool | TypeT::Int { .. } | TypeT::SizeT | TypeT::PtrdiffT, TypeT::SpecInt) => {
-                Some(b0)
-            }
+            (
+                TypeT::SpecInt | TypeT::SpecNat,
+                TypeT::Bool | TypeT::Int { .. } | TypeT::SizeT | TypeT::PtrdiffT,
+            ) => Some(a0),
+            (
+                TypeT::Bool | TypeT::Int { .. } | TypeT::SizeT | TypeT::PtrdiffT,
+                TypeT::SpecInt | TypeT::SpecNat,
+            ) => Some(b0),
 
             (TypeT::SizeT, TypeT::Bool | TypeT::Int { .. }) => Some(a0),
             (TypeT::Bool | TypeT::Int { .. }, TypeT::SizeT) => Some(b0),
@@ -438,10 +453,20 @@ impl Env {
 
             (
                 TypeT::SLProp,
-                TypeT::Bool | TypeT::Int { .. } | TypeT::SizeT | TypeT::PtrdiffT | TypeT::SpecInt,
+                TypeT::Bool
+                | TypeT::Int { .. }
+                | TypeT::SizeT
+                | TypeT::PtrdiffT
+                | TypeT::SpecInt
+                | TypeT::SpecNat,
             ) => Some(a0),
             (
-                TypeT::Bool | TypeT::Int { .. } | TypeT::SizeT | TypeT::PtrdiffT | TypeT::SpecInt,
+                TypeT::Bool
+                | TypeT::Int { .. }
+                | TypeT::SizeT
+                | TypeT::PtrdiffT
+                | TypeT::SpecInt
+                | TypeT::SpecNat,
                 TypeT::SLProp,
             ) => Some(b0),
 
@@ -472,6 +497,9 @@ impl Env {
             both_sides!(TypeT::SizeT) => None,
             both_sides!(TypeT::PtrdiffT) => Some(a0),
             both_sides!(TypeT::SpecInt) => None,
+            both_sides!(TypeT::SpecNat) => None,
+            // SpecNat <: SpecInt
+            (TypeT::SpecInt, TypeT::SpecNat) | (TypeT::SpecNat, TypeT::SpecInt) => None,
 
             either_side!(TypeT::Void) => None,
             either_side!(TypeT::Pointer(_, _)) => None,
@@ -499,6 +527,7 @@ impl Env {
             | TypeT::PtrdiffT
             | TypeT::Pointer(_, _)
             | TypeT::SpecInt
+            | TypeT::SpecNat
             | TypeT::SLProp
             | TypeT::Error => None,
 
@@ -534,6 +563,7 @@ impl Env {
                 k1 == k2 && self.vtype_eq(t1.clone().into(), t2.clone().into())
             }
             (TypeT::SpecInt, TypeT::SpecInt) => true,
+            (TypeT::SpecNat, TypeT::SpecNat) => true,
             (TypeT::SLProp, TypeT::SLProp) => true,
             (TypeT::TypeRef(t1), TypeT::TypeRef(t2)) => t1.alpha_eq(t2),
             (TypeT::Error, _) | (_, TypeT::Error) => true,

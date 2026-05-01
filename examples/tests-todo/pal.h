@@ -24,6 +24,11 @@
 
 #define _inline_pulse(args) _inline_pulse(__capture_args(args))
 
+#define _let(sig, body) [[clang::annotate("pal-let", __capture_args(sig), __capture_args(body))]] \
+    void __pal_concat(__pal_let_anchor_, __COUNTER__) (void) {}
+#define _let_rec(sig, body) [[clang::annotate("pal-let-rec", __capture_args(sig), __capture_args(body))]] \
+    void __pal_concat(__pal_let_rec_anchor_, __COUNTER__) (void) {}
+
 #else
 
 #define _include_pulse(...)
@@ -39,6 +44,9 @@
 #define _consumes
 #define _array
 #define _pure
+
+#define _let(sig, body)
+#define _let_rec(sig, body)
 
 #endif
 
