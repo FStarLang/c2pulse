@@ -364,10 +364,7 @@ pub fn prune(tu: &mut TranslationUnit) {
     scan_translation_unit(&mut deps, tu);
     for decl in &tu.decls {
         if in_main_file(&tu.main_file_name, &decl.loc) {
-            // LetDecl is not auto-rooted; it's only included if referenced
-            if !matches!(&decl.val, DeclT::LetDecl(_)) {
-                deps.add_root(decl_name(&decl))
-            }
+            deps.add_root(decl_name(&decl))
         }
     }
     let deps = deps.propagate();
