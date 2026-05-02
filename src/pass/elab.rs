@@ -666,11 +666,7 @@ impl<'a> Elaborator<'a> {
                 for (j, s) in inserted.into_iter().enumerate() {
                     stmts.insert(i + j, s);
                 }
-                // Re-elaborate the inserted statements
-                for j in 0..stmts.len() - i {
-                    env.push_stmt(&stmts[i + j]);
-                }
-                i = stmts.len();
+                // Re-elaborate from the insertion point
                 continue;
             }
             env.push_stmt(&stmts[i]);
