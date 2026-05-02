@@ -3,7 +3,7 @@
 #ifdef C2PULSE
 
 // Dummy declaration for C assert() translation
-static inline void __pal_c_assert(int x) { (void)x; }
+static inline void __pal_c_assert(_Bool x) { (void)x; }
 // Opaque function used to guard assert — Pulse verifies both branches
 __attribute__((annotate("pal-pure"))) _Bool pal_c_assert_enabled(void);
 
