@@ -23,17 +23,17 @@ point_ptr mk_point()
     return p;
 }
 
-#define INT32_FITS(x) (INT32_MIN <= (x) && (x) <= INT32_MAX)
+_let(bool int32_fits(_specint x), INT32_MIN <= x && x <= INT32_MAX)
 
 int sum_point(const point_ptr p)
-    _requires(INT32_FITS((_specint) p->x + p->y))
+    _requires(int32_fits((_specint) p->x + p->y))
     _ensures(return == _old(p->x + p->y))
 {
     return p->x + p->y;
 }
 
 int sum_and_free_point(_consumes point_ptr p)
-    _requires(INT32_FITS((_specint) p->x + p->y))
+    _requires(int32_fits((_specint) p->x + p->y))
     _ensures(return == _old(p->x + p->y))
 {
     int sum = sum_point(p);
