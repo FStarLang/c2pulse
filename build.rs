@@ -35,6 +35,7 @@ fn main() {
         .with_cpp_file(out_dir.join("generated.cpp"))
         .with_h_file(crate_dir.join("cpp/generated.h"))
         .with_rs_file(out_dir.join("generated.rs"))
+        .with_zng_header_in_place()
         .generate();
 
     let mut build = cc::Build::new();
