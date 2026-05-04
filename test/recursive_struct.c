@@ -100,12 +100,12 @@ _rec void traverse(_plain node *head)
     }
     _ghost_stmt(
         elim_is_list_nonnull $(head);
-        struct_node__aux_raw_unfold $(head)
+        $unfold(node) $(head)
     );
     node *nx = head->next;
     traverse(nx);
     _ghost_stmt(
-        struct_node__aux_raw_fold $(head);
+        $fold(node) $(head);
         Pulse.Lib.Reference.pts_to_not_null $(head);
         intro_is_list_cons $(head) (!($(head)))
     );
@@ -122,11 +122,11 @@ bool peek_head(_plain node *head, int *out)
     }
     _ghost_stmt(
         elim_is_list_nonnull $(head);
-        struct_node__aux_raw_unfold $(head)
+        $unfold(node) $(head)
     );
     *out = head->data;
     _ghost_stmt(
-        struct_node__aux_raw_fold $(head);
+        $fold(node) $(head);
         Pulse.Lib.Reference.pts_to_not_null $(head);
         intro_is_list_cons $(head) (!($(head)))
     );
