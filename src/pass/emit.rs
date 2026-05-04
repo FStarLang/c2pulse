@@ -525,6 +525,7 @@ impl<'a> Emitter<'a> {
                 InlinePulseToken::Verbatim(_)
                 | InlinePulseToken::TypeAntiquot { .. }
                 | InlinePulseToken::FieldAntiquot { .. }
+                | InlinePulseToken::AuxFnAntiquot { .. }
                 | InlinePulseToken::Declare { .. } => {}
                 InlinePulseToken::RValueAntiquot { expr, .. }
                 | InlinePulseToken::LValueAntiquot { expr, .. } => {
@@ -571,6 +572,60 @@ impl<'a> Emitter<'a> {
                                 &ty.loc,
                             );
                             Doc::text(*before).append("(* $field: not a struct or union type *)")
+                        }
+                    }
+                }
+                InlinePulseToken::AuxFnAntiquot {
+                    before,
+                    ty,
+                    field_name,
+                    kind,
+                } => {
+                    let resolved = env.vtype_whnf(ty.clone().into());
+                    match &resolved.val {
+                        TypeT::TypeRef(TypeRefKind::Struct(struct_name)) => {
+                            if field_name.is_some() {
+                                self.report(
+                                    format!("${}: struct type does not take a field name", kind.keyword()),
+                                    &ty.loc,
+                                );
+                            }
+                            Doc::text(*before).append(self.nm.emit(Name::StructAuxFn(
+                                struct_name.val.clone(),
+                                kind.struct_aux_name().into(),
+                            )))
+                        }
+                        TypeT::TypeRef(TypeRefKind::Union(union_name)) => {
+                            match (kind.union_aux_name(), field_name) {
+                                (Some(aux_name), Some(fld)) => {
+                                    Doc::text(*before).append(self.nm.emit(Name::UnionAuxFn(
+                                        union_name.val.clone(),
+                                        aux_name,
+                                        fld.val.clone(),
+                                    )))
+                                }
+                                (None, _) => {
+                                    self.report(
+                                        format!("${}: not supported for union types", kind.keyword()),
+                                        &ty.loc,
+                                    );
+                                    Doc::text(*before).append(format!("(* ${}: not supported for unions *)", kind.keyword()))
+                                }
+                                (_, None) => {
+                                    self.report(
+                                        format!("${}: union type requires a field name (use type::field syntax)", kind.keyword()),
+                                        &ty.loc,
+                                    );
+                                    Doc::text(*before).append(format!("(* ${}: missing field name *)", kind.keyword()))
+                                }
+                            }
+                        }
+                        _ => {
+                            self.report(
+                                format!("${}: expected struct or union type, got {}", kind.keyword(), ty),
+                                &ty.loc,
+                            );
+                            Doc::text(*before).append(format!("(* ${}: not a struct or union type *)", kind.keyword()))
                         }
                     }
                 }

@@ -118,6 +118,7 @@ impl<'a> Elaborator<'a> {
                     env.push_var_decl(ident, ty.clone(), LocalDeclKind::RValue);
                 }
                 InlinePulseToken::Verbatim(_) | InlinePulseToken::FieldAntiquot { .. } => {}
+                InlinePulseToken::AuxFnAntiquot { ty, .. } => self.elab_type(env, Rc::make_mut(ty)),
             }
         }
     }

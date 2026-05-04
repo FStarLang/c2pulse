@@ -1245,6 +1245,11 @@ pub fn process_inline_pulse(
             dollar_span: SimpleSpan,
             body_span: SimpleSpan,
         },
+        AuxFnAntiquot {
+            dollar_span: SimpleSpan,
+            body_span: SimpleSpan,
+            kind: AuxFnKind,
+        },
         DeclareAntiquot {
             dollar_span: SimpleSpan,
             body_span: SimpleSpan,
@@ -1317,6 +1322,46 @@ pub fn process_inline_pulse(
             body_span,
         });
 
+    // $unfold-uninit(...) and $fold-uninit(...) need special handling since "-" is a separate token
+    let dollar_keyword_uninit = |kw| {
+        just(Token::Punct(Punct::Dollar))
+            .map_with(|_, extra| extra.span())
+            .then_ignore(just(Token::Ident(kw)).padded_by(ws()))
+            .then_ignore(just(Token::Punct(Punct::Dash)).padded_by(ws()))
+            .then_ignore(just(Token::Ident("uninit")).padded_by(ws()))
+            .then_ignore(just(Token::Punct(Punct::LParen)))
+            .then(balanced_inner.clone())
+            .then_ignore(just(Token::Punct(Punct::RParen)))
+    };
+
+    let unfold_antiquot =
+        dollar_keyword("unfold").map(|(dollar_span, body_span)| RawToken::AuxFnAntiquot {
+            dollar_span,
+            body_span,
+            kind: AuxFnKind::Unfold,
+        });
+
+    let fold_antiquot =
+        dollar_keyword("fold").map(|(dollar_span, body_span)| RawToken::AuxFnAntiquot {
+            dollar_span,
+            body_span,
+            kind: AuxFnKind::Fold,
+        });
+
+    let unfold_uninit_antiquot =
+        dollar_keyword_uninit("unfold").map(|(dollar_span, body_span)| RawToken::AuxFnAntiquot {
+            dollar_span,
+            body_span,
+            kind: AuxFnKind::UnfoldUninit,
+        });
+
+    let fold_uninit_antiquot =
+        dollar_keyword_uninit("fold").map(|(dollar_span, body_span)| RawToken::AuxFnAntiquot {
+            dollar_span,
+            body_span,
+            kind: AuxFnKind::FoldUninit,
+        });
+
     // $`ident → emits 'ident (F* implicit/ticked argument)
     let tick_antiquot = just(Token::Punct(Punct::Dollar))
         .map_with(|_, extra| extra.span())
@@ -1335,6 +1380,10 @@ pub fn process_inline_pulse(
         type_antiquot,
         field_antiquot,
         declare_antiquot,
+        unfold_uninit_antiquot,
+        fold_uninit_antiquot,
+        unfold_antiquot,
+        fold_antiquot,
         tick_antiquot,
         antiquot,
         verbatim,
@@ -1439,6 +1488,51 @@ pub fn process_inline_pulse(
                         before,
                         ty: ty.clone(),
                         field_name: f.clone(),
+                    },
+                    _ => InlinePulseToken::Verbatim(code.tokens[dollar_span.start].clone()),
+                }
+            }
+            RawToken::AuxFnAntiquot {
+                dollar_span,
+                body_span,
+                kind,
+            } => {
+                let before = code.tokens[dollar_span.start].before;
+                let inner_code = InlineCode {
+                    tokens: code.tokens[body_span.start..body_span.end].to_vec(),
+                };
+                let mut inner_diags = Diagnostics::empty();
+                let RelexedTokens {
+                    tokens: inner_relexed,
+                    source_infos: inner_si,
+                } = relex_inline_code(&mut inner_diags, &inner_code);
+                let inner_sift = TokenSI {
+                    source_infos: inner_si,
+                    fallback: fallback_loc.clone(),
+                };
+                let mk_ident = select! { Token::Ident(ident) => ident }
+                    .map_with(|ident, e| {
+                        Rc::<str>::from(ident).with_loc(inner_sift.resolve_source_info(&e.span()))
+                    })
+                    .padded_by(ws());
+                // Try parsing as type::field first, fall back to just type
+                let with_field_parser = type_parser(&inner_sift, target_widths)
+                    .then_ignore(just(Token::Punct(Punct::ColonColon)))
+                    .then(mk_ident)
+                    .map(|(ty, f)| (ty, Some(f)));
+                let without_field_parser =
+                    type_parser(&inner_sift, target_widths).map(|ty| (ty, None));
+                let aux_parser = with_field_parser.or(without_field_parser);
+                let result = aux_parser.parse(IterInput::new(
+                    inner_relexed.iter().map(Clone::clone),
+                    (inner_relexed.len()..inner_relexed.len()).into(),
+                ));
+                match result.output() {
+                    Some((ty, field_name)) => InlinePulseToken::AuxFnAntiquot {
+                        before,
+                        ty: ty.clone(),
+                        field_name: field_name.clone(),
+                        kind,
                     },
                     _ => InlinePulseToken::Verbatim(code.tokens[dollar_span.start].clone()),
                 }

@@ -141,6 +141,9 @@ impl<'a> Checker<'a> {
                 InlinePulseToken::FieldAntiquot { .. } => {
                     // TODO: check that field exists
                 }
+                InlinePulseToken::AuxFnAntiquot { .. } => {
+                    // Checked at emit time
+                }
             }
         }
     }

@@ -29,6 +29,23 @@ fn inline_pulse_code_to_doc<'a>(code: &'a InlinePulseCode) -> RcDoc<'a, ()> {
                 .append("::")
                 .append(field_name.to_doc())
                 .append(")"),
+            InlinePulseToken::AuxFnAntiquot {
+                before,
+                ty,
+                field_name,
+                kind,
+            } => {
+                let doc = RcDoc::text(*before)
+                    .append(format!("${}", kind.keyword()))
+                    .append("(")
+                    .append(ty.to_doc());
+                let doc = if let Some(f) = field_name {
+                    doc.append("::").append(f.to_doc())
+                } else {
+                    doc
+                };
+                doc.append(")")
+            }
             InlinePulseToken::Declare { ident, ty } => RcDoc::text("$declare(")
                 .append(ty.to_doc())
                 .append(" ")

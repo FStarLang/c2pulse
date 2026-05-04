@@ -64,3 +64,13 @@ void test_union() {
   _assert(!x.a._active);
   _ghost_stmt(assert pure (~(other_fun $(x))));
 }
+
+// Test $unfold, $fold, $unfold-uninit, $fold-uninit antiquotations
+_include_pulse(
+  let struct_unfold_name = $unfold(my_pair)
+  let struct_fold_name = $fold(my_pair)
+  let struct_unfold_uninit_name = $unfold-uninit(my_pair)
+  let struct_fold_uninit_name = $fold-uninit(my_pair)
+  let union_unfold_name = $unfold(my_union::a)
+  let union_fold_name = $fold(my_union::a)
+)

@@ -117,6 +117,9 @@ fn scan_inline_pulse_code(deps: &mut HashSet<DeclName>, code: &InlinePulseCode) 
             InlinePulseToken::FieldAntiquot { ty, .. } => {
                 scan_type(deps, ty);
             }
+            InlinePulseToken::AuxFnAntiquot { ty, .. } => {
+                scan_type(deps, ty);
+            }
         }
     }
 }

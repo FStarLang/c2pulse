@@ -418,6 +418,42 @@ pub struct InlineCode {
     pub tokens: Vec<CodeToken>,
 }
 
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+pub enum AuxFnKind {
+    Unfold,
+    UnfoldUninit,
+    Fold,
+    FoldUninit,
+}
+
+impl AuxFnKind {
+    pub fn keyword(self) -> &'static str {
+        match self {
+            AuxFnKind::Unfold => "unfold",
+            AuxFnKind::UnfoldUninit => "unfold-uninit",
+            AuxFnKind::Fold => "fold",
+            AuxFnKind::FoldUninit => "fold-uninit",
+        }
+    }
+
+    pub fn struct_aux_name(self) -> &'static str {
+        match self {
+            AuxFnKind::Unfold => "raw_unfold",
+            AuxFnKind::UnfoldUninit => "raw_unfold_uninit",
+            AuxFnKind::Fold => "raw_fold",
+            AuxFnKind::FoldUninit => "raw_fold_uninit",
+        }
+    }
+
+    pub fn union_aux_name(self) -> Option<&'static str> {
+        match self {
+            AuxFnKind::Unfold => Some("raw_unfold"),
+            AuxFnKind::Fold => Some("raw_fold"),
+            AuxFnKind::UnfoldUninit | AuxFnKind::FoldUninit => None,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum InlinePulseToken {
     Verbatim(CodeToken),
@@ -437,6 +473,12 @@ pub enum InlinePulseToken {
         before: &'static str,
         ty: Rc<Type>,
         field_name: Rc<Ident>,
+    },
+    AuxFnAntiquot {
+        before: &'static str,
+        ty: Rc<Type>,
+        field_name: Option<Rc<Ident>>,
+        kind: AuxFnKind,
     },
     Declare {
         ident: Rc<Ident>,
