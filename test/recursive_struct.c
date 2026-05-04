@@ -45,8 +45,8 @@ _include_pulse(
         pure (not (is_null head)) **
         pts_to head nd **
         freeable head **
-        pure (nd.struct_node__data == hd) **
-        is_list nd.struct_node__next tl
+        pure (nd.$field(node::data) == hd) **
+        is_list nd.$field(node::next) tl
 
   ghost fn is_list_nil_case (head: $type(node *)) (#l: list Int32.t)
     requires is_list head l ** pure (is_null head)
@@ -62,8 +62,8 @@ _include_pulse(
     requires is_list head l ** pure (not (is_null head))
     ensures exists* (nd: $type(node)) (tl: list Int32.t).
       pts_to head nd ** freeable head **
-      pure (l == nd.struct_node__data :: tl) **
-      is_list nd.struct_node__next tl
+      pure (l == nd.$field(node::data) :: tl) **
+      is_list nd.$field(node::next) tl
   {
     match l {
       Nil -> { unfold (is_list head []); unreachable () }
@@ -79,10 +79,10 @@ _include_pulse(
       pure (not (is_null head)) **
       pts_to head nd **
       freeable head **
-      is_list nd.struct_node__next tl
-    ensures is_list head (nd.struct_node__data :: tl)
+      is_list nd.$field(node::next) tl
+    ensures is_list head (nd.$field(node::data) :: tl)
   {
-    fold (is_list head (nd.struct_node__data :: tl))
+    fold (is_list head (nd.$field(node::data) :: tl))
   }
 )
 
