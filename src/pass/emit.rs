@@ -1671,14 +1671,7 @@ impl<'a> Emitter<'a> {
                             })
                             .unwrap_or(false)
                     } else {
-                        env.infer_expr(v)
-                            .map(|ty| {
-                                matches!(
-                                    env.vtype_whnf(ty).val,
-                                    TypeT::Pointer(_, PointerKind::Array)
-                                )
-                            })
-                            .unwrap_or(false)
+                        false
                     };
                     let is_arrayptr = if let ExprT::Deref(inner) = &v.val {
                         env.infer_expr(inner)
@@ -1690,14 +1683,7 @@ impl<'a> Emitter<'a> {
                             })
                             .unwrap_or(false)
                     } else {
-                        env.infer_expr(v)
-                            .map(|ty| {
-                                matches!(
-                                    env.vtype_whnf(ty).val,
-                                    TypeT::Pointer(_, PointerKind::ArrayPtr)
-                                )
-                            })
-                            .unwrap_or(false)
+                        false
                     };
                     if is_arrayptr {
                         // arrayptrs carry no permissions; _live is emp
