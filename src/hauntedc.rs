@@ -523,6 +523,9 @@ fn expr_parser<
             .padded_by(ws()),
             struct_type,
             integer_type,
+            ident
+                .clone()
+                .map(|name| TypeT::TypeRef(TypeRefKind::Typedef(name))),
         ));
 
         let type_name = base_type
