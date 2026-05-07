@@ -24,8 +24,8 @@ _include_pulse(
       exists* (nd: struct_node).
         pts_to head nd **
         freeable head **
-        pure (nd.struct_node__data == hd) **
-        is_list nd.struct_node__next tl
+        pure (nd.$field(node::data) == hd) **
+        is_list nd.$field(node::next) tl
 )
 
 _refine_value(spec_list elements, (_slprop) _inline_pulse(is_list $(this) elements))
