@@ -36,7 +36,7 @@ int get_data(node *n) {
 _include_pulse(
   module L = FStar.List.Tot
 
-  let rec is_list ([@@@mkey] head: $type(node *)) (l: list Int32.t)
+  let rec is_list ([@@@mkey] head: $type(node *)) (p: perm) (l: list Int32.t)
     : Tot slprop (decreases l)
   = match l with
     | [] -> pure (is_null head)
@@ -45,16 +45,29 @@ _include_pulse(
         pts_to head nd **
         freeable head **
         pure (nd.$field(node::data) == hd) **
-        is_list nd.$field(node::next) tl
+        is_list nd.$field(node::next) p tl
 
+  let elements_of l #v #p = observe (is_list l p) #v
+)
+
+_type(spec_list, list Int32.t)
+
+_refine_value(spec_list elements, (_slprop) _inline_pulse(is_list $(this) p elements))
+_refine_uninit((_slprop) _inline_pulse(pts_to_uninit $(this)))
+_plain
+typedef struct node *list;
+
+#define _elements_of(l) ((spec_list) _inline_pulse(elements_of $(l)))
+
+_include_pulse(
   ghost fn is_list_nil_case (head: $type(node *)) (#l: list Int32.t)
-    requires is_list head l ** pure (is_null head)
-    ensures is_list head l ** pure (l == ([] #Int32.t))
+    requires is_list head $`p l ** pure (is_null head)
+    ensures is_list head $`p l ** pure (l == ([] #Int32.t))
   {
     match l {
       Nil -> { () }
       Cons hd tl -> {
-        unfold (is_list head (hd :: tl));
+        unfold (is_list head _ (hd :: tl));
         Pulse.Lib.Reference.pts_to_not_null head;
         unreachable ()
       }
@@ -62,15 +75,15 @@ _include_pulse(
   }
 
   ghost fn elim_is_list_nonnull (head: $type(node *)) (#l: list Int32.t)
-    requires is_list head l ** pure (not (is_null head))
+    requires is_list head $`p l ** pure (not (is_null head))
     ensures exists* (nd: $type(node)) (tl: list Int32.t).
       pts_to head nd ** freeable head **
       pure (l == nd.$field(node::data) :: tl) **
-      is_list nd.$field(node::next) tl
+      is_list nd.$field(node::next) $`p tl
   {
     match l {
-      Nil -> { unfold (is_list head []); unreachable () }
-      Cons hd tl -> { unfold (is_list head (hd :: tl)) }
+      Nil -> { unfold (is_list head _ []); unreachable () }
+      Cons hd tl -> { unfold (is_list head _ (hd :: tl)) }
     }
   }
 
@@ -82,54 +95,44 @@ _include_pulse(
       pure (not (is_null head)) **
       pts_to head nd **
       freeable head **
-      is_list nd.$field(node::next) tl
-    ensures is_list head (nd.$field(node::data) :: tl)
+      is_list nd.$field(node::next) $`p tl
+    ensures is_list head $`p (nd.$field(node::data) :: tl)
   {
-    fold (is_list head (nd.$field(node::data) :: tl))
+    fold (is_list head _ (nd.$field(node::data) :: tl))
   }
 )
 
 /* 4. _rec with _plain: recursive call passes struct field read (head->next)
  *    to _plain parameter. Regression: without elaborating fn_decl types before
  *    pre-registration, this gets a spurious (node[?]) cast → assert False. */
-_rec void traverse(_plain node *head)
-    _decreases((_slprop) _inline_pulse($`l))
-    _requires((_slprop) _inline_pulse(is_list $(head) $`l))
-    _ensures((_slprop) _inline_pulse(is_list $(head) $`l))
+_rec void traverse(const list head)
+    _decreases(_elements_of(head))
 {
     if (head == NULL) {
         _ghost_stmt(is_list_nil_case $(head));
         return;
     }
-    _ghost_stmt(
-        elim_is_list_nonnull $(head);
-        $unfold(node) $(head)
-    );
+    _ghost_stmt(elim_is_list_nonnull $(head));
     node *nx = head->next;
     traverse(nx);
-    _ghost_stmt(
-        $fold(node) $(head);
-        intro_is_list_cons $(head) (!($(head)))
-    );
+    _ghost_stmt(intro_is_list_cons $(head) $(*head));
 }
 
+_let(bool starts_with(spec_list xs, int x),
+  (bool) _inline_pulse(match $(xs) with | [] -> 0=1 | hd::_ -> hd = $(x)))
+_let(bool is_empty(spec_list xs), (bool) _inline_pulse($(xs) = []))
+
 /* 5–6. _ghost_stmt with raw_unfold/fold around field reads and null check */
-bool peek_head(_plain node *head, int *out)
-    _requires((_slprop) _inline_pulse(is_list $(head) $`l))
-    _ensures((_slprop) _inline_pulse(is_list $(head) $`l))
+bool peek_head(const list head, int *out)
+  _ensures(return ==> starts_with(_elements_of(head), *out))
+  _ensures(!return ==> is_empty(_elements_of(head)))
 {
     if (head == NULL) {
         _ghost_stmt(is_list_nil_case $(head));
         return false;
     }
-    _ghost_stmt(
-        elim_is_list_nonnull $(head);
-        $unfold(node) $(head)
-    );
+    _ghost_stmt(elim_is_list_nonnull $(head));
     *out = head->data;
-    _ghost_stmt(
-        $fold(node) $(head);
-        intro_is_list_cons $(head) (!($(head)))
-    );
+    _ghost_stmt(intro_is_list_cons $(head) $(*head));
     return true;
 }
