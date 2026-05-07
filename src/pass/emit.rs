@@ -410,6 +410,7 @@ impl<'a> Emitter<'a> {
 
                 TypeT::Refine(ty, _)
                 | TypeT::RefineAlways(ty, _)
+                | TypeT::RefineUninit(ty, _)
                 | TypeT::RefineValue(ty, ..)
                 | TypeT::Plain(ty) => self.emit_type(env, ty),
             }
@@ -437,6 +438,7 @@ impl<'a> Emitter<'a> {
             TypeT::TypeRef(_) => Doc::text("zero_default"),
             TypeT::Refine(ty, _)
             | TypeT::RefineAlways(ty, _)
+            | TypeT::RefineUninit(ty, _)
             | TypeT::RefineValue(ty, ..)
             | TypeT::Plain(ty) => self.emit_type_default(env, ty),
             _ => {
@@ -801,6 +803,14 @@ impl<'a> Emitter<'a> {
                 let p = &mut p.clone();
                 self.subst_this_rvalue(env, Rc::make_mut(p), this);
                 props.push(self.emit_rvalue(env, p));
+            }
+            TypeT::RefineUninit(ty, p) => {
+                self.emit_type_slprop(env, ty, variant, quote, bindings, props, this);
+                if let SLPropVariant::Uninit = variant {
+                    let p = &mut p.clone();
+                    self.subst_this_rvalue(env, Rc::make_mut(p), this);
+                    props.push(self.emit_rvalue(env, p));
+                }
             }
             TypeT::RefineValue(ty, binding_name, binding_ty, p) => {
                 self.emit_type_slprop(env, ty, variant, quote, bindings, props, this);
@@ -1209,6 +1219,7 @@ fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
             op,
             TypeT::Refine(ty, _)
             | TypeT::RefineAlways(ty, _)
+            | TypeT::RefineUninit(ty, _)
             | TypeT::RefineValue(ty, ..)
             | TypeT::Plain(ty),
         ) => emit_binop(env, op, ty.clone().into())?,
@@ -3402,6 +3413,7 @@ impl<'a> Emitter<'a> {
             }
             TypeT::Refine(inner, _)
             | TypeT::RefineAlways(inner, _)
+            | TypeT::RefineUninit(inner, _)
             | TypeT::RefineValue(inner, ..)
             | TypeT::Plain(inner) => self.check_pure_type(inner),
         }

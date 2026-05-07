@@ -96,7 +96,7 @@ fn scan_type(deps: &mut HashSet<DeclName>, ty: &Type) {
                 TypeRefKind::Union(n) => DeclName::Union(n.val.clone()),
             });
         }
-        TypeT::Refine(ty, p) | TypeT::RefineAlways(ty, p) => {
+        TypeT::Refine(ty, p) | TypeT::RefineAlways(ty, p) | TypeT::RefineUninit(ty, p) => {
             scan_type(deps, ty);
             scan_expr(deps, p);
         }

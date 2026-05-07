@@ -99,7 +99,7 @@ impl<'a> Checker<'a> {
                     self.report(format!("unknown union {}", n), &ty.loc)
                 }
             }
-            TypeT::Refine(ty, p) | TypeT::RefineAlways(ty, p) => {
+            TypeT::Refine(ty, p) | TypeT::RefineAlways(ty, p) | TypeT::RefineUninit(ty, p) => {
                 self.check_type(env, ty);
                 let env = &mut env.clone();
                 env.push_this(ty.clone());
@@ -130,6 +130,7 @@ impl<'a> Checker<'a> {
             TypeT::TypeRef(_) => false,
             TypeT::Refine(..)
             | TypeT::RefineAlways(..)
+            | TypeT::RefineUninit(..)
             | TypeT::RefineValue(..)
             | TypeT::Plain(..) => false,
             TypeT::Error => true,

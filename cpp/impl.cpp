@@ -358,6 +358,9 @@ public:
         } else if (auto ref = isUnaryAttrOf(ann, "pal-refine-always")) {
           ty = mk_type_refine_always(std::move(loc), std::move(ty),
                                      std::move(ref.value()));
+        } else if (auto ref = isUnaryAttrOf(ann, "pal-refine-uninit")) {
+          ty = mk_type_refine_uninit(std::move(loc), std::move(ty),
+                                     std::move(ref.value()));
         } else if (ann->getAnnotation() == "pal-refine-value" &&
                    ann->args_size() == 2) {
           std::optional<unsigned> binding_ctr, pred_ctr;

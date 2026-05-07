@@ -150,6 +150,13 @@ impl PrettyIR for TypeT {
                 .nest(2)
                 .append(RcDoc::line())
                 .append(ty.to_doc()),
+            TypeT::RefineUninit(ty, p) => RcDoc::text("_refine_uninit(")
+                .append(p.to_doc())
+                .append(")")
+                .group()
+                .nest(2)
+                .append(RcDoc::line())
+                .append(ty.to_doc()),
             TypeT::RefineValue(ty, binding_name, binding_ty, p) => RcDoc::text("_refine_value(")
                 .append(binding_ty.to_doc())
                 .append(" ")

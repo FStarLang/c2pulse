@@ -152,6 +152,8 @@ pub enum TypeT {
 
     Refine(Rc<Type>, Rc<Expr>),
     RefineAlways(Rc<Type>, Rc<Expr>),
+    /// Refinement that only applies to the uninit variant.
+    RefineUninit(Rc<Type>, Rc<Expr>),
     /// Custom existential binding + predicate (init variant only).
     /// RefineValue(inner_type, binding_name, binding_type, predicate)
     RefineValue(Rc<Type>, Rc<Ident>, Rc<Type>, Rc<Expr>),

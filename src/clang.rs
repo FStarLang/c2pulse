@@ -489,6 +489,9 @@ fn mk_type_refine(loc: Rc<SourceInfo>, ty: Rc<Type>, p: Rc<Expr>) -> Rc<Type> {
 fn mk_type_refine_always(loc: Rc<SourceInfo>, ty: Rc<Type>, p: Rc<Expr>) -> Rc<Type> {
     TypeT::RefineAlways(ty, p).with_loc(loc)
 }
+fn mk_type_refine_uninit(loc: Rc<SourceInfo>, ty: Rc<Type>, p: Rc<Expr>) -> Rc<Type> {
+    TypeT::RefineUninit(ty, p).with_loc(loc)
+}
 fn mk_type_refine_value(
     loc: Rc<SourceInfo>,
     ty: Rc<Type>,

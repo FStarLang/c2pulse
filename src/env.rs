@@ -521,6 +521,7 @@ impl Env {
             either_side!(
                 TypeT::Refine(..)
                     | TypeT::RefineAlways(..)
+                    | TypeT::RefineUninit(..)
                     | TypeT::RefineValue(..)
                     | TypeT::Plain(..)
             ) => None,
@@ -556,6 +557,7 @@ impl Env {
 
             TypeT::Refine(ty, _)
             | TypeT::RefineAlways(ty, _)
+            | TypeT::RefineUninit(ty, _)
             | TypeT::RefineValue(ty, ..)
             | TypeT::Plain(ty) => Some(ty.clone().into()),
         }
