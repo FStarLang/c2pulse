@@ -42,7 +42,6 @@ _include_pulse(
     | [] -> pure (is_null head)
     | hd :: tl ->
       exists* (nd: $type(node)).
-        pure (not (is_null head)) **
         pts_to head nd **
         freeable head **
         pure (nd.$field(node::data) == hd) **
@@ -54,7 +53,11 @@ _include_pulse(
   {
     match l {
       Nil -> { () }
-      Cons hd tl -> { unfold (is_list head (hd :: tl)); unreachable () }
+      Cons hd tl -> {
+        unfold (is_list head (hd :: tl));
+        Pulse.Lib.Reference.pts_to_not_null head;
+        unreachable ()
+      }
     }
   }
 
@@ -106,7 +109,6 @@ _rec void traverse(_plain node *head)
     traverse(nx);
     _ghost_stmt(
         $fold(node) $(head);
-        Pulse.Lib.Reference.pts_to_not_null $(head);
         intro_is_list_cons $(head) (!($(head)))
     );
 }
@@ -127,7 +129,6 @@ bool peek_head(_plain node *head, int *out)
     *out = head->data;
     _ghost_stmt(
         $fold(node) $(head);
-        Pulse.Lib.Reference.pts_to_not_null $(head);
         intro_is_list_cons $(head) (!($(head)))
     );
     return true;
