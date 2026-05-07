@@ -1408,6 +1408,33 @@ public:
         return {};
       }
 
+      // Type decl block
+      if (FD->getName().starts_with("__pal_type_anchor")) {
+        std::optional<unsigned> name_ctr, body_ctr;
+        for (auto attr : FD->getAttrs()) {
+          if (auto ann = dyn_cast<AnnotateAttr>(attr);
+              ann && ann->getAnnotation() == "pal-type" &&
+              ann->args_size() == 2) {
+            if (auto v0 =
+                    ann->args_begin()[0]->getIntegerConstantExpr(*astCtx)) {
+              name_ctr = v0->getZExtValue();
+            }
+            if (auto v1 =
+                    ann->args_begin()[1]->getIntegerConstantExpr(*astCtx)) {
+              body_ctr = v1->getZExtValue();
+            }
+          }
+        }
+        auto loc = getRange(D->getSourceRange());
+        if (name_ctr && body_ctr) {
+          ctx.add_type_decl(std::move(loc), *name_ctr, *body_ctr, snippets);
+        } else {
+          ctx.report_diag(std::move(loc), true,
+                          "internal error: invalid _type encoding"_rs);
+        }
+        return {};
+      }
+
       // Regular function decl
       auto ident = getDeclName(FD);
       auto builder =

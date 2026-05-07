@@ -1,11 +1,12 @@
 use crate::impl_display_using_prettyir;
 use crate::{ir::pretty::PrettyIR, ir::*, mayberc::MaybeRc};
-use std::{collections::HashMap, rc::Rc};
+use std::{collections::HashMap, collections::HashSet, rc::Rc};
 
 #[derive(Clone, Debug, Default)]
 struct Globals {
     fns: HashMap<Rc<str>, FnDecl>,
     typedefs: HashMap<Rc<str>, TypeDefn>,
+    opaque_types: HashSet<Rc<str>>,
     structs: HashMap<Rc<str>, StructDefn>,
     unions: HashMap<Rc<str>, UnionDefn>,
     vars: HashMap<Rc<str>, GlobalVar>,
@@ -133,6 +134,14 @@ impl Env {
             .insert(defn.name.val.clone(), defn);
     }
 
+    pub fn push_opaque_type(&mut self, name: Rc<str>) {
+        Rc::make_mut(&mut self.globals).opaque_types.insert(name);
+    }
+
+    pub fn is_known_type(&self, name: &str) -> bool {
+        self.globals.typedefs.contains_key(name) || self.globals.opaque_types.contains(name)
+    }
+
     pub fn push_struct(&mut self, decl: StructDefn) {
         Rc::make_mut(&mut self.globals)
             .structs
@@ -181,6 +190,9 @@ impl Env {
                 });
             }
             DeclT::GlobalVar(gv) => self.push_global_var(gv.clone()),
+            DeclT::OpaqueTypeDecl(decl) => {
+                self.push_opaque_type(decl.name.val.clone());
+            }
         }
     }
 

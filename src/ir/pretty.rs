@@ -667,6 +667,11 @@ impl PrettyIR for DeclT {
             DeclT::UnionDefn(union_defn) => union_defn.to_doc(),
             DeclT::IncludeDecl(include_decl) => include_decl.to_doc(),
             DeclT::LetDecl(let_decl) => let_decl.to_doc(),
+            DeclT::OpaqueTypeDecl(decl) => RcDoc::text("_type(")
+                .append(decl.name.to_doc())
+                .append(", ")
+                .append(inline_pulse_code_to_doc(&decl.code))
+                .append(")"),
             DeclT::GlobalVar(global_var) => global_var.to_doc(),
         }
     }

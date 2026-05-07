@@ -3728,6 +3728,18 @@ impl<'a> Emitter<'a> {
                 self.emit_inline_pulse_tokens(env, &include_decl.code)
             }
             DeclT::LetDecl(let_decl) => self.emit_let_decl(env, let_decl),
+            DeclT::OpaqueTypeDecl(decl) => {
+                let env = &mut env.clone();
+                let t = self
+                    .nm
+                    .emit(Name::TypeRef(TypeRef::Typedef(decl.name.val.clone())));
+                Doc::text("unfold").append(Doc::line()).append(mk_let(
+                    t,
+                    &[],
+                    Doc::text("Type"),
+                    self.emit_inline_pulse_tokens(env, &decl.code),
+                ))
+            }
             DeclT::GlobalVar(gv) => self.emit_global_var(env, gv),
         })
     }

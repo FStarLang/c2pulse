@@ -3,7 +3,8 @@ use num_bigint::BigInt;
 use crate::{
     diag::{Diagnostic, DiagnosticLevel, Diagnostics},
     hauntedc::{
-        SnippetMap, TargetIntWidths, parse_expr, parse_let_signature, process_inline_pulse,
+        SnippetMap, TargetIntWidths, parse_expr, parse_let_signature, parse_type_name,
+        process_inline_pulse,
     },
     ir::*,
     vfs::VFS,
@@ -238,6 +239,41 @@ impl<'a> Ctx<'a> {
                 ensures,
                 body,
             }),
+        });
+    }
+
+    fn add_type_decl(
+        &mut self,
+        loc: Rc<SourceInfo>,
+        name_idx: u32,
+        body_idx: u32,
+        snippets: &SnippetMap,
+    ) {
+        let name_code = match snippets.snippets.get(&name_idx) {
+            Some(code) => code,
+            None => {
+                self.report_diag(loc, true, "internal error: invalid _type name encoding");
+                return;
+            }
+        };
+        let body_code = match snippets.snippets.get(&body_idx) {
+            Some(code) => code,
+            None => {
+                self.report_diag(loc, true, "internal error: invalid _type body encoding");
+                return;
+            }
+        };
+
+        let name = match parse_type_name(&mut self.diagnostics, &loc, name_code) {
+            Some(name) => name,
+            None => return,
+        };
+
+        let code = process_inline_pulse(&loc, body_code, snippets, &self.target_int_widths);
+
+        self.translation_unit.decls.push(Ast {
+            loc,
+            val: DeclT::OpaqueTypeDecl(OpaqueTypeDecl { name, code }),
         });
     }
 

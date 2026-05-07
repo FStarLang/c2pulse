@@ -508,6 +508,12 @@ pub struct LetDecl {
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub struct OpaqueTypeDecl {
+    pub name: Rc<Ident>,
+    pub code: InlinePulseCode,
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct GlobalVar {
     pub name: Rc<Ident>,
     pub ty: Rc<Type>,
@@ -526,6 +532,7 @@ pub enum DeclT {
     UnionDefn(UnionDefn),
     IncludeDecl(IncludeDecl),
     LetDecl(LetDecl),
+    OpaqueTypeDecl(OpaqueTypeDecl),
     GlobalVar(GlobalVar),
 }
 

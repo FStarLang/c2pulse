@@ -1062,6 +1062,32 @@ fn parse_type_inner(
     }
 }
 
+/// Parse a `_type` name: expects a single identifier.
+pub fn parse_type_name(
+    diagnostics: &mut Diagnostics,
+    fallback_loc: &Rc<SourceInfo>,
+    code: &InlineCode,
+) -> Option<Rc<Ident>> {
+    if code.tokens.len() == 1 {
+        let text = &code.tokens[0].text;
+        // Validate it looks like an identifier (non-empty, starts with letter/underscore)
+        let s: &str = &text.val;
+        if !s.is_empty()
+            && s.chars()
+                .next()
+                .map_or(false, |c| c.is_alphabetic() || c == '_')
+        {
+            return Some(text.val.clone().with_loc(text.loc.clone()));
+        }
+    }
+    diagnostics.diags.push(Diagnostic {
+        loc: fallback_loc.location().clone(),
+        level: DiagnosticLevel::Error,
+        msg: "in _type: expected a single identifier as type name".into(),
+    });
+    None
+}
+
 /// Parse a `_let` signature of the form: `_slprop foo(_array bool *r, _specnat n) _requires(...) _ensures(...)`
 /// Returns (name, return_type, params, requires, ensures) or None on parse error.
 pub fn parse_let_signature(

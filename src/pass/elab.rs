@@ -735,6 +735,7 @@ impl<'a> Elaborator<'a> {
             DeclT::IncludeDecl(include_decl) => {
                 self.elab_inline_pulse_code(env, &mut include_decl.code)
             }
+            DeclT::OpaqueTypeDecl(decl) => self.elab_inline_pulse_code(env, &mut decl.code),
             DeclT::LetDecl(let_decl) => {
                 self.elab_type(env, Rc::make_mut(&mut let_decl.ret_type));
                 for arg in &mut let_decl.params {

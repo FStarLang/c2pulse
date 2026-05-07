@@ -85,7 +85,7 @@ impl<'a> Checker<'a> {
             TypeT::SpecInt | TypeT::SpecNat => {}
             TypeT::SLProp => {}
             TypeT::TypeRef(TypeRefKind::Typedef(n)) => {
-                if let None = env.lookup_type(n) {
+                if !env.is_known_type(&n.val) {
                     self.report(format!("unknown type {}", n), &ty.loc)
                 }
             }
@@ -632,6 +632,10 @@ impl<'a> Checker<'a> {
                 }
             }
             DeclT::IncludeDecl(_) => {}
+            DeclT::OpaqueTypeDecl(decl) => {
+                let env = &mut env.clone();
+                self.check_inline_pulse_code(env, &decl.code);
+            }
             DeclT::LetDecl(LetDecl {
                 name: _,
                 is_rec: _,

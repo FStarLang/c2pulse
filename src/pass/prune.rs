@@ -274,6 +274,7 @@ fn decl_name(decl: &Decl) -> DeclName {
         DeclT::UnionDefn(union_defn) => DeclName::Union(union_defn.name.val.clone()),
         DeclT::IncludeDecl(_) => DeclName::Include(decl.loc.clone()),
         DeclT::LetDecl(let_decl) => DeclName::Fn(let_decl.name.val.clone()),
+        DeclT::OpaqueTypeDecl(decl) => DeclName::Typedef(decl.name.val.clone()),
         DeclT::GlobalVar(gv) => DeclName::GlobalVar(gv.name.val.clone()),
     }
 }
@@ -345,6 +346,10 @@ fn scan_translation_unit(deps: &mut Deps<DeclName>, tu: &TranslationUnit) {
                 scan_exprs(ds, &let_decl.requires);
                 scan_exprs(ds, &let_decl.ensures);
                 scan_expr(ds, &let_decl.body);
+            }
+            DeclT::OpaqueTypeDecl(decl) => {
+                let ds = deps.deps_for(n);
+                scan_inline_pulse_code(ds, &decl.code);
             }
             DeclT::GlobalVar(GlobalVar {
                 name: _,

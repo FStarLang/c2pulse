@@ -182,6 +182,7 @@ mod crate::clang {
         fn add_global_var(&mut self, Rc<SourceInfo>, Rc<Ident>, Rc<Type>, Option<Rc<Expr>>, bool);
         fn add_include(&mut self, Rc<SourceInfo>, u32, &SnippetMap);
         fn add_let_decl(&mut self, Rc<SourceInfo>, bool, u32, u32, &SnippetMap);
+        fn add_type_decl(&mut self, Rc<SourceInfo>, u32, u32, &SnippetMap);
 
         fn mk_ghost_stmt(&mut self, Rc<SourceInfo>, u32, &SnippetMap) -> Rc<Stmt>;
 
