@@ -358,6 +358,19 @@ public:
         } else if (auto ref = isUnaryAttrOf(ann, "pal-refine-always")) {
           ty = mk_type_refine_always(std::move(loc), std::move(ty),
                                      std::move(ref.value()));
+        } else if (ann->getAnnotation() == "pal-refine-value" &&
+                   ann->args_size() == 2) {
+          std::optional<unsigned> binding_ctr, pred_ctr;
+          if (auto v0 = ann->args_begin()[0]->getIntegerConstantExpr(*astCtx)) {
+            binding_ctr = v0->getZExtValue();
+          }
+          if (auto v1 = ann->args_begin()[1]->getIntegerConstantExpr(*astCtx)) {
+            pred_ctr = v1->getZExtValue();
+          }
+          if (binding_ctr && pred_ctr) {
+            ty = mk_type_refine_value(std::move(loc), std::move(ty),
+                                      *binding_ctr, *pred_ctr, snippets);
+          }
         } else if (ann->getAnnotation() == "pal-plain" &&
                    ann->args_size() == 0) {
           ty = mk_type_plain(std::move(loc), std::move(ty));

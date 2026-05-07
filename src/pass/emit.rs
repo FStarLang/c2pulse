@@ -408,9 +408,10 @@ impl<'a> Emitter<'a> {
                 TypeT::SpecInt => Doc::text("int"),
                 TypeT::SpecNat => Doc::text("nat"),
 
-                TypeT::Refine(ty, _) | TypeT::RefineAlways(ty, _) | TypeT::Plain(ty) => {
-                    self.emit_type(env, ty)
-                }
+                TypeT::Refine(ty, _)
+                | TypeT::RefineAlways(ty, _)
+                | TypeT::RefineValue(ty, ..)
+                | TypeT::Plain(ty) => self.emit_type(env, ty),
             }
         })
     }
@@ -434,9 +435,10 @@ impl<'a> Emitter<'a> {
             }
             TypeT::Void => Doc::text("()"),
             TypeT::TypeRef(_) => Doc::text("zero_default"),
-            TypeT::Refine(ty, _) | TypeT::RefineAlways(ty, _) | TypeT::Plain(ty) => {
-                self.emit_type_default(env, ty)
-            }
+            TypeT::Refine(ty, _)
+            | TypeT::RefineAlways(ty, _)
+            | TypeT::RefineValue(ty, ..)
+            | TypeT::Plain(ty) => self.emit_type_default(env, ty),
             _ => {
                 self.report(format!("no zero default for type {}", ty), &ty.loc);
                 Doc::text("(admit())")
@@ -799,6 +801,20 @@ impl<'a> Emitter<'a> {
                 let p = &mut p.clone();
                 self.subst_this_rvalue(env, Rc::make_mut(p), this);
                 props.push(self.emit_rvalue(env, p));
+            }
+            TypeT::RefineValue(ty, binding_name, binding_ty, p) => {
+                self.emit_type_slprop(env, ty, variant, quote, bindings, props, this);
+                if let SLPropVariant::Init { .. } = variant {
+                    let binding_type_doc = self.emit_type(env, binding_ty);
+                    let val_name = q(Doc::text(binding_name.val.to_string()));
+                    bindings.push(ExBinding {
+                        name: val_name.clone(),
+                        ty: binding_type_doc,
+                    });
+                    let p = &mut p.clone();
+                    self.subst_this_rvalue(env, Rc::make_mut(p), this);
+                    props.push(self.emit_rvalue(env, p));
+                }
             }
             TypeT::Plain(_) => {}
             TypeT::Error => {}
@@ -1189,9 +1205,13 @@ fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
             todo_binop!()
         }
 
-        (op, TypeT::Refine(ty, _) | TypeT::RefineAlways(ty, _) | TypeT::Plain(ty)) => {
-            emit_binop(env, op, ty.clone().into())?
-        }
+        (
+            op,
+            TypeT::Refine(ty, _)
+            | TypeT::RefineAlways(ty, _)
+            | TypeT::RefineValue(ty, ..)
+            | TypeT::Plain(ty),
+        ) => emit_binop(env, op, ty.clone().into())?,
 
         (_, TypeT::TypeRef(_)) => return None,
         (
@@ -3380,9 +3400,10 @@ impl<'a> Emitter<'a> {
                     &ty.loc,
                 );
             }
-            TypeT::Refine(inner, _) | TypeT::RefineAlways(inner, _) | TypeT::Plain(inner) => {
-                self.check_pure_type(inner)
-            }
+            TypeT::Refine(inner, _)
+            | TypeT::RefineAlways(inner, _)
+            | TypeT::RefineValue(inner, ..)
+            | TypeT::Plain(inner) => self.check_pure_type(inner),
         }
     }
 

@@ -518,7 +518,12 @@ impl Env {
 
             either_side!(TypeT::TypeRef(_)) => None,
 
-            either_side!(TypeT::Refine(..) | TypeT::RefineAlways(..) | TypeT::Plain(..)) => None,
+            either_side!(
+                TypeT::Refine(..)
+                    | TypeT::RefineAlways(..)
+                    | TypeT::RefineValue(..)
+                    | TypeT::Plain(..)
+            ) => None,
         }
     }
 
@@ -549,9 +554,10 @@ impl Env {
             TypeT::TypeRef(TypeRefKind::Struct(_)) => None,
             TypeT::TypeRef(TypeRefKind::Union(_)) => None,
 
-            TypeT::Refine(ty, _) | TypeT::RefineAlways(ty, _) | TypeT::Plain(ty) => {
-                Some(ty.clone().into())
-            }
+            TypeT::Refine(ty, _)
+            | TypeT::RefineAlways(ty, _)
+            | TypeT::RefineValue(ty, ..)
+            | TypeT::Plain(ty) => Some(ty.clone().into()),
         }
     }
 

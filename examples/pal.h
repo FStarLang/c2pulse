@@ -18,6 +18,7 @@ __attribute__((annotate("pal-pure"))) _Bool pal_c_assert_enabled(void);
 #define _ensures(p) __attribute__((annotate("pal-ensures", __capture_args(p))))
 #define _refine(p) __attribute__((annotate("pal-refine", __capture_args(p))))
 #define _refine_always(p) __attribute__((annotate("pal-refine-always", __capture_args(p))))
+#define _refine_value(binding, pred) __attribute__((annotate("pal-refine-value", __capture_args(binding), __capture_args(pred))))
 #define _invariant(p) __attribute__((annotate("pal-invariant", __capture_args(p))))
 #define _do_while_first(name) __attribute__((annotate("pal-do-while-first", #name)))
 
@@ -49,6 +50,7 @@ __attribute__((annotate("pal-pure"))) _Bool pal_c_assert_enabled(void);
 #define _ensures(p)
 #define _refine(p)
 #define _refine_always(p)
+#define _refine_value(binding, pred)
 #define _invariant(p)
 #define _do_while_first(name)
 

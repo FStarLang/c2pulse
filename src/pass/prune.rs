@@ -100,6 +100,11 @@ fn scan_type(deps: &mut HashSet<DeclName>, ty: &Type) {
             scan_type(deps, ty);
             scan_expr(deps, p);
         }
+        TypeT::RefineValue(ty, _binding_name, binding_ty, p) => {
+            scan_type(deps, ty);
+            scan_type(deps, binding_ty);
+            scan_expr(deps, p);
+        }
         TypeT::Plain(ty) => scan_type(deps, ty),
         TypeT::SpecInt | TypeT::SpecNat => {}
     }

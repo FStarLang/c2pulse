@@ -105,6 +105,13 @@ impl<'a> Checker<'a> {
                 env.push_this(ty.clone());
                 self.check_slprop(env, p);
             }
+            TypeT::RefineValue(ty, _binding_name, binding_ty, p) => {
+                self.check_type(env, ty);
+                self.check_type(env, binding_ty);
+                let env = &mut env.clone();
+                env.push_this(ty.clone());
+                self.check_slprop(env, p);
+            }
             TypeT::Plain(ty) => self.check_type(env, ty),
             TypeT::Error => {}
         }
@@ -121,7 +128,10 @@ impl<'a> Checker<'a> {
             TypeT::SpecInt | TypeT::SpecNat => true,
             TypeT::SLProp => true, // true/false
             TypeT::TypeRef(_) => false,
-            TypeT::Refine(..) | TypeT::RefineAlways(..) | TypeT::Plain(..) => false,
+            TypeT::Refine(..)
+            | TypeT::RefineAlways(..)
+            | TypeT::RefineValue(..)
+            | TypeT::Plain(..) => false,
             TypeT::Error => true,
         }
     }

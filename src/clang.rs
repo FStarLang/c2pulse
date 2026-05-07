@@ -3,8 +3,8 @@ use num_bigint::BigInt;
 use crate::{
     diag::{Diagnostic, DiagnosticLevel, Diagnostics},
     hauntedc::{
-        SnippetMap, TargetIntWidths, parse_expr, parse_let_signature, parse_type_name,
-        process_inline_pulse,
+        SnippetMap, TargetIntWidths, parse_expr, parse_let_signature, parse_refine_value_binding,
+        parse_type_name, process_inline_pulse,
     },
     ir::*,
     vfs::VFS,
@@ -488,6 +488,38 @@ fn mk_type_refine(loc: Rc<SourceInfo>, ty: Rc<Type>, p: Rc<Expr>) -> Rc<Type> {
 }
 fn mk_type_refine_always(loc: Rc<SourceInfo>, ty: Rc<Type>, p: Rc<Expr>) -> Rc<Type> {
     TypeT::RefineAlways(ty, p).with_loc(loc)
+}
+fn mk_type_refine_value(
+    loc: Rc<SourceInfo>,
+    ty: Rc<Type>,
+    binding_idx: u32,
+    pred_idx: u32,
+    snippets: &SnippetMap,
+) -> Rc<Type> {
+    let binding_code = match snippets.snippets.get(&binding_idx) {
+        Some(code) => code,
+        None => return TypeT::Error.with_loc(loc),
+    };
+    let pred_code = match snippets.snippets.get(&pred_idx) {
+        Some(code) => code,
+        None => return TypeT::Error.with_loc(loc),
+    };
+
+    // We need a mutable Diagnostics for parsing — create a temporary one.
+    // Errors will be lost here, but this is consistent with how other type
+    // attribute helpers work (they report errors via the Ctx later).
+    let mut diagnostics = Diagnostics::empty();
+
+    let (binding_name, binding_type) =
+        match parse_refine_value_binding(&mut diagnostics, &loc, binding_code) {
+            Some(r) => r,
+            None => return TypeT::Error.with_loc(loc),
+        };
+
+    let target_widths = TargetIntWidths::default();
+    let pred = parse_expr(&mut diagnostics, &loc, pred_code, snippets, &target_widths);
+
+    TypeT::RefineValue(ty, binding_name, binding_type, pred).with_loc(loc)
 }
 fn mk_type_plain(loc: Rc<SourceInfo>, ty: Rc<Type>) -> Rc<Type> {
     TypeT::Plain(ty).with_loc(loc)

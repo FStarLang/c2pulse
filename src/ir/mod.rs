@@ -136,7 +136,10 @@ pub type Type = Ast<TypeT>;
 pub enum TypeT {
     Void,
     Bool,
-    Int { signed: bool, width: u32 },
+    Int {
+        signed: bool,
+        width: u32,
+    },
     SizeT,
     PtrdiffT,
     Pointer(Rc<Type>, PointerKind),
@@ -149,6 +152,9 @@ pub enum TypeT {
 
     Refine(Rc<Type>, Rc<Expr>),
     RefineAlways(Rc<Type>, Rc<Expr>),
+    /// Custom existential binding + predicate (init variant only).
+    /// RefineValue(inner_type, binding_name, binding_type, predicate)
+    RefineValue(Rc<Type>, Rc<Ident>, Rc<Type>, Rc<Expr>),
     Plain(Rc<Type>),
 
     Error,
