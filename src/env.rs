@@ -584,16 +584,10 @@ impl Env {
     }
 
     pub fn is_bool(&self, a: MaybeRc<Type>) -> bool {
-        match &self.vtype_whnf(a).val {
-            TypeT::Bool => true,
-            _ => false,
-        }
+        matches!(&self.vtype_whnf(a).val, TypeT::Bool)
     }
     pub fn is_slprop(&self, a: MaybeRc<Type>) -> bool {
-        match &self.vtype_whnf(a).val {
-            TypeT::SLProp => true,
-            _ => false,
-        }
+        matches!(&self.vtype_whnf(a).val, TypeT::SLProp)
     }
 
     pub fn is_lvalue(&self, expr: &Expr) -> bool {

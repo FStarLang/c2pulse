@@ -1701,20 +1701,21 @@ impl<'a> Emitter<'a> {
                 ExprT::Forall(var, ty, body) | ExprT::Exists(var, ty, body) => {
                     let mut env = env.clone();
                     env.push_var_decl(var, ty.clone(), LocalDeclKind::RValue);
+                    let is_slprop = if let Ok(body_ty) = env.infer_expr(body) {
+                        env.is_slprop(body_ty)
+                    } else {
+                        false
+                    };
                     let keyword = match &v.val {
                         ExprT::Forall(..) => {
-                            if let Ok(body_ty) = env.infer_expr(body)
-                                && matches!(env.vtype_whnf(body_ty).val, TypeT::SLProp)
-                            {
+                            if is_slprop {
                                 "forall*"
                             } else {
                                 "forall"
                             }
                         }
                         _ => {
-                            if let Ok(body_ty) = env.infer_expr(body)
-                                && matches!(env.vtype_whnf(body_ty).val, TypeT::SLProp)
-                            {
+                            if is_slprop {
                                 "exists*"
                             } else {
                                 "exists"
