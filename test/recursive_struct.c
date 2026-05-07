@@ -61,8 +61,9 @@ typedef struct node *list;
 
 _include_pulse(
   ghost fn is_list_nil_case (head: $type(node *)) (#l: list Int32.t)
-    requires is_list head $`p l ** pure (is_null head)
-    ensures is_list head $`p l ** pure (l == ([] #Int32.t))
+    preserves is_list head $`p l
+    requires pure (is_null head)
+    ensures pure (l == [])
   {
     match l {
       Nil -> { () }
