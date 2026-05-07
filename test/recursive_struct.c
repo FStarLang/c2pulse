@@ -93,7 +93,6 @@ _include_pulse(
     (nd: $type(node))
     (#tl: list Int32.t)
     requires
-      pure (not (is_null head)) **
       pts_to head nd **
       freeable head **
       is_list nd.$field(node::next) $`p tl
