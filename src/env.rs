@@ -182,6 +182,7 @@ impl Env {
                     name: let_decl.name.clone(),
                     ret_type: let_decl.ret_type.clone(),
                     args: let_decl.params.clone(),
+                    ghost_args: vec![],
                     requires: let_decl.requires.clone(),
                     ensures: let_decl.ensures.clone(),
                     is_pure: true,
@@ -213,6 +214,9 @@ impl Env {
     }
 
     pub fn push_fn_decl_args_for_body(&mut self, decl: &FnDecl) {
+        for ga in &decl.ghost_args {
+            self.push_var_decl(&ga.name, ga.ty.clone(), LocalDeclKind::RValue);
+        }
         for arg in &decl.args {
             self.push_arg(arg, LocalDeclKind::LValue);
         }

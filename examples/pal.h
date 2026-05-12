@@ -25,6 +25,7 @@ __attribute__((annotate("pal-pure"))) _Bool pal_c_assert_enabled(void);
 
 #define _assert(p) ({ __attribute__((annotate("pal-assert", __capture_args(p)))) {} })
 #define _ghost_stmt(args) ({ __attribute__((annotate("pal-ghost-stmt", __capture_args(args)))) {} })
+#define _ghost_arg(p) __attribute__((annotate("pal-ghost-arg", __capture_args(p))))
 
 #define _plain __attribute__((annotate("pal-plain")))
 #define _consumes __attribute__((annotate("pal-consumes")))
@@ -58,6 +59,7 @@ __attribute__((annotate("pal-pure"))) _Bool pal_c_assert_enabled(void);
 
 #define _assert(p)
 #define _ghost_stmt(args)
+#define _ghost_arg(p)
 
 #define _plain
 #define _consumes

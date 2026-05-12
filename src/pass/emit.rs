@@ -3137,6 +3137,7 @@ impl<'a> Emitter<'a> {
             name,
             ret_type,
             args,
+            ghost_args,
             requires,
             ensures,
             is_pure: _,
@@ -3150,6 +3151,23 @@ impl<'a> Emitter<'a> {
         let mut ensures_props = vec![];
         let mut preserves_props = vec![];
         let mut params = vec![];
+
+        // Emit ghost arguments as implicit erased parameters
+        for ga in ghost_args {
+            let var_name = annotated(&ga.name, || self.nm.emit(Name::Var(ga.name.val.clone())));
+            let ty_doc = self.emit_type(env, &ga.ty);
+            params.push(parens(
+                Doc::text("#")
+                    .append(var_name)
+                    .append(":")
+                    .append(Doc::line())
+                    .append(Doc::text("erased"))
+                    .append(Doc::line())
+                    .append(ty_doc),
+            ));
+            env.push_var_decl(&ga.name, ga.ty.clone(), LocalDeclKind::RValue);
+        }
+
         for (i, arg) in args.iter().enumerate() {
             let n: Rc<Ident> = arg.name.clone().unwrap_or_else(|| {
                 Rc::<str>::from(format!("_unnamed{}", i)).with_loc(arg.ty.loc.clone())
@@ -3534,6 +3552,23 @@ impl<'a> Emitter<'a> {
         let env = &mut env.clone();
 
         let mut params = vec![];
+
+        // Emit ghost arguments as implicit erased parameters
+        for ga in &decl.ghost_args {
+            let var_name = annotated(&ga.name, || self.nm.emit(Name::Var(ga.name.val.clone())));
+            let ty_doc = self.emit_type(env, &ga.ty);
+            params.push(parens(
+                Doc::text("#")
+                    .append(var_name)
+                    .append(":")
+                    .append(Doc::line())
+                    .append(Doc::text("erased"))
+                    .append(Doc::line())
+                    .append(ty_doc),
+            ));
+            env.push_var_decl(&ga.name, ga.ty.clone(), LocalDeclKind::RValue);
+        }
+
         for (i, arg) in decl.args.iter().enumerate() {
             let n: Rc<Ident> = arg.name.clone().unwrap_or_else(|| {
                 Rc::<str>::from(format!("_unnamed{}", i)).with_loc(arg.ty.loc.clone())

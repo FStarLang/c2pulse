@@ -698,6 +698,7 @@ impl<'a> Elaborator<'a> {
             name: _,
             ret_type,
             args,
+            ghost_args,
             requires,
             ensures,
             is_pure: _,
@@ -706,6 +707,10 @@ impl<'a> Elaborator<'a> {
         }: &mut FnDecl,
     ) {
         let env = &mut env.clone();
+        for ga in ghost_args {
+            self.elab_type(env, Rc::make_mut(&mut ga.ty));
+            env.push_var_decl(&ga.name, ga.ty.clone(), LocalDeclKind::RValue);
+        }
         for arg in args {
             self.elab_type(env, Rc::make_mut(&mut arg.ty));
             env.push_arg(arg, LocalDeclKind::RValue);

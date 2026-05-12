@@ -1091,6 +1091,52 @@ pub fn parse_type_name(
     None
 }
 
+/// Parse a `_ghost_arg` snippet of the form: `type_name var_name`
+/// Returns (var_name, var_type) or None on parse error.
+pub fn parse_ghost_arg_binding(
+    diagnostics: &mut Diagnostics,
+    fallback_loc: &Rc<SourceInfo>,
+    code: &InlineCode,
+) -> Option<(Rc<Ident>, Rc<Type>)> {
+    if code.tokens.len() == 2 {
+        let type_tok = &code.tokens[0].text;
+        let name_tok = &code.tokens[1].text;
+        let type_str: &str = &type_tok.val;
+        let name_str: &str = &name_tok.val;
+        if !type_str.is_empty()
+            && type_str
+                .chars()
+                .next()
+                .map_or(false, |c| c.is_alphabetic() || c == '_')
+            && !name_str.is_empty()
+            && name_str
+                .chars()
+                .next()
+                .map_or(false, |c| c.is_alphabetic() || c == '_')
+        {
+            let var_name = name_tok.val.clone().with_loc(name_tok.loc.clone());
+            let type_t = match type_str {
+                "_slprop" => TypeT::SLProp,
+                "_specint" => TypeT::SpecInt,
+                "_specnat" => TypeT::SpecNat,
+                "void" => TypeT::Void,
+                _ => {
+                    let type_ident = type_tok.val.clone().with_loc(type_tok.loc.clone());
+                    TypeT::TypeRef(TypeRefKind::Typedef(type_ident))
+                }
+            };
+            let var_type = type_t.with_loc(type_tok.loc.clone());
+            return Some((var_name, var_type));
+        }
+    }
+    diagnostics.diags.push(Diagnostic {
+        loc: fallback_loc.location().clone(),
+        level: DiagnosticLevel::Error,
+        msg: "in _ghost_arg: expected `type_name var_name`".into(),
+    });
+    None
+}
+
 /// Parse a `_refine_value` binding snippet of the form: `type_name binding_name`
 /// Returns (binding_name, binding_type) or None on parse error.
 pub fn parse_refine_value_binding(

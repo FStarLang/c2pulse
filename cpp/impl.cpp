@@ -1503,6 +1503,10 @@ public:
             ann && ann->getAnnotation() == "pal-rec" && ann->args_size() == 0) {
           builder.set_rec();
         }
+        if (auto ctr = isUnaryAttrCounter(attr, "pal-ghost-arg")) {
+          ctx.parse_ghost_arg(builder, getRange(attr->getRange()), ctr.value(),
+                              snippets);
+        }
       }
       if (FD->hasBody()) {
         return ctx.add_fn_defn(std::move(builder), trStmts(FD->getBody()));

@@ -3,8 +3,8 @@ use num_bigint::BigInt;
 use crate::{
     diag::{Diagnostic, DiagnosticLevel, Diagnostics},
     hauntedc::{
-        SnippetMap, TargetIntWidths, parse_expr, parse_let_signature, parse_refine_value_binding,
-        parse_type_name, process_inline_pulse,
+        SnippetMap, TargetIntWidths, parse_expr, parse_ghost_arg_binding, parse_let_signature,
+        parse_refine_value_binding, parse_type_name, process_inline_pulse,
     },
     ir::*,
     vfs::VFS,
@@ -91,6 +91,7 @@ impl<'a> Ctx<'a> {
                 name: builder.name,
                 ret_type: builder.ret_type.unwrap(),
                 args: builder.args,
+                ghost_args: builder.ghost_args,
                 requires: builder.requires,
                 ensures: builder.ensures,
                 is_pure: builder.is_pure,
@@ -108,6 +109,7 @@ impl<'a> Ctx<'a> {
                     name: builder.name,
                     ret_type: builder.ret_type.unwrap(),
                     args: builder.args,
+                    ghost_args: builder.ghost_args,
                     requires: builder.requires,
                     ensures: builder.ensures,
                     is_pure: builder.is_pure,
@@ -291,6 +293,26 @@ impl<'a> Ctx<'a> {
         }
     }
 
+    fn parse_ghost_arg(
+        &mut self,
+        builder: &mut DeclBuilder,
+        loc: Rc<SourceInfo>,
+        idx: u32,
+        snippets: &SnippetMap,
+    ) {
+        match snippets.snippets.get(&idx) {
+            Some(code) => {
+                if let Some((name, ty)) = parse_ghost_arg_binding(&mut self.diagnostics, &loc, code)
+                {
+                    builder.ghost_arg(name, ty);
+                }
+            }
+            None => {
+                self.report_diag(loc, true, "internal error: invalid ghost_arg encoding");
+            }
+        }
+    }
+
     fn parse_rvalue(&mut self, loc: Rc<SourceInfo>, idx: u32, snippets: &SnippetMap) -> Rc<Expr> {
         match snippets.snippets.get(&idx) {
             Some(code) => parse_expr(
@@ -334,6 +356,7 @@ struct DeclBuilder {
     loc: Rc<SourceInfo>,
     ret_type: Option<Rc<Type>>,
     args: Vec<FnArg>,
+    ghost_args: Vec<GhostArg>,
     fields: Vec<(Ident, Rc<Type>)>,
     requires: Vec<Rc<Expr>>,
     ensures: Vec<Rc<Expr>>,
@@ -349,6 +372,7 @@ impl DeclBuilder {
             loc,
             ret_type: None,
             args: vec![],
+            ghost_args: vec![],
             fields: vec![],
             requires: vec![],
             ensures: vec![],
@@ -395,6 +419,9 @@ impl DeclBuilder {
     }
     fn decreases(&mut self, p: Rc<Expr>) {
         self.decreases = Some(p);
+    }
+    fn ghost_arg(&mut self, name: Rc<Ident>, ty: Rc<Type>) {
+        self.ghost_args.push(GhostArg { name, ty })
     }
 }
 

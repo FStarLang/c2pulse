@@ -599,6 +599,7 @@ impl<'a> Checker<'a> {
             name: _,
             ret_type,
             args,
+            ghost_args,
             requires,
             ensures,
             is_pure: _,
@@ -607,6 +608,10 @@ impl<'a> Checker<'a> {
         }: &FnDecl,
     ) {
         let env = &mut env.clone();
+        for ga in ghost_args {
+            self.check_type(env, &ga.ty);
+            env.push_var_decl(&ga.name, ga.ty.clone(), LocalDeclKind::RValue);
+        }
         for arg in args {
             self.check_type(env, &arg.ty);
             env.push_arg(arg, LocalDeclKind::RValue);

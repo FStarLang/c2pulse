@@ -546,6 +546,17 @@ impl PrettyIR for FnDecl {
             )
             .append(")")
             .group()
+            .append(RcDoc::concat(self.ghost_args.iter().map(|ga| {
+                RcDoc::hardline().append(
+                    RcDoc::text("_ghost_arg(")
+                        .append(ga.ty.to_doc())
+                        .append(RcDoc::line())
+                        .append(ga.name.to_doc())
+                        .append(")")
+                        .group()
+                        .nest(2),
+                )
+            })))
             .append(RcDoc::concat(self.requires.iter().map(|req| {
                 RcDoc::hardline().append(
                     RcDoc::text("_requires(")

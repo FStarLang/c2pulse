@@ -185,6 +185,7 @@ mod crate::clang {
         fn add_type_decl(&mut self, Rc<SourceInfo>, u32, u32, &SnippetMap);
 
         fn mk_ghost_stmt(&mut self, Rc<SourceInfo>, u32, &SnippetMap) -> Rc<Stmt>;
+        fn parse_ghost_arg(&mut self, &mut DeclBuilder, Rc<SourceInfo>, u32, &SnippetMap);
 
         fn parse_rvalue(&mut self, Rc<SourceInfo>, u32, &SnippetMap) -> Rc<Expr>;
 
@@ -200,6 +201,7 @@ mod crate::clang {
         fn arg(&mut self, Rc<Ident>, Rc<Type>, ParamMode);
         fn arg_anon(&mut self, Rc<Type>, ParamMode);
         fn field(&mut self, Rc<Ident>, Rc<Type>);
+        fn ghost_arg(&mut self, Rc<Ident>, Rc<Type>);
         fn requires(&mut self, Rc<Expr>);
         fn ensures(&mut self, Rc<Expr>);
         fn set_pure(&mut self);

@@ -392,10 +392,17 @@ pub struct FnArg {
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub struct GhostArg {
+    pub name: Rc<Ident>,
+    pub ty: Rc<Type>,
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct FnDecl {
     pub name: Rc<Ident>,
     pub ret_type: Rc<Type>,
     pub args: Vec<FnArg>,
+    pub ghost_args: Vec<GhostArg>,
     pub requires: Exprs,
     pub ensures: Exprs,
     pub is_pure: bool,

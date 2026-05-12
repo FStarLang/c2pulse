@@ -291,6 +291,7 @@ fn scan_translation_unit(deps: &mut Deps<DeclName>, tu: &TranslationUnit) {
             name: _,
             ret_type,
             args,
+            ghost_args,
             requires,
             ensures,
             is_pure: _,
@@ -298,6 +299,9 @@ fn scan_translation_unit(deps: &mut Deps<DeclName>, tu: &TranslationUnit) {
             decreases: _,
         }: &FnDecl,
     ) {
+        for ga in ghost_args {
+            scan_type(ds, &ga.ty);
+        }
         for arg in args {
             scan_type(ds, &arg.ty)
         }
