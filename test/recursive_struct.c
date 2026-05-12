@@ -18,7 +18,7 @@
 
 typedef struct node {
     int data;
-    struct node *next;
+    _plain struct node *next;
 } node;
 
 /* 1–2. Basic field read/write */
