@@ -14,7 +14,7 @@ make
 cargo build
 
 # Run all tests (builds first, then verifies generated .fst files with F*)
-make test
+make test -j8
 
 # Run a single test by translating a C file directly
 cargo run -- test/swap.c          # produces Swap.fst, Swap_diagnostics.json, Swap_source_range_info.json
@@ -25,9 +25,9 @@ cargo fmt
 clang-format -i cpp/impl.cpp
 ```
 
-The test suite (`test/Makefile`) runs `pal` on each `.c` file in `test/`, then verifies the generated `.fst` files using F*/Pulse. Building F*/Pulse from source requires opam and is handled by the top-level Makefile (set `C2PULSE_OPT=0` to skip if dependencies are pre-built).
+The test suite (`test/Makefile`) runs `pal` on each `.c` file in `test/`, then verifies the generated `.fst` files using F*/Pulse.
 
-ALWAYS RUN `make test` TO MAKE SURE THE TESTS SUCCEED!!!
+ALWAYS RUN `make test -j8` TO MAKE SURE THE TESTS SUCCEED!!!
 
 NEVER RUN `git remote set-url`.  You are probably running in a sandbox with restricted permissions, it's expected that `git push` doesn't work.
 
