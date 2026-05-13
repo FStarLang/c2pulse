@@ -52,8 +52,8 @@ _include_pulse(
 
 _type(spec_list, list Int32.t)
 
-_refine_value(spec_list elements, (_slprop) _inline_pulse(is_list $(this) p elements))
-_refine_uninit((_slprop) _inline_pulse(pts_to_uninit $(this)))
+_refine_value(spec_list elements, _inline_pulse(is_list $(this) p elements))
+_refine_uninit(_inline_pulse(pts_to_uninit $(this)))
 _plain
 typedef struct node *list;
 
@@ -119,8 +119,8 @@ _rec void traverse(const list head)
 }
 
 _let(bool starts_with(spec_list xs, int x),
-  (bool) _inline_pulse(match $(xs) with | [] -> 0=1 | hd::_ -> hd = $(x)))
-_let(bool is_empty(spec_list xs), (bool) _inline_pulse($(xs) = []))
+  _inline_pulse(match $(xs) with | [] -> 0=1 | hd::_ -> hd = $(x)))
+_let(bool is_empty(spec_list xs), _inline_pulse($(xs) = []))
 
 /* 5–6. _ghost_stmt with raw_unfold/fold around field reads and null check */
 bool peek_head(const list head, int *out)

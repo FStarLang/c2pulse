@@ -66,17 +66,17 @@ _include_pulse(
 )
 
 _arrayptr int *binary_search(_arrayptr int *lo, _arrayptr int *hi, int target)
-  _preserves((_slprop) _inline_pulse(is_slice $(lo) $(hi) $`arr $`p_arr $`v_arr $`m_arr))
+  _preserves(_inline_pulse(is_slice $(lo) $(hi) $`arr $`p_arr $`v_arr $`m_arr))
   _requires((bool) _inline_pulse(offset_of $(hi) - offset_of $(lo) < 100000))
-  _ensures((_slprop) _inline_pulse(unless_null $(return)
+  _ensures(_inline_pulse(unless_null $(return)
     (arrayptr_pts_to $(return) (arrayptr_parent $(lo)) **
       pure (offset_of $(lo) <= offset_of $(return) /\ offset_of $(return) < offset_of $(hi)))))
 {
   while (lo < hi)
     _invariant(_live(lo))
     _invariant(_live(hi))
-    _invariant((_slprop) _inline_pulse(arrayptr_pts_to $(lo) (old <| arrayptr_parent $(lo))))
-    _invariant((_slprop) _inline_pulse(arrayptr_pts_to $(hi) (old <| arrayptr_parent $(hi))))
+    _invariant(_inline_pulse(arrayptr_pts_to $(lo) (old <| arrayptr_parent $(lo))))
+    _invariant(_inline_pulse(arrayptr_pts_to $(hi) (old <| arrayptr_parent $(hi))))
     _invariant((bool) _inline_pulse(offset_of $(lo) <= offset_of $(hi)))
     _invariant((bool) _inline_pulse(old (offset_of $(lo)) <= offset_of $(lo) && offset_of $(hi) <= old (offset_of $(hi))))
   {
