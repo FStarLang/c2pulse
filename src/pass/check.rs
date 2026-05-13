@@ -113,6 +113,7 @@ impl<'a> Checker<'a> {
                 self.check_slprop(env, p);
             }
             TypeT::Plain(ty) => self.check_type(env, ty),
+            TypeT::Unknown => {}
             TypeT::Error => {}
         }
     }
@@ -133,6 +134,7 @@ impl<'a> Checker<'a> {
             | TypeT::RefineUninit(..)
             | TypeT::RefineValue(..)
             | TypeT::Plain(..) => false,
+            TypeT::Unknown => true,
             TypeT::Error => true,
         }
     }

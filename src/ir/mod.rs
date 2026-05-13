@@ -159,6 +159,8 @@ pub enum TypeT {
     RefineValue(Rc<Type>, Rc<Ident>, Rc<Type>, Rc<Expr>),
     Plain(Rc<Type>),
 
+    /// Placeholder for type inference (resolved during elaboration).
+    Unknown,
     Error,
 }
 

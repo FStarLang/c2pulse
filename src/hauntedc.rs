@@ -635,6 +635,14 @@ fn expr_parser<
 
         let postfix_expression_nonrec = choice((
             quantifier,
+            inline_pulse
+                .clone()
+                .map_with(|code: Rc<InlinePulseCode>, extra| -> Expr {
+                    let loc = sift.resolve_source_info(&extra.span());
+                    ExprT::InlinePulse(code, TypeT::Unknown.with_loc(loc.clone()))
+                        .with_loc(loc)
+                        .into()
+                }),
             ident
                 .clone() // TODO: function should be postfix_expression
                 .then(

@@ -85,6 +85,7 @@ fn scan_type(deps: &mut HashSet<DeclName>, ty: &Type) {
                 PointerKind::ArrayPtr => {}
             }
         }
+        TypeT::Unknown => {}
         TypeT::Error => {}
         TypeT::Void => {}
         TypeT::SLProp => {}

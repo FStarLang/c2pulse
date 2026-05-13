@@ -443,8 +443,8 @@ impl Env {
             return Some(a0);
         }
         match (&a.val, &b.val) {
-            (_, TypeT::Error) => Some(b0),
-            (TypeT::Error, _) => Some(a0),
+            (_, TypeT::Error | TypeT::Unknown) => Some(b0),
+            (TypeT::Error | TypeT::Unknown, _) => Some(a0),
 
             (
                 TypeT::SpecInt | TypeT::SpecNat,
@@ -551,6 +551,7 @@ impl Env {
             | TypeT::SpecInt
             | TypeT::SpecNat
             | TypeT::SLProp
+            | TypeT::Unknown
             | TypeT::Error => None,
 
             TypeT::TypeRef(TypeRefKind::Typedef(n)) => {
@@ -590,7 +591,7 @@ impl Env {
             (TypeT::SpecNat, TypeT::SpecNat) => true,
             (TypeT::SLProp, TypeT::SLProp) => true,
             (TypeT::TypeRef(t1), TypeT::TypeRef(t2)) => t1.alpha_eq(t2),
-            (TypeT::Error, _) | (_, TypeT::Error) => true,
+            (TypeT::Error | TypeT::Unknown, _) | (_, TypeT::Error | TypeT::Unknown) => true,
             _ => false,
         }
     }

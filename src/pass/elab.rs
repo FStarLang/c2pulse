@@ -53,6 +53,7 @@ impl<'a> Elaborator<'a> {
                     PointerKind::ArrayPtr => {}
                 }
             }
+            TypeT::Unknown => {}
             TypeT::Error => {}
             TypeT::Void => {}
             TypeT::SLProp => {}
@@ -66,7 +67,8 @@ impl<'a> Elaborator<'a> {
 
                 let env = &mut env.clone();
                 env.push_this(ty.clone());
-                self.elab_rvalue(env, Rc::make_mut(p));
+                let slprop_ty = TypeT::SLProp.with_loc(p.loc.clone());
+                self.elab_rvalue(env, Rc::make_mut(p), Some(&slprop_ty));
                 self.cast_to_slprop(env, p);
             }
             TypeT::RefineValue(ty, _binding_name, binding_ty, p) => {
@@ -75,7 +77,8 @@ impl<'a> Elaborator<'a> {
 
                 let env = &mut env.clone();
                 env.push_this(ty.clone());
-                self.elab_rvalue(env, Rc::make_mut(p));
+                let slprop_ty = TypeT::SLProp.with_loc(p.loc.clone());
+                self.elab_rvalue(env, Rc::make_mut(p), Some(&slprop_ty));
                 self.cast_to_slprop(env, p);
             }
             TypeT::Plain(ty) => self.elab_type(env, Rc::make_mut(ty)),
@@ -83,7 +86,7 @@ impl<'a> Elaborator<'a> {
     }
 
     fn elab_lvalue(&mut self, env: &Env, lval: &mut Expr) {
-        self.elab_rvalue(env, lval);
+        self.elab_rvalue(env, lval, None);
         if !env.is_lvalue(lval) {
             self.report(format!("expected lvalue, got {}", lval), &lval.loc);
         }
@@ -119,7 +122,7 @@ impl<'a> Elaborator<'a> {
             match tok {
                 InlinePulseToken::RValueAntiquot { expr, .. }
                 | InlinePulseToken::LValueAntiquot { expr, .. } => {
-                    self.elab_rvalue(env, Rc::make_mut(expr))
+                    self.elab_rvalue(env, Rc::make_mut(expr), None)
                 }
                 InlinePulseToken::TypeAntiquot { ty, .. } => self.elab_type(env, Rc::make_mut(ty)),
                 InlinePulseToken::Declare { ident, ty, .. } => {
@@ -132,12 +135,12 @@ impl<'a> Elaborator<'a> {
         }
     }
 
-    fn elab_rvalue(&mut self, env: &Env, rval: &mut Expr) {
+    fn elab_rvalue(&mut self, env: &Env, rval: &mut Expr, expected: Option<&Type>) {
         match &mut rval.val {
             ExprT::Var(_) => {}
-            ExprT::Deref(v) => self.elab_rvalue(env, Rc::make_mut(v)),
+            ExprT::Deref(v) => self.elab_rvalue(env, Rc::make_mut(v), None),
             ExprT::Member(x, a) => {
-                self.elab_rvalue(env, Rc::make_mut(x));
+                self.elab_rvalue(env, Rc::make_mut(x), None);
                 // Convert _active on union member → VAttr::Active
                 if &*a.val == "_active" {
                     if let ExprT::Member(base, fld) = &x.val {
@@ -193,11 +196,11 @@ impl<'a> Elaborator<'a> {
                 }
             }
             ExprT::VAttr(_, x) => {
-                self.elab_rvalue(env, Rc::make_mut(x));
+                self.elab_rvalue(env, Rc::make_mut(x), None);
             }
             ExprT::Index(arr, idx) => {
-                self.elab_rvalue(env, Rc::make_mut(arr));
-                self.elab_rvalue(env, Rc::make_mut(idx));
+                self.elab_rvalue(env, Rc::make_mut(arr), None);
+                self.elab_rvalue(env, Rc::make_mut(idx), None);
                 // Cast index to SizeT for Pulse array operations
                 if let Ok(idx_ty) = env.infer_expr(idx) {
                     let idx_ty_whnf = env.vtype_whnf(idx_ty);
@@ -208,18 +211,24 @@ impl<'a> Elaborator<'a> {
             }
             ExprT::IntLit(_, ty) => self.elab_type(env, Rc::make_mut(ty)),
             ExprT::Ref(v) => {
-                self.elab_rvalue(env, Rc::make_mut(v));
+                self.elab_rvalue(env, Rc::make_mut(v), None);
                 if !env.is_lvalue(v) {
                     self.report(format!("expected lvalue for &, got {}", v), &rval.loc);
                 }
             }
             ExprT::FnCall(f, args) => {
-                for arg in args.iter_mut() {
-                    self.elab_rvalue(env, Rc::make_mut(arg));
+                // Collect param types before elaborating args (to pass expected types)
+                let param_types: Option<Vec<_>> = env
+                    .lookup_fn(f)
+                    .map(|fn_decl| fn_decl.args.iter().map(|arg| arg.ty.clone()).collect());
+                for (i, arg) in args.iter_mut().enumerate() {
+                    let expected_param = param_types
+                        .as_ref()
+                        .and_then(|pts| pts.get(i))
+                        .map(|t| t.as_ref());
+                    self.elab_rvalue(env, Rc::make_mut(arg), expected_param);
                 }
-                if let Some(fn_decl) = env.lookup_fn(f) {
-                    let param_types: Vec<_> =
-                        fn_decl.args.iter().map(|arg| arg.ty.clone()).collect();
+                if let Some(param_types) = param_types {
                     for (arg, param_ty) in args.iter_mut().zip(param_types.iter()) {
                         let expected_ty = env.vtype_whnf(param_ty.clone().into());
                         if let Ok(actual_ty) = env.infer_expr(arg) {
@@ -233,7 +242,7 @@ impl<'a> Elaborator<'a> {
             ExprT::Cast(val, ty) => {
                 let val = Rc::make_mut(val);
                 self.elab_type(env, Rc::make_mut(ty));
-                self.elab_rvalue(env, val);
+                self.elab_rvalue(env, val, Some(ty));
                 let _actual_ty = env.infer_expr(val);
                 // TODO: check that actual_ty can be casted to ty
             }
@@ -241,32 +250,43 @@ impl<'a> Elaborator<'a> {
             ExprT::Malloc(ty) | ExprT::Calloc(ty) => self.elab_type(env, Rc::make_mut(ty)),
             ExprT::MallocArray(ty, count) | ExprT::CallocArray(ty, count) => {
                 self.elab_type(env, Rc::make_mut(ty));
-                self.elab_rvalue(env, Rc::make_mut(count));
+                self.elab_rvalue(env, Rc::make_mut(count), None);
                 if let Ok(count_ty) = env.infer_expr(count) {
                     if !matches!(&env.vtype_whnf(count_ty).val, TypeT::SizeT) {
                         cast_to(count, TypeT::SizeT.with_loc(count.loc.clone()));
                     }
                 }
             }
-            ExprT::Free(val) => self.elab_rvalue(env, Rc::make_mut(val)),
+            ExprT::Free(val) => self.elab_rvalue(env, Rc::make_mut(val), None),
             ExprT::PreIncr(val)
             | ExprT::PostIncr(val)
             | ExprT::PreDecr(val)
             | ExprT::PostDecr(val) => self.elab_lvalue(env, Rc::make_mut(val)),
             ExprT::InlinePulse(code, ty) => {
+                if matches!(ty.val, TypeT::Unknown) {
+                    if let Some(exp) = expected {
+                        *Rc::make_mut(ty) = exp.clone();
+                    } else {
+                        self.report(
+                            "cannot infer type of _inline_pulse; add an explicit type cast"
+                                .to_string(),
+                            &rval.loc,
+                        );
+                    }
+                }
                 self.elab_type(env, Rc::make_mut(ty));
                 self.elab_inline_pulse_code(env, Rc::make_mut(code));
             }
             ExprT::UnOp(un_op, arg) => {
-                self.elab_rvalue(env, Rc::make_mut(arg));
+                self.elab_rvalue(env, Rc::make_mut(arg), None);
                 match un_op {
                     UnOp::Not => self.cast_to_bool(env, arg),
                     UnOp::Neg | UnOp::BitNot => {}
                 }
             }
             ExprT::BinOp(bin_op, lhs, rhs) => {
-                self.elab_rvalue(env, Rc::make_mut(lhs));
-                self.elab_rvalue(env, Rc::make_mut(rhs));
+                self.elab_rvalue(env, Rc::make_mut(lhs), None);
+                self.elab_rvalue(env, Rc::make_mut(rhs), None);
                 let Some(lhs_ty) = self.infer_expr(env, lhs) else {
                     return;
                 };
@@ -395,26 +415,26 @@ impl<'a> Elaborator<'a> {
                 }
             }
             ExprT::BoolLit(_) => {}
-            ExprT::Live(val) => self.elab_rvalue(env, Rc::make_mut(val)),
-            ExprT::Old(val) => self.elab_rvalue(env, Rc::make_mut(val)),
+            ExprT::Live(val) => self.elab_rvalue(env, Rc::make_mut(val), None),
+            ExprT::Old(val) => self.elab_rvalue(env, Rc::make_mut(val), None),
             ExprT::Forall(var, ty, body) | ExprT::Exists(var, ty, body) => {
                 let mut env = env.clone();
                 env.push_var_decl(var, ty.clone(), LocalDeclKind::RValue);
-                self.elab_rvalue(&env, Rc::make_mut(body));
+                self.elab_rvalue(&env, Rc::make_mut(body), None);
             }
             ExprT::StructInit(_, fields) => {
                 for (_fld_name, fld_val) in fields {
-                    self.elab_rvalue(env, Rc::make_mut(fld_val));
+                    self.elab_rvalue(env, Rc::make_mut(fld_val), None);
                 }
             }
             ExprT::UnionInit(_, _, fld_val) => {
-                self.elab_rvalue(env, Rc::make_mut(fld_val));
+                self.elab_rvalue(env, Rc::make_mut(fld_val), None);
             }
             ExprT::Cond(cond, then_expr, else_expr) => {
-                self.elab_rvalue(env, Rc::make_mut(cond));
+                self.elab_rvalue(env, Rc::make_mut(cond), None);
                 self.cast_to_bool(env, cond);
-                self.elab_rvalue(env, Rc::make_mut(then_expr));
-                self.elab_rvalue(env, Rc::make_mut(else_expr));
+                self.elab_rvalue(env, Rc::make_mut(then_expr), expected);
+                self.elab_rvalue(env, Rc::make_mut(else_expr), expected);
                 // Unify branch types
                 let then_ty = env.infer_expr(then_expr).ok();
                 let else_ty = env.infer_expr(else_expr).ok();
@@ -431,7 +451,9 @@ impl<'a> Elaborator<'a> {
             }
             ExprT::AssignExpr(lhs, rhs) => {
                 self.elab_lvalue(env, Rc::make_mut(lhs));
-                self.elab_rvalue(env, Rc::make_mut(rhs));
+                let lhs_ty = env.infer_expr(lhs).ok();
+                let expected_rhs = lhs_ty.as_deref();
+                self.elab_rvalue(env, Rc::make_mut(rhs), expected_rhs);
                 // Cast RHS to LHS type if needed
                 if let (Ok(x_ty), Ok(v_ty)) = (env.infer_expr(lhs), env.infer_expr(rhs)) {
                     if !env.vtype_eq(x_ty.clone(), v_ty) {
@@ -444,13 +466,13 @@ impl<'a> Elaborator<'a> {
 
     fn elab_stmt(&mut self, env: &Env, stmt: &mut Stmt) {
         match &mut stmt.val {
-            StmtT::Call(rval) => self.elab_rvalue(env, Rc::make_mut(rval)),
+            StmtT::Call(rval) => self.elab_rvalue(env, Rc::make_mut(rval), None),
             StmtT::Decl(_, ty) => self.elab_type(env, Rc::make_mut(ty)),
             StmtT::DeclStackArray {
                 elem_type, size, ..
             } => {
                 self.elab_type(env, Rc::make_mut(elem_type));
-                self.elab_rvalue(env, Rc::make_mut(size));
+                self.elab_rvalue(env, Rc::make_mut(size), None);
                 // Cast size to SizeT if needed
                 if let Ok(size_ty) = env.infer_expr(size) {
                     let size_ty = env.vtype_whnf(size_ty);
@@ -462,7 +484,9 @@ impl<'a> Elaborator<'a> {
             }
             StmtT::Assign(x, v) => {
                 self.elab_lvalue(env, Rc::make_mut(x));
-                self.elab_rvalue(env, Rc::make_mut(v));
+                let x_ty = env.infer_expr(x).ok();
+                let expected_v = x_ty.as_deref();
+                self.elab_rvalue(env, Rc::make_mut(v), expected_v);
                 let Ok(x_ty) = env.infer_expr(x) else {
                     return;
                 };
@@ -486,7 +510,8 @@ impl<'a> Elaborator<'a> {
                 }
             }
             StmtT::If(c, b1, b2) => {
-                self.elab_rvalue(env, Rc::make_mut(c));
+                let bool_ty = TypeT::Bool.with_loc(c.loc.clone());
+                self.elab_rvalue(env, Rc::make_mut(c), Some(&bool_ty));
                 self.cast_to_bool(env, c);
                 self.elab_stmts(env, Rc::make_mut(b1));
                 self.elab_stmts(env, Rc::make_mut(b2));
@@ -498,15 +523,18 @@ impl<'a> Elaborator<'a> {
                 ensures,
                 body,
             } => {
-                self.elab_rvalue(env, Rc::make_mut(cond));
+                let bool_ty = TypeT::Bool.with_loc(cond.loc.clone());
+                self.elab_rvalue(env, Rc::make_mut(cond), Some(&bool_ty));
                 self.cast_to_bool(env, cond);
                 self.elab_slprops(env, Rc::make_mut(inv));
                 for r in Rc::make_mut(requires) {
-                    self.elab_rvalue(env, Rc::make_mut(r));
+                    let bool_ty = TypeT::Bool.with_loc(r.loc.clone());
+                    self.elab_rvalue(env, Rc::make_mut(r), Some(&bool_ty));
                     self.cast_to_bool(env, r);
                 }
                 for e in Rc::make_mut(ensures) {
-                    self.elab_rvalue(env, Rc::make_mut(e));
+                    let bool_ty = TypeT::Bool.with_loc(e.loc.clone());
+                    self.elab_rvalue(env, Rc::make_mut(e), Some(&bool_ty));
                     self.cast_to_bool(env, e);
                 }
                 self.elab_stmts(env, Rc::make_mut(body));
@@ -514,7 +542,8 @@ impl<'a> Elaborator<'a> {
             StmtT::Break | StmtT::Continue => {}
             StmtT::Return(x) => {
                 if let Some(x) = x {
-                    self.elab_rvalue(env, Rc::make_mut(x));
+                    let expected_ret = env.return_type.as_ref().map(|t| t.as_ref());
+                    self.elab_rvalue(env, Rc::make_mut(x), expected_ret);
                     if let Some(ret_ty) = &env.return_type {
                         if let Ok(v_ty) = env.infer_expr(x) {
                             if !env.vtype_eq(v_ty, ret_ty.clone().into()) {
@@ -525,7 +554,8 @@ impl<'a> Elaborator<'a> {
                 }
             }
             StmtT::Assert(v) => {
-                self.elab_rvalue(env, Rc::make_mut(v));
+                let slprop_ty = TypeT::SLProp.with_loc(v.loc.clone());
+                self.elab_rvalue(env, Rc::make_mut(v), Some(&slprop_ty));
                 self.cast_to_slprop(env, v);
             }
             StmtT::GhostStmt(code) => self.elab_inline_pulse_code(env, Rc::make_mut(code)),
@@ -686,7 +716,8 @@ impl<'a> Elaborator<'a> {
 
     fn elab_slprops(&mut self, env: &Env, slprops: &mut Vec<Rc<Expr>>) {
         for p in slprops {
-            self.elab_rvalue(env, Rc::make_mut(p));
+            let slprop_ty = TypeT::SLProp.with_loc(p.loc.clone());
+            self.elab_rvalue(env, Rc::make_mut(p), Some(&slprop_ty));
             self.cast_to_slprop(env, p);
         }
     }
@@ -720,7 +751,7 @@ impl<'a> Elaborator<'a> {
         env.push_return(ret_type.clone());
         self.elab_slprops(env, ensures);
         if let Some(dec) = decreases {
-            self.elab_rvalue(env, Rc::make_mut(dec));
+            self.elab_rvalue(env, Rc::make_mut(dec), None);
         }
     }
 
@@ -760,12 +791,13 @@ impl<'a> Elaborator<'a> {
                     env.push_arg(arg, LocalDeclKind::LValue);
                 }
                 for r in &mut let_decl.requires {
-                    self.elab_rvalue(env, Rc::make_mut(r));
+                    self.elab_rvalue(env, Rc::make_mut(r), None);
                 }
                 for e in &mut let_decl.ensures {
-                    self.elab_rvalue(env, Rc::make_mut(e));
+                    self.elab_rvalue(env, Rc::make_mut(e), None);
                 }
-                self.elab_rvalue(env, Rc::make_mut(&mut let_decl.body));
+                let ret_type = let_decl.ret_type.clone();
+                self.elab_rvalue(env, Rc::make_mut(&mut let_decl.body), Some(&ret_type));
             }
             DeclT::GlobalVar(GlobalVar {
                 name: _,
@@ -775,7 +807,7 @@ impl<'a> Elaborator<'a> {
             }) => {
                 self.elab_type(env, Rc::make_mut(ty));
                 if let Some(init) = init {
-                    self.elab_rvalue(env, Rc::make_mut(init));
+                    self.elab_rvalue(env, Rc::make_mut(init), Some(ty));
                 }
             }
         }

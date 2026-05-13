@@ -171,6 +171,7 @@ impl PrettyIR for TypeT {
             TypeT::Plain(ty) => RcDoc::text("_plain")
                 .append(RcDoc::line())
                 .append(ty.to_doc()),
+            TypeT::Unknown => RcDoc::text("?unknown"),
             TypeT::Error => RcDoc::text("???"),
         }
     }

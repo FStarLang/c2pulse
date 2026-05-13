@@ -400,6 +400,7 @@ impl<'a> Emitter<'a> {
                 TypeT::Pointer(to, PointerKind::Ref | PointerKind::Unknown) => {
                     unaryfn(Doc::text("ref"), self.emit_type(env, to))
                 }
+                TypeT::Unknown => Doc::text("unit"),
                 TypeT::Error => Doc::text("unit"),
 
                 TypeT::TypeRef(n) => self.nm.emit(Name::TypeRef(n.into())),
@@ -666,7 +667,8 @@ impl<'a> Emitter<'a> {
             | TypeT::PtrdiffT
             | TypeT::SpecInt
             | TypeT::SpecNat
-            | TypeT::SLProp => {}
+            | TypeT::SLProp
+            | TypeT::Unknown => {}
             TypeT::Pointer(pointee_ty, kind) => {
                 let this_doc = self.emit_rvalue(env, this);
                 match kind {
@@ -1250,7 +1252,8 @@ fn emit_binop(env: &Env, op: BinOp, ty: MaybeRc<Type>) -> Option<Doc> {
             TypeT::Bool | TypeT::SizeT | TypeT::PtrdiffT,
         )
         | (_, TypeT::SLProp)
-        | (_, TypeT::Error) => return None,
+        | (_, TypeT::Error)
+        | (_, TypeT::Unknown) => return None,
     })
 }
 
@@ -1506,7 +1509,9 @@ impl<'a> Emitter<'a> {
                                 val_doc
                             }
                         }
-                        (TypeT::Error, _) | (_, TypeT::Error) => val_doc,
+                        (TypeT::Error | TypeT::Unknown, _) | (_, TypeT::Error | TypeT::Unknown) => {
+                            val_doc
+                        }
                         _ => {
                             self.report(default_msg.clone(), &v.loc);
                             Doc::text("(admit())")
@@ -3423,6 +3428,7 @@ impl<'a> Emitter<'a> {
             | TypeT::SpecInt
             | TypeT::SpecNat
             | TypeT::SLProp
+            | TypeT::Unknown
             | TypeT::Error
             | TypeT::TypeRef(_) => {}
             TypeT::Pointer(_, _) => {
