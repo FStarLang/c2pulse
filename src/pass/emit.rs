@@ -1342,6 +1342,8 @@ impl<'a> Emitter<'a> {
                                 .append(Doc::line())
                                 .append("0"),
                         ),
+                        (TypeT::SpecNat, TypeT::SpecInt) => with_type(val_doc, Doc::text("int")),
+                        (TypeT::SpecInt, TypeT::SpecNat) => with_type(val_doc, Doc::text("nat")),
                         // (TypeT::Bool, TypeT::SizeT) => todo!(),
                         (TypeT::Bool, TypeT::SLProp) => unaryfn(Doc::text("with_pure"), val_doc),
                         (TypeT::Int { signed, width }, TypeT::Bool) => {
