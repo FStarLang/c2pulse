@@ -74,3 +74,15 @@ _include_pulse(
   let union_unfold_name = $unfold(my_union::a)
   let union_fold_name = $fold(my_union::a)
 )
+
+// Lexical antiquotations
+_include_pulse(
+  ghost fn foo (x: ref int)
+    preserves x |-> $`x // $`x is translated to 'x
+  {}
+)
+
+_include_pulse(
+  let foo$`bar = 67 // translated to foo'bar
+  let bar$` = 42 // bar$` is translated to bar'
+)

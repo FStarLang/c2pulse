@@ -971,6 +971,22 @@ fn relex_inline_code<'a>(diagnostics: &mut Diagnostics, code: &'a InlineCode) ->
                     (i..(i + 1)).into(),
                 ));
             }
+        } else if token.ends_with('$') && token.len() > 1 {
+            // Handle ident$ (e.g., "foo$" from "foo$`bar"): split into ident + $
+            let ident_part = &token[..token.len() - 1];
+            let result = lex_core_token().parse(ident_part);
+            diagnostics
+                .diags
+                .extend(result.errors().map(|err| Diagnostic {
+                    loc: loc.location().clone(),
+                    level: DiagnosticLevel::Error,
+                    msg: format!("{}", err),
+                }));
+            tokens.push((
+                *result.output().unwrap_or(&Token::Error),
+                (i..(i + 1)).into(),
+            ));
+            tokens.push((Token::Punct(Punct::Dollar), (i..i).into()));
         } else {
             let result = lex_core_token().parse(token);
             diagnostics
@@ -1377,8 +1393,8 @@ pub fn process_inline_pulse(
             body_span: SimpleSpan,
         },
         TickAntiquot {
-            dollar_span: SimpleSpan,
-            ident_span: SimpleSpan,
+            first_span: SimpleSpan,
+            result_text: String,
         },
     }
 
@@ -1488,10 +1504,24 @@ pub fn process_inline_pulse(
     let tick_antiquot = just(Token::Punct(Punct::Dollar))
         .map_with(|_, extra| extra.span())
         .then_ignore(just(Token::Punct(Punct::Backtick)))
-        .then(select! { Token::Ident(_) => () }.map_with(|_, extra| extra.span()))
-        .map(|(dollar_span, ident_span)| RawToken::TickAntiquot {
-            dollar_span,
-            ident_span,
+        .then(select! { Token::Ident(id) => id })
+        .map(|(dollar_span, ident)| RawToken::TickAntiquot {
+            first_span: dollar_span,
+            result_text: format!("'{}", ident),
+        });
+
+    // ident$`ident or ident$` → emits ident'ident or ident'
+    let ident_tick_antiquot = select! { Token::Ident(id) => id }
+        .map_with(|id, extra| (id, extra.span()))
+        .then_ignore(just(Token::Punct(Punct::Dollar)))
+        .then_ignore(just(Token::Punct(Punct::Backtick)))
+        .then(select! { Token::Ident(id) => id }.or_not())
+        .map(|((prefix, first_span), suffix)| RawToken::TickAntiquot {
+            first_span,
+            result_text: match suffix {
+                Some(s) => format!("{}'{}", prefix, s),
+                None => format!("{}'", prefix),
+            },
         });
 
     let verbatim = any()
@@ -1506,6 +1536,7 @@ pub fn process_inline_pulse(
         fold_uninit_antiquot,
         unfold_antiquot,
         fold_antiquot,
+        ident_tick_antiquot,
         tick_antiquot,
         antiquot,
         verbatim,
@@ -1702,15 +1733,14 @@ pub fn process_inline_pulse(
                 }
             }
             RawToken::TickAntiquot {
-                dollar_span,
-                ident_span,
+                first_span,
+                result_text,
             } => {
-                let ct = &code.tokens[dollar_span.start];
-                let ident = &code.tokens[ident_span.start].text.val;
+                let ct = &code.tokens[first_span.start];
                 InlinePulseToken::Verbatim(CodeToken {
                     before: ct.before,
                     text: Ast {
-                        val: Rc::from(format!("'{}", ident).as_str()),
+                        val: Rc::from(result_text.as_str()),
                         loc: ct.text.loc.clone(),
                     },
                 })
