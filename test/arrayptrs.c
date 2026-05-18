@@ -11,7 +11,7 @@ void write_via_ptr(_array int *a)
   _ghost_stmt(arrayptr_drop $(p));
 }
 
-_include_pulse(
+_include_pulse(Arrayptrs_include1,
   let unless_null #a (x: array a) (p: slprop) : slprop =
     if Pulse.Lib.Array.is_null x then emp else p
 
@@ -50,7 +50,7 @@ _include_pulse(
   }
 )
 
-_include_pulse(
+_include_pulse(Arrayptrs_include2,
   let is_slice_prop #a (lo hi: array a) (x: array a) (v: Seq.seq (option a)) (m: nat->prop) =
     offset_of x <= offset_of lo
       /\ offset_of lo <= offset_of hi
