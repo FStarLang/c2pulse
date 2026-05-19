@@ -22,18 +22,26 @@ fn restructure_stmts(stmts: &mut Vec<Rc<Stmt>>) {
         restructure_stmt(Rc::make_mut(stmt));
     }
 
-    // Find and restructure label statements
-    // Process from the end so indices remain valid
-    let label_positions: Vec<(usize, Rc<Ident>, Rc<Exprs>)> = stmts
-        .iter()
-        .enumerate()
-        .filter_map(|(i, s)| match &s.val {
-            StmtT::Label { name, ensures } => Some((i, name.clone(), ensures.clone())),
-            _ => None,
-        })
-        .collect();
+    // Find and restructure label statements one at a time (from the end).
+    // We re-scan after each splice because indices shift.
+    let mut skip_labels: Vec<Rc<str>> = Vec::new();
+    loop {
+        // Find the last label in the current stmts that we haven't skipped
+        let label_info = stmts
+            .iter()
+            .enumerate()
+            .rev()
+            .find_map(|(i, s)| match &s.val {
+                StmtT::Label { name, ensures } if !skip_labels.iter().any(|l| **l == *name.val) => {
+                    Some((i, name.clone(), ensures.clone()))
+                }
+                _ => None,
+            });
 
-    for (label_idx, label_name, label_ensures) in label_positions.into_iter().rev() {
+        let Some((label_idx, label_name, label_ensures)) = label_info else {
+            break;
+        };
+
         // Find the earliest statement containing a goto to this label
         let first_goto = stmts[..label_idx]
             .iter()
@@ -53,6 +61,9 @@ fn restructure_stmts(stmts: &mut Vec<Rc<Stmt>>) {
 
             // Replace [start..=label_idx] with the single GotoBlock
             stmts.splice(start..=label_idx, std::iter::once(goto_block));
+        } else {
+            // No goto found for this label — skip it
+            skip_labels.push(label_name.val.clone());
         }
     }
 }
