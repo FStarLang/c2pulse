@@ -46,8 +46,6 @@ _include_pulse(
         freeable head **
         pure (nd.$field(node::data) == hd) **
         is_list nd.$field(node::next) p tl
-
-  let elements_of l #v #p = observe (is_list l p) #v
 )
 
 _type(spec_list, list Int32.t)
@@ -57,7 +55,8 @@ _refine_uninit(_inline_pulse(pts_to_uninit $(this)))
 _plain
 typedef struct node *list;
 
-#define _elements_of(l) ((spec_list) _inline_pulse(elements_of $(l)))
+_letimpure(spec_list _elements_of(const list l),
+  _inline_pulse(observe (is_list $(l) _)))
 
 _include_pulse(
   ghost fn is_list_nil_case (head: $type(node *)) (#l: list Int32.t)
