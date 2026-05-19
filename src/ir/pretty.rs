@@ -192,7 +192,13 @@ impl PrettyIR for ExprT {
                 .append(RcDoc::text("."))
                 .append(fld.to_doc())
                 .append(RcDoc::text("._active")),
-            ExprT::Index(arr, idx) => arr.to_doc().append("[").append(idx.to_doc()).append("]"),
+            ExprT::Index(arr, idx) => arr
+                .to_doc()
+                .append("[")
+                .append(idx.to_doc())
+                .append("]")
+                .nest(2)
+                .group(),
 
             // RValue variants
             ExprT::BoolLit(b) => RcDoc::text(if *b { "true" } else { "false" }),
@@ -216,14 +222,13 @@ impl PrettyIR for ExprT {
                     args.iter().map(|arg| arg.to_doc()),
                     RcDoc::text(",").append(RcDoc::line()),
                 ))
-                .append(")"),
-            ExprT::Cast(rval, ty) => (RcDoc::text("(")
-                .append(ty.to_doc())
                 .append(")")
+                .group(),
+            ExprT::Cast(rval, ty) => (RcDoc::text("(").append(ty.to_doc()).append(")"))
+                .append(RcDoc::line())
+                .append(rval.to_doc())
                 .nest(2)
-                .group())
-            .append(RcDoc::line())
-            .append(rval.to_doc()),
+                .group(),
             ExprT::InlinePulse(inline_code, ty) => (RcDoc::text("(")
                 .append(ty.to_doc())
                 .append(")")
@@ -232,7 +237,9 @@ impl PrettyIR for ExprT {
             .append(RcDoc::line())
             .append(RcDoc::text("_inline_pulse("))
             .append(inline_pulse_code_to_doc(inline_code))
-            .append(RcDoc::text(")")),
+            .append(RcDoc::text(")"))
+            .nest(2)
+            .group(),
             ExprT::Live(v) => RcDoc::text("_live(")
                 .append(v.to_doc())
                 .append(")")
@@ -264,21 +271,34 @@ impl PrettyIR for ExprT {
             ExprT::Error(_) => RcDoc::text("???"),
             ExprT::Malloc(ty) => RcDoc::text("malloc(sizeof(")
                 .append(ty.to_doc())
-                .append("))"),
+                .append("))")
+                .nest(4)
+                .group(),
             ExprT::MallocArray(ty, count) => RcDoc::text("malloc(sizeof(")
                 .append(ty.to_doc())
+                .nest(2)
                 .append(") * ")
                 .append(count.to_doc())
-                .append(")"),
+                .append(")")
+                .nest(2)
+                .group(),
             ExprT::Calloc(ty) => RcDoc::text("calloc(1, sizeof(")
                 .append(ty.to_doc())
-                .append("))"),
+                .append("))")
+                .nest(4)
+                .group(),
             ExprT::CallocArray(ty, count) => RcDoc::text("calloc(")
                 .append(count.to_doc())
                 .append(", sizeof(")
                 .append(ty.to_doc())
-                .append("))"),
-            ExprT::Free(val) => RcDoc::text("free(").append(val.to_doc()).append(")"),
+                .append("))")
+                .nest(4)
+                .group(),
+            ExprT::Free(val) => RcDoc::text("free(")
+                .append(val.to_doc())
+                .append(")")
+                .nest(2)
+                .group(),
             ExprT::PreIncr(val) => RcDoc::text("++").append(val.to_doc()),
             ExprT::PostIncr(val) => val.to_doc().append("++"),
             ExprT::PreDecr(val) => RcDoc::text("--").append(val.to_doc()),
@@ -295,26 +315,34 @@ impl PrettyIR for ExprT {
                     }),
                     RcDoc::text(",").append(RcDoc::line()),
                 ))
-                .append("}"),
+                .append("}")
+                .nest(2)
+                .group(),
             ExprT::UnionInit(name, fld, val) => RcDoc::text("(union ")
                 .append(name.to_doc())
                 .append("){.")
                 .append(fld.to_doc())
                 .append(" = ")
                 .append(val.to_doc())
-                .append("}"),
+                .append("}")
+                .nest(2)
+                .group(),
             ExprT::Cond(cond, then_expr, else_expr) => RcDoc::text("(")
                 .append(cond.to_doc())
                 .append(" ? ")
                 .append(then_expr.to_doc())
                 .append(" : ")
                 .append(else_expr.to_doc())
-                .append(")"),
+                .append(")")
+                .nest(2)
+                .group(),
             ExprT::AssignExpr(lhs, rhs) => RcDoc::text("(")
                 .append(lhs.to_doc())
                 .append(" = ")
                 .append(rhs.to_doc())
-                .append(")"),
+                .append(")")
+                .nest(2)
+                .group(),
         }
     }
 }
