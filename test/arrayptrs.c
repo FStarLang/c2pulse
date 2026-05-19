@@ -66,9 +66,9 @@ _include_pulse(Arrayptrs_include2,
 )
 
 _arrayptr int *binary_search(_arrayptr int *lo, _arrayptr int *hi, int target)
-  _preserves(_inline_pulse(is_slice $(lo) $(hi) $`arr $`p_arr $`v_arr $`m_arr))
+  _preserves(_inline_pulse(Arrayptrs_include2.is_slice $(lo) $(hi) $`arr $`p_arr $`v_arr $`m_arr))
   _requires((bool) _inline_pulse(offset_of $(hi) - offset_of $(lo) < 100000))
-  _ensures(_inline_pulse(unless_null $(return)
+  _ensures(_inline_pulse(Arrayptrs_include1.unless_null $(return)
     (arrayptr_pts_to $(return) (arrayptr_parent $(lo)) **
       pure (offset_of $(lo) <= offset_of $(return) /\ offset_of $(return) < offset_of $(hi)))))
 {
@@ -98,9 +98,9 @@ void use_binary_search(_array int *arr, int target, size_t length)
   _arrayptr int *hi = arr + length;
   _arrayptr int *result = binary_search(lo, hi, target);
   if (result == NULL) {
-    _ghost_stmt(elim_unless_null_null _ _);
+    _ghost_stmt(Arrayptrs_include1.elim_unless_null_null _ _);
   } else {
-    _ghost_stmt(elim_unless_null_nonnull _ _);
+    _ghost_stmt(Arrayptrs_include1.elim_unless_null_nonnull _ _);
     int val = *result;
   }
 }
