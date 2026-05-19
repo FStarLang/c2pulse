@@ -185,7 +185,7 @@ impl Env {
                     ghost_args: vec![],
                     requires: let_decl.requires.clone(),
                     ensures: let_decl.ensures.clone(),
-                    is_pure: true,
+                    is_pure: !let_decl.is_impure,
                     is_rec: let_decl.is_rec,
                     decreases: None,
                 });

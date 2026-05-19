@@ -1266,6 +1266,7 @@ fn let_signature_parser<
     // Parameter mode annotations
     let param_mode = select! {
         Token::Ident("_plain") => ParamMode::Const,
+        Token::Ident("const") => ParamMode::Const,
         Token::Ident("_consumes") => ParamMode::Consumed,
         Token::Ident("_out") => ParamMode::Out,
     }

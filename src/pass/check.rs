@@ -657,6 +657,7 @@ impl<'a> Checker<'a> {
             DeclT::LetDecl(LetDecl {
                 name: _,
                 is_rec: _,
+                is_impure: _,
                 ret_type,
                 params,
                 requires,

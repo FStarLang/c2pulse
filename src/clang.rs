@@ -196,6 +196,28 @@ impl<'a> Ctx<'a> {
         body_idx: u32,
         snippets: &SnippetMap,
     ) {
+        self.add_let_decl_inner(loc, is_rec, false, sig_idx, body_idx, snippets);
+    }
+
+    fn add_letimpure_decl(
+        &mut self,
+        loc: Rc<SourceInfo>,
+        sig_idx: u32,
+        body_idx: u32,
+        snippets: &SnippetMap,
+    ) {
+        self.add_let_decl_inner(loc, false, true, sig_idx, body_idx, snippets);
+    }
+
+    fn add_let_decl_inner(
+        &mut self,
+        loc: Rc<SourceInfo>,
+        is_rec: bool,
+        is_impure: bool,
+        sig_idx: u32,
+        body_idx: u32,
+        snippets: &SnippetMap,
+    ) {
         let sig_code = match snippets.snippets.get(&sig_idx) {
             Some(code) => code,
             None => {
@@ -235,6 +257,7 @@ impl<'a> Ctx<'a> {
             val: DeclT::LetDecl(LetDecl {
                 name,
                 is_rec,
+                is_impure,
                 ret_type,
                 params,
                 requires,

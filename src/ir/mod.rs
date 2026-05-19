@@ -517,6 +517,7 @@ pub struct IncludeDecl {
 pub struct LetDecl {
     pub name: Rc<Ident>,
     pub is_rec: bool,
+    pub is_impure: bool,
     pub ret_type: Rc<Type>,
     pub params: Vec<FnArg>,
     pub requires: Exprs,

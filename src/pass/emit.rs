@@ -3672,6 +3672,10 @@ impl<'a> Emitter<'a> {
     }
 
     fn emit_let_decl(&mut self, env: &Env, let_decl: &LetDecl) -> Doc {
+        if let_decl.is_impure {
+            return self.emit_letimpure_decl(env, let_decl);
+        }
+
         let env = &mut env.clone();
 
         let mut params = vec![];
@@ -3758,6 +3762,139 @@ impl<'a> Emitter<'a> {
             ty_doc,
             body_doc,
         )
+    }
+
+    fn emit_letimpure_decl(&mut self, env: &Env, let_decl: &LetDecl) -> Doc {
+        let env = &mut env.clone();
+
+        let mut requires_props = vec![];
+        let mut params = vec![];
+
+        for (i, arg) in let_decl.params.iter().enumerate() {
+            let n: Rc<Ident> = arg.name.clone().unwrap_or_else(|| {
+                Rc::<str>::from(format!("_unnamed{}", i)).with_loc(arg.ty.loc.clone())
+            });
+
+            params.push(parens(
+                annotated(&n, || self.nm.emit(Name::Var(n.val.clone())))
+                    .append(":")
+                    .append(Doc::line())
+                    .append(self.emit_type(env, &arg.ty)),
+            ));
+
+            env.push_arg(arg, LocalDeclKind::RValue);
+            match arg.mode {
+                ParamMode::Const => {
+                    let perm_name = self
+                        .nm
+                        .emit(Name::Perm(extract_base_ident(&mk_rvar(&n)), 0));
+                    let perm_doc = Doc::text("'").append(perm_name);
+                    let mut type_bindings = vec![];
+                    let mut type_props = vec![];
+                    self.emit_type_slprop(
+                        env,
+                        &arg.ty,
+                        SLPropVariant::Init { perm: &perm_doc },
+                        true,
+                        &mut type_bindings,
+                        &mut type_props,
+                        &mk_rvar(&n),
+                    );
+                    requires_props.extend(type_props);
+                }
+                _ => {
+                    let mut type_bindings = vec![];
+                    let mut type_props = vec![];
+                    self.emit_type_slprop(
+                        env,
+                        &arg.ty,
+                        SLPropVariant::Init {
+                            perm: &Doc::text("1.0R"),
+                        },
+                        false,
+                        &mut type_bindings,
+                        &mut type_props,
+                        &mk_rvar(&n),
+                    );
+                    if !type_props.is_empty() {
+                        requires_props.push(wrap_exists(&type_bindings, type_props));
+                    }
+                }
+            }
+        }
+
+        if params.is_empty() {
+            params.push(Doc::text("()"));
+        }
+
+        let ret_type_doc = self.emit_type(env, &let_decl.ret_type);
+        let return_id = env
+            .push_return(let_decl.ret_type.clone())
+            .with_loc(let_decl.ret_type.loc.clone());
+
+        // Build the rewrites_to ensures clause: rewrites_to return_id (old (body_expr))
+        let body_rvalue = self.emit_rvalue(env, &let_decl.body);
+        let rewrites_to_doc = Doc::text("rewrites_to")
+            .append(Doc::line())
+            .append(self.nm.emit(Name::Var(return_id.val.clone())))
+            .append(Doc::line())
+            .append(parens(
+                Doc::text("old").append(Doc::line()).append(body_rvalue),
+            ));
+
+        // Header: ghost fn name (params)
+        let hdr = Doc::group(
+            Doc::text("ghost fn")
+                .append(Doc::line())
+                .append(self.nm.emit(Name::Fn(let_decl.name.val.clone()))),
+        )
+        .append(Doc::concat(params.into_iter().map(|p| Doc::line().append(p))).nest(2))
+        .group();
+
+        let sig = hdr
+            .append(Doc::concat(requires_props.into_iter().map(|r| {
+                Doc::hardline().append(
+                    Doc::text("requires")
+                        .append(Doc::line())
+                        .append(r)
+                        .nest(2)
+                        .group(),
+                )
+            })))
+            // requires pure False
+            .append(Doc::hardline())
+            .append(
+                Doc::text("requires")
+                    .append(Doc::line())
+                    .append("pure False")
+                    .nest(2)
+                    .group(),
+            )
+            .append(Doc::hardline())
+            .append(Doc::group(
+                Doc::text("returns")
+                    .append(Doc::line())
+                    .append(self.nm.emit(Name::Var(return_id.val.clone())))
+                    .append(Doc::line())
+                    .append(":")
+                    .group()
+                    .append(Doc::line())
+                    .append(ret_type_doc),
+            ))
+            // ensures rewrites_to ...
+            .append(Doc::hardline())
+            .append(
+                Doc::text("ensures")
+                    .append(Doc::line())
+                    .append(rewrites_to_doc)
+                    .nest(2)
+                    .group(),
+            )
+            .group();
+
+        sig.nest(2)
+            .append(Doc::hardline())
+            .append("{ unreachable () }")
     }
 
     fn emit_global_var(&mut self, env: &Env, gv: &GlobalVar) -> Doc {

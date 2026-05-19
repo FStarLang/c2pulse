@@ -617,7 +617,13 @@ impl PrettyIR for IncludeDecl {
 
 impl PrettyIR for LetDecl {
     fn to_doc(&self) -> RcDoc<'_, ()> {
-        let keyword = if self.is_rec { "_let_rec(" } else { "_let(" };
+        let keyword = if self.is_impure {
+            "_letimpure("
+        } else if self.is_rec {
+            "_let_rec("
+        } else {
+            "_let("
+        };
         let params = RcDoc::intersperse(
             self.params.iter().map(|arg| {
                 let mode_prefix = match arg.mode {

@@ -42,6 +42,8 @@ __attribute__((annotate("pal-pure"))) _Bool pal_c_assert_enabled(void);
     void __pal_concat(__pal_let_anchor_, __COUNTER__) (void) {}
 #define _let_rec(sig, body) [[clang::annotate("pal-let-rec", __capture_args(sig), __capture_args(body))]] \
     void __pal_concat(__pal_let_rec_anchor_, __COUNTER__) (void) {}
+#define _letimpure(sig, body) [[clang::annotate("pal-letimpure", __capture_args(sig), __capture_args(body))]] \
+    void __pal_concat(__pal_letimpure_anchor_, __COUNTER__) (void) {}
 #define _type(name, body) [[clang::annotate("pal-type", __capture_args(name), __capture_args(body))]] \
     void __pal_concat(__pal_type_anchor_, __COUNTER__) (void) {}
 
@@ -72,6 +74,7 @@ __attribute__((annotate("pal-pure"))) _Bool pal_c_assert_enabled(void);
 
 #define _let(sig, body)
 #define _let_rec(sig, body)
+#define _letimpure(sig, body)
 #define _type(name, body)
 
 #endif
