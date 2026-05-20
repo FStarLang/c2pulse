@@ -13,34 +13,43 @@ EXPECTED_FAIL :=
 # Per-test pal options (e.g., OPTS_include = -I include)
 OPTS_include = -I include
 
-# Convert foo.c -> Foo.fst (capitalize first letter, change extension)
-c_to_fst = $(shell echo '$(1)' | sed 's/^\(.\)/\U\1/;s/\.c$$/.fst/')
+# Each .c file produces output in its own subdirectory (out/<stem>/)
+OUT_DIR := out
+$(shell mkdir -p $(OUT_DIR))
 
-ALL_FST_FILES := $(foreach t,$(TESTS),$(call c_to_fst,$(t)))
+ALL_STAMPS := $(patsubst %.c,$(OUT_DIR)/%/.stamp,$(TESTS))
 
-# Generate per-file rules: Foo.fst: foo.c $(C2PULSE) pal.h
-define make_fst_rule
-$(call c_to_fst,$(1)): $(1) $$(C2PULSE) pal.h
+# Generate per-file rules for translation
+define make_stamp_rule
+$(OUT_DIR)/$(1:.c=)/.stamp: $(1) $$(C2PULSE) pal.h
+	@mkdir -p $(OUT_DIR)/$(1:.c=)
+	$$(C2PULSE) $$(OPTS_$(basename $(1))) --outdir $(OUT_DIR)/$(1:.c=) $(1)
+	@touch $$@
 endef
-$(foreach t,$(TESTS),$(eval $(call make_fst_rule,$(t))))
+$(foreach t,$(TESTS),$(eval $(call make_stamp_rule,$(t))))
 
-ALL_CHECKED_FILES = $(addprefix $(CACHE_DIR)/,$(addsuffix .checked,$(ALL_FST_FILES)))
+.PHONY: translate
+translate: $(ALL_STAMPS)
+
+# ── Verification ───────────────────────────────────────────────────
+# Each test gets its own verify target that invokes verify.mk in its output dir.
 
 FSTAR_EXE ?= ../opt/run-fstar.sh
-FSTAR = $(FSTAR_EXE) \
-	--cache_checked_modules	\
-	--cache_dir $(CACHE_DIR) \
-	--already_cached Prims,FStar,Pulse.Nolib,Pulse.Class,Pulse.Lib,PulseCore
 
-.PHONY: verify
-verify: $(ALL_CHECKED_FILES)
+TEST_STEMS   := $(patsubst %.c,%,$(TESTS))
+VERIFY_TARGETS := $(patsubst %,verify-%,$(TEST_STEMS))
 
-%.fst:
-	$(C2PULSE) $(OPTS_$(basename $<)) $<
+.PHONY: verify $(VERIFY_TARGETS)
+verify: $(VERIFY_TARGETS)
 
-$(CACHE_DIR)/%.fst.checked: %.fst
-	$(FSTAR) --force $<
-	touch $@
+$(VERIFY_TARGETS): verify-%: $(OUT_DIR)/%/.stamp
+	@$(MAKE) -C $(OUT_DIR)/$* -f ../../verify.mk \
+		FSTAR_EXE=../../$(FSTAR_EXE) \
+		CACHE_DIR=../../$(CACHE_DIR)/$*
+
+.PHONY: clean
+clean:
+	rm -rf $(OUT_DIR) $(CACHE_DIR)
 
 # ── Expected-fail targets ──────────────────────────────────────────
 # Run with: make test-expected-fail
@@ -57,3 +66,4 @@ test-xfail-%: %.c $(C2PULSE)
 	  echo "$$output"; \
 	  echo "UNEXPECTED PASS — $< should have failed"; exit 1; \
 	fi
+
